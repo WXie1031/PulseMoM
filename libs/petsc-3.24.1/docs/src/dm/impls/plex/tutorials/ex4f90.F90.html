@@ -1,0 +1,63 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/plex/tutorials/ex4f90.F90">Actual source code: ex4f90.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:50+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>! setting up DMPlex <font color="#4169E1">for</font> finite elements
+<a name="line2">  2: </a>! Contributed by Pratheek Shanthraj &lt;p.shanthraj@mpie.de&gt;
+<a name="line3">  3: </a>program main
+<a name="line4">  4: </a><font color="#A020F0">#include &lt;petsc/finclude/petsc.h&gt;</font>
+<a name="line5">  5: </a>  use petsc
+<a name="line6">  6: </a>  implicit none
+<a name="line7">  7: </a>  <a href="../../../../../manualpages/DM/DM.html">DM</a> :: dm
+<a name="line8">  8: </a>  <a href="../../../../../manualpages/DT/PetscDS.html">PetscDS</a> :: ds
+<a name="line9">  9: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> :: dim = 3, zero = 0
+<a name="line10"> 10: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> :: simplex = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> :: interpolate = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>
+<a name="line12"> 12: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> :: refinementLimit = 0.0
+<a name="line13"> 13: </a>  <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> :: ierr
+<a name="line14"> 14: </a>  <a href="../../../../../manualpages/DT/PetscTabulation.html">PetscTabulation</a>, pointer :: tab(:)
+<a name="line15"> 15: </a>  <a href="../../../../../manualpages/FE/PetscFE.html">PetscFE</a> fe, rfe
+<a name="line16"> 16: </a>  <a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> obj
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> :: one = 1, mone = -1
+
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(PETSC_NULL_CHARACTER, ierr))
+<a name="line20"> 20: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DMPlex/DMPlexCreateDoublet.html">DMPlexCreateDoublet</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, dim, simplex, interpolate, refinementLimit, dm, ierr))
+<a name="line21"> 21: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/FE/PetscFECreateDefault.html">PetscFECreateDefault</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, dim, one, simplex, 'name', mone, fe, ierr))
+<a name="line22"> 22: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>(fe, 'name', ierr))
+<a name="line23"> 23: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DM/DMSetField.html">DMSetField</a>(dm, zero, PETSC_NULL_DMLABEL, <a href="../../../../../manualpages/Sys/PetscObjectCast.html">PetscObjectCast</a>(fe), ierr))
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DM/DMSetField.html">DMSetField</a>(dm, one, PETSC_NULL_DMLABEL, <a href="../../../../../manualpages/Sys/PetscObjectCast.html">PetscObjectCast</a>(fe), ierr))
+
+<a name="line26"> 26: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(dm, ierr))
+<a name="line27"> 27: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DM/DMCreateDS.html">DMCreateDS</a>(dm, ierr))
+<a name="line28"> 28: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DM/DMGetDS.html">DMGetDS</a>(dm, ds, ierr))
+<a name="line29"> 29: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DT/PetscDSGetTabulation.html">PetscDSGetTabulation</a>(ds, tab, ierr))
+<a name="line30"> 30: </a>  print *, tab(1)%ptr%T(1)%ptr
+<a name="line31"> 31: </a>  print *, tab(1)%ptr%T(2)%ptr
+<a name="line32"> 32: </a>  print *, tab(2)%ptr%T(1)%ptr
+<a name="line33"> 33: </a>  print *, tab(2)%ptr%T(2)%ptr
+<a name="line34"> 34: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(PetscDSRestoreTabulation(ds, tab, ierr))
+
+<a name="line36"> 36: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DT/PetscDSGetDiscretization.html">PetscDSGetDiscretization</a>(ds, zero, obj, ierr))
+<a name="line37"> 37: </a>  <a href="../../../../../manualpages/Sys/PetscObjectSpecificCast.html">PetscObjectSpecificCast</a>(rfe, obj)
+<a name="line38"> 38: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/FE/PetscFEDestroy.html">PetscFEDestroy</a>(fe, ierr))
+<a name="line39"> 39: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(dm, ierr))
+<a name="line40"> 40: </a>  <a href="../../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>(ierr))
+<a name="line41"> 41: </a>end program main
+<a name="line42"> 42: </a>!<font color="#B22222">/*TEST</font>
+<a name="line43"> 43: </a><font color="#B22222">!</font>
+<a name="line44"> 44: </a><font color="#B22222">!  test:</font>
+<a name="line45"> 45: </a><font color="#B22222">!    nsize: 1</font>
+<a name="line46"> 46: </a><font color="#B22222">!</font>
+<a name="line47"> 47: </a><font color="#B22222">!TEST*/</font>
+</pre>
+</body>
+
+</html>
+

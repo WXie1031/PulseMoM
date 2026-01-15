@@ -1,0 +1,66 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/ftn-src/somefort.F90">Actual source code: somefort.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>!
+<a name="line2">  2: </a>!     Prevents: Warning: Same actual argument associated with INTENT(IN)
+<a name="line3">  3: </a>!     argument 'errorcode' and INTENT(OUT) argument 'ierror' at (1)
+<a name="line4">  4: </a>!     when <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Abort.html#MPI_Abort">MPI_Abort</a>() is called directly
+<a name="line5">  5: </a>!
+
+<a name="line7">  7: </a><font color="#A020F0">#include &lt;petsc/finclude/petscsys.h&gt;</font>
+<a name="line8">  8: </a>      subroutine MPIU_Abort(comm, ierr)
+<a name="line9">  9: </a>        use, intrinsic :: ISO_C_binding
+<a name="line10"> 10: </a>        implicit none
+<a name="line11"> 11: </a>        <a href="../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm
+<a name="line12"> 12: </a>        <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> ierr, nierr, ciportable
+<a name="line13"> 13: </a>        call PetscCIEnabledPortableErrorOutput(ciportable)
+<a name="line14"> 14: </a>        <font color="#4169E1">if</font> (ciportable == 1) then
+<a name="line15"> 15: </a>          call <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Finalize.html#MPI_Finalize">MPI_Finalize</a>(nierr)
+<a name="line16"> 16: </a>          stop 0
+<a name="line17"> 17: </a>        <font color="#4169E1">else</font>
+<a name="line18"> 18: </a>          call <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Abort.html#MPI_Abort">MPI_Abort</a>(comm, ierr, nierr)
+<a name="line19"> 19: </a>        end <font color="#4169E1">if</font>
+<a name="line20"> 20: </a>      end
+<a name="line21"> 21: </a><font color="#A020F0">#if defined(_WIN32) &amp;&amp; defined(PETSC_USE_SHARED_LIBRARIES)</font>
+<a name="line22"> 22: </a>!DEC$ ATTRIBUTES DLLEXPORT::MPIU_Abort
+<a name="line23"> 23: </a><font color="#A020F0">#endif</font>
+
+<a name="line25"> 25: </a>      subroutine PetscFortranPrintToFileUnit(unit, str, ierr)
+<a name="line26"> 26: </a>        use, intrinsic :: ISO_C_binding
+<a name="line27"> 27: </a>        implicit none
+<a name="line28"> 28: </a>        character(*) str
+<a name="line29"> 29: </a>        integer4 unit
+<a name="line30"> 30: </a>        <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr
+<a name="line31"> 31: </a>        write (unit=unit, fmt=<font color="#666666">"(A)"</font>, advance='no') str
+<a name="line32"> 32: </a>        ierr = 0
+<a name="line33"> 33: </a>      end
+<a name="line34"> 34: </a><font color="#A020F0">#if defined(_WIN32) &amp;&amp; defined(PETSC_USE_SHARED_LIBRARIES)</font>
+<a name="line35"> 35: </a>!DEC$ ATTRIBUTES DLLEXPORT::PetscFortranPrintToFileUnit
+<a name="line36"> 36: </a><font color="#A020F0">#endif</font>
+
+<a name="line38"> 38: </a>!  This uses F2003 feature - and is the preferred mode <font color="#4169E1">for</font> accessing command line arguments
+<a name="line39"> 39: </a>      integer function PetscCommandArgumentCount()
+<a name="line40"> 40: </a>        use, intrinsic :: ISO_C_binding
+<a name="line41"> 41: </a>        implicit none
+<a name="line42"> 42: </a>        PetscCommandArgumentCount = command_argument_count()
+<a name="line43"> 43: </a>      end
+
+<a name="line45"> 45: </a>      subroutine PetscGetCommandArgument(n, val)
+<a name="line46"> 46: </a>        implicit none
+<a name="line47"> 47: </a>        integer, intent(in) :: n
+<a name="line48"> 48: </a>        character(*) val
+<a name="line49"> 49: </a>        call get_command_argument(n, val)
+<a name="line50"> 50: </a>      end
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,69 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tests/ex67.c">Actual source code: ex67.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:12+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>const char help[] = <font color="#666666">"Test PetscAssertPointer type generics"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../include/petsc/private/petscimpl.h.html">&lt;petsc/private/petscimpl.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#228B22">#define PETSC_TEST_ASSERT_POINTER_GENERICS_SINGLE(type, PETSC_TYPE, string) \</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">    type         *h = NULL; \</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>     same_string; \</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> data_type         = PetscAssertPointer_PetscDataType(h); \</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">    const char    expected_string[] = string; \</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(NULL, </font><font color="#666666">"PetscAssertPointer_PetscDataType(%s *h) = PETSC_%s\n"</font><font color="#228B22">, expected_string, PetscDataTypes[data_type])); \</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(NULL, </font><font color="#666666">"PetscAssertPointer_String(%s *h) = \"%s\"\n"</font><font color="#228B22">, expected_string, PetscAssertPointer_String(h))); \</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(data_type == PETSC_TYPE, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, </font><font color="#666666">"[PetscAssertPointer_PetscDataType(%s *h) = %s] != PETSC_%s"</font><font color="#228B22">, expected_string, PetscDataTypes[data_type], PetscDataTypes[PETSC_TYPE]); \</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(PetscAssertPointer_String(h), expected_string, &amp;same_string)); \</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(same_string, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, </font><font color="#666666">"[PetscAssertPointer_String(%s *h) = \"%s\"] != \"%s\""</font><font color="#228B22">, expected_string, PetscAssertPointer_String(h), expected_string); \</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  } while (0)</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">#define PETSC_TEST_ASSERT_POINTER_GENERICS(type, PETSC_TYPE) \</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  PETSC_TEST_ASSERT_POINTER_GENERICS_SINGLE(type, PETSC_TYPE, <a href="../../../manualpages/Sys/PetscStringize.html">PetscStringize</a>(type)); \</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  PETSC_TEST_ASSERT_POINTER_GENERICS_SINGLE(const type, PETSC_TYPE, <a href="../../../manualpages/Sys/PetscStringize.html">PetscStringize</a>(type))</font></strong>
+
+<a name="line21"> 21: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line22"> 22: </a>{
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line24"> 24: </a><font color="#A020F0">#if defined(PetscAssertPointer_PetscDataType) &amp;&amp; (defined(__cplusplus) || (PETSC_C_VERSION &gt;= 11))</font>
+<a name="line25"> 25: </a>  <font color="#B22222">// clang-format off</font>
+<a name="line26"> 26: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(          char, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_CHAR</a>   );
+<a name="line27"> 27: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(   signed char, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_CHAR</a>   );
+<a name="line28"> 28: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS( unsigned char, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_CHAR</a>   );
+<a name="line29"> 29: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(         short, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_SHORT</a>  );
+<a name="line30"> 30: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(unsigned short, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_SHORT</a>  );
+<a name="line31"> 31: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(         float, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_FLOAT</a>  );
+<a name="line32"> 32: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(        double, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_DOUBLE</a> );
+<a name="line33"> 33: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(  <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_COMPLEX</a>);
+<a name="line34"> 34: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(       int32_t, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_INT32</a>  );
+<a name="line35"> 35: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(      uint32_t, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_INT32</a>  );
+<a name="line36"> 36: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(       int64_t, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_INT64</a>  );
+<a name="line37"> 37: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(      uint64_t, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_INT64</a>  );
+<a name="line38"> 38: </a>  <font color="#B22222">// clang-format on</font>
+<a name="line39"> 39: </a><font color="#A020F0">#endif</font>
+<a name="line40"> 40: </a><font color="#A020F0">#if defined(PetscAssertPointer_PetscDataType) &amp;&amp; defined(__cplusplus)</font>
+<a name="line41"> 41: </a>  PETSC_TEST_ASSERT_POINTER_GENERICS(<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>, <a href="../../../manualpages/Sys/PetscDataType.html">PETSC_BOOL</a>);
+<a name="line42"> 42: </a><font color="#A020F0">#endif</font>
+<a name="line43"> 43: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line44"> 44: </a>  <font color="#4169E1">return</font> 0;
+<a name="line45"> 45: </a>}
+
+<a name="line47"> 47: </a><font color="#B22222">/*TEST</font>
+
+<a name="line49"> 49: </a><font color="#B22222">  test:</font>
+<a name="line50"> 50: </a><font color="#B22222">    suffix: 0</font>
+<a name="line51"> 51: </a><font color="#B22222">    output_file: output/empty.out</font>
+
+<a name="line53"> 53: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

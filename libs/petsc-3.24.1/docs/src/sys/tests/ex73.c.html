@@ -1,0 +1,44 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tests/ex73.c">Actual source code: ex73.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:11+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>const char help[] = <font color="#666666">"Test dropping <a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>()"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../include/petsc.h.html">&lt;petsc.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line6">  6: </a>{
+<a name="line7">  7: </a>  FILE *file;
+
+<a name="line9">  9: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line10"> 10: </a>  file = fopen(<font color="#666666">"test"</font>, <font color="#666666">"w"</font>);
+<a name="line11"> 11: </a>  <font color="#4169E1">if</font> (argc &lt; 10) fclose(file);
+<a name="line12"> 12: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFPrintf.html">PetscFPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, file, <font color="#666666">"Testing error handling with bad \n"</font>));
+<a name="line13"> 13: </a>  <font color="#4169E1">if</font> (argc &gt;= 10) fclose(file);
+
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line16"> 16: </a>  <font color="#4169E1">return</font> 0;
+<a name="line17"> 17: </a>}
+
+<a name="line19"> 19: </a><font color="#B22222">/*TEST</font>
+
+<a name="line21"> 21: </a><font color="#B22222">  test:</font>
+<a name="line22"> 22: </a><font color="#B22222">    suffix: 0</font>
+<a name="line23"> 23: </a><font color="#B22222">    requires: !defined(PETSCTEST_VALGRIND)</font>
+<a name="line24"> 24: </a><font color="#B22222">    args: -petsc_ci_portable_error_output -error_output_stdout</font>
+<a name="line25"> 25: </a><font color="#B22222">    filter: grep -E -v "(memory block|leaked context|not freed before <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Finalize.html#MPI_Finalize">MPI_Finalize</a>|Could be the program crashed|PETSc Option Table entries|source: environment)"</font>
+<a name="line26"> 26: </a><font color="#B22222">    TODO: Too many odd ball failures that are not reproducible in alt files</font>
+
+<a name="line28"> 28: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,94 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsc/private/cpp/macros.hpp">Actual source code: macros.hpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:45+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petscmacros.h.html">&lt;petscmacros.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#B22222">// basic building blocks</font>
+<a name="line6">  6: </a><strong><font color="#228B22">#define PETSC_DECLTYPE_AUTO(...) -&gt;decltype(__VA_ARGS__)</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">#define PETSC_NOEXCEPT_AUTO(...) noexcept(noexcept(__VA_ARGS__))</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">#define PETSC_RETURNS(...) \</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">    return __VA_ARGS__; \</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  }</font></strong>
+
+<a name="line13"> 13: </a><font color="#B22222">// one without the other</font>
+<a name="line14"> 14: </a><strong><font color="#228B22">#define PETSC_DECLTYPE_AUTO_RETURNS(...) PETSC_DECLTYPE_AUTO(__VA_ARGS__) PETSC_RETURNS(__VA_ARGS__)</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">#define PETSC_NOEXCEPT_AUTO_RETURNS(...) PETSC_NOEXCEPT_AUTO(__VA_ARGS__) PETSC_RETURNS(__VA_ARGS__)</font></strong>
+
+<a name="line17"> 17: </a><font color="#B22222">// both</font>
+<a name="line18"> 18: </a><strong><font color="#228B22">#define PETSC_DECLTYPE_NOEXCEPT_AUTO(...) PETSC_NOEXCEPT_AUTO(__VA_ARGS__) PETSC_DECLTYPE_AUTO(__VA_ARGS__)</font></strong>
+<a name="line19"> 19: </a><font color="#B22222">// all</font>
+<a name="line20"> 20: </a><strong><font color="#228B22">#define PETSC_DECLTYPE_NOEXCEPT_AUTO_RETURNS(...) PETSC_DECLTYPE_NOEXCEPT_AUTO(__VA_ARGS__) PETSC_RETURNS(__VA_ARGS__)</font></strong>
+
+<a name="line22"> 22: </a><font color="#B22222">// PETSC_CXX_COMPAT_DECL() - Helper macro to declare a C++ class member function or</font>
+<a name="line23"> 23: </a><font color="#B22222">// free-standing function guaranteed to be compatible with C</font>
+<a name="line24"> 24: </a><font color="#B22222">//</font>
+<a name="line25"> 25: </a><font color="#B22222">// input params:</font>
+<a name="line26"> 26: </a><font color="#B22222">// __VA_ARGS__ - the function declaration</font>
+<a name="line27"> 27: </a><font color="#B22222">//</font>
+<a name="line28"> 28: </a><font color="#B22222">// notes:</font>
+<a name="line29"> 29: </a><font color="#B22222">// Normally member functions of C++ structs or classes are not callable from C as they have an</font>
+<a name="line30"> 30: </a><font color="#B22222">// implicit "this" parameter tacked on the front (analogous to Pythons "self"). Static</font>
+<a name="line31"> 31: </a><font color="#B22222">// functions on the other hand do not have this restriction. This macro applies static to the</font>
+<a name="line32"> 32: </a><font color="#B22222">// function declaration as well as noexcept (as C++ exceptions escaping the C++ boundary is</font>
+<a name="line33"> 33: </a><font color="#B22222">// undefined behavior anyways) and [[nodiscard]].</font>
+<a name="line34"> 34: </a><font color="#B22222">//</font>
+<a name="line35"> 35: </a><font color="#B22222">// Note that the user should take care that function arguments and return type are also C</font>
+<a name="line36"> 36: </a><font color="#B22222">// compatible.</font>
+<a name="line37"> 37: </a><font color="#B22222">//</font>
+<a name="line38"> 38: </a><font color="#B22222">// example usage:</font>
+<a name="line39"> 39: </a><font color="#B22222">// class myclass</font>
+<a name="line40"> 40: </a><font color="#B22222">// {</font>
+<a name="line41"> 41: </a><font color="#B22222">// public:</font>
+<a name="line42"> 42: </a><font color="#B22222">//   PETSC_CXX_COMPAT_DECL(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> foo(int,<a href="../../../../manualpages/Vec/Vec.html">Vec</a>,char));</font>
+<a name="line43"> 43: </a><font color="#B22222">// };</font>
+<a name="line44"> 44: </a><font color="#B22222">//</font>
+<a name="line45"> 45: </a><font color="#B22222">// use this to define inline as well</font>
+<a name="line46"> 46: </a><font color="#B22222">//</font>
+<a name="line47"> 47: </a><font color="#B22222">// class myclass</font>
+<a name="line48"> 48: </a><font color="#B22222">// {</font>
+<a name="line49"> 49: </a><font color="#B22222">// public:</font>
+<a name="line50"> 50: </a><font color="#B22222">//   PETSC_CXX_COMPAT_DECL(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> foo(int a, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> b, charc))</font>
+<a name="line51"> 51: </a><font color="#B22222">//   {</font>
+<a name="line52"> 52: </a><font color="#B22222">//     ...</font>
+<a name="line53"> 53: </a><font color="#B22222">//   }</font>
+<a name="line54"> 54: </a><font color="#B22222">// };</font>
+<a name="line55"> 55: </a><font color="#B22222">//</font>
+<a name="line56"> 56: </a><font color="#B22222">// or to define a free-standing function</font>
+<a name="line57"> 57: </a><font color="#B22222">//</font>
+<a name="line58"> 58: </a><font color="#B22222">// PETSC_CXX_COMPAT_DECL(bool bar(int x, int y))</font>
+<a name="line59"> 59: </a><font color="#B22222">// {</font>
+<a name="line60"> 60: </a><font color="#B22222">//   ...</font>
+<a name="line61"> 61: </a><font color="#B22222">// }</font>
+<a name="line62"> 62: </a><strong><font color="#228B22">#define PETSC_CXX_COMPAT_DECL(...) <a href="../../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static inline __VA_ARGS__ noexcept</font></strong>
+
+<a name="line64"> 64: </a><font color="#B22222">// PETSC_CXX_COMPAT_DEFN() - Corresponding macro to define a C++ member function declared using</font>
+<a name="line65"> 65: </a><font color="#B22222">// PETSC_CXX_COMPAT_DECL()</font>
+<a name="line66"> 66: </a><font color="#B22222">//</font>
+<a name="line67"> 67: </a><font color="#B22222">// input params:</font>
+<a name="line68"> 68: </a><font color="#B22222">// __VA_ARGS__ - the function prototype (not the body!)</font>
+<a name="line69"> 69: </a><font color="#B22222">//</font>
+<a name="line70"> 70: </a><font color="#B22222">// notes:</font>
+<a name="line71"> 71: </a><font color="#B22222">// prepends inline and appends noexcept to the function</font>
+<a name="line72"> 72: </a><font color="#B22222">//</font>
+<a name="line73"> 73: </a><font color="#B22222">// example usage:</font>
+<a name="line74"> 74: </a><font color="#B22222">// PETSC_CXX_COMPAT_DEFN(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> myclass::foo(int a, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> b, char c))</font>
+<a name="line75"> 75: </a><font color="#B22222">// {</font>
+<a name="line76"> 76: </a><font color="#B22222">//   ...</font>
+<a name="line77"> 77: </a><font color="#B22222">// }</font>
+<a name="line78"> 78: </a><strong><font color="#228B22">#define PETSC_CXX_COMPAT_DEFN(...) inline __VA_ARGS__ noexcept</font></strong>
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,526 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsc/private/cupmblasinterface.hpp">Actual source code: cupmblasinterface.hpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:45+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../include/petsc/private/cupminterface.hpp.html">&lt;petsc/private/cupminterface.hpp&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../include/petsc/private/petscadvancedmacros.h.html">&lt;petsc/private/petscadvancedmacros.h&gt;</A>
+
+<a name="line6">  6: </a><font color="#A020F0">#include &lt;limits&gt; // std::numeric_limits</font>
+
+<a name="line8">  8: </a>namespace Petsc
+<a name="line9">  9: </a>{
+
+<a name="line11"> 11: </a>namespace device
+<a name="line12"> 12: </a>{
+
+<a name="line14"> 14: </a>namespace cupm
+<a name="line15"> 15: </a>{
+
+<a name="line17"> 17: </a>namespace impl
+<a name="line18"> 18: </a>{
+
+<a name="line20"> 20: </a><strong><font color="#228B22">#define PetscCallCUPMBLAS_(__abort_fn__, __comm__, ...) \</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscStackUpdateLine.html">PetscStackUpdateLine</a>; \</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">    const cupmBlasError_t cberr_p_ = __VA_ARGS__; \</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">    if (<a href="../../../manualpages/Sys/PetscUnlikely.html">PetscUnlikely</a>(cberr_p_ != CUPMBLAS_STATUS_SUCCESS)) { \</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">      if (((cberr_p_ == CUPMBLAS_STATUS_NOT_INITIALIZED) || (cberr_p_ == CUPMBLAS_STATUS_ALLOC_FAILED)) &amp;&amp; <a href="../../../manualpages/Device/PetscDeviceInitialized.html">PetscDeviceInitialized</a>(PETSC_DEVICE_CUPM())) { \</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">        __abort_fn__(__comm__, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU_RESOURCE</a>, \</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">                     </font><font color="#666666">"%s error %d (%s). Reports not initialized or alloc failed; "</font><font color="#228B22"> \</font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">                     </font><font color="#666666">"this indicates the GPU may have run out resources"</font><font color="#228B22">, \</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">                     cupmBlasName(), static_cast&lt;<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>&gt;(cberr_p_), cupmBlasGetErrorName(cberr_p_)); \</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">      } \</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">      __abort_fn__(__comm__, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU</a>, </font><font color="#666666">"%s error %d (%s)"</font><font color="#228B22">, cupmBlasName(), static_cast&lt;<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>&gt;(cberr_p_), cupmBlasGetErrorName(cberr_p_)); \</font></strong>
+<a name="line32"> 32: </a><strong><font color="#228B22">    } \</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line35"> 35: </a><strong><font color="#228B22">#define PetscCallCUPMBLAS(...)             PetscCallCUPMBLAS_(<a href="../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, __VA_ARGS__)</font></strong>
+<a name="line36"> 36: </a><strong><font color="#228B22">#define PetscCallCUPMBLASAbort(comm_, ...) PetscCallCUPMBLAS_(<a href="../../../manualpages/Sys/SETERRABORT.html">SETERRABORT</a>, comm_, __VA_ARGS__)</font></strong>
+
+<a name="line38"> 38: </a><font color="#B22222">// given cupmBlas<T>axpy() then</font>
+<a name="line39"> 39: </a><font color="#B22222">// T = PETSC_CUPBLAS_FP_TYPE</font>
+<a name="line40"> 40: </a><font color="#B22222">// given cupmBlas<T><u>nrm2() then</font>
+<a name="line41"> 41: </a><font color="#B22222">// T = PETSC_CUPMBLAS_FP_INPUT_TYPE</font>
+<a name="line42"> 42: </a><font color="#B22222">// u = PETSC_CUPMBLAS_FP_RETURN_TYPE</font>
+<a name="line43"> 43: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)</font>
+<a name="line44"> 44: </a><font color="#A020F0">  #if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_REAL_SINGLE)</font>
+<a name="line45"> 45: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_U       C</font></strong>
+<a name="line46"> 46: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_L       c</font></strong>
+<a name="line47"> 47: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_INPUT_TYPE_U S</font></strong>
+<a name="line48"> 48: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_INPUT_TYPE_L s</font></strong>
+<a name="line49"> 49: </a><font color="#A020F0">  #elif <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_REAL_DOUBLE)</font>
+<a name="line50"> 50: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_U       Z</font></strong>
+<a name="line51"> 51: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_L       z</font></strong>
+<a name="line52"> 52: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_INPUT_TYPE_U D</font></strong>
+<a name="line53"> 53: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_INPUT_TYPE_L d</font></strong>
+<a name="line54"> 54: </a><font color="#A020F0">  #endif</font>
+<a name="line55"> 55: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_RETURN_TYPE_U PETSC_CUPMBLAS_FP_TYPE_U</font></strong>
+<a name="line56"> 56: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_RETURN_TYPE_L PETSC_CUPMBLAS_FP_TYPE_L</font></strong>
+<a name="line57"> 57: </a><font color="#A020F0">#else</font>
+<a name="line58"> 58: </a><font color="#A020F0">  #if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_REAL_SINGLE)</font>
+<a name="line59"> 59: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_U S</font></strong>
+<a name="line60"> 60: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_L s</font></strong>
+<a name="line61"> 61: </a><font color="#A020F0">  #elif <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_REAL_DOUBLE)</font>
+<a name="line62"> 62: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_U D</font></strong>
+<a name="line63"> 63: </a><strong><font color="#228B22">    #define PETSC_CUPMBLAS_FP_TYPE_L d</font></strong>
+<a name="line64"> 64: </a><font color="#A020F0">  #endif</font>
+<a name="line65"> 65: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_INPUT_TYPE_U PETSC_CUPMBLAS_FP_TYPE_U</font></strong>
+<a name="line66"> 66: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_INPUT_TYPE_L PETSC_CUPMBLAS_FP_TYPE_L</font></strong>
+<a name="line67"> 67: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_RETURN_TYPE_U</font></strong>
+<a name="line68"> 68: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_RETURN_TYPE_L</font></strong>
+<a name="line69"> 69: </a><font color="#A020F0">#endif // USE_COMPLEX</font>
+
+<a name="line71"> 71: </a><font color="#A020F0">#if !defined(PETSC_CUPMBLAS_FP_TYPE_U) &amp;&amp; !<a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_REAL___FLOAT128)</font>
+<a name="line72"> 72: </a><font color="#A020F0">  #error </font><font color="#666666">"Unsupported floating-point type for CUDA/HIP BLAS"</font><font color="#A020F0"></font>
+<a name="line73"> 73: </a><font color="#A020F0">#endif</font>
+
+<a name="line75"> 75: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_MODIFIED() - Helper macro to build a "modified"</font>
+<a name="line76"> 76: </a><font color="#B22222">// blas function whose return type does not match the input type</font>
+<a name="line77"> 77: </a><font color="#B22222">//</font>
+<a name="line78"> 78: </a><font color="#B22222">// input param:</font>
+<a name="line79"> 79: </a><font color="#B22222">// func - base suffix of the blas function, e.g. nrm2</font>
+<a name="line80"> 80: </a><font color="#B22222">//</font>
+<a name="line81"> 81: </a><font color="#B22222">// notes:</font>
+<a name="line82"> 82: </a><font color="#B22222">// requires PETSC_CUPMBLAS_FP_INPUT_TYPE to be defined as the blas floating point input type</font>
+<a name="line83"> 83: </a><font color="#B22222">// letter ("S" for real/complex single, "D" for real/complex double).</font>
+<a name="line84"> 84: </a><font color="#B22222">//</font>
+<a name="line85"> 85: </a><font color="#B22222">// requires PETSC_CUPMBLAS_FP_RETURN_TYPE to be defined as the blas floating point output type</font>
+<a name="line86"> 86: </a><font color="#B22222">// letter ("c" for complex single, "z" for complex double and <absolutely nothing> for real</font>
+<a name="line87"> 87: </a><font color="#B22222">// single/double).</font>
+<a name="line88"> 88: </a><font color="#B22222">//</font>
+<a name="line89"> 89: </a><font color="#B22222">// In their infinite wisdom nvidia/amd have made the upper-case vs lower-case scheme</font>
+<a name="line90"> 90: </a><font color="#B22222">// infuriatingly inconsistent...</font>
+<a name="line91"> 91: </a><font color="#B22222">//</font>
+<a name="line92"> 92: </a><font color="#B22222">// example usage:</font>
+<a name="line93"> 93: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_INPUT_TYPE  S</font>
+<a name="line94"> 94: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_RETURN_TYPE</font>
+<a name="line95"> 95: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_MODIFIED(nrm2) -> Snrm2</font>
+<a name="line96"> 96: </a><font color="#B22222">//</font>
+<a name="line97"> 97: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_INPUT_TYPE  D</font>
+<a name="line98"> 98: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_RETURN_TYPE z</font>
+<a name="line99"> 99: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_MODIFIED(nrm2) -> Dznrm2</font>
+<a name="line100">100: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_MODIFIED(func) <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(<a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_FP_INPUT_TYPE, PETSC_CUPMBLAS_FP_RETURN_TYPE), func)</font></strong>
+
+<a name="line102">102: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_IFPTYPE() - Helper macro to build Iamax and Iamin</font>
+<a name="line103">103: </a><font color="#B22222">// because they are both extra special</font>
+<a name="line104">104: </a><font color="#B22222">//</font>
+<a name="line105">105: </a><font color="#B22222">// input param:</font>
+<a name="line106">106: </a><font color="#B22222">// func - base suffix of the blas function, either amax or amin</font>
+<a name="line107">107: </a><font color="#B22222">//</font>
+<a name="line108">108: </a><font color="#B22222">// notes:</font>
+<a name="line109">109: </a><font color="#B22222">// The macro name literally stands for "I" ## "floating point type" because shockingly enough,</font>
+<a name="line110">110: </a><font color="#B22222">// that's what it does.</font>
+<a name="line111">111: </a><font color="#B22222">//</font>
+<a name="line112">112: </a><font color="#B22222">// requires PETSC_CUPMBLAS_FP_TYPE_L to be defined as the lower-case blas floating point input type</font>
+<a name="line113">113: </a><font color="#B22222">// letter ("s" for complex single, "z" for complex double, "s" for real single, and "d" for</font>
+<a name="line114">114: </a><font color="#B22222">// real double).</font>
+<a name="line115">115: </a><font color="#B22222">//</font>
+<a name="line116">116: </a><font color="#B22222">// example usage:</font>
+<a name="line117">117: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_TYPE_L s</font>
+<a name="line118">118: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_IFPTYPE(amax) -> Isamax</font>
+<a name="line119">119: </a><font color="#B22222">//</font>
+<a name="line120">120: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_TYPE_L z</font>
+<a name="line121">121: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_IFPTYPE(amin) -> Izamin</font>
+<a name="line122">122: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_IFPTYPE(func) <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(I, <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_FP_TYPE_L, func))</font></strong>
+
+<a name="line124">124: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_STANDARD() - Helper macro to build a "standard"</font>
+<a name="line125">125: </a><font color="#B22222">// blas function name</font>
+<a name="line126">126: </a><font color="#B22222">//</font>
+<a name="line127">127: </a><font color="#B22222">// input param:</font>
+<a name="line128">128: </a><font color="#B22222">// func - base suffix of the blas function, e.g. axpy, scal</font>
+<a name="line129">129: </a><font color="#B22222">//</font>
+<a name="line130">130: </a><font color="#B22222">// notes:</font>
+<a name="line131">131: </a><font color="#B22222">// requires PETSC_CUPMBLAS_FP_TYPE to be defined as the blas floating-point letter ("C" for</font>
+<a name="line132">132: </a><font color="#B22222">// complex single, "Z" for complex double, "S" for real single, "D" for real double).</font>
+<a name="line133">133: </a><font color="#B22222">//</font>
+<a name="line134">134: </a><font color="#B22222">// example usage:</font>
+<a name="line135">135: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_TYPE S</font>
+<a name="line136">136: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_STANDARD(axpy) -> Saxpy</font>
+<a name="line137">137: </a><font color="#B22222">//</font>
+<a name="line138">138: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_TYPE Z</font>
+<a name="line139">139: </a><font color="#B22222">// PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_STANDARD(axpy) -> Zaxpy</font>
+<a name="line140">140: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_STANDARD(func) <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_FP_TYPE, func)</font></strong>
+
+<a name="line142">142: </a><font color="#B22222">// PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT() - In case CUDA/HIP don't agree with our suffix</font>
+<a name="line143">143: </a><font color="#B22222">// one can provide both here</font>
+<a name="line144">144: </a><font color="#B22222">//</font>
+<a name="line145">145: </a><font color="#B22222">// input params:</font>
+<a name="line146">146: </a><font color="#B22222">// MACRO_SUFFIX - suffix to one of the above blas function builder macros, e.g. STANDARD or</font>
+<a name="line147">147: </a><font color="#B22222">// IFPTYPE</font>
+<a name="line148">148: </a><font color="#B22222">// our_suffix   - the suffix of the alias function</font>
+<a name="line149">149: </a><font color="#B22222">// their_suffix - the suffix of the function being aliased</font>
+<a name="line150">150: </a><font color="#B22222">//</font>
+<a name="line151">151: </a><font color="#B22222">// notes:</font>
+<a name="line152">152: </a><font color="#B22222">// requires PETSC_CUPMBLAS_PREFIX to be defined as the specific CUDA/HIP blas function</font>
+<a name="line153">153: </a><font color="#B22222">// prefix. requires any other specific definitions required by the specific builder macro to</font>
+<a name="line154">154: </a><font color="#B22222">// also be defined. See PETSC_CUPM_ALIAS_FUNCTION_EXACT() for the exact expansion of the</font>
+<a name="line155">155: </a><font color="#B22222">// function alias.</font>
+<a name="line156">156: </a><font color="#B22222">//</font>
+<a name="line157">157: </a><font color="#B22222">// example usage:</font>
+<a name="line158">158: </a><font color="#B22222">// #define PETSC_CUPMBLAS_PREFIX  cublas</font>
+<a name="line159">159: </a><font color="#B22222">// #define PETSC_CUPMBLAS_FP_TYPE C</font>
+<a name="line160">160: </a><font color="#B22222">// PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(STANDARD,dot,dotc) -></font>
+<a name="line161">161: </a><font color="#B22222">// template <typename... T></font>
+<a name="line162">162: </a><font color="#B22222">// static constexpr auto cupmBlasXdot(T&&... args) *noexcept and returntype detection*</font>
+<a name="line163">163: </a><font color="#B22222">// {</font>
+<a name="line164">164: </a><font color="#B22222">//   return cublasCdotc(std::forward<T>(args)...);</font>
+<a name="line165">165: </a><font color="#B22222">// }</font>
+<a name="line166">166: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(MACRO_SUFFIX, our_suffix, their_suffix) \</font></strong>
+<a name="line167">167: </a><strong><font color="#228B22">  PETSC_CUPM_ALIAS_FUNCTION(<a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(cupmBlasX, our_suffix), <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_PREFIX, <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_BUILD_BLAS_FUNCTION_ALIAS_, MACRO_SUFFIX)(their_suffix)))</font></strong>
+
+<a name="line169">169: </a><font color="#B22222">// PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION() - Alias a CUDA/HIP blas function</font>
+<a name="line170">170: </a><font color="#B22222">//</font>
+<a name="line171">171: </a><font color="#B22222">// input params:</font>
+<a name="line172">172: </a><font color="#B22222">// MACRO_SUFFIX - suffix to one of the above blas function builder macros, e.g. STANDARD or</font>
+<a name="line173">173: </a><font color="#B22222">// IFPTYPE</font>
+<a name="line174">174: </a><font color="#B22222">// suffix       - the common suffix between CUDA and HIP of the alias function</font>
+<a name="line175">175: </a><font color="#B22222">//</font>
+<a name="line176">176: </a><font color="#B22222">// notes:</font>
+<a name="line177">177: </a><font color="#B22222">// see PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(), this macro just calls that one with "suffix" as</font>
+<a name="line178">178: </a><font color="#B22222">// "our_prefix" and "their_prefix"</font>
+<a name="line179">179: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(MACRO_SUFFIX, suffix) PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(MACRO_SUFFIX, suffix, suffix)</font></strong>
+
+<a name="line181">181: </a><font color="#B22222">// PETSC_CUPMBLAS_ALIAS_FUNCTION() - Alias a CUDA/HIP library function</font>
+<a name="line182">182: </a><font color="#B22222">//</font>
+<a name="line183">183: </a><font color="#B22222">// input params:</font>
+<a name="line184">184: </a><font color="#B22222">// suffix - the common suffix between CUDA and HIP of the alias function</font>
+<a name="line185">185: </a><font color="#B22222">//</font>
+<a name="line186">186: </a><font color="#B22222">// notes:</font>
+<a name="line187">187: </a><font color="#B22222">// requires PETSC_CUPMBLAS_PREFIX to be defined as the specific CUDA/HIP blas library</font>
+<a name="line188">188: </a><font color="#B22222">// prefix. see PETSC_CUPMM_ALIAS_FUNCTION_EXACT() for the precise expansion of this macro.</font>
+<a name="line189">189: </a><font color="#B22222">//</font>
+<a name="line190">190: </a><font color="#B22222">// example usage:</font>
+<a name="line191">191: </a><font color="#B22222">// #define PETSC_CUPMBLAS_PREFIX hipblas</font>
+<a name="line192">192: </a><font color="#B22222">// PETSC_CUPMBLAS_ALIAS_FUNCTION(Create) -></font>
+<a name="line193">193: </a><font color="#B22222">// template <typename... T></font>
+<a name="line194">194: </a><font color="#B22222">// static constexpr auto cupmBlasCreate(T&&... args) *noexcept and returntype detection*</font>
+<a name="line195">195: </a><font color="#B22222">// {</font>
+<a name="line196">196: </a><font color="#B22222">//   return hipblasCreate(std::forward<T>(args)...);</font>
+<a name="line197">197: </a><font color="#B22222">// }</font>
+<a name="line198">198: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_ALIAS_FUNCTION(suffix) PETSC_CUPM_ALIAS_FUNCTION(<a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(cupmBlas, suffix), <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_PREFIX, suffix))</font></strong>
+
+<a name="line200">200: </a>template &lt;DeviceType&gt;
+<a name="line201">201: </a><font color="#4169E1"><a name="BlasInterfaceImpl"></a>struct BlasInterfaceImpl</font>;
+
+<a name="line203">203: </a><font color="#B22222">// Exists because HIP (for whatever godforsaken reason) has elected to define both their</font>
+<a name="line204">204: </a><font color="#B22222">// hipBlasHandle_t and hipSolverHandle_t as void *. So we cannot disambiguate them for overload</font>
+<a name="line205">205: </a><font color="#B22222">// resolution and hence need to wrap their types int this mess.</font>
+<a name="line206">206: </a>template &lt;typename T, std::size_t I&gt;
+<a name="line207">207: </a>class cupmBlasHandleWrapper {
+<a name="line208">208: </a>public:
+<a name="line209">209: </a>  constexpr cupmBlasHandleWrapper() noexcept = <font color="#4169E1">default</font>;
+<a name="line210">210: </a>  constexpr cupmBlasHandleWrapper(T h) noexcept : handle_{std::move(h)} { static_assert(std::is_standard_layout&lt;cupmBlasHandleWrapper&lt;T, I&gt;&gt;::value, <font color="#666666">""</font>); }
+
+<a name="line212">212: </a>  cupmBlasHandleWrapper &amp;operator=(std::nullptr_t) noexcept
+<a name="line213">213: </a>  {
+<a name="line214">214: </a>    handle_ = nullptr;
+<a name="line215">215: </a>    <font color="#4169E1">return</font> *this;
+<a name="line216">216: </a>  }
+
+<a name="line218">218: </a>  operator T() const { <font color="#4169E1">return</font> handle_; }
+
+<a name="line220">220: </a>  const T *ptr_to() const { <font color="#4169E1">return</font> &amp;handle_; }
+<a name="line221">221: </a>  T       *ptr_to() { <font color="#4169E1">return</font> &amp;handle_; }
+
+<a name="line223">223: </a>private:
+<a name="line224">224: </a>  T handle_{};
+<a name="line225">225: </a>};
+
+<a name="line227">227: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line228">228: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_PREFIX         cublas</font></strong>
+<a name="line229">229: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_PREFIX_U       CUBLAS</font></strong>
+<a name="line230">230: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_TYPE        PETSC_CUPMBLAS_FP_TYPE_U</font></strong>
+<a name="line231">231: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_INPUT_TYPE  PETSC_CUPMBLAS_FP_INPUT_TYPE_U</font></strong>
+<a name="line232">232: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_RETURN_TYPE PETSC_CUPMBLAS_FP_RETURN_TYPE_L</font></strong>
+<a name="line233">233: </a>template &lt;&gt;
+<a name="line234">234: </a><font color="#4169E1"><a name="PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL"></a>struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL </font>BlasInterfaceImpl&lt;DeviceType::CUDA&gt; : Interface&lt;DeviceType::CUDA&gt; {
+<a name="line235">235: </a>  <font color="#B22222">// typedefs</font>
+<a name="line236">236: </a>  using cupmBlasHandle_t      = cupmBlasHandleWrapper&lt;cublasHandle_t, 0&gt;;
+<a name="line237">237: </a>  using cupmBlasError_t       = cublasStatus_t;
+<a name="line238">238: </a>  using cupmBlasInt_t         = int;
+<a name="line239">239: </a>  using cupmBlasPointerMode_t = cublasPointerMode_t;
+
+<a name="line241">241: </a>  <font color="#B22222">// values</font>
+<a name="line242">242: </a>  static const auto CUPMBLAS_STATUS_SUCCESS         = CUBLAS_STATUS_SUCCESS;
+<a name="line243">243: </a>  static const auto CUPMBLAS_STATUS_NOT_INITIALIZED = CUBLAS_STATUS_NOT_INITIALIZED;
+<a name="line244">244: </a>  static const auto CUPMBLAS_STATUS_ALLOC_FAILED    = CUBLAS_STATUS_ALLOC_FAILED;
+<a name="line245">245: </a>  static const auto CUPMBLAS_POINTER_MODE_HOST      = CUBLAS_POINTER_MODE_HOST;
+<a name="line246">246: </a>  static const auto CUPMBLAS_POINTER_MODE_DEVICE    = CUBLAS_POINTER_MODE_DEVICE;
+<a name="line247">247: </a>  static const auto CUPMBLAS_OP_T                   = CUBLAS_OP_T;
+<a name="line248">248: </a>  static const auto CUPMBLAS_OP_N                   = CUBLAS_OP_N;
+<a name="line249">249: </a>  static const auto CUPMBLAS_OP_C                   = CUBLAS_OP_C;
+<a name="line250">250: </a>  static const auto CUPMBLAS_FILL_MODE_LOWER        = CUBLAS_FILL_MODE_LOWER;
+<a name="line251">251: </a>  static const auto CUPMBLAS_FILL_MODE_UPPER        = CUBLAS_FILL_MODE_UPPER;
+<a name="line252">252: </a>  static const auto CUPMBLAS_SIDE_LEFT              = CUBLAS_SIDE_LEFT;
+<a name="line253">253: </a>  static const auto CUPMBLAS_DIAG_NON_UNIT          = CUBLAS_DIAG_NON_UNIT;
+
+<a name="line255">255: </a>  <font color="#B22222">// utility functions</font>
+<a name="line256">256: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(Create)
+<a name="line257">257: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(Destroy)
+<a name="line258">258: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(GetStream)
+<a name="line259">259: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(SetStream)
+<a name="line260">260: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(GetPointerMode)
+<a name="line261">261: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(SetPointerMode)
+
+<a name="line263">263: </a>  <font color="#B22222">// level 1 BLAS</font>
+<a name="line264">264: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, axpy)
+<a name="line265">265: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, copy)
+<a name="line266">266: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, scal)
+<a name="line267">267: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(STANDARD, dot, PetscIfPetscDefined(USE_COMPLEX, dotc, dot))
+<a name="line268">268: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(STANDARD, dotu, PetscIfPetscDefined(USE_COMPLEX, dotu, dot))
+<a name="line269">269: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, swap)
+<a name="line270">270: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(MODIFIED, nrm2)
+<a name="line271">271: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(IFPTYPE, amax)
+<a name="line272">272: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(MODIFIED, asum)
+
+<a name="line274">274: </a>  <font color="#B22222">// level 2 BLAS</font>
+<a name="line275">275: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, gemv)
+<a name="line276">276: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, trmv)
+<a name="line277">277: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, trsv)
+<a name="line278">278: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, gbmv)
+<a name="line279">279: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, tbmv)
+<a name="line280">280: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, tbsv)
+<a name="line281">281: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(STANDARD, hemv, PetscIfPetscDefined(USE_COMPLEX, hemv, symv))
+
+<a name="line283">283: </a>  <font color="#B22222">// level 3 BLAS</font>
+<a name="line284">284: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, gemm)
+<a name="line285">285: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, trsm)
+
+<a name="line287">287: </a>  <font color="#B22222">// BLAS extensions</font>
+<a name="line288">288: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, geam)
+
+<a name="line290">290: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static const char *cupmBlasGetErrorName(cupmBlasError_t status) noexcept { <font color="#4169E1">return</font> PetscCUBLASGetErrorName(status); }
+<a name="line291">291: </a>};
+<a name="line292">292: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_PREFIX</font></strong>
+<a name="line293">293: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_PREFIX_U</font></strong>
+<a name="line294">294: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_FP_TYPE</font></strong>
+<a name="line295">295: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_FP_INPUT_TYPE</font></strong>
+<a name="line296">296: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_FP_RETURN_TYPE</font></strong>
+<a name="line297">297: </a><font color="#A020F0">#endif // <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+
+<a name="line299">299: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line300">300: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_PREFIX         hipblas</font></strong>
+<a name="line301">301: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_PREFIX_U       HIPBLAS</font></strong>
+<a name="line302">302: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_TYPE        PETSC_CUPMBLAS_FP_TYPE_U</font></strong>
+<a name="line303">303: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_INPUT_TYPE  PETSC_CUPMBLAS_FP_INPUT_TYPE_U</font></strong>
+<a name="line304">304: </a><strong><font color="#228B22">  #define PETSC_CUPMBLAS_FP_RETURN_TYPE PETSC_CUPMBLAS_FP_RETURN_TYPE_L</font></strong>
+<a name="line305">305: </a>template &lt;&gt;
+<a name="line306">306: </a><font color="#4169E1"><a name="PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL"></a>struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL </font>BlasInterfaceImpl&lt;DeviceType::HIP&gt; : Interface&lt;DeviceType::HIP&gt; {
+<a name="line307">307: </a>  <font color="#B22222">// typedefs</font>
+<a name="line308">308: </a>  using cupmBlasHandle_t      = cupmBlasHandleWrapper&lt;hipblasHandle_t, 0&gt;;
+<a name="line309">309: </a>  using cupmBlasError_t       = hipblasStatus_t;
+<a name="line310">310: </a>  using cupmBlasInt_t         = int; <font color="#B22222">// rocblas will have its own</font>
+<a name="line311">311: </a>  using cupmBlasPointerMode_t = hipblasPointerMode_t;
+
+<a name="line313">313: </a>  <font color="#B22222">// values</font>
+<a name="line314">314: </a>  static const auto CUPMBLAS_STATUS_SUCCESS         = HIPBLAS_STATUS_SUCCESS;
+<a name="line315">315: </a>  static const auto CUPMBLAS_STATUS_NOT_INITIALIZED = HIPBLAS_STATUS_NOT_INITIALIZED;
+<a name="line316">316: </a>  static const auto CUPMBLAS_STATUS_ALLOC_FAILED    = HIPBLAS_STATUS_ALLOC_FAILED;
+<a name="line317">317: </a>  static const auto CUPMBLAS_POINTER_MODE_HOST      = HIPBLAS_POINTER_MODE_HOST;
+<a name="line318">318: </a>  static const auto CUPMBLAS_POINTER_MODE_DEVICE    = HIPBLAS_POINTER_MODE_DEVICE;
+<a name="line319">319: </a>  static const auto CUPMBLAS_OP_T                   = HIPBLAS_OP_T;
+<a name="line320">320: </a>  static const auto CUPMBLAS_OP_N                   = HIPBLAS_OP_N;
+<a name="line321">321: </a>  static const auto CUPMBLAS_OP_C                   = HIPBLAS_OP_C;
+<a name="line322">322: </a>  static const auto CUPMBLAS_FILL_MODE_LOWER        = HIPBLAS_FILL_MODE_LOWER;
+<a name="line323">323: </a>  static const auto CUPMBLAS_FILL_MODE_UPPER        = HIPBLAS_FILL_MODE_UPPER;
+<a name="line324">324: </a>  static const auto CUPMBLAS_SIDE_LEFT              = HIPBLAS_SIDE_LEFT;
+<a name="line325">325: </a>  static const auto CUPMBLAS_DIAG_NON_UNIT          = HIPBLAS_DIAG_NON_UNIT;
+
+<a name="line327">327: </a>  <font color="#B22222">// utility functions</font>
+<a name="line328">328: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(Create)
+<a name="line329">329: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(Destroy)
+<a name="line330">330: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(GetStream)
+<a name="line331">331: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(SetStream)
+<a name="line332">332: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(GetPointerMode)
+<a name="line333">333: </a>  PETSC_CUPMBLAS_ALIAS_FUNCTION(SetPointerMode)
+
+<a name="line335">335: </a>  <font color="#B22222">// level 1 BLAS</font>
+<a name="line336">336: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, axpy)
+<a name="line337">337: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, copy)
+<a name="line338">338: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, scal)
+<a name="line339">339: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(STANDARD, dot, PetscIfPetscDefined(USE_COMPLEX, dotc, dot))
+<a name="line340">340: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(STANDARD, dotu, PetscIfPetscDefined(USE_COMPLEX, dotu, dot))
+<a name="line341">341: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, swap)
+<a name="line342">342: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(MODIFIED, nrm2)
+<a name="line343">343: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(IFPTYPE, amax)
+<a name="line344">344: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(MODIFIED, asum)
+
+<a name="line346">346: </a>  <font color="#B22222">// level 2 BLAS</font>
+<a name="line347">347: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, gemv)
+<a name="line348">348: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, trmv)
+<a name="line349">349: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, trsv)
+<a name="line350">350: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, gbmv)
+<a name="line351">351: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, tbmv)
+<a name="line352">352: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, tbsv)
+<a name="line353">353: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION_EXACT(STANDARD, hemv, PetscIfPetscDefined(USE_COMPLEX, hemv, symv))
+
+<a name="line355">355: </a>  <font color="#B22222">// level 3 BLAS</font>
+<a name="line356">356: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, gemm)
+<a name="line357">357: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, trsm)
+
+<a name="line359">359: </a>  <font color="#B22222">// BLAS extensions</font>
+<a name="line360">360: </a>  PETSC_CUPMBLAS_ALIAS_BLAS_FUNCTION(STANDARD, geam)
+
+<a name="line362">362: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static const char *cupmBlasGetErrorName(cupmBlasError_t status) noexcept { <font color="#4169E1">return</font> PetscHIPBLASGetErrorName(status); }
+<a name="line363">363: </a>};
+<a name="line364">364: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_PREFIX</font></strong>
+<a name="line365">365: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_PREFIX_U</font></strong>
+<a name="line366">366: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_FP_TYPE</font></strong>
+<a name="line367">367: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_FP_INPUT_TYPE</font></strong>
+<a name="line368">368: </a><strong><font color="#228B22">  #undef PETSC_CUPMBLAS_FP_RETURN_TYPE</font></strong>
+<a name="line369">369: </a><font color="#A020F0">#endif // <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+
+<a name="line371">371: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_IMPL_CLASS_HEADER(T) \</font></strong>
+<a name="line372">372: </a><strong><font color="#228B22">  PETSC_CUPM_INHERIT_INTERFACE_TYPEDEFS_USING(T); \</font></strong>
+<a name="line373">373: </a><strong><font color="#228B22">  </font><font color="#B22222">/* introspection */</font><font color="#228B22"> \</font></strong>
+<a name="line374">374: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasGetErrorName; \</font></strong>
+<a name="line375">375: </a><strong><font color="#228B22">  </font><font color="#B22222">/* types */</font><font color="#228B22"> \</font></strong>
+<a name="line376">376: </a><strong><font color="#228B22">  using cupmBlasHandle_t      = typename ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasHandle_t; \</font></strong>
+<a name="line377">377: </a><strong><font color="#228B22">  using cupmBlasError_t       = typename ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasError_t; \</font></strong>
+<a name="line378">378: </a><strong><font color="#228B22">  using cupmBlasInt_t         = typename ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasInt_t; \</font></strong>
+<a name="line379">379: </a><strong><font color="#228B22">  using cupmBlasPointerMode_t = typename ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasPointerMode_t; \</font></strong>
+<a name="line380">380: </a><strong><font color="#228B22">  </font><font color="#B22222">/* values */</font><font color="#228B22"> \</font></strong>
+<a name="line381">381: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_STATUS_SUCCESS; \</font></strong>
+<a name="line382">382: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_STATUS_NOT_INITIALIZED; \</font></strong>
+<a name="line383">383: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_STATUS_ALLOC_FAILED; \</font></strong>
+<a name="line384">384: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_POINTER_MODE_HOST; \</font></strong>
+<a name="line385">385: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_POINTER_MODE_DEVICE; \</font></strong>
+<a name="line386">386: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_OP_T; \</font></strong>
+<a name="line387">387: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_OP_N; \</font></strong>
+<a name="line388">388: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_OP_C; \</font></strong>
+<a name="line389">389: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_FILL_MODE_LOWER; \</font></strong>
+<a name="line390">390: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_FILL_MODE_UPPER; \</font></strong>
+<a name="line391">391: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_SIDE_LEFT; \</font></strong>
+<a name="line392">392: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::CUPMBLAS_DIAG_NON_UNIT; \</font></strong>
+<a name="line393">393: </a><strong><font color="#228B22">  </font><font color="#B22222">/* utility functions */</font><font color="#228B22"> \</font></strong>
+<a name="line394">394: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasCreate; \</font></strong>
+<a name="line395">395: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasDestroy; \</font></strong>
+<a name="line396">396: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasGetStream; \</font></strong>
+<a name="line397">397: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasSetStream; \</font></strong>
+<a name="line398">398: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasGetPointerMode; \</font></strong>
+<a name="line399">399: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasSetPointerMode; \</font></strong>
+<a name="line400">400: </a><strong><font color="#228B22">  </font><font color="#B22222">/* level 1 BLAS */</font><font color="#228B22"> \</font></strong>
+<a name="line401">401: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXaxpy; \</font></strong>
+<a name="line402">402: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXcopy; \</font></strong>
+<a name="line403">403: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXscal; \</font></strong>
+<a name="line404">404: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXdot; \</font></strong>
+<a name="line405">405: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXdotu; \</font></strong>
+<a name="line406">406: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXswap; \</font></strong>
+<a name="line407">407: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXnrm2; \</font></strong>
+<a name="line408">408: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXamax; \</font></strong>
+<a name="line409">409: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXasum; \</font></strong>
+<a name="line410">410: </a><strong><font color="#228B22">  </font><font color="#B22222">/* level 2 BLAS */</font><font color="#228B22"> \</font></strong>
+<a name="line411">411: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXgemv; \</font></strong>
+<a name="line412">412: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXtrmv; \</font></strong>
+<a name="line413">413: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXtrsv; \</font></strong>
+<a name="line414">414: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXgbmv; \</font></strong>
+<a name="line415">415: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXtbmv; \</font></strong>
+<a name="line416">416: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXtbsv; \</font></strong>
+<a name="line417">417: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXhemv; \</font></strong>
+<a name="line418">418: </a><strong><font color="#228B22">  </font><font color="#B22222">/* level 3 BLAS */</font><font color="#228B22"> \</font></strong>
+<a name="line419">419: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXgemm; \</font></strong>
+<a name="line420">420: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXtrsm; \</font></strong>
+<a name="line421">421: </a><strong><font color="#228B22">  </font><font color="#B22222">/* BLAS extensions */</font><font color="#228B22"> \</font></strong>
+<a name="line422">422: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterfaceImpl&lt;T&gt;::cupmBlasXgeam</font></strong>
+
+<a name="line424">424: </a><font color="#B22222">// The actual interface class</font>
+<a name="line425">425: </a>template &lt;DeviceType T&gt;
+<a name="line426">426: </a><font color="#4169E1"><a name="BlasInterface"></a>struct BlasInterface </font>: BlasInterfaceImpl&lt;T&gt; {
+<a name="line427">427: </a>  PETSC_CUPMBLAS_IMPL_CLASS_HEADER(T);
+
+<a name="line429">429: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static constexpr const char *cupmBlasName() noexcept { <font color="#4169E1">return</font> T == DeviceType::CUDA ? <font color="#666666">"cuBLAS"</font> : <font color="#666666">"hipBLAS"</font>; }
+
+<a name="line431">431: </a>  static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscCUPMBlasSetPointerModeFromPointer(cupmBlasHandle_t handle, const void *ptr) noexcept
+<a name="line432">432: </a>  {
+<a name="line433">433: </a>    auto mtype = <a href="../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>;
+
+<a name="line435">435: </a>    <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line436">436: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscCUPMGetMemType(ptr, &amp;mtype));
+<a name="line437">437: </a>    PetscCallCUPMBLAS(cupmBlasSetPointerMode(handle, PetscMemTypeDevice(mtype) ? CUPMBLAS_POINTER_MODE_DEVICE : CUPMBLAS_POINTER_MODE_HOST));
+<a name="line438">438: </a>    <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line439">439: </a>  }
+
+<a name="line441">441: </a>  static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> checkCupmBlasIntCast(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> x) noexcept
+<a name="line442">442: </a>  {
+<a name="line443">443: </a>    <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line444">444: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>((std::is_same&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, cupmBlasInt_t&gt;::value) || (x &lt;= std::numeric_limits&lt;cupmBlasInt_t&gt;::max()), <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"%"</font> PetscInt_FMT <font color="#666666">" is too big for %s, which may be restricted to 32-bit integers"</font>, x, cupmBlasName());
+<a name="line445">445: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(x &gt;= 0, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Passing negative integer (%"</font> PetscInt_FMT <font color="#666666">") to %s routine"</font>, x, cupmBlasName());
+<a name="line446">446: </a>    <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line447">447: </a>  }
+
+<a name="line449">449: </a>  static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscCUPMBlasIntCast(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> x, cupmBlasInt_t *y) noexcept
+<a name="line450">450: </a>  {
+<a name="line451">451: </a>    <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line452">452: </a>    *y = static_cast&lt;cupmBlasInt_t&gt;(x);
+<a name="line453">453: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(checkCupmBlasIntCast(x));
+<a name="line454">454: </a>    <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line455">455: </a>  }
+
+<a name="line457">457: </a>  class CUPMBlasPointerModeGuard {
+<a name="line458">458: </a>  public:
+<a name="line459">459: </a>    CUPMBlasPointerModeGuard(const cupmBlasHandle_t &amp;handle, cupmBlasPointerMode_t mode) noexcept : handle_{handle}
+<a name="line460">460: </a>    {
+<a name="line461">461: </a>      <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line462">462: </a>      PetscCallCUPMBLASAbort(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, cupmBlasGetPointerMode(handle, &amp;this-&gt;old_));
+<a name="line463">463: </a>      <font color="#4169E1">if</font> (this-&gt;old_ == mode) {
+<a name="line464">464: </a>        this-&gt;set_ = false;
+<a name="line465">465: </a>      } <font color="#4169E1">else</font> {
+<a name="line466">466: </a>        this-&gt;set_ = true;
+<a name="line467">467: </a>        PetscCallCUPMBLASAbort(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, cupmBlasSetPointerMode(handle, mode));
+<a name="line468">468: </a>      }
+<a name="line469">469: </a>      <a href="../../../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>();
+<a name="line470">470: </a>    }
+
+<a name="line472">472: </a>    CUPMBlasPointerModeGuard(const cupmBlasHandle_t &amp;handle, <a href="../../../manualpages/Sys/PetscMemType.html">PetscMemType</a> mtype) noexcept : CUPMBlasPointerModeGuard{handle, PetscMemTypeDevice(mtype) ? CUPMBLAS_POINTER_MODE_DEVICE : CUPMBLAS_POINTER_MODE_HOST} { }
+
+<a name="line474">474: </a>    ~CUPMBlasPointerModeGuard() noexcept
+<a name="line475">475: </a>    {
+<a name="line476">476: </a>      <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line477">477: </a>      <font color="#4169E1">if</font> (this-&gt;set_) PetscCallCUPMBLASAbort(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, cupmBlasSetPointerMode(this-&gt;handle_, this-&gt;old_));
+<a name="line478">478: </a>      <a href="../../../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>();
+<a name="line479">479: </a>    }
+
+<a name="line481">481: </a>  private:
+<a name="line482">482: </a>    cupmBlasHandle_t      handle_;
+<a name="line483">483: </a>    cupmBlasPointerMode_t old_;
+<a name="line484">484: </a>    bool                  set_;
+<a name="line485">485: </a>  };
+<a name="line486">486: </a>};
+
+<a name="line488">488: </a><strong><font color="#228B22">#define PETSC_CUPMBLAS_INHERIT_INTERFACE_TYPEDEFS_USING(T) \</font></strong>
+<a name="line489">489: </a><strong><font color="#228B22">  PETSC_CUPMBLAS_IMPL_CLASS_HEADER(T); \</font></strong>
+<a name="line490">490: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterface&lt;T&gt;::cupmBlasName; \</font></strong>
+<a name="line491">491: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterface&lt;T&gt;::PetscCUPMBlasSetPointerModeFromPointer; \</font></strong>
+<a name="line492">492: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterface&lt;T&gt;::checkCupmBlasIntCast; \</font></strong>
+<a name="line493">493: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::BlasInterface&lt;T&gt;::PetscCUPMBlasIntCast; \</font></strong>
+<a name="line494">494: </a><strong><font color="#228B22">  using CUPMBlasPointerModeGuard = typename ::Petsc::device::cupm::impl::BlasInterface&lt;T&gt;::CUPMBlasPointerModeGuard</font></strong>
+
+<a name="line496">496: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line497">497: </a>extern template <font color="#4169E1">struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL</font> BlasInterface&lt;DeviceType::CUDA&gt;;
+<a name="line498">498: </a><font color="#A020F0">#endif</font>
+
+<a name="line500">500: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line501">501: </a>extern template <font color="#4169E1">struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL</font> BlasInterface&lt;DeviceType::HIP&gt;;
+<a name="line502">502: </a><font color="#A020F0">#endif</font>
+
+<a name="line504">504: </a>} <font color="#B22222">// namespace impl</font>
+
+<a name="line506">506: </a>} <font color="#B22222">// namespace cupm</font>
+
+<a name="line508">508: </a>} <font color="#B22222">// namespace device</font>
+
+<a name="line510">510: </a>} <font color="#B22222">// namespace Petsc</font>
+</pre>
+</body>
+
+</html>
+

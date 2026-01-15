@@ -1,0 +1,258 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/is/sf/impls/basic/sfmpi.c">Actual source code: sfmpi.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:18+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../src/vec/is/sf/impls/basic/sfpack.h.html">&lt;../src/vec/is/sf/impls/basic/sfpack.h&gt;</A>
+
+<a name="line3">  3: </a><font color="#B22222">// Though there is no default mechanism to start a communication, we have a</font>
+<a name="line4">  4: </a><font color="#B22222">// default to finish communication, which is just waiting on the requests.</font>
+<a name="line5">  5: </a><font color="#B22222">// It should work for both non-blocking or persistent send/recvs or collectivwes.</font>
+<a name="line6">  6: </a><strong><font color="#4169E1"><a name="PetscSFLinkFinishCommunication_Default"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscSFLinkFinishCommunication_Default(<a href="../../../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a> sf, PetscSFLink link, PetscSFDirection direction)</font></strong>
+<a name="line7">  7: </a>{
+<a name="line8">  8: </a>  PetscSF_Basic     *bas           = (PetscSF_Basic *)sf-&gt;data;
+<a name="line9">  9: </a>  const <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a> rootmtype_mpi = link-&gt;rootmtype_mpi, leafmtype_mpi = link-&gt;leafmtype_mpi;
+<a name="line10"> 10: </a>  const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     rootdirect_mpi = link-&gt;rootdirect_mpi, leafdirect_mpi = link-&gt;leafdirect_mpi;
+
+<a name="line12"> 12: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line13"> 13: </a>  <font color="#4169E1">if</font> (sf-&gt;monitor) {
+<a name="line14"> 14: </a>    <a href="../../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> rank;
+<a name="line15"> 15: </a>    const char *rootaction = (direction == PETSCSF_ROOT2LEAF) ? <font color="#666666">"sending to  "</font> : <font color="#666666">"recving from"</font>;
+<a name="line16"> 16: </a>    const char *leafaction = (direction == PETSCSF_ROOT2LEAF) ? <font color="#666666">"recving from"</font> : <font color="#666666">"sending to  "</font>;
+<a name="line17"> 17: </a>    const char *sfaction   = (direction == PETSCSF_ROOT2LEAF) ? <font color="#666666">"PetscSFBcast"</font> : <font color="#666666">"PetscSFReduce"</font>;
+
+<a name="line19"> 19: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"---------------- Begin %s communication -------------------\n"</font>, sfaction));
+<a name="line20"> 20: </a>    <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)sf), &amp;rank));
+
+<a name="line22"> 22: </a>    <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> i = 0; i &lt; bas-&gt;nrootreqs; i++) {
+<a name="line23"> 23: </a>      size_t size = (bas-&gt;ioffset[i + bas-&gt;ndiranks + 1] - bas-&gt;ioffset[i + bas-&gt;ndiranks]) * link-&gt;unitbytes;
+<a name="line24"> 24: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Rank %6d %s Rank %6d (%16zu bytes) with MPI tag %10d ... "</font>, rank, rootaction, bas-&gt;iranks[i + bas-&gt;ndiranks], size, link-&gt;tag));
+<a name="line25"> 25: </a>      <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Wait.html#MPI_Wait">MPI_Wait</a>(link-&gt;rootreqs[direction][rootmtype_mpi][rootdirect_mpi] + i, MPI_STATUS_IGNORE));
+<a name="line26"> 26: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"DONE\n"</font>));
+<a name="line27"> 27: </a>    }
+<a name="line28"> 28: </a>    <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> i = 0; i &lt; sf-&gt;nleafreqs; i++) {
+<a name="line29"> 29: </a>      size_t size = (sf-&gt;roffset[i + sf-&gt;ndranks + 1] - sf-&gt;roffset[i + sf-&gt;ndranks]) * link-&gt;unitbytes;
+<a name="line30"> 30: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Rank %6d %s Rank %6d (%16zu bytes) with MPI tag %10d ... "</font>, rank, leafaction, sf-&gt;ranks[i + sf-&gt;ndranks], size, link-&gt;tag));
+<a name="line31"> 31: </a>      <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Wait.html#MPI_Wait">MPI_Wait</a>(link-&gt;leafreqs[direction][leafmtype_mpi][leafdirect_mpi] + i, MPI_STATUS_IGNORE));
+<a name="line32"> 32: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"DONE\n"</font>));
+<a name="line33"> 33: </a>    }
+<a name="line34"> 34: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"---------------- End   %s communication -------------------\n\n"</font>, sfaction));
+<a name="line35"> 35: </a>  } <font color="#4169E1">else</font> {
+<a name="line36"> 36: </a>    <font color="#4169E1">if</font> (bas-&gt;nrootreqs) <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Waitall.html#MPI_Waitall">MPI_Waitall</a>(bas-&gt;nrootreqs, link-&gt;rootreqs[direction][rootmtype_mpi][rootdirect_mpi], MPI_STATUSES_IGNORE));
+<a name="line37"> 37: </a>    <font color="#4169E1">if</font> (sf-&gt;nleafreqs) <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Waitall.html#MPI_Waitall">MPI_Waitall</a>(sf-&gt;nleafreqs, link-&gt;leafreqs[direction][leafmtype_mpi][leafdirect_mpi], MPI_STATUSES_IGNORE));
+<a name="line38"> 38: </a>  }
+
+<a name="line40"> 40: </a>  <font color="#4169E1">if</font> (direction == PETSCSF_ROOT2LEAF) {
+<a name="line41"> 41: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFLinkCopyLeafBufferInCaseNotUseGpuAwareMPI(sf, link, <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a> <font color="#B22222">/* host2device after recving */</font>));
+<a name="line42"> 42: </a>  } <font color="#4169E1">else</font> {
+<a name="line43"> 43: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFLinkCopyRootBufferInCaseNotUseGpuAwareMPI(sf, link, <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line44"> 44: </a>  }
+<a name="line45"> 45: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line46"> 46: </a>}
+
+<a name="line48"> 48: </a><font color="#B22222">/*</font>
+<a name="line49"> 49: </a><font color="#B22222">   The routine Creates a communication link for the given operation. It first looks up its link cache. If</font>
+<a name="line50"> 50: </a><font color="#B22222">   there is a free &amp; suitable one, it uses it. Otherwise it creates a new one.</font>
+
+<a name="line52"> 52: </a><font color="#B22222">   A link contains buffers and MPI requests for send/recv. It also contains pack/unpack routines to pack/unpack</font>
+<a name="line53"> 53: </a><font color="#B22222">   root/leafdata to/from these buffers. Buffers are allocated at our discretion. When we find root/leafata</font>
+<a name="line54"> 54: </a><font color="#B22222">   can be directly passed to MPI, we won't allocate them. Even we allocate buffers, we only allocate</font>
+<a name="line55"> 55: </a><font color="#B22222">   those that are needed by the given `sfop` and `op`, in other words, we do lazy memory-allocation.</font>
+
+<a name="line57"> 57: </a><font color="#B22222">   The routine also allocates buffers on CPU when one does not use gpu-aware MPI but data is on GPU.</font>
+
+<a name="line59"> 59: </a><font color="#B22222">   In SFBasic, MPI requests are persistent. They are init'ed until we try to get requests from a link.</font>
+
+<a name="line61"> 61: </a><font color="#B22222">   The routine is shared by SFBasic and SFNeighbor based on the fact they all deal with sparse graphs and</font>
+<a name="line62"> 62: </a><font color="#B22222">   need pack/unpack data.</font>
+<a name="line63"> 63: </a><font color="#B22222">*/</font>
+<a name="line64"> 64: </a><strong><font color="#4169E1"><a name="PetscSFLinkCreate_MPI"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscSFLinkCreate_MPI(<a href="../../../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a> sf, MPI_Datatype unit, <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a> xrootmtype, const void *rootdata, <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a> xleafmtype, const void *leafdata, MPI_Op op, PetscSFOperation sfop, PetscSFLink *mylink)</font></strong>
+<a name="line65"> 65: </a>{
+<a name="line66"> 66: </a>  PetscSF_Basic   *bas = (PetscSF_Basic *)sf-&gt;data;
+<a name="line67"> 67: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         i, j, k, nrootreqs, nleafreqs, nreqs;
+<a name="line68"> 68: </a>  PetscSFLink     *p, link;
+<a name="line69"> 69: </a>  PetscSFDirection direction;
+<a name="line70"> 70: </a>  MPI_Request     *reqs = NULL;
+<a name="line71"> 71: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>        match, rootdirect[2], leafdirect[2];
+<a name="line72"> 72: </a>  <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>     rootmtype = PetscMemTypeHost(xrootmtype) ? <a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a> : <a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>; <font color="#B22222">/* Convert to 0/1 as we will use it in subscript */</font>
+<a name="line73"> 73: </a>  <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>     leafmtype = PetscMemTypeHost(xleafmtype) ? <a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a> : <a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>;
+<a name="line74"> 74: </a>  <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>     rootmtype_mpi, leafmtype_mpi;   <font color="#B22222">/* mtypes seen by MPI */</font>
+<a name="line75"> 75: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         rootdirect_mpi, leafdirect_mpi; <font color="#B22222">/* root/leafdirect seen by MPI*/</font>
+
+<a name="line77"> 77: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line78"> 78: </a>  <font color="#B22222">/* Can we directly use root/leafdirect with the given sf, sfop and op? */</font>
+<a name="line79"> 79: </a>  <font color="#4169E1">for</font> (i = PETSCSF_LOCAL; i &lt;= PETSCSF_REMOTE; i++) {
+<a name="line80"> 80: </a>    <font color="#4169E1">if</font> (sfop == PETSCSF_BCAST) {
+<a name="line81"> 81: </a>      rootdirect[i] = bas-&gt;rootcontig[i];                                                  <font color="#B22222">/* Pack roots */</font>
+<a name="line82"> 82: </a>      leafdirect[i] = (sf-&gt;leafcontig[i] &amp;&amp; op == MPI_REPLACE) ? <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a> : <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>; <font color="#B22222">/* Unpack leaves */</font>
+<a name="line83"> 83: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (sfop == PETSCSF_REDUCE) {
+<a name="line84"> 84: </a>      leafdirect[i] = sf-&gt;leafcontig[i];                                                    <font color="#B22222">/* Pack leaves */</font>
+<a name="line85"> 85: </a>      rootdirect[i] = (bas-&gt;rootcontig[i] &amp;&amp; op == MPI_REPLACE) ? <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a> : <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>; <font color="#B22222">/* Unpack roots */</font>
+<a name="line86"> 86: </a>    } <font color="#4169E1">else</font> {                                                                                <font color="#B22222">/* PETSCSF_FETCH */</font>
+<a name="line87"> 87: </a>      rootdirect[i] = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;                                                          <font color="#B22222">/* FETCH always need a separate rootbuf */</font>
+<a name="line88"> 88: </a>      leafdirect[i] = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;                                                          <font color="#B22222">/* We also force allocating a separate leafbuf so that leafdata and leafupdate can share mpi requests */</font>
+<a name="line89"> 89: </a>    }
+<a name="line90"> 90: </a>  }
+
+<a name="line92"> 92: </a>  <font color="#B22222">// NEVER use root/leafdirect[] for persistent collectives. Otherwise, suppose for the first time, all ranks build</font>
+<a name="line93"> 93: </a>  <font color="#B22222">// a persistent MPI request in a collective call. Then in a second call to PetscSFBcast, one rank uses root/leafdirect</font>
+<a name="line94"> 94: </a>  <font color="#B22222">// but with new rootdata/leafdata pointers. Other ranks keep using the same rootdata/leafdata pointers as last time.</font>
+<a name="line95"> 95: </a>  <font color="#B22222">// Only that rank will try to rebuild the request with a collective call, resulting in hanging. We could to call</font>
+<a name="line96"> 96: </a>  <font color="#B22222">// <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Allreduce.html#MPI_Allreduce">MPI_Allreduce</a>() every time to detect changes in root/leafdata, but that is too expensive for sparse communication.</font>
+<a name="line97"> 97: </a>  <font color="#B22222">// So we always set root/leafdirect[] to false and allocate additional root/leaf buffers for persistent collectives.</font>
+<a name="line98"> 98: </a>  <font color="#4169E1">if</font> (sf-&gt;persistent &amp;&amp; sf-&gt;collective) {
+<a name="line99"> 99: </a>    rootdirect[PETSCSF_REMOTE] = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line100">100: </a>    leafdirect[PETSCSF_REMOTE] = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line101">101: </a>  }
+
+<a name="line103">103: </a>  <font color="#4169E1">if</font> (sf-&gt;use_gpu_aware_mpi) {
+<a name="line104">104: </a>    rootmtype_mpi = rootmtype;
+<a name="line105">105: </a>    leafmtype_mpi = leafmtype;
+<a name="line106">106: </a>  } <font color="#4169E1">else</font> {
+<a name="line107">107: </a>    rootmtype_mpi = leafmtype_mpi = <a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>;
+<a name="line108">108: </a>  }
+<a name="line109">109: </a>  <font color="#B22222">/* Will root/leafdata be directly accessed by MPI?  Without use_gpu_aware_mpi, device data is buffered on host and then passed to MPI */</font>
+<a name="line110">110: </a>  rootdirect_mpi = rootdirect[PETSCSF_REMOTE] &amp;&amp; (rootmtype_mpi == rootmtype) ? 1 : 0;
+<a name="line111">111: </a>  leafdirect_mpi = leafdirect[PETSCSF_REMOTE] &amp;&amp; (leafmtype_mpi == leafmtype) ? 1 : 0;
+
+<a name="line113">113: </a>  direction = (sfop == PETSCSF_BCAST) ? PETSCSF_ROOT2LEAF : PETSCSF_LEAF2ROOT;
+<a name="line114">114: </a>  nrootreqs = bas-&gt;nrootreqs;
+<a name="line115">115: </a>  nleafreqs = sf-&gt;nleafreqs;
+
+<a name="line117">117: </a>  <font color="#B22222">/* Look for free links in cache */</font>
+<a name="line118">118: </a>  <font color="#4169E1">for</font> (p = &amp;bas-&gt;avail; (link = *p); p = &amp;link-&gt;next) {
+<a name="line119">119: </a>    <font color="#4169E1">if</font> (!link-&gt;use_nvshmem) { <font color="#B22222">/* Only check with MPI links */</font>
+<a name="line120">120: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MPIPetsc_Type_compare(unit, link-&gt;unit, &amp;match));
+<a name="line121">121: </a>      <font color="#4169E1">if</font> (match) {
+<a name="line122">122: </a>        <font color="#B22222">/* If root/leafdata will be directly passed to MPI, test if the data used to initialized the MPI requests matches with the current.</font>
+<a name="line123">123: </a><font color="#B22222">           If not, free old requests. New requests will be lazily init'ed until one calls PetscSFLinkGetMPIBuffersAndRequests() with the same tag.</font>
+<a name="line124">124: </a><font color="#B22222">        */</font>
+<a name="line125">125: </a>        <font color="#4169E1">if</font> (rootdirect_mpi &amp;&amp; sf-&gt;persistent &amp;&amp; link-&gt;rootreqsinited[direction][rootmtype][1] &amp;&amp; link-&gt;rootdatadirect[direction][rootmtype] != rootdata) {
+<a name="line126">126: </a>          reqs = link-&gt;rootreqs[direction][rootmtype][1]; <font color="#B22222">/* Here, rootmtype = rootmtype_mpi */</font>
+<a name="line127">127: </a>          <font color="#4169E1">for</font> (i = 0; i &lt; nrootreqs; i++) {
+<a name="line128">128: </a>            <font color="#4169E1">if</font> (reqs[i] != MPI_REQUEST_NULL) <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Request_free.html#MPI_Request_free">MPI_Request_free</a>(&amp;reqs[i]));
+<a name="line129">129: </a>          }
+<a name="line130">130: </a>          link-&gt;rootreqsinited[direction][rootmtype][1] = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line131">131: </a>        }
+<a name="line132">132: </a>        <font color="#4169E1">if</font> (leafdirect_mpi &amp;&amp; sf-&gt;persistent &amp;&amp; link-&gt;leafreqsinited[direction][leafmtype][1] &amp;&amp; link-&gt;leafdatadirect[direction][leafmtype] != leafdata) {
+<a name="line133">133: </a>          reqs = link-&gt;leafreqs[direction][leafmtype][1];
+<a name="line134">134: </a>          <font color="#4169E1">for</font> (i = 0; i &lt; nleafreqs; i++) {
+<a name="line135">135: </a>            <font color="#4169E1">if</font> (reqs[i] != MPI_REQUEST_NULL) <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Request_free.html#MPI_Request_free">MPI_Request_free</a>(&amp;reqs[i]));
+<a name="line136">136: </a>          }
+<a name="line137">137: </a>          link-&gt;leafreqsinited[direction][leafmtype][1] = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line138">138: </a>        }
+<a name="line139">139: </a>        *p = link-&gt;next; <font color="#B22222">/* Remove from available list */</font>
+<a name="line140">140: </a>        <font color="#4169E1">goto</font> found;
+<a name="line141">141: </a>      }
+<a name="line142">142: </a>    }
+<a name="line143">143: </a>  }
+
+<a name="line145">145: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;link));
+<a name="line146">146: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFLinkSetUp_Host(sf, link, unit));
+<a name="line147">147: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscCommGetNewTag.html">PetscCommGetNewTag</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)sf), &amp;link-&gt;tag)); <font color="#B22222">/* One tag per link */</font>
+
+<a name="line149">149: </a>  nreqs = (nrootreqs + nleafreqs) * 8;
+<a name="line150">150: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(nreqs, &amp;link-&gt;reqs));
+<a name="line151">151: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; nreqs; i++) link-&gt;reqs[i] = MPI_REQUEST_NULL; <font color="#B22222">/* Initialized to NULL so that we know which need to be freed in Destroy */</font>
+
+<a name="line153">153: </a>  <font color="#4169E1">if</font> (nreqs)
+<a name="line154">154: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 2; i++) {     <font color="#B22222">/* Two communication directions */</font>
+<a name="line155">155: </a>      <font color="#4169E1">for</font> (j = 0; j &lt; 2; j++) {   <font color="#B22222">/* Two memory types */</font>
+<a name="line156">156: </a>        <font color="#4169E1">for</font> (k = 0; k &lt; 2; k++) { <font color="#B22222">/* root/leafdirect 0 or 1 */</font>
+<a name="line157">157: </a>          link-&gt;rootreqs[i][j][k] = link-&gt;reqs + nrootreqs * (4 * i + 2 * j + k);
+<a name="line158">158: </a>          link-&gt;leafreqs[i][j][k] = link-&gt;reqs + nrootreqs * 8 + nleafreqs * (4 * i + 2 * j + k);
+<a name="line159">159: </a>        }
+<a name="line160">160: </a>      }
+<a name="line161">161: </a>    }
+
+<a name="line163">163: </a>  link-&gt;FinishCommunication = PetscSFLinkFinishCommunication_Default;
+<a name="line164">164: </a>  <font color="#B22222">// each SF type could customize their communication by setting function pointers in the link.</font>
+<a name="line165">165: </a>  <font color="#B22222">// Currently only BASIC and NEIGHBOR use this abstraction.</font>
+<a name="line166">166: </a>  <a href="../../../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(sf, SetCommunicationOps, link);
+
+<a name="line168">168: </a>found:
+
+<a name="line170">170: </a><font color="#A020F0">#if defined(PETSC_HAVE_DEVICE)</font>
+<a name="line171">171: </a>  <font color="#4169E1">if</font> ((PetscMemTypeDevice(xrootmtype) || PetscMemTypeDevice(xleafmtype)) &amp;&amp; !link-&gt;deviceinited) {
+<a name="line172">172: </a><font color="#A020F0">  #if defined(PETSC_HAVE_CUDA)</font>
+<a name="line173">173: </a>    <font color="#4169E1">if</font> (sf-&gt;backend == PETSCSF_BACKEND_CUDA) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFLinkSetUp_CUDA(sf, link, unit)); <font color="#B22222">/* Setup streams etc */</font>
+<a name="line174">174: </a><font color="#A020F0">  #endif</font>
+<a name="line175">175: </a><font color="#A020F0">  #if defined(PETSC_HAVE_HIP)</font>
+<a name="line176">176: </a>    <font color="#4169E1">if</font> (sf-&gt;backend == PETSCSF_BACKEND_HIP) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFLinkSetUp_HIP(sf, link, unit)); <font color="#B22222">/* Setup streams etc */</font>
+<a name="line177">177: </a><font color="#A020F0">  #endif</font>
+<a name="line178">178: </a><font color="#A020F0">  #if defined(PETSC_HAVE_KOKKOS)</font>
+<a name="line179">179: </a>    <font color="#4169E1">if</font> (sf-&gt;backend == PETSCSF_BACKEND_KOKKOS) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFLinkSetUp_Kokkos(sf, link, unit));
+<a name="line180">180: </a><font color="#A020F0">  #endif</font>
+<a name="line181">181: </a>  }
+<a name="line182">182: </a><font color="#A020F0">#endif</font>
+
+<a name="line184">184: </a>  <font color="#B22222">/* Allocate buffers along root/leafdata */</font>
+<a name="line185">185: </a>  <font color="#4169E1">for</font> (i = PETSCSF_LOCAL; i &lt;= PETSCSF_REMOTE; i++) {
+<a name="line186">186: </a>    <font color="#B22222">/* For local communication, buffers are only needed when roots and leaves have different mtypes */</font>
+<a name="line187">187: </a>    <font color="#4169E1">if</font> (i == PETSCSF_LOCAL &amp;&amp; rootmtype == leafmtype) <font color="#4169E1">continue</font>;
+<a name="line188">188: </a>    <font color="#4169E1">if</font> (bas-&gt;rootbuflen[i]) {
+<a name="line189">189: </a>      <font color="#4169E1">if</font> (rootdirect[i]) { <font color="#B22222">/* Aha, we disguise rootdata as rootbuf */</font>
+<a name="line190">190: </a>        link-&gt;rootbuf[i][rootmtype] = (char *)rootdata + bas-&gt;rootstart[i] * link-&gt;unitbytes;
+<a name="line191">191: </a>      } <font color="#4169E1">else</font> { <font color="#B22222">/* Have to have a separate rootbuf */</font>
+<a name="line192">192: </a>        <font color="#4169E1">if</font> (!link-&gt;rootbuf_alloc[i][rootmtype]) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFMalloc(sf, rootmtype, bas-&gt;rootbuflen[i] * link-&gt;unitbytes, (void **)&amp;link-&gt;rootbuf_alloc[i][rootmtype]));
+<a name="line193">193: </a>        link-&gt;rootbuf[i][rootmtype] = link-&gt;rootbuf_alloc[i][rootmtype];
+<a name="line194">194: </a>      }
+<a name="line195">195: </a>    }
+
+<a name="line197">197: </a>    <font color="#4169E1">if</font> (sf-&gt;leafbuflen[i]) {
+<a name="line198">198: </a>      <font color="#4169E1">if</font> (leafdirect[i]) {
+<a name="line199">199: </a>        link-&gt;leafbuf[i][leafmtype] = (char *)leafdata + sf-&gt;leafstart[i] * link-&gt;unitbytes;
+<a name="line200">200: </a>      } <font color="#4169E1">else</font> {
+<a name="line201">201: </a>        <font color="#4169E1">if</font> (!link-&gt;leafbuf_alloc[i][leafmtype]) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSFMalloc(sf, leafmtype, sf-&gt;leafbuflen[i] * link-&gt;unitbytes, (void **)&amp;link-&gt;leafbuf_alloc[i][leafmtype]));
+<a name="line202">202: </a>        link-&gt;leafbuf[i][leafmtype] = link-&gt;leafbuf_alloc[i][leafmtype];
+<a name="line203">203: </a>      }
+<a name="line204">204: </a>    }
+<a name="line205">205: </a>  }
+
+<a name="line207">207: </a><font color="#A020F0">#if defined(PETSC_HAVE_DEVICE)</font>
+<a name="line208">208: </a>  <font color="#B22222">/* Allocate buffers on host for buffering data on device in cast not use_gpu_aware_mpi */</font>
+<a name="line209">209: </a>  <font color="#4169E1">if</font> (PetscMemTypeDevice(rootmtype) &amp;&amp; PetscMemTypeHost(rootmtype_mpi)) {
+<a name="line210">210: </a>    <font color="#4169E1">if</font> (!link-&gt;rootbuf_alloc[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>]) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(bas-&gt;rootbuflen[PETSCSF_REMOTE] * link-&gt;unitbytes, &amp;link-&gt;rootbuf_alloc[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>]));
+<a name="line211">211: </a>    link-&gt;rootbuf[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>] = link-&gt;rootbuf_alloc[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>];
+<a name="line212">212: </a>  }
+<a name="line213">213: </a>  <font color="#4169E1">if</font> (PetscMemTypeDevice(leafmtype) &amp;&amp; PetscMemTypeHost(leafmtype_mpi)) {
+<a name="line214">214: </a>    <font color="#4169E1">if</font> (!link-&gt;leafbuf_alloc[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>]) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(sf-&gt;leafbuflen[PETSCSF_REMOTE] * link-&gt;unitbytes, &amp;link-&gt;leafbuf_alloc[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>]));
+<a name="line215">215: </a>    link-&gt;leafbuf[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>] = link-&gt;leafbuf_alloc[PETSCSF_REMOTE][<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>];
+<a name="line216">216: </a>  }
+<a name="line217">217: </a><font color="#A020F0">#endif</font>
+
+<a name="line219">219: </a>  <font color="#B22222">/* Set `current` state of the link. They may change between different SF invocations with the same link */</font>
+<a name="line220">220: </a>  <font color="#4169E1">if</font> (sf-&gt;persistent) { <font color="#B22222">/* If data is directly passed to MPI and inits MPI requests, record the data for comparison on future invocations */</font>
+<a name="line221">221: </a>    <font color="#4169E1">if</font> (rootdirect_mpi) link-&gt;rootdatadirect[direction][rootmtype] = rootdata;
+<a name="line222">222: </a>    <font color="#4169E1">if</font> (leafdirect_mpi) link-&gt;leafdatadirect[direction][leafmtype] = leafdata;
+<a name="line223">223: </a>  }
+
+<a name="line225">225: </a>  link-&gt;rootdata = rootdata; <font color="#B22222">/* root/leafdata are keys to look up links in PetscSFXxxEnd */</font>
+<a name="line226">226: </a>  link-&gt;leafdata = leafdata;
+<a name="line227">227: </a>  <font color="#4169E1">for</font> (i = PETSCSF_LOCAL; i &lt;= PETSCSF_REMOTE; i++) {
+<a name="line228">228: </a>    link-&gt;rootdirect[i] = rootdirect[i];
+<a name="line229">229: </a>    link-&gt;leafdirect[i] = leafdirect[i];
+<a name="line230">230: </a>  }
+<a name="line231">231: </a>  link-&gt;rootdirect_mpi = rootdirect_mpi;
+<a name="line232">232: </a>  link-&gt;leafdirect_mpi = leafdirect_mpi;
+<a name="line233">233: </a>  link-&gt;rootmtype      = rootmtype;
+<a name="line234">234: </a>  link-&gt;leafmtype      = leafmtype;
+<a name="line235">235: </a>  link-&gt;rootmtype_mpi  = rootmtype_mpi;
+<a name="line236">236: </a>  link-&gt;leafmtype_mpi  = leafmtype_mpi;
+
+<a name="line238">238: </a>  link-&gt;next = bas-&gt;inuse;
+<a name="line239">239: </a>  bas-&gt;inuse = link;
+<a name="line240">240: </a>  *mylink    = link;
+<a name="line241">241: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line242">242: </a>}
+</pre>
+</body>
+
+</html>
+

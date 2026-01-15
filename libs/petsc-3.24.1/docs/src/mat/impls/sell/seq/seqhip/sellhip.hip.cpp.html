@@ -1,0 +1,1016 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/sell/seq/seqhip/sellhip.hip.cpp">Actual source code: sellhip.hip.cpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:01+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#include </font><font color="#666666">"hip/hip_runtime.h"</font><font color="#A020F0"></font>
+<a name="line2">  2: </a><font color="#A020F0">#include &lt;hip/hip_runtime.h&gt;</font>
+
+<a name="line4">  4: </a>#include <A href="../../../../include/petscdevice_hip.h.html">&lt;petscdevice_hip.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../include/petsc/private/cupmatomics.hpp.html">&lt;petsc/private/cupmatomics.hpp&gt;</A>
+<a name="line6">  6: </a>#include <A href="../../../../src/mat/impls/sell/seq/sell.h.html">&lt;../src/mat/impls/sell/seq/sell.h&gt;</A>
+
+<a name="line8">  8: </a><strong><font color="#228B22">#define WARP_SIZE 64</font></strong>
+
+<a name="line10"> 10: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line11"> 11: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   maxallocmat;
+<a name="line12"> 12: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   totalentries;
+<a name="line13"> 13: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  *colidx; <font color="#B22222">/* column index array, device pointer */</font>
+<a name="line14"> 14: </a>  MatScalar *val;    <font color="#B22222">/* value array, device pointer */</font>
+<a name="line15"> 15: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   totalslices;
+<a name="line16"> 16: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  *sliidx; <font color="#B22222">/* slice index array, device pointer */</font>
+<a name="line17"> 17: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   nonzerostate;
+<a name="line18"> 18: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   kernelchoice;
+<a name="line19"> 19: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   blocky;
+<a name="line20"> 20: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   chunksperblock;
+<a name="line21"> 21: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   totalchunks;
+<a name="line22"> 22: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  *chunk_slice_map; <font color="#B22222">/* starting slice for each chunk, device pointer */</font>
+<a name="line23"> 23: </a>} Mat_SeqSELLHIP;
+
+<a name="line25"> 25: </a><strong><font color="#4169E1"><a name="MatSeqSELLHIP_Destroy"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSeqSELLHIP_Destroy(Mat_SeqSELLHIP **hipstruct)</font></strong>
+<a name="line26"> 26: </a>{
+<a name="line27"> 27: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line28"> 28: </a>  <font color="#4169E1">if</font> (*hipstruct) {
+<a name="line29"> 29: </a>    <font color="#4169E1">if</font> ((*hipstruct)-&gt;colidx) PetscCallHIP(hipFree((*hipstruct)-&gt;colidx));
+<a name="line30"> 30: </a>    <font color="#4169E1">if</font> ((*hipstruct)-&gt;val) PetscCallHIP(hipFree((*hipstruct)-&gt;val));
+<a name="line31"> 31: </a>    <font color="#4169E1">if</font> ((*hipstruct)-&gt;sliidx) PetscCallHIP(hipFree((*hipstruct)-&gt;sliidx));
+<a name="line32"> 32: </a>    <font color="#4169E1">if</font> ((*hipstruct)-&gt;chunk_slice_map) PetscCallHIP(hipFree((*hipstruct)-&gt;chunk_slice_map));
+<a name="line33"> 33: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(*hipstruct));
+<a name="line34"> 34: </a>  }
+<a name="line35"> 35: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line36"> 36: </a>}
+
+<a name="line38"> 38: </a><strong><font color="#4169E1"><a name="MatSeqSELLHIPCopyToGPU"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSeqSELLHIPCopyToGPU(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A)</font></strong>
+<a name="line39"> 39: </a>{
+<a name="line40"> 40: </a>  Mat_SeqSELLHIP *hipstruct = (Mat_SeqSELLHIP *)A-&gt;spptr;
+<a name="line41"> 41: </a>  Mat_SeqSELL    *a         = (Mat_SeqSELL *)A-&gt;data;
+
+<a name="line43"> 43: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line44"> 44: </a>  <font color="#4169E1">if</font> (A-&gt;offloadmask == <a href="../../../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a> || A-&gt;offloadmask == <a href="../../../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>) {
+<a name="line45"> 45: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(MAT_HIPCopyToGPU, A, 0, 0, 0));
+<a name="line46"> 46: </a>    <font color="#4169E1">if</font> (A-&gt;assembled &amp;&amp; A-&gt;nonzerostate == hipstruct-&gt;nonzerostate) {
+<a name="line47"> 47: </a>      <font color="#B22222">/* copy values only */</font>
+<a name="line48"> 48: </a>      PetscCallHIP(hipMemcpy(hipstruct-&gt;val, a-&gt;val, a-&gt;sliidx[a-&gt;totalslices] * <font color="#4169E1">sizeof</font>(MatScalar), hipMemcpyHostToDevice));
+<a name="line49"> 49: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogCpuToGpu(a-&gt;sliidx[a-&gt;totalslices] * (<font color="#4169E1">sizeof</font>(MatScalar))));
+<a name="line50"> 50: </a>    } <font color="#4169E1">else</font> {
+<a name="line51"> 51: </a>      <font color="#4169E1">if</font> (hipstruct-&gt;colidx) PetscCallHIP(hipFree(hipstruct-&gt;colidx));
+<a name="line52"> 52: </a>      <font color="#4169E1">if</font> (hipstruct-&gt;val) PetscCallHIP(hipFree(hipstruct-&gt;val));
+<a name="line53"> 53: </a>      <font color="#4169E1">if</font> (hipstruct-&gt;sliidx) PetscCallHIP(hipFree(hipstruct-&gt;sliidx));
+<a name="line54"> 54: </a>      <font color="#4169E1">if</font> (hipstruct-&gt;chunk_slice_map) PetscCallHIP(hipFree(hipstruct-&gt;chunk_slice_map));
+<a name="line55"> 55: </a>      hipstruct-&gt;maxallocmat  = a-&gt;maxallocmat;
+<a name="line56"> 56: </a>      hipstruct-&gt;totalentries = a-&gt;sliidx[a-&gt;totalslices];
+<a name="line57"> 57: </a>      hipstruct-&gt;totalslices  = a-&gt;totalslices;
+<a name="line58"> 58: </a>      hipstruct-&gt;totalchunks  = a-&gt;totalchunks;
+<a name="line59"> 59: </a>      PetscCallHIP(hipMalloc((void **)&amp;hipstruct-&gt;colidx, a-&gt;maxallocmat * <font color="#4169E1">sizeof</font>(*hipstruct-&gt;colidx)));
+<a name="line60"> 60: </a>      PetscCallHIP(hipMalloc((void **)&amp;hipstruct-&gt;val, a-&gt;maxallocmat * <font color="#4169E1">sizeof</font>(*hipstruct-&gt;val)));
+<a name="line61"> 61: </a>      <font color="#B22222">/* copy values, nz or maxallocmat? */</font>
+<a name="line62"> 62: </a>      PetscCallHIP(hipMemcpy(hipstruct-&gt;colidx, a-&gt;colidx, a-&gt;sliidx[a-&gt;totalslices] * <font color="#4169E1">sizeof</font>(*a-&gt;colidx), hipMemcpyHostToDevice));
+<a name="line63"> 63: </a>      PetscCallHIP(hipMemcpy(hipstruct-&gt;val, a-&gt;val, a-&gt;sliidx[a-&gt;totalslices] * <font color="#4169E1">sizeof</font>(*a-&gt;val), hipMemcpyHostToDevice));
+
+<a name="line65"> 65: </a>      PetscCallHIP(hipMalloc((void **)&amp;hipstruct-&gt;sliidx, (a-&gt;totalslices + 1) * <font color="#4169E1">sizeof</font>(*hipstruct-&gt;sliidx)));
+<a name="line66"> 66: </a>      PetscCallHIP(hipMemcpy(hipstruct-&gt;sliidx, a-&gt;sliidx, (a-&gt;totalslices + 1) * <font color="#4169E1">sizeof</font>(*a-&gt;sliidx), hipMemcpyHostToDevice));
+<a name="line67"> 67: </a>      PetscCallHIP(hipMalloc((void **)&amp;hipstruct-&gt;chunk_slice_map, a-&gt;totalchunks * <font color="#4169E1">sizeof</font>(*hipstruct-&gt;chunk_slice_map)));
+<a name="line68"> 68: </a>      PetscCallHIP(hipMemcpy(hipstruct-&gt;chunk_slice_map, a-&gt;chunk_slice_map, a-&gt;totalchunks * <font color="#4169E1">sizeof</font>(*a-&gt;chunk_slice_map), hipMemcpyHostToDevice));
+<a name="line69"> 69: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogCpuToGpu(a-&gt;sliidx[a-&gt;totalslices] * (<font color="#4169E1">sizeof</font>(MatScalar) + <font color="#4169E1">sizeof</font>(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)) + (a-&gt;totalslices + 1 + a-&gt;totalchunks) * <font color="#4169E1">sizeof</font>(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)));
+<a name="line70"> 70: </a>    }
+<a name="line71"> 71: </a>    PetscCallHIP(WaitForHIP());
+<a name="line72"> 72: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(MAT_HIPCopyToGPU, A, 0, 0, 0));
+<a name="line73"> 73: </a>    A-&gt;offloadmask = <a href="../../../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>;
+<a name="line74"> 74: </a>  }
+<a name="line75"> 75: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line76"> 76: </a>}
+
+<a name="line78"> 78: </a><strong><font color="#4169E1"><a name="matmult_seqsell_basic_kernel"></a>static __global__ void matmult_seqsell_basic_kernel(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line79"> 79: </a>{
+<a name="line80"> 80: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  i, row, slice_id, row_in_slice;
+<a name="line81"> 81: </a>  MatScalar sum;
+<a name="line82"> 82: </a>  <font color="#B22222">/* one thread per row. */</font>
+<a name="line83"> 83: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line84"> 84: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line85"> 85: </a>    slice_id     = row / sliceheight;
+<a name="line86"> 86: </a>    row_in_slice = row % sliceheight;
+<a name="line87"> 87: </a>    sum          = 0.0;
+<a name="line88"> 88: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice; i &lt; sliidx[slice_id + 1]; i += sliceheight) sum += aval[i] * x[acolidx[i]];
+<a name="line89"> 89: </a>    y[row] = sum;
+<a name="line90"> 90: </a>  }
+<a name="line91"> 91: </a>}
+
+<a name="line93"> 93: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_basic_kernel"></a>static __global__ void matmultadd_seqsell_basic_kernel(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line94"> 94: </a>{
+<a name="line95"> 95: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  i, row, slice_id, row_in_slice;
+<a name="line96"> 96: </a>  MatScalar sum;
+<a name="line97"> 97: </a>  <font color="#B22222">/* one thread per row. */</font>
+<a name="line98"> 98: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line99"> 99: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line100">100: </a>    slice_id     = row / sliceheight;
+<a name="line101">101: </a>    row_in_slice = row % sliceheight;
+<a name="line102">102: </a>    sum          = 0.0;
+<a name="line103">103: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice; i &lt; sliidx[slice_id + 1]; i += sliceheight) sum += aval[i] * x[acolidx[i]];
+<a name="line104">104: </a>    z[row] = y[row] + sum;
+<a name="line105">105: </a>  }
+<a name="line106">106: </a>}
+
+<a name="line108">108: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line109">109: </a>PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN(<font color="#666666">"-Wpass-failed"</font>)
+<a name="line110">110: </a><font color="#B22222">/* use 1 block per slice, suitable for large slice width */</font>
+<a name="line111">111: </a>template &lt;int BLOCKY&gt;
+<a name="line112">112: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel9"></a>__global__ void matmult_seqsell_tiled_kernel9(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line113">113: </a>{
+<a name="line114">114: </a>  __shared__ MatScalar shared[WARP_SIZE][BLOCKY];
+<a name="line115">115: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id = blockIdx.x;
+<a name="line116">116: </a>  int                  tid = threadIdx.x + threadIdx.y * WARP_SIZE;
+<a name="line117">117: </a>  <font color="#B22222">/* transposed index */</font>
+<a name="line118">118: </a>  int         tidx = tid % BLOCKY;
+<a name="line119">119: </a>  int         tidy = tid / BLOCKY;
+<a name="line120">120: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> t    = 0.0;
+
+<a name="line122">122: </a>  row = slice_id * sliceheight + threadIdx.x % sliceheight;
+<a name="line123">123: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line124">124: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + threadIdx.x + WARP_SIZE * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += WARP_SIZE * BLOCKY) t += aval[i] * x[acolidx[i]];
+<a name="line125">125: </a>  }
+<a name="line126">126: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line127">127: </a>  <font color="#4169E1">for</font> (int offset = WARP_SIZE / 2; offset &gt;= sliceheight; offset /= 2) t += __shfl_down(t, offset);
+<a name="line128">128: </a>  <font color="#B22222">/* transpose layout to reduce each row using warp shfl */</font>
+<a name="line129">129: </a>  <font color="#4169E1">if</font> (threadIdx.x &lt; sliceheight) shared[threadIdx.x][threadIdx.y] = t;
+<a name="line130">130: </a>  __syncthreads();
+<a name="line131">131: </a>  <font color="#4169E1">if</font> (tidy &lt; sliceheight) t = shared[tidy][tidx];
+<a name="line132">132: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line133">133: </a>  <font color="#4169E1">for</font> (int offset = BLOCKY / 2; offset &gt; 0; offset /= 2) t += __shfl_down(t, offset, BLOCKY);
+<a name="line134">134: </a>  <font color="#4169E1">if</font> (tidx == 0 &amp;&amp; tidy &lt; sliceheight) shared[0][tidy] = t;
+<a name="line135">135: </a>  __syncthreads();
+<a name="line136">136: </a>  <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; threadIdx.y == 0 &amp;&amp; threadIdx.x &lt; sliceheight) y[row] = shared[0][threadIdx.x];
+<a name="line137">137: </a>}
+
+<a name="line139">139: </a><font color="#B22222">/* use 1 block per slice, suitable for large slice width */</font>
+<a name="line140">140: </a>template &lt;int BLOCKY&gt;
+<a name="line141">141: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel9"></a>__global__ void matmultadd_seqsell_tiled_kernel9(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line142">142: </a>{
+<a name="line143">143: </a>  __shared__ MatScalar shared[WARP_SIZE][BLOCKY];
+<a name="line144">144: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id = blockIdx.x;
+<a name="line145">145: </a>  int                  tid = threadIdx.x + threadIdx.y * WARP_SIZE;
+<a name="line146">146: </a>  <font color="#B22222">/* transposed index */</font>
+<a name="line147">147: </a>  int         tidx = tid % BLOCKY;
+<a name="line148">148: </a>  int         tidy = tid / BLOCKY;
+<a name="line149">149: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> t    = 0.0;
+
+<a name="line151">151: </a>  row = slice_id * sliceheight + threadIdx.x % sliceheight;
+<a name="line152">152: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line153">153: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + threadIdx.x + WARP_SIZE * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += WARP_SIZE * BLOCKY) t += aval[i] * x[acolidx[i]];
+<a name="line154">154: </a>  }
+<a name="line155">155: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line156">156: </a>  <font color="#4169E1">for</font> (int offset = WARP_SIZE / 2; offset &gt;= sliceheight; offset /= 2) t += __shfl_down(t, offset);
+<a name="line157">157: </a>  <font color="#B22222">/* transpose layout to reduce each row using warp shfl */</font>
+<a name="line158">158: </a>  <font color="#4169E1">if</font> (threadIdx.x &lt; sliceheight) shared[threadIdx.x][threadIdx.y] = t;
+<a name="line159">159: </a>  __syncthreads();
+<a name="line160">160: </a>  <font color="#4169E1">if</font> (tidy &lt; sliceheight) t = shared[tidy][tidx];
+<a name="line161">161: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line162">162: </a>  <font color="#4169E1">for</font> (int offset = BLOCKY / 2; offset &gt; 0; offset /= 2) t += __shfl_down(t, offset, BLOCKY);
+<a name="line163">163: </a>  <font color="#4169E1">if</font> (tidx == 0 &amp;&amp; tidy &lt; sliceheight) shared[0][tidy] = t;
+<a name="line164">164: </a>  __syncthreads();
+<a name="line165">165: </a>  <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; threadIdx.y == 0 &amp;&amp; threadIdx.x &lt; sliceheight) z[row] = y[row] + shared[0][threadIdx.x];
+<a name="line166">166: </a>}
+
+<a name="line168">168: </a>template &lt;int BLOCKY&gt;
+<a name="line169">169: </a><strong><font color="#4169E1"><a name="segment_scan"></a>__device__ __forceinline__ static bool segment_scan(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> flag[], MatScalar shared[], <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *val)</font></strong>
+<a name="line170">170: </a>{
+<a name="line171">171: </a>  bool head = true;
+<a name="line172">172: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line173">173: </a>  <font color="#4169E1">for</font> (int i = 1; i &lt; BLOCKY * 2; i &lt;&lt;= 1) {
+<a name="line174">174: </a>    int halfwarpid                                = threadIdx.y * 2 + threadIdx.x / (WARP_SIZE / 2);
+<a name="line175">175: </a>    shared[threadIdx.x + threadIdx.y * WARP_SIZE] = 0;
+<a name="line176">176: </a>    <font color="#4169E1">if</font> (halfwarpid &gt;= i &amp;&amp; flag[halfwarpid - i] == flag[halfwarpid]) {
+<a name="line177">177: </a>      shared[threadIdx.x + threadIdx.y * WARP_SIZE] = *val;
+<a name="line178">178: </a>      <font color="#4169E1">if</font> (i == 1) head = false;
+<a name="line179">179: </a>    }
+<a name="line180">180: </a>    __syncthreads();
+<a name="line181">181: </a>    <font color="#4169E1">if</font> (halfwarpid &lt; BLOCKY * 2 - i) *val += shared[threadIdx.x + threadIdx.y * WARP_SIZE + i * WARP_SIZE];
+<a name="line182">182: </a>    __syncthreads();
+<a name="line183">183: </a>  }
+<a name="line184">184: </a>  <font color="#4169E1">return</font> head;
+<a name="line185">185: </a>}
+
+<a name="line187">187: </a><font color="#B22222">/* load-balancing version. Chunksize is equal to the number of threads per block */</font>
+<a name="line188">188: </a>template &lt;int BLOCKY&gt;
+<a name="line189">189: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel8"></a>__global__ void matmult_seqsell_tiled_kernel8(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> chunksperblock, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> totalchunks, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *chunk_slice_map, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line190">190: </a>{
+<a name="line191">191: </a>  __shared__ MatScalar shared[BLOCKY * WARP_SIZE];
+<a name="line192">192: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             gid, row, start_slice, cid;
+<a name="line193">193: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>          t = 0.0;
+<a name="line194">194: </a>  AtomicAdd&lt;MatScalar&gt; atomAdd;
+<a name="line195">195: </a>  <font color="#B22222">/* zero out y */</font>
+<a name="line196">196: </a>  <font color="#4169E1">for</font> (int iter = 0; iter &lt; 1 + (nrows - 1) / (gridDim.x * WARP_SIZE * BLOCKY); iter++) {
+<a name="line197">197: </a>    gid = gridDim.x * WARP_SIZE * BLOCKY * iter + blockIdx.x * BLOCKY * WARP_SIZE + threadIdx.y * WARP_SIZE + threadIdx.x;
+<a name="line198">198: </a>    <font color="#4169E1">if</font> (gid &lt; nrows) y[gid] = 0.0;
+<a name="line199">199: </a>  }
+<a name="line200">200: </a>  <font color="#4169E1">for</font> (int iter = 0; iter &lt; chunksperblock; iter++) {
+<a name="line201">201: </a>    cid = blockIdx.x * chunksperblock + iter; <font color="#B22222">/* chunk id */</font>
+<a name="line202">202: </a>    <font color="#4169E1">if</font> (cid &lt; totalchunks) {
+<a name="line203">203: </a>      start_slice = chunk_slice_map[cid]; <font color="#B22222">/* starting slice at each iteration */</font>
+<a name="line204">204: </a>      gid         = cid * BLOCKY * WARP_SIZE + threadIdx.y * WARP_SIZE + threadIdx.x;
+<a name="line205">205: </a>      <font color="#4169E1">if</font> ((cid + 1) * BLOCKY * WARP_SIZE &gt; sliidx[start_slice + 1]) { <font color="#B22222">/* this iteration covers more than one slice */</font>
+<a name="line206">206: </a>        __shared__ <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> flag[BLOCKY * 2];
+<a name="line207">207: </a>        bool                write;
+<a name="line208">208: </a>        <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>            slice_id = start_slice, totalslices = PetscCeilIntMacro(nrows, sliceheight), totalentries = sliidx[totalslices];
+<a name="line209">209: </a>        <font color="#B22222">/* find out the slice that this element belongs to */</font>
+<a name="line210">210: </a>        <font color="#4169E1">while</font> (gid &lt; totalentries &amp;&amp; gid &gt;= sliidx[slice_id + 1]) slice_id++;
+<a name="line211">211: </a>        <font color="#4169E1">if</font> (threadIdx.x % (WARP_SIZE / 2) == 0) flag[threadIdx.y * 2 + threadIdx.x / (WARP_SIZE / 2)] = slice_id;
+<a name="line212">212: </a>        row = slice_id * sliceheight + threadIdx.x % sliceheight;
+<a name="line213">213: </a>        <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; gid &lt; totalentries) t = aval[gid] * x[acolidx[gid]];
+<a name="line214">214: </a>        __syncthreads();
+<a name="line215">215: </a>        write = segment_scan&lt;BLOCKY&gt;(flag, shared, &amp;t);
+<a name="line216">216: </a>        <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; gid &lt; totalentries &amp;&amp; write) atomAdd(y[row], t);
+<a name="line217">217: </a>        t = 0.0;
+<a name="line218">218: </a>      } <font color="#4169E1">else</font> { <font color="#B22222">/* this iteration covers only one slice */</font>
+<a name="line219">219: </a>        row = start_slice * sliceheight + threadIdx.x % sliceheight;
+<a name="line220">220: </a>        <font color="#4169E1">if</font> (row &lt; nrows) t += aval[gid] * x[acolidx[gid]];
+<a name="line221">221: </a>        <font color="#4169E1">if</font> (iter == chunksperblock - 1 || (cid + 2) * BLOCKY * WARP_SIZE &gt; sliidx[start_slice + 1]) { <font color="#B22222">/* last iteration or next iteration covers more than one slice */</font>
+<a name="line222">222: </a>          int tid = threadIdx.x + threadIdx.y * WARP_SIZE, tidx = tid % BLOCKY, tidy = tid / BLOCKY;
+<a name="line223">223: </a>  <font color="#B22222">/* reduction and write to output vector */</font>
+<a name="line224">224: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line225">225: </a>          <font color="#4169E1">for</font> (int offset = WARP_SIZE / 2; offset &gt;= sliceheight; offset /= 2) t += __shfl_down(t, offset);
+<a name="line226">226: </a>          <font color="#B22222">/* transpose layout to reduce each row using warp shfl */</font>
+<a name="line227">227: </a>          <font color="#4169E1">if</font> (threadIdx.x &lt; sliceheight) shared[threadIdx.x * BLOCKY + threadIdx.y] = t; <font color="#B22222">/* shared[threadIdx.x][threadIdx.y] = t */</font>
+<a name="line228">228: </a>          __syncthreads();
+<a name="line229">229: </a>          <font color="#4169E1">if</font> (tidy &lt; sliceheight) t = shared[tidy * BLOCKY + tidx]; <font color="#B22222">/* shared[tidy][tidx] */</font>
+<a name="line230">230: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line231">231: </a>          <font color="#4169E1">for</font> (int offset = BLOCKY / 2; offset &gt; 0; offset /= 2) t += __shfl_down(t, offset, BLOCKY);
+<a name="line232">232: </a>          <font color="#4169E1">if</font> (tidx == 0 &amp;&amp; tidy &lt; sliceheight) shared[tidy] = t; <font color="#B22222">/* shared[0][tidy] = t */</font>
+<a name="line233">233: </a>          __syncthreads();
+<a name="line234">234: </a>          <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; threadIdx.y == 0 &amp;&amp; threadIdx.x &lt; sliceheight) atomAdd(y[row], shared[threadIdx.x]); <font color="#B22222">/* shared[0][threadIdx.x] */</font>
+<a name="line235">235: </a>          t = 0.0;
+<a name="line236">236: </a>        }
+<a name="line237">237: </a>      }
+<a name="line238">238: </a>    }
+<a name="line239">239: </a>  }
+<a name="line240">240: </a>}
+
+<a name="line242">242: </a><font color="#B22222">/* load-balancing version. Chunksize is equal to the number of threads per block */</font>
+<a name="line243">243: </a>template &lt;int BLOCKY&gt;
+<a name="line244">244: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel8"></a>__global__ void matmultadd_seqsell_tiled_kernel8(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> chunksperblock, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> totalchunks, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *chunk_slice_map, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line245">245: </a>{
+<a name="line246">246: </a>  __shared__ MatScalar shared[BLOCKY * WARP_SIZE];
+<a name="line247">247: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             gid, row, start_slice, cid;
+<a name="line248">248: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>          t = 0.0;
+<a name="line249">249: </a>  AtomicAdd&lt;MatScalar&gt; atomAdd;
+<a name="line250">250: </a>  <font color="#B22222">/* copy y to z */</font>
+<a name="line251">251: </a>  <font color="#4169E1">for</font> (int iter = 0; iter &lt; 1 + (nrows - 1) / (gridDim.x * WARP_SIZE * BLOCKY); iter++) {
+<a name="line252">252: </a>    gid = gridDim.x * WARP_SIZE * BLOCKY * iter + blockIdx.x * BLOCKY * WARP_SIZE + threadIdx.y * WARP_SIZE + threadIdx.x;
+<a name="line253">253: </a>    <font color="#4169E1">if</font> (gid &lt; nrows) z[gid] = y[gid];
+<a name="line254">254: </a>  }
+<a name="line255">255: </a>  <font color="#4169E1">for</font> (int iter = 0; iter &lt; chunksperblock; iter++) {
+<a name="line256">256: </a>    cid = blockIdx.x * chunksperblock + iter; <font color="#B22222">/* chunk id */</font>
+<a name="line257">257: </a>    <font color="#4169E1">if</font> (cid &lt; totalchunks) {
+<a name="line258">258: </a>      start_slice = chunk_slice_map[cid]; <font color="#B22222">/* starting slice at each iteration */</font>
+<a name="line259">259: </a>      gid         = cid * BLOCKY * WARP_SIZE + threadIdx.y * WARP_SIZE + threadIdx.x;
+<a name="line260">260: </a>      <font color="#4169E1">if</font> ((cid + 1) * BLOCKY * WARP_SIZE &gt; sliidx[start_slice + 1]) { <font color="#B22222">/* this iteration covers more than one slice */</font>
+<a name="line261">261: </a>        __shared__ <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> flag[BLOCKY * 2];
+<a name="line262">262: </a>        bool                write;
+<a name="line263">263: </a>        <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>            slice_id = start_slice, totalslices = PetscCeilIntMacro(nrows, sliceheight), totalentries = sliidx[totalslices];
+<a name="line264">264: </a>        <font color="#B22222">/* find out the slice that this element belongs to */</font>
+<a name="line265">265: </a>        <font color="#4169E1">while</font> (gid &lt; totalentries &amp;&amp; gid &gt;= sliidx[slice_id + 1]) slice_id++;
+<a name="line266">266: </a>        <font color="#4169E1">if</font> (threadIdx.x % (WARP_SIZE / 2) == 0) flag[threadIdx.y * 2 + threadIdx.x / (WARP_SIZE / 2)] = slice_id;
+<a name="line267">267: </a>        row = slice_id * sliceheight + threadIdx.x % sliceheight;
+<a name="line268">268: </a>        <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; gid &lt; totalentries) t = aval[gid] * x[acolidx[gid]];
+<a name="line269">269: </a>        __syncthreads();
+<a name="line270">270: </a>        write = segment_scan&lt;BLOCKY&gt;(flag, shared, &amp;t);
+<a name="line271">271: </a>        <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; gid &lt; totalentries &amp;&amp; write) atomAdd(z[row], t);
+<a name="line272">272: </a>        t = 0.0;
+<a name="line273">273: </a>      } <font color="#4169E1">else</font> { <font color="#B22222">/* this iteration covers only one slice */</font>
+<a name="line274">274: </a>        row = start_slice * sliceheight + threadIdx.x % sliceheight;
+<a name="line275">275: </a>        <font color="#4169E1">if</font> (row &lt; nrows) t += aval[gid] * x[acolidx[gid]];
+<a name="line276">276: </a>        <font color="#4169E1">if</font> (iter == chunksperblock - 1 || (cid + 2) * BLOCKY * WARP_SIZE &gt; sliidx[start_slice + 1]) { <font color="#B22222">/* last iteration or next iteration covers more than one slice */</font>
+<a name="line277">277: </a>          int tid = threadIdx.x + threadIdx.y * WARP_SIZE, tidx = tid % BLOCKY, tidy = tid / BLOCKY;
+<a name="line278">278: </a>  <font color="#B22222">/* reduction and write to output vector */</font>
+<a name="line279">279: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line280">280: </a>          <font color="#4169E1">for</font> (int offset = WARP_SIZE / 2; offset &gt;= sliceheight; offset /= 2) t += __shfl_down(t, offset);
+<a name="line281">281: </a>          <font color="#B22222">/* transpose layout to reduce each row using warp shfl */</font>
+<a name="line282">282: </a>          <font color="#4169E1">if</font> (threadIdx.x &lt; sliceheight) shared[threadIdx.x * BLOCKY + threadIdx.y] = t; <font color="#B22222">/* shared[threadIdx.x][threadIdx.y] = t */</font>
+<a name="line283">283: </a>          __syncthreads();
+<a name="line284">284: </a>          <font color="#4169E1">if</font> (tidy &lt; sliceheight) t = shared[tidy * BLOCKY + tidx]; <font color="#B22222">/* shared[tidy][tidx] */</font>
+<a name="line285">285: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line286">286: </a>          <font color="#4169E1">for</font> (int offset = BLOCKY / 2; offset &gt; 0; offset /= 2) t += __shfl_down(t, offset, BLOCKY);
+<a name="line287">287: </a>          <font color="#4169E1">if</font> (tidx == 0 &amp;&amp; tidy &lt; sliceheight) shared[tidy] = t; <font color="#B22222">/* shared[0][tidy] = t */</font>
+<a name="line288">288: </a>          __syncthreads();
+<a name="line289">289: </a>          <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; threadIdx.y == 0 &amp;&amp; threadIdx.x &lt; sliceheight) atomAdd(z[row], shared[threadIdx.x]); <font color="#B22222">/* shared[0][threadIdx.x] */</font>
+<a name="line290">290: </a>          t = 0.0;
+<a name="line291">291: </a>        }
+<a name="line292">292: </a>      }
+<a name="line293">293: </a>    }
+<a name="line294">294: </a>  }
+<a name="line295">295: </a>}
+
+<a name="line297">297: </a><font color="#B22222">/* use 1 warp per slice, suitable for small slice width */</font>
+<a name="line298">298: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel7"></a>static __global__ void matmult_seqsell_tiled_kernel7(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line299">299: </a>{
+<a name="line300">300: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i, row, slice_id;
+<a name="line301">301: </a>  slice_id = blockIdx.x * blockDim.y + threadIdx.y;
+<a name="line302">302: </a>  row      = slice_id * sliceheight + threadIdx.x % sliceheight;
+<a name="line303">303: </a>  double t = 0.0;
+<a name="line304">304: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line305">305: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + threadIdx.x; i &lt; sliidx[slice_id + 1]; i += WARP_SIZE) t += aval[i] * x[acolidx[i]];
+<a name="line306">306: </a>  }
+<a name="line307">307: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line308">308: </a>  <font color="#4169E1">for</font> (int offset = WARP_SIZE / 2; offset &gt;= sliceheight; offset /= 2) t += __shfl_down(t, offset);
+<a name="line309">309: </a>  <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; threadIdx.x &lt; sliceheight) y[row] = t;
+<a name="line310">310: </a>}
+
+<a name="line312">312: </a><font color="#B22222">/* use 1 warp per slice, suitable for small slice width */</font>
+<a name="line313">313: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel7"></a>static __global__ void matmultadd_seqsell_tiled_kernel7(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line314">314: </a>{
+<a name="line315">315: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i, row, slice_id;
+<a name="line316">316: </a>  slice_id = blockIdx.x * blockDim.y + threadIdx.y;
+<a name="line317">317: </a>  row      = slice_id * sliceheight + threadIdx.x % sliceheight;
+<a name="line318">318: </a>  double t = 0.0;
+<a name="line319">319: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line320">320: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + threadIdx.x; i &lt; sliidx[slice_id + 1]; i += WARP_SIZE) t += aval[i] * x[acolidx[i]];
+<a name="line321">321: </a>  }
+<a name="line322">322: </a><font color="#A020F0">  #pragma unroll</font>
+<a name="line323">323: </a>  <font color="#4169E1">for</font> (int offset = WARP_SIZE / 2; offset &gt;= sliceheight; offset /= 2) t += __shfl_down(t, offset);
+<a name="line324">324: </a>  <font color="#4169E1">if</font> (row &lt; nrows &amp;&amp; threadIdx.x &lt; sliceheight) z[row] = y[row] + t;
+<a name="line325">325: </a>}
+<a name="line326">326: </a><strong><font color="#4169E1"><a name="ETSC_PRAGMA_DIAGNOSTIC_IGNORED_END"></a>PETSC_PRAGMA_DIAGNOSTIC_IGNORED_END()</font></strong>
+<a name="line327">327: </a><font color="#A020F0">#endif</font>
+
+<a name="line329">329: </a><font color="#B22222">/***********  Kernel 2-6 require a slice height smaller than 512, 256, 128, 64, 32, espectively. They are kept only for performance comparison  **********/</font>
+
+<a name="line331">331: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel6"></a>static __global__ void matmult_seqsell_tiled_kernel6(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line332">332: </a>{
+<a name="line333">333: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line334">334: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line335">335: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line336">336: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line337">337: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line338">338: </a>    slice_id     = row / sliceheight;
+<a name="line339">339: </a>    row_in_slice = row % sliceheight;
+
+<a name="line341">341: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line342">342: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line343">343: </a>    __syncthreads();
+<a name="line344">344: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 16) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 16) * blockDim.x + threadIdx.x];
+<a name="line345">345: </a>    __syncthreads();
+<a name="line346">346: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 8) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 8) * blockDim.x + threadIdx.x];
+<a name="line347">347: </a>    __syncthreads();
+<a name="line348">348: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 4) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 4) * blockDim.x + threadIdx.x];
+<a name="line349">349: </a>    __syncthreads();
+<a name="line350">350: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line351">351: </a>    __syncthreads();
+<a name="line352">352: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line353">353: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line354">354: </a>      y[row] = shared[threadIdx.x];
+<a name="line355">355: </a>    }
+<a name="line356">356: </a>  }
+<a name="line357">357: </a>}
+
+<a name="line359">359: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel5"></a>static __global__ void matmult_seqsell_tiled_kernel5(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line360">360: </a>{
+<a name="line361">361: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line362">362: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line363">363: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line364">364: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line365">365: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line366">366: </a>    slice_id     = row / sliceheight;
+<a name="line367">367: </a>    row_in_slice = row % sliceheight;
+
+<a name="line369">369: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line370">370: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line371">371: </a>    __syncthreads();
+<a name="line372">372: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 8) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 8) * blockDim.x + threadIdx.x];
+<a name="line373">373: </a>    __syncthreads();
+<a name="line374">374: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 4) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 4) * blockDim.x + threadIdx.x];
+<a name="line375">375: </a>    __syncthreads();
+<a name="line376">376: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line377">377: </a>    __syncthreads();
+<a name="line378">378: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line379">379: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line380">380: </a>      y[row] = shared[threadIdx.x];
+<a name="line381">381: </a>    }
+<a name="line382">382: </a>  }
+<a name="line383">383: </a>}
+
+<a name="line385">385: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel4"></a>static __global__ void matmult_seqsell_tiled_kernel4(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line386">386: </a>{
+<a name="line387">387: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line388">388: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line389">389: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line390">390: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line391">391: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line392">392: </a>    slice_id     = row / sliceheight;
+<a name="line393">393: </a>    row_in_slice = row % sliceheight;
+
+<a name="line395">395: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line396">396: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line397">397: </a>    __syncthreads();
+<a name="line398">398: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 4) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 4) * blockDim.x + threadIdx.x];
+<a name="line399">399: </a>    __syncthreads();
+<a name="line400">400: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line401">401: </a>    __syncthreads();
+<a name="line402">402: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line403">403: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line404">404: </a>      y[row] = shared[threadIdx.x];
+<a name="line405">405: </a>    }
+<a name="line406">406: </a>  }
+<a name="line407">407: </a>}
+
+<a name="line409">409: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel3"></a>static __global__ void matmult_seqsell_tiled_kernel3(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line410">410: </a>{
+<a name="line411">411: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line412">412: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line413">413: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line414">414: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line415">415: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line416">416: </a>    slice_id     = row / sliceheight;
+<a name="line417">417: </a>    row_in_slice = row % sliceheight;
+
+<a name="line419">419: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line420">420: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line421">421: </a>    __syncthreads();
+<a name="line422">422: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line423">423: </a>    __syncthreads();
+<a name="line424">424: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line425">425: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line426">426: </a>      y[row] = shared[threadIdx.x];
+<a name="line427">427: </a>    }
+<a name="line428">428: </a>  }
+<a name="line429">429: </a>}
+
+<a name="line431">431: </a><strong><font color="#4169E1"><a name="matmult_seqsell_tiled_kernel2"></a>static __global__ void matmult_seqsell_tiled_kernel2(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y)</font></strong>
+<a name="line432">432: </a>{
+<a name="line433">433: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line434">434: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line435">435: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line436">436: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line437">437: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line438">438: </a>    slice_id     = row / sliceheight;
+<a name="line439">439: </a>    row_in_slice = row % sliceheight;
+
+<a name="line441">441: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line442">442: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line443">443: </a>    __syncthreads();
+<a name="line444">444: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line445">445: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line446">446: </a>      y[row] = shared[threadIdx.x];
+<a name="line447">447: </a>    }
+<a name="line448">448: </a>  }
+<a name="line449">449: </a>}
+
+<a name="line451">451: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel6"></a>static __global__ void matmultadd_seqsell_tiled_kernel6(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line452">452: </a>{
+<a name="line453">453: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line454">454: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line455">455: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line456">456: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line457">457: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line458">458: </a>    slice_id     = row / sliceheight;
+<a name="line459">459: </a>    row_in_slice = row % sliceheight;
+
+<a name="line461">461: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line462">462: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line463">463: </a>    __syncthreads();
+<a name="line464">464: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 16) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 16) * blockDim.x + threadIdx.x];
+<a name="line465">465: </a>    __syncthreads();
+<a name="line466">466: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 8) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 8) * blockDim.x + threadIdx.x];
+<a name="line467">467: </a>    __syncthreads();
+<a name="line468">468: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 4) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 4) * blockDim.x + threadIdx.x];
+<a name="line469">469: </a>    __syncthreads();
+<a name="line470">470: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line471">471: </a>    __syncthreads();
+<a name="line472">472: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line473">473: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line474">474: </a>      z[row] = y[row] + shared[threadIdx.x];
+<a name="line475">475: </a>    }
+<a name="line476">476: </a>  }
+<a name="line477">477: </a>}
+
+<a name="line479">479: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel5"></a>static __global__ void matmultadd_seqsell_tiled_kernel5(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line480">480: </a>{
+<a name="line481">481: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line482">482: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line483">483: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line484">484: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line485">485: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line486">486: </a>    slice_id     = row / sliceheight;
+<a name="line487">487: </a>    row_in_slice = row % sliceheight;
+
+<a name="line489">489: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line490">490: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line491">491: </a>    __syncthreads();
+<a name="line492">492: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 8) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 8) * blockDim.x + threadIdx.x];
+<a name="line493">493: </a>    __syncthreads();
+<a name="line494">494: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 4) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 4) * blockDim.x + threadIdx.x];
+<a name="line495">495: </a>    __syncthreads();
+<a name="line496">496: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line497">497: </a>    __syncthreads();
+<a name="line498">498: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line499">499: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line500">500: </a>      z[row] = y[row] + shared[threadIdx.x];
+<a name="line501">501: </a>    }
+<a name="line502">502: </a>  }
+<a name="line503">503: </a>}
+
+<a name="line505">505: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel4"></a>static __global__ void matmultadd_seqsell_tiled_kernel4(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line506">506: </a>{
+<a name="line507">507: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line508">508: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line509">509: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line510">510: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line511">511: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line512">512: </a>    slice_id     = row / sliceheight;
+<a name="line513">513: </a>    row_in_slice = row % sliceheight;
+
+<a name="line515">515: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line516">516: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line517">517: </a>    __syncthreads();
+<a name="line518">518: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 4) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 4) * blockDim.x + threadIdx.x];
+<a name="line519">519: </a>    __syncthreads();
+<a name="line520">520: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line521">521: </a>    __syncthreads();
+<a name="line522">522: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line523">523: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line524">524: </a>      z[row] = y[row] + shared[threadIdx.x];
+<a name="line525">525: </a>    }
+<a name="line526">526: </a>  }
+<a name="line527">527: </a>}
+
+<a name="line529">529: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel3"></a>static __global__ void matmultadd_seqsell_tiled_kernel3(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line530">530: </a>{
+<a name="line531">531: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line532">532: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line533">533: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line534">534: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line535">535: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line536">536: </a>    slice_id     = row / sliceheight;
+<a name="line537">537: </a>    row_in_slice = row % sliceheight;
+
+<a name="line539">539: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line540">540: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line541">541: </a>    __syncthreads();
+<a name="line542">542: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 2) shared[threadIdx.y * blockDim.x + threadIdx.x] += shared[(threadIdx.y + 2) * blockDim.x + threadIdx.x];
+<a name="line543">543: </a>    __syncthreads();
+<a name="line544">544: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line545">545: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line546">546: </a>      z[row] = y[row] + shared[threadIdx.x];
+<a name="line547">547: </a>    }
+<a name="line548">548: </a>  }
+<a name="line549">549: </a>}
+
+<a name="line551">551: </a><strong><font color="#4169E1"><a name="matmultadd_seqsell_tiled_kernel2"></a>static __global__ void matmultadd_seqsell_tiled_kernel2(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nrows, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> sliceheight, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *acolidx, const MatScalar *aval, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *sliidx, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *z)</font></strong>
+<a name="line552">552: </a>{
+<a name="line553">553: </a>  __shared__ MatScalar shared[32 * 16];
+<a name="line554">554: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, row, slice_id, row_in_slice;
+<a name="line555">555: </a>  <font color="#B22222">/* multiple threads per row. */</font>
+<a name="line556">556: </a>  row = blockIdx.x * blockDim.x + threadIdx.x;
+<a name="line557">557: </a>  <font color="#4169E1">if</font> (row &lt; nrows) {
+<a name="line558">558: </a>    slice_id     = row / sliceheight;
+<a name="line559">559: </a>    row_in_slice = row % sliceheight;
+
+<a name="line561">561: </a>    shared[threadIdx.y * blockDim.x + threadIdx.x] = 0.0;
+<a name="line562">562: </a>    <font color="#4169E1">for</font> (i = sliidx[slice_id] + row_in_slice + sliceheight * threadIdx.y; i &lt; sliidx[slice_id + 1]; i += sliceheight * blockDim.y) shared[threadIdx.y * blockDim.x + threadIdx.x] += aval[i] * x[acolidx[i]];
+<a name="line563">563: </a>    __syncthreads();
+<a name="line564">564: </a>    <font color="#4169E1">if</font> (threadIdx.y &lt; 1) {
+<a name="line565">565: </a>      shared[threadIdx.x] += shared[blockDim.x + threadIdx.x];
+<a name="line566">566: </a>      z[row] = y[row] + shared[threadIdx.x];
+<a name="line567">567: </a>    }
+<a name="line568">568: </a>  }
+<a name="line569">569: </a>}
+
+<a name="line571">571: </a><strong><font color="#4169E1"><a name="MatMult_SeqSELLHIP"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMult_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> xx, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> yy)</font></strong>
+<a name="line572">572: </a>{
+<a name="line573">573: </a>  Mat_SeqSELL       *a         = (Mat_SeqSELL *)A-&gt;data;
+<a name="line574">574: </a>  Mat_SeqSELLHIP    *hipstruct = (Mat_SeqSELLHIP *)A-&gt;spptr;
+<a name="line575">575: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>       *y;
+<a name="line576">576: </a>  const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x;
+<a name="line577">577: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           nrows = A-&gt;rmap-&gt;n, sliceheight = a-&gt;sliceheight;
+<a name="line578">578: </a>  MatScalar         *aval;
+<a name="line579">579: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>          *acolidx;
+<a name="line580">580: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>          *sliidx;
+<a name="line581">581: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           nblocks, blocksize = 512; <font color="#B22222">/* blocksize is fixed to be 512 */</font>
+<a name="line582">582: </a>  dim3               block2(256, 2), block4(128, 4), block8(64, 8), block16(32, 16), block32(16, 32);
+<a name="line583">583: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line584">584: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  chunksperblock, nchunks, *chunk_slice_map;
+<a name="line585">585: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> maxoveravg;
+<a name="line586">586: </a><font color="#A020F0">#endif</font>
+
+<a name="line588">588: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line589">589: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(WARP_SIZE % sliceheight == 0, <a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"The kernel requires a slice height be a divisor of WARP_SIZE, but the input matrix has a slice height of %"</font> PetscInt_FMT, sliceheight);
+<a name="line590">590: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!(hipstruct-&gt;kernelchoice &gt;= 2 &amp;&amp; hipstruct-&gt;kernelchoice &lt;= 6 &amp;&amp; sliceheight &gt; 32), <a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Kernel choices {2-6} requires the slice height of the matrix be less than 32, but the current slice height is %"</font> PetscInt_FMT, sliceheight);
+<a name="line591">591: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSeqSELLHIPCopyToGPU(A));
+<a name="line592">592: </a>  <font color="#B22222">/* hipstruct may not be available until MatSeqSELLHIPCopyToGPU() is called */</font>
+<a name="line593">593: </a>  aval    = hipstruct-&gt;val;
+<a name="line594">594: </a>  acolidx = hipstruct-&gt;colidx;
+<a name="line595">595: </a>  sliidx  = hipstruct-&gt;sliidx;
+
+<a name="line597">597: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPGetArrayRead.html">VecHIPGetArrayRead</a>(xx, &amp;x));
+<a name="line598">598: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPGetArrayWrite.html">VecHIPGetArrayWrite</a>(yy, &amp;y));
+<a name="line599">599: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogGpuTimeBegin.html">PetscLogGpuTimeBegin</a>());
+
+<a name="line601">601: </a>  <font color="#4169E1">switch</font> (hipstruct-&gt;kernelchoice) {
+<a name="line602">602: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line603">603: </a>  <font color="#4169E1">case</font> 9: <font color="#B22222">/* 1 slice per block */</font>
+<a name="line604">604: </a>    nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line605">605: </a>    <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 2) {
+<a name="line606">606: </a>      matmult_seqsell_tiled_kernel9&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line607">607: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 4) {
+<a name="line608">608: </a>      matmult_seqsell_tiled_kernel9&lt;4&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 4)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line609">609: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 8) {
+<a name="line610">610: </a>      matmult_seqsell_tiled_kernel9&lt;8&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line611">611: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 16) {
+<a name="line612">612: </a>      matmult_seqsell_tiled_kernel9&lt;16&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line613">613: </a>    } <font color="#4169E1">else</font> {
+<a name="line614">614: </a>      matmult_seqsell_tiled_kernel9&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line615">615: </a>    }
+<a name="line616">616: </a>    <font color="#4169E1">break</font>;
+<a name="line617">617: </a>  <font color="#4169E1">case</font> 7: <font color="#B22222">/* each block handles blocky slices */</font>
+<a name="line618">618: </a>    nblocks = 1 + (nrows - 1) / (hipstruct-&gt;blocky * sliceheight);
+<a name="line619">619: </a>    <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 2) {
+<a name="line620">620: </a>      matmult_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line621">621: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 4) {
+<a name="line622">622: </a>      matmult_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 4)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line623">623: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 8) {
+<a name="line624">624: </a>      matmult_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line625">625: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (hipstruct-&gt;blocky == 16) {
+<a name="line626">626: </a>      matmult_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line627">627: </a>    } <font color="#4169E1">else</font> {
+<a name="line628">628: </a>      nblocks = 1 + (nrows - 1) / (2 * sliceheight);
+<a name="line629">629: </a>      matmult_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line630">630: </a>    }
+<a name="line631">631: </a>    <font color="#4169E1">break</font>;
+<a name="line632">632: </a><font color="#A020F0">#endif</font>
+<a name="line633">633: </a>  <font color="#4169E1">case</font> 6:
+<a name="line634">634: </a>    nblocks = 1 + (nrows - 1) / (blocksize / 32); <font color="#B22222">/* 1 slice per block if sliceheight=32 */</font>
+<a name="line635">635: </a>    matmult_seqsell_tiled_kernel6&lt;&lt;&lt;nblocks, block32&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line636">636: </a>    <font color="#4169E1">break</font>;
+<a name="line637">637: </a>  <font color="#4169E1">case</font> 5:
+<a name="line638">638: </a>    nblocks = 1 + (nrows - 1) / (blocksize / 16); <font color="#B22222">/* 2 slices per block if sliceheight=32*/</font>
+<a name="line639">639: </a>    matmult_seqsell_tiled_kernel5&lt;&lt;&lt;nblocks, block16&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line640">640: </a>    <font color="#4169E1">break</font>;
+<a name="line641">641: </a>  <font color="#4169E1">case</font> 4:
+<a name="line642">642: </a>    nblocks = 1 + (nrows - 1) / (blocksize / 8); <font color="#B22222">/* 4 slices per block if sliceheight=32 */</font>
+<a name="line643">643: </a>    matmult_seqsell_tiled_kernel4&lt;&lt;&lt;nblocks, block8&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line644">644: </a>    <font color="#4169E1">break</font>;
+<a name="line645">645: </a>  <font color="#4169E1">case</font> 3:
+<a name="line646">646: </a>    nblocks = 1 + (nrows - 1) / (blocksize / 4); <font color="#B22222">/* 8 slices per block if sliceheight=32 */</font>
+<a name="line647">647: </a>    matmult_seqsell_tiled_kernel3&lt;&lt;&lt;nblocks, block4&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line648">648: </a>    <font color="#4169E1">break</font>;
+<a name="line649">649: </a>  <font color="#4169E1">case</font> 2: <font color="#B22222">/* 16 slices per block if sliceheight=32 */</font>
+<a name="line650">650: </a>    nblocks = 1 + (nrows - 1) / (blocksize / 2);
+<a name="line651">651: </a>    matmult_seqsell_tiled_kernel2&lt;&lt;&lt;nblocks, block2&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line652">652: </a>    <font color="#4169E1">break</font>;
+<a name="line653">653: </a>  <font color="#4169E1">case</font> 1: <font color="#B22222">/* 32 slices per block if sliceheight=32 */</font>
+<a name="line654">654: </a>    nblocks = 1 + (nrows - 1) / blocksize;
+<a name="line655">655: </a>    matmult_seqsell_basic_kernel&lt;&lt;&lt;nblocks, blocksize&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line656">656: </a>    <font color="#4169E1">break</font>;
+<a name="line657">657: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line658">658: </a>  <font color="#4169E1">case</font> 0:
+<a name="line659">659: </a>    maxoveravg = a-&gt;maxslicewidth / a-&gt;avgslicewidth;
+<a name="line660">660: </a>    <font color="#4169E1">if</font> (maxoveravg &gt; 12.0 &amp;&amp; maxoveravg / nrows &gt; 0.001) { <font color="#B22222">/* important threshold */</font>
+<a name="line661">661: </a>      <font color="#B22222">/* each block handles approximately one slice */</font>
+<a name="line662">662: </a>      <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> blocky = a-&gt;chunksize / 32;
+<a name="line663">663: </a>      nchunks         = hipstruct-&gt;totalchunks;
+<a name="line664">664: </a>      chunksperblock  = hipstruct-&gt;chunksperblock ? hipstruct-&gt;chunksperblock : 1 + (hipstruct-&gt;totalentries / hipstruct-&gt;totalslices - 1) / a-&gt;chunksize;
+<a name="line665">665: </a>      nblocks         = 1 + (nchunks - 1) / chunksperblock;
+<a name="line666">666: </a>      chunk_slice_map = hipstruct-&gt;chunk_slice_map;
+<a name="line667">667: </a>      <font color="#4169E1">if</font> (blocky == 2) {
+<a name="line668">668: </a>        matmult_seqsell_tiled_kernel8&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y);
+<a name="line669">669: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 4) {
+<a name="line670">670: </a>        matmult_seqsell_tiled_kernel8&lt;4&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 4)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y);
+<a name="line671">671: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 8) {
+<a name="line672">672: </a>        matmult_seqsell_tiled_kernel8&lt;8&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y);
+<a name="line673">673: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 16) {
+<a name="line674">674: </a>        matmult_seqsell_tiled_kernel8&lt;16&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y);
+<a name="line675">675: </a>      } <font color="#4169E1">else</font> {
+<a name="line676">676: </a>        matmult_seqsell_tiled_kernel8&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y);
+<a name="line677">677: </a>      }
+<a name="line678">678: </a>    } <font color="#4169E1">else</font> {
+<a name="line679">679: </a>      <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> avgslicesize = sliceheight * a-&gt;avgslicewidth;
+<a name="line680">680: </a>      <font color="#4169E1">if</font> (avgslicesize &lt;= 432) {
+<a name="line681">681: </a>        <font color="#4169E1">if</font> (sliceheight * a-&gt;maxslicewidth &lt; 2048 &amp;&amp; nrows &gt; 100000) {
+<a name="line682">682: </a>          nblocks = 1 + (nrows - 1) / (2 * sliceheight); <font color="#B22222">/* two slices per block */</font>
+<a name="line683">683: </a>          matmult_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line684">684: </a>        } <font color="#4169E1">else</font> {
+<a name="line685">685: </a>          nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line686">686: </a>          matmult_seqsell_tiled_kernel9&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line687">687: </a>        }
+<a name="line688">688: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (avgslicesize &lt;= 2400) {
+<a name="line689">689: </a>        nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line690">690: </a>        matmult_seqsell_tiled_kernel9&lt;8&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line691">691: </a>      } <font color="#4169E1">else</font> {
+<a name="line692">692: </a>        nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line693">693: </a>        matmult_seqsell_tiled_kernel9&lt;16&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y);
+<a name="line694">694: </a>      }
+<a name="line695">695: </a>    }
+<a name="line696">696: </a>    <font color="#4169E1">break</font>;
+<a name="line697">697: </a><font color="#A020F0">#endif</font>
+<a name="line698">698: </a>  <font color="#4169E1">default</font>:
+<a name="line699">699: </a>    <a href="../../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"unsupported kernel choice %"</font> PetscInt_FMT <font color="#666666">" for MatMult_SeqSELLHIP."</font>, hipstruct-&gt;kernelchoice);
+<a name="line700">700: </a>  }
+<a name="line701">701: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogGpuTimeEnd.html">PetscLogGpuTimeEnd</a>());
+<a name="line702">702: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPRestoreArrayRead.html">VecHIPRestoreArrayRead</a>(xx, &amp;x));
+<a name="line703">703: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPRestoreArrayWrite.html">VecHIPRestoreArrayWrite</a>(yy, &amp;y));
+<a name="line704">704: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogGpuFlops.html">PetscLogGpuFlops</a>(2.0 * a-&gt;nz - a-&gt;nonzerorowcnt));
+<a name="line705">705: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line706">706: </a>}
+
+<a name="line708">708: </a><strong><font color="#4169E1"><a name="MatMultAdd_SeqSELLHIP"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMultAdd_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> xx, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> yy, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> zz)</font></strong>
+<a name="line709">709: </a>{
+<a name="line710">710: </a>  Mat_SeqSELL       *a         = (Mat_SeqSELL *)A-&gt;data;
+<a name="line711">711: </a>  Mat_SeqSELLHIP    *hipstruct = (Mat_SeqSELLHIP *)A-&gt;spptr;
+<a name="line712">712: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>       *z;
+<a name="line713">713: </a>  const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y, *x;
+<a name="line714">714: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           nrows = A-&gt;rmap-&gt;n, sliceheight = a-&gt;sliceheight;
+<a name="line715">715: </a>  MatScalar         *aval    = hipstruct-&gt;val;
+<a name="line716">716: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>          *acolidx = hipstruct-&gt;colidx;
+<a name="line717">717: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>          *sliidx  = hipstruct-&gt;sliidx;
+<a name="line718">718: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line719">719: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> maxoveravg;
+<a name="line720">720: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  chunksperblock, nchunks, *chunk_slice_map;
+<a name="line721">721: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  blocky = hipstruct-&gt;blocky;
+<a name="line722">722: </a><font color="#A020F0">#endif</font>
+
+<a name="line724">724: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line725">725: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(WARP_SIZE % sliceheight == 0, <a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"The kernel requires a slice height be a divisor of WARP_SIZE, but the input matrix has a slice height of %"</font> PetscInt_FMT, sliceheight);
+<a name="line726">726: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!(hipstruct-&gt;kernelchoice &gt;= 2 &amp;&amp; hipstruct-&gt;kernelchoice &lt;= 6 &amp;&amp; sliceheight != sliceheight), <a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Kernel choices {2-6} requires the slice height of the matrix be 16, but the current slice height is %"</font> PetscInt_FMT, sliceheight);
+<a name="line727">727: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSeqSELLHIPCopyToGPU(A));
+<a name="line728">728: </a>  <font color="#4169E1">if</font> (a-&gt;nz) {
+<a name="line729">729: </a>    <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nblocks, blocksize = 512;
+<a name="line730">730: </a>    dim3     block2(256, 2), block4(128, 4), block8(64, 8), block16(32, 16), block32(16, 32);
+<a name="line731">731: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPGetArrayRead.html">VecHIPGetArrayRead</a>(xx, &amp;x));
+<a name="line732">732: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPGetArrayRead.html">VecHIPGetArrayRead</a>(yy, &amp;y));
+<a name="line733">733: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPGetArrayWrite.html">VecHIPGetArrayWrite</a>(zz, &amp;z));
+<a name="line734">734: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogGpuTimeBegin.html">PetscLogGpuTimeBegin</a>());
+
+<a name="line736">736: </a>    <font color="#4169E1">switch</font> (hipstruct-&gt;kernelchoice) {
+<a name="line737">737: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line738">738: </a>    <font color="#4169E1">case</font> 9:
+<a name="line739">739: </a>      nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line740">740: </a>      <font color="#4169E1">if</font> (blocky == 2) {
+<a name="line741">741: </a>        matmultadd_seqsell_tiled_kernel9&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line742">742: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 4) {
+<a name="line743">743: </a>        matmultadd_seqsell_tiled_kernel9&lt;4&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 4)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line744">744: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 8) {
+<a name="line745">745: </a>        matmultadd_seqsell_tiled_kernel9&lt;8&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line746">746: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 16) {
+<a name="line747">747: </a>        matmultadd_seqsell_tiled_kernel9&lt;16&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line748">748: </a>      } <font color="#4169E1">else</font> {
+<a name="line749">749: </a>        matmultadd_seqsell_tiled_kernel9&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line750">750: </a>      }
+<a name="line751">751: </a>      <font color="#4169E1">break</font>;
+<a name="line752">752: </a>    <font color="#4169E1">case</font> 8:
+<a name="line753">753: </a>      <font color="#B22222">/* each block handles approximately one slice */</font>
+<a name="line754">754: </a>      nchunks         = hipstruct-&gt;totalchunks;
+<a name="line755">755: </a>      blocky          = a-&gt;chunksize / 32;
+<a name="line756">756: </a>      chunksperblock  = hipstruct-&gt;chunksperblock ? hipstruct-&gt;chunksperblock : 1 + (hipstruct-&gt;totalentries / hipstruct-&gt;totalslices - 1) / a-&gt;chunksize;
+<a name="line757">757: </a>      nblocks         = 1 + (nchunks - 1) / chunksperblock;
+<a name="line758">758: </a>      chunk_slice_map = hipstruct-&gt;chunk_slice_map;
+<a name="line759">759: </a>      <font color="#4169E1">if</font> (blocky == 2) {
+<a name="line760">760: </a>        matmultadd_seqsell_tiled_kernel8&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line761">761: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 4) {
+<a name="line762">762: </a>        matmultadd_seqsell_tiled_kernel8&lt;4&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 4)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line763">763: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 8) {
+<a name="line764">764: </a>        matmultadd_seqsell_tiled_kernel8&lt;8&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line765">765: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 16) {
+<a name="line766">766: </a>        matmultadd_seqsell_tiled_kernel8&lt;16&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line767">767: </a>      } <font color="#4169E1">else</font> {
+<a name="line768">768: </a>        matmultadd_seqsell_tiled_kernel8&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line769">769: </a>      }
+<a name="line770">770: </a>      <font color="#4169E1">break</font>;
+<a name="line771">771: </a>    <font color="#4169E1">case</font> 7:
+<a name="line772">772: </a>      nblocks = 1 + (nrows - 1) / (blocky * sliceheight);
+<a name="line773">773: </a>      <font color="#4169E1">if</font> (blocky == 2) {
+<a name="line774">774: </a>        matmultadd_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line775">775: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 4) {
+<a name="line776">776: </a>        matmultadd_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 4)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line777">777: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 8) {
+<a name="line778">778: </a>        matmultadd_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line779">779: </a>      } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 16) {
+<a name="line780">780: </a>        matmultadd_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line781">781: </a>      } <font color="#4169E1">else</font> {
+<a name="line782">782: </a>        nblocks = 1 + (nrows - 1) / (2 * sliceheight);
+<a name="line783">783: </a>        matmultadd_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line784">784: </a>      }
+<a name="line785">785: </a>      <font color="#4169E1">break</font>;
+<a name="line786">786: </a><font color="#A020F0">#endif</font>
+<a name="line787">787: </a>    <font color="#4169E1">case</font> 6:
+<a name="line788">788: </a>      nblocks = 1 + (nrows - 1) / (blocksize / 32);
+<a name="line789">789: </a>      matmultadd_seqsell_tiled_kernel6&lt;&lt;&lt;nblocks, block32&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line790">790: </a>      <font color="#4169E1">break</font>;
+<a name="line791">791: </a>    <font color="#4169E1">case</font> 5:
+<a name="line792">792: </a>      nblocks = 1 + (nrows - 1) / (blocksize / 16);
+<a name="line793">793: </a>      matmultadd_seqsell_tiled_kernel5&lt;&lt;&lt;nblocks, block16&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line794">794: </a>      <font color="#4169E1">break</font>;
+<a name="line795">795: </a>    <font color="#4169E1">case</font> 4:
+<a name="line796">796: </a>      nblocks = 1 + (nrows - 1) / (blocksize / 8);
+<a name="line797">797: </a>      matmultadd_seqsell_tiled_kernel4&lt;&lt;&lt;nblocks, block8&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line798">798: </a>      <font color="#4169E1">break</font>;
+<a name="line799">799: </a>    <font color="#4169E1">case</font> 3:
+<a name="line800">800: </a>      nblocks = 1 + (nrows - 1) / (blocksize / 4);
+<a name="line801">801: </a>      matmultadd_seqsell_tiled_kernel3&lt;&lt;&lt;nblocks, block4&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line802">802: </a>      <font color="#4169E1">break</font>;
+<a name="line803">803: </a>    <font color="#4169E1">case</font> 2:
+<a name="line804">804: </a>      nblocks = 1 + (nrows - 1) / (blocksize / 2);
+<a name="line805">805: </a>      matmultadd_seqsell_tiled_kernel2&lt;&lt;&lt;nblocks, block2&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line806">806: </a>      <font color="#4169E1">break</font>;
+<a name="line807">807: </a>    <font color="#4169E1">case</font> 1:
+<a name="line808">808: </a>      nblocks = 1 + (nrows - 1) / blocksize;
+<a name="line809">809: </a>      matmultadd_seqsell_basic_kernel&lt;&lt;&lt;nblocks, blocksize&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line810">810: </a>      <font color="#4169E1">break</font>;
+<a name="line811">811: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line812">812: </a>    <font color="#4169E1">case</font> 0:
+<a name="line813">813: </a>      maxoveravg = a-&gt;maxslicewidth / a-&gt;avgslicewidth;
+<a name="line814">814: </a>      <font color="#4169E1">if</font> (maxoveravg &gt; 12.0 &amp;&amp; maxoveravg / nrows &gt; 0.001) { <font color="#B22222">/* important threshold */</font>
+<a name="line815">815: </a>        <font color="#B22222">/* each block handles approximately one slice */</font>
+<a name="line816">816: </a>        nchunks         = hipstruct-&gt;totalchunks;
+<a name="line817">817: </a>        blocky          = a-&gt;chunksize / 32;
+<a name="line818">818: </a>        chunksperblock  = hipstruct-&gt;chunksperblock ? hipstruct-&gt;chunksperblock : 1 + (hipstruct-&gt;totalentries / hipstruct-&gt;totalslices - 1) / a-&gt;chunksize;
+<a name="line819">819: </a>        nblocks         = 1 + (nchunks - 1) / chunksperblock;
+<a name="line820">820: </a>        chunk_slice_map = hipstruct-&gt;chunk_slice_map;
+<a name="line821">821: </a>        <font color="#4169E1">if</font> (blocky == 2) {
+<a name="line822">822: </a>          matmultadd_seqsell_tiled_kernel8&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line823">823: </a>        } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 4) {
+<a name="line824">824: </a>          matmultadd_seqsell_tiled_kernel8&lt;4&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 4)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line825">825: </a>        } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 8) {
+<a name="line826">826: </a>          matmultadd_seqsell_tiled_kernel8&lt;8&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line827">827: </a>        } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (blocky == 16) {
+<a name="line828">828: </a>          matmultadd_seqsell_tiled_kernel8&lt;16&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line829">829: </a>        } <font color="#4169E1">else</font> {
+<a name="line830">830: </a>          matmultadd_seqsell_tiled_kernel8&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, chunksperblock, nchunks, chunk_slice_map, acolidx, aval, sliidx, x, y, z);
+<a name="line831">831: </a>        }
+<a name="line832">832: </a>      } <font color="#4169E1">else</font> {
+<a name="line833">833: </a>        <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> avgslicesize = sliceheight * a-&gt;avgslicewidth;
+<a name="line834">834: </a>        <font color="#4169E1">if</font> (avgslicesize &lt;= 432) {
+<a name="line835">835: </a>          <font color="#4169E1">if</font> (sliceheight * a-&gt;maxslicewidth &lt; 2048 &amp;&amp; nrows &gt; 100000) {
+<a name="line836">836: </a>            nblocks = 1 + (nrows - 1) / (2 * sliceheight); <font color="#B22222">/* two slices per block */</font>
+<a name="line837">837: </a>            matmultadd_seqsell_tiled_kernel7&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line838">838: </a>          } <font color="#4169E1">else</font> {
+<a name="line839">839: </a>            nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line840">840: </a>            matmultadd_seqsell_tiled_kernel9&lt;2&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 2)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line841">841: </a>          }
+<a name="line842">842: </a>        } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (avgslicesize &lt;= 2400) {
+<a name="line843">843: </a>          nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line844">844: </a>          matmultadd_seqsell_tiled_kernel9&lt;8&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 8)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line845">845: </a>        } <font color="#4169E1">else</font> {
+<a name="line846">846: </a>          nblocks = 1 + (nrows - 1) / sliceheight;
+<a name="line847">847: </a>          matmultadd_seqsell_tiled_kernel9&lt;16&gt;&lt;&lt;&lt;nblocks, dim3(WARP_SIZE, 16)&gt;&gt;&gt;(nrows, sliceheight, acolidx, aval, sliidx, x, y, z);
+<a name="line848">848: </a>        }
+<a name="line849">849: </a>      }
+<a name="line850">850: </a>      <font color="#4169E1">break</font>;
+<a name="line851">851: </a><font color="#A020F0">#endif</font>
+<a name="line852">852: </a>    <font color="#4169E1">default</font>:
+<a name="line853">853: </a>      <a href="../../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"unsupported kernel choice %"</font> PetscInt_FMT <font color="#666666">" for MatMult_SeqSELLHIP."</font>, hipstruct-&gt;kernelchoice);
+<a name="line854">854: </a>    }
+<a name="line855">855: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogGpuTimeEnd.html">PetscLogGpuTimeEnd</a>());
+<a name="line856">856: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPRestoreArrayRead.html">VecHIPRestoreArrayRead</a>(xx, &amp;x));
+<a name="line857">857: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPRestoreArrayRead.html">VecHIPRestoreArrayRead</a>(yy, &amp;y));
+<a name="line858">858: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecHIPRestoreArrayWrite.html">VecHIPRestoreArrayWrite</a>(zz, &amp;z));
+<a name="line859">859: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogGpuFlops.html">PetscLogGpuFlops</a>(2.0 * a-&gt;nz));
+<a name="line860">860: </a>  } <font color="#4169E1">else</font> {
+<a name="line861">861: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(yy, zz));
+<a name="line862">862: </a>  }
+<a name="line863">863: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line864">864: </a>}
+
+<a name="line866">866: </a><strong><font color="#4169E1"><a name="MatSetFromOptions_SeqSELLHIP"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSetFromOptions_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, PetscOptionItems PetscOptionsObject)</font></strong>
+<a name="line867">867: </a>{
+<a name="line868">868: </a>  Mat_SeqSELLHIP *hipstruct = (Mat_SeqSELLHIP *)A-&gt;spptr;
+<a name="line869">869: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        kernel, blocky;
+<a name="line870">870: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>       flg;
+
+<a name="line872">872: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line873">873: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadBegin.html">PetscOptionsHeadBegin</a>(PetscOptionsObject, <font color="#666666">"SeqSELLHIP options"</font>);
+<a name="line874">874: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsGetInt.html">PetscOptionsGetInt</a>(NULL, NULL, <font color="#666666">"-mat_sell_spmv_hip_blocky"</font>, &amp;blocky, &amp;flg));
+<a name="line875">875: </a>  <font color="#4169E1">if</font> (flg) {
+<a name="line876">876: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(blocky == 2 || blocky == 4 || blocky == 8 || blocky == 16 || blocky == 32, <a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Unsupported blocky: %"</font> PetscInt_FMT <font color="#666666">" it should be in {2,4,8,16,32}"</font>, blocky);
+<a name="line877">877: </a>    hipstruct-&gt;blocky = blocky;
+<a name="line878">878: </a>  }
+<a name="line879">879: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsGetInt.html">PetscOptionsGetInt</a>(NULL, NULL, <font color="#666666">"-mat_sell_spmv_hip_kernel"</font>, &amp;kernel, &amp;flg));
+<a name="line880">880: </a>  <font color="#4169E1">if</font> (flg) {
+<a name="line881">881: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(kernel &gt;= 0 &amp;&amp; kernel &lt;= 9, <a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Wrong kernel choice: %"</font> PetscInt_FMT <font color="#666666">" it should be in [0,9]"</font>, kernel);
+<a name="line882">882: </a>    hipstruct-&gt;kernelchoice = kernel;
+<a name="line883">883: </a>    <font color="#4169E1">if</font> (kernel == 8) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsGetInt.html">PetscOptionsGetInt</a>(NULL, NULL, <font color="#666666">"-mat_sell_spmv_hip_chunksperblock"</font>, &amp;hipstruct-&gt;chunksperblock, &amp;flg));
+<a name="line884">884: </a>  }
+<a name="line885">885: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadEnd.html">PetscOptionsHeadEnd</a>();
+<a name="line886">886: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line887">887: </a>}
+
+<a name="line889">889: </a><strong><font color="#4169E1"><a name="MatAssemblyEnd_SpMV_Preprocessing_Private"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatAssemblyEnd_SpMV_Preprocessing_Private(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A)</font></strong>
+<a name="line890">890: </a>{
+<a name="line891">891: </a>  Mat_SeqSELL *a = (Mat_SeqSELL *)A-&gt;data;
+
+<a name="line893">893: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line894">894: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSeqSELLGetAvgSliceWidth.html">MatSeqSELLGetAvgSliceWidth</a>(A, &amp;a-&gt;avgslicewidth));
+<a name="line895">895: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSeqSELLGetMaxSliceWidth.html">MatSeqSELLGetMaxSliceWidth</a>(A, &amp;a-&gt;maxslicewidth));
+<a name="line896">896: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSeqSELLGetFillRatio.html">MatSeqSELLGetFillRatio</a>(A, &amp;a-&gt;fillratio));
+<a name="line897">897: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line898">898: </a>}
+
+<a name="line900">900: </a><strong><font color="#4169E1"><a name="MatAssemblyEnd_SeqSELLHIP"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatAssemblyEnd_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/Mat/MatAssemblyType.html">MatAssemblyType</a> mode)</font></strong>
+<a name="line901">901: </a>{
+<a name="line902">902: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line903">903: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatAssemblyEnd_SeqSELL(A, mode));
+<a name="line904">904: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatAssemblyEnd_SpMV_Preprocessing_Private(A));
+<a name="line905">905: </a>  <font color="#4169E1">if</font> (mode == <a href="../../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FLUSH_ASSEMBLY</a>) <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line906">906: </a>  <font color="#4169E1">if</font> (A-&gt;factortype == <a href="../../../../../../manualpages/Mat/MatFactorType.html">MAT_FACTOR_NONE</a>) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSeqSELLHIPCopyToGPU(A));
+<a name="line907">907: </a>  A-&gt;ops-&gt;mult    = MatMult_SeqSELLHIP;
+<a name="line908">908: </a>  A-&gt;ops-&gt;multadd = MatMultAdd_SeqSELLHIP;
+<a name="line909">909: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line910">910: </a>}
+
+<a name="line912">912: </a><strong><font color="#4169E1"><a name="MatZeroEntries_SeqSELLHIP"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatZeroEntries_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A)</font></strong>
+<a name="line913">913: </a>{
+<a name="line914">914: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>    both = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line915">915: </a>  Mat_SeqSELL *a    = (Mat_SeqSELL *)A-&gt;data;
+
+<a name="line917">917: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line918">918: </a>  <font color="#4169E1">if</font> (A-&gt;factortype == <a href="../../../../../../manualpages/Mat/MatFactorType.html">MAT_FACTOR_NONE</a>) {
+<a name="line919">919: </a>    Mat_SeqSELLHIP *hipstruct = (Mat_SeqSELLHIP *)A-&gt;spptr;
+<a name="line920">920: </a>    <font color="#4169E1">if</font> (hipstruct-&gt;val) {
+<a name="line921">921: </a>      both = <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line922">922: </a>      PetscCallHIP(hipMemset(hipstruct-&gt;val, 0, a-&gt;sliidx[a-&gt;totalslices] * <font color="#4169E1">sizeof</font>(*hipstruct-&gt;val)));
+<a name="line923">923: </a>    }
+<a name="line924">924: </a>  }
+<a name="line925">925: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(a-&gt;val, a-&gt;sliidx[a-&gt;totalslices]));
+<a name="line926">926: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSeqSELLInvalidateDiagonal(A));
+<a name="line927">927: </a>  <font color="#4169E1">if</font> (both) A-&gt;offloadmask = <a href="../../../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>;
+<a name="line928">928: </a>  <font color="#4169E1">else</font> A-&gt;offloadmask = <a href="../../../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>;
+<a name="line929">929: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line930">930: </a>}
+
+<a name="line932">932: </a><strong><font color="#4169E1"><a name="MatDestroy_SeqSELLHIP"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatDestroy_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A)</font></strong>
+<a name="line933">933: </a>{
+<a name="line934">934: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line935">935: </a>  <font color="#4169E1">if</font> (A-&gt;factortype == <a href="../../../../../../manualpages/Mat/MatFactorType.html">MAT_FACTOR_NONE</a> &amp;&amp; A-&gt;offloadmask != <a href="../../../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSeqSELLHIP_Destroy((Mat_SeqSELLHIP **)&amp;A-&gt;spptr));
+<a name="line936">936: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatDestroy_SeqSELL(A));
+<a name="line937">937: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line938">938: </a>}
+
+<a name="line940">940: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_SeqSELL_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>)</font></strong>;
+<a name="line941">941: </a><strong><font color="#4169E1"><a name="MatDuplicate_SeqSELLHIP"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>       MatDuplicate_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/Mat/MatDuplicateOption.html">MatDuplicateOption</a> cpvalues, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> *B)</font></strong>
+<a name="line942">942: </a>{
+<a name="line943">943: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line944">944: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatDuplicate_SeqSELL(A, cpvalues, B));
+<a name="line945">945: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatConvert_SeqSELL_SeqSELLHIP(*B));
+<a name="line946">946: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line947">947: </a>}
+
+<a name="line949">949: </a><strong><font color="#4169E1"><a name="MatConvert_SeqSELL_SeqSELLHIP"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_SeqSELL_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B)</font></strong>
+<a name="line950">950: </a>{
+<a name="line951">951: </a>  Mat_SeqSELLHIP *hipstruct;
+
+<a name="line953">953: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line954">954: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(B-&gt;defaultvectype));
+<a name="line955">955: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../../../../manualpages/Vec/VECHIP.html">VECHIP</a>, &amp;B-&gt;defaultvectype));
+
+<a name="line957">957: </a>  <font color="#4169E1">if</font> (!B-&gt;spptr) {
+<a name="line958">958: </a>    <font color="#4169E1">if</font> (B-&gt;factortype == <a href="../../../../../../manualpages/Mat/MatFactorType.html">MAT_FACTOR_NONE</a>) {
+<a name="line959">959: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;hipstruct));
+<a name="line960">960: </a>      B-&gt;spptr = hipstruct;
+<a name="line961">961: </a>    }
+<a name="line962">962: </a>  }
+
+<a name="line964">964: </a>  B-&gt;ops-&gt;assemblyend    = MatAssemblyEnd_SeqSELLHIP;
+<a name="line965">965: </a>  B-&gt;ops-&gt;destroy        = MatDestroy_SeqSELLHIP;
+<a name="line966">966: </a>  B-&gt;ops-&gt;setfromoptions = MatSetFromOptions_SeqSELLHIP;
+<a name="line967">967: </a>  B-&gt;ops-&gt;mult           = MatMult_SeqSELLHIP;
+<a name="line968">968: </a>  B-&gt;ops-&gt;multadd        = MatMultAdd_SeqSELLHIP;
+<a name="line969">969: </a>  B-&gt;ops-&gt;duplicate      = MatDuplicate_SeqSELLHIP;
+<a name="line970">970: </a>  B-&gt;ops-&gt;zeroentries    = MatZeroEntries_SeqSELLHIP;
+
+<a name="line972">972: </a>  <font color="#B22222">/* No need to assemble SeqSELL, but need to do the preprocessing for SpMV */</font>
+<a name="line973">973: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatAssemblyEnd_SpMV_Preprocessing_Private(B));
+
+<a name="line975">975: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscObjectChangeTypeName((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B, <a href="../../../../../../manualpages/Mat/MATSEQSELLHIP.html">MATSEQSELLHIP</a>));
+<a name="line976">976: </a>  B-&gt;offloadmask = <a href="../../../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>;
+<a name="line977">977: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line978">978: </a>}
+
+<a name="line980">980: </a><font color="#B22222">/*MC</font>
+<a name="line981">981: </a><font color="#B22222">  <a href="../../../../../../manualpages/Mat/MATSEQSELLHIP.html">MATSEQSELLHIP</a> - <a href="../../../../../../manualpages/Mat/MATSELLHIP.html">MATSELLHIP</a> = "(seq)sellhip" - A matrix type to be used for sparse matrices on AMD GPUs.</font>
+
+<a name="line983">983: </a><font color="#B22222">  Options Database Keys:</font>
+<a name="line984">984: </a><font color="#B22222">+  -mat_type seqsellhip - sets the matrix type to "seqsellhip" during a call to `<a href="../../../../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>()`</font>
+<a name="line985">985: </a><font color="#B22222">.  -mat_sell_spmv_hip_kernel - selects a spmv kernel for MatSELLHIP</font>
+<a name="line986">986: </a><font color="#B22222">-  -mat_sell_spmv_hip_blocky - sets the y dimension of the block size of the spmv kernels. These kernels use a 2D block with the x dimension equal to the wrap size (normally 64 for AMD GPUs)</font>
+
+<a name="line988">988: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line990">990: </a><font color="#B22222">.seealso: [](ch_matrices), `<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>`, `<a href="../../../../../../manualpages/Mat/MATSELLHIP.html">MATSELLHIP</a>`</font>
+<a name="line991">991: </a><font color="#B22222">M*/</font>
+
+<a name="line993">993: </a><strong><font color="#4169E1"><a name="MatCreate_SeqSELLHIP"></a>PETSC_EXTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreate_SeqSELLHIP(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B)</font></strong>
+<a name="line994">994: </a>{
+<a name="line995">995: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line996">996: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatCreate_SeqSELL(B));
+<a name="line997">997: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatConvert_SeqSELL_SeqSELLHIP(B));
+<a name="line998">998: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>(B));
+<a name="line999">999: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1000">1000: </a>}
+</pre>
+</body>
+
+</html>
+

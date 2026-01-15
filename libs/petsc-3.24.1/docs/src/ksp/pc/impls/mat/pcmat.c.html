@@ -1,0 +1,289 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/pc/impls/mat/pcmat.c">Actual source code: pcmat.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:56+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/pcimpl.h.html">&lt;petsc/private/pcimpl.h&gt;</A>
+
+<a name="line3">  3: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line4">  4: </a>  PCMATOP_UNSPECIFIED,
+<a name="line5">  5: </a>  PCMATOP_MULT,
+<a name="line6">  6: </a>  PCMATOP_MULT_TRANSPOSE,
+<a name="line7">  7: </a>  PCMATOP_MULT_HERMITIAN_TRANSPOSE,
+<a name="line8">  8: </a>  PCMATOP_SOLVE,
+<a name="line9">  9: </a>  PCMATOP_SOLVE_TRANSPOSE,
+<a name="line10"> 10: </a>} PCMatOperation;
+
+<a name="line12"> 12: </a>const char *const PCMatOpTypes[] = {<font color="#666666">"Unspecified"</font>, <font color="#666666">"Mult"</font>, <font color="#666666">"MultTranspose"</font>, <font color="#666666">"MultHermitianTranspose"</font>, <font color="#666666">"Solve"</font>, <font color="#666666">"SolveTranspose"</font>, NULL};
+
+<a name="line14"> 14: </a><font color="#4169E1"><a name="_PCMAT"></a>typedef struct _PCMAT </font>{
+<a name="line15"> 15: </a>  PCMatOperation apply;
+<a name="line16"> 16: </a>} PC_Mat;
+
+<a name="line18"> 18: </a><strong><font color="#4169E1"><a name="PCApply_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCApply_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line19"> 19: </a>{
+<a name="line20"> 20: </a>  PC_Mat *pcmat = (PC_Mat *)pc-&gt;data;
+
+<a name="line22"> 22: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line23"> 23: </a>  <font color="#4169E1">switch</font> (pcmat-&gt;apply) {
+<a name="line24"> 24: </a>  <font color="#4169E1">case</font> PCMATOP_MULT:
+<a name="line25"> 25: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMult.html">MatMult</a>(pc-&gt;pmat, x, y));
+<a name="line26"> 26: </a>    <font color="#4169E1">break</font>;
+<a name="line27"> 27: </a>  <font color="#4169E1">case</font> PCMATOP_MULT_TRANSPOSE:
+<a name="line28"> 28: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMultTranspose.html">MatMultTranspose</a>(pc-&gt;pmat, x, y));
+<a name="line29"> 29: </a>    <font color="#4169E1">break</font>;
+<a name="line30"> 30: </a>  <font color="#4169E1">case</font> PCMATOP_SOLVE:
+<a name="line31"> 31: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSolve.html">MatSolve</a>(pc-&gt;pmat, x, y));
+<a name="line32"> 32: </a>    <font color="#4169E1">break</font>;
+<a name="line33"> 33: </a>  <font color="#4169E1">case</font> PCMATOP_SOLVE_TRANSPOSE:
+<a name="line34"> 34: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSolveTranspose.html">MatSolveTranspose</a>(pc-&gt;pmat, x, y));
+<a name="line35"> 35: </a>    <font color="#4169E1">break</font>;
+<a name="line36"> 36: </a>  <font color="#4169E1">case</font> PCMATOP_MULT_HERMITIAN_TRANSPOSE:
+<a name="line37"> 37: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMultHermitianTranspose.html">MatMultHermitianTranspose</a>(pc-&gt;pmat, x, y));
+<a name="line38"> 38: </a>    <font color="#4169E1">break</font>;
+<a name="line39"> 39: </a>  <font color="#4169E1">default</font>:
+<a name="line40"> 40: </a>    <a href="../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Unsupported %s case"</font>, PCMatOpTypes[pcmat-&gt;apply]);
+<a name="line41"> 41: </a>  }
+<a name="line42"> 42: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line43"> 43: </a>}
+
+<a name="line45"> 45: </a><strong><font color="#4169E1"><a name="PCSetUp_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCSetUp_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line46"> 46: </a>{
+<a name="line47"> 47: </a>  PC_Mat *pcmat = (PC_Mat *)pc-&gt;data;
+
+<a name="line49"> 49: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line50"> 50: </a>  <font color="#4169E1">if</font> (pcmat-&gt;apply == PCMATOP_UNSPECIFIED) {
+<a name="line51"> 51: </a>    <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> hassolve;
+<a name="line52"> 52: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatHasOperation.html">MatHasOperation</a>(pc-&gt;pmat, MATOP_SOLVE, &amp;hassolve));
+<a name="line53"> 53: </a>    <font color="#4169E1">if</font> (hassolve) pcmat-&gt;apply = PCMATOP_SOLVE;
+<a name="line54"> 54: </a>    <font color="#4169E1">else</font> pcmat-&gt;apply = PCMATOP_MULT;
+<a name="line55"> 55: </a>  }
+<a name="line56"> 56: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line57"> 57: </a>}
+
+<a name="line59"> 59: </a><strong><font color="#4169E1"><a name="PCMatApply_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCMatApply_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> X, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> Y)</font></strong>
+<a name="line60"> 60: </a>{
+<a name="line61"> 61: </a>  PC_Mat *pcmat = (PC_Mat *)pc-&gt;data;
+<a name="line62"> 62: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>     W;
+
+<a name="line64"> 64: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line65"> 65: </a>  <font color="#4169E1">switch</font> (pcmat-&gt;apply) {
+<a name="line66"> 66: </a>  <font color="#4169E1">case</font> PCMATOP_MULT:
+<a name="line67"> 67: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMatMult.html">MatMatMult</a>(pc-&gt;pmat, X, <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>, <a href="../../../../../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a>, &amp;Y));
+<a name="line68"> 68: </a>    <font color="#4169E1">break</font>;
+<a name="line69"> 69: </a>  <font color="#4169E1">case</font> PCMATOP_MULT_TRANSPOSE:
+<a name="line70"> 70: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatTransposeMatMult.html">MatTransposeMatMult</a>(pc-&gt;pmat, X, <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>, <a href="../../../../../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a>, &amp;Y));
+<a name="line71"> 71: </a>    <font color="#4169E1">break</font>;
+<a name="line72"> 72: </a>  <font color="#4169E1">case</font> PCMATOP_SOLVE:
+<a name="line73"> 73: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMatSolve.html">MatMatSolve</a>(pc-&gt;pmat, X, Y));
+<a name="line74"> 74: </a>    <font color="#4169E1">break</font>;
+<a name="line75"> 75: </a>  <font color="#4169E1">case</font> PCMATOP_SOLVE_TRANSPOSE:
+<a name="line76"> 76: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMatSolveTranspose.html">MatMatSolveTranspose</a>(pc-&gt;pmat, X, Y));
+<a name="line77"> 77: </a>    <font color="#4169E1">break</font>;
+<a name="line78"> 78: </a>  <font color="#4169E1">case</font> PCMATOP_MULT_HERMITIAN_TRANSPOSE:
+<a name="line79"> 79: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(X, <a href="../../../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>, &amp;W));
+<a name="line80"> 80: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatConjugate.html">MatConjugate</a>(W));
+<a name="line81"> 81: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatTransposeMatMult.html">MatTransposeMatMult</a>(pc-&gt;pmat, W, <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>, <a href="../../../../../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a>, &amp;Y));
+<a name="line82"> 82: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatConjugate.html">MatConjugate</a>(Y));
+<a name="line83"> 83: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;W));
+<a name="line84"> 84: </a>    <font color="#4169E1">break</font>;
+<a name="line85"> 85: </a>  <font color="#4169E1">default</font>:
+<a name="line86"> 86: </a>    <a href="../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Unsupported %s case"</font>, PCMatOpTypes[pcmat-&gt;apply]);
+<a name="line87"> 87: </a>  }
+<a name="line88"> 88: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line89"> 89: </a>}
+
+<a name="line91"> 91: </a><strong><font color="#4169E1"><a name="PCApplyTranspose_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCApplyTranspose_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line92"> 92: </a>{
+<a name="line93"> 93: </a>  PC_Mat *pcmat = (PC_Mat *)pc-&gt;data;
+<a name="line94"> 94: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>     w;
+
+<a name="line96"> 96: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line97"> 97: </a>  <font color="#4169E1">switch</font> (pcmat-&gt;apply) {
+<a name="line98"> 98: </a>  <font color="#4169E1">case</font> PCMATOP_MULT:
+<a name="line99"> 99: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMultTranspose.html">MatMultTranspose</a>(pc-&gt;pmat, x, y));
+<a name="line100">100: </a>    <font color="#4169E1">break</font>;
+<a name="line101">101: </a>  <font color="#4169E1">case</font> PCMATOP_MULT_TRANSPOSE:
+<a name="line102">102: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMult.html">MatMult</a>(pc-&gt;pmat, x, y));
+<a name="line103">103: </a>    <font color="#4169E1">break</font>;
+<a name="line104">104: </a>  <font color="#4169E1">case</font> PCMATOP_SOLVE:
+<a name="line105">105: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSolveTranspose.html">MatSolveTranspose</a>(pc-&gt;pmat, x, y));
+<a name="line106">106: </a>    <font color="#4169E1">break</font>;
+<a name="line107">107: </a>  <font color="#4169E1">case</font> PCMATOP_SOLVE_TRANSPOSE:
+<a name="line108">108: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSolve.html">MatSolve</a>(pc-&gt;pmat, x, y));
+<a name="line109">109: </a>    <font color="#4169E1">break</font>;
+<a name="line110">110: </a>  <font color="#4169E1">case</font> PCMATOP_MULT_HERMITIAN_TRANSPOSE:
+<a name="line111">111: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(x, &amp;w));
+<a name="line112">112: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(x, w));
+<a name="line113">113: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecConjugate.html">VecConjugate</a>(w));
+<a name="line114">114: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatMult.html">MatMult</a>(pc-&gt;pmat, w, y));
+<a name="line115">115: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecConjugate.html">VecConjugate</a>(y));
+<a name="line116">116: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;w));
+<a name="line117">117: </a>    <font color="#4169E1">break</font>;
+<a name="line118">118: </a>  <font color="#4169E1">default</font>:
+<a name="line119">119: </a>    <a href="../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Unsupported %s case"</font>, PCMatOpTypes[pcmat-&gt;apply]);
+<a name="line120">120: </a>  }
+<a name="line121">121: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line122">122: </a>}
+
+<a name="line124">124: </a><strong><font color="#4169E1"><a name="PCDestroy_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCDestroy_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line125">125: </a>{
+<a name="line126">126: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line127">127: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCMatSetApplyOperation_C"</font>, NULL));
+<a name="line128">128: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCMatGetApplyOperation_C"</font>, NULL));
+<a name="line129">129: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(pc-&gt;data));
+<a name="line130">130: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line131">131: </a>}
+
+<a name="line133">133: </a><font color="#B22222">/*@</font>
+<a name="line134">134: </a><font color="#B22222">  <a href="../../../../../manualpages/PC/PCMatSetApplyOperation.html">PCMatSetApplyOperation</a> - Set which matrix operation of the matrix implements `<a href="../../../../../manualpages/PC/PCApply.html">PCApply</a>()` for `<a href="../../../../../manualpages/PC/PCMAT.html">PCMAT</a>`.</font>
+
+<a name="line136">136: </a><font color="#B22222">  Logically collective</font>
+
+<a name="line138">138: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line139">139: </a><font color="#B22222">+ pc    - An instance of `<a href="../../../../../manualpages/PC/PCMAT.html">PCMAT</a>`</font>
+<a name="line140">140: </a><font color="#B22222">- matop - The selected `MatOperation`</font>
+
+<a name="line142">142: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line144">144: </a><font color="#B22222">  Note:</font>
+<a name="line145">145: </a><font color="#B22222">  If you have a matrix type that implements an exact inverse that isn't a factorization,</font>
+<a name="line146">146: </a><font color="#B22222">  you can use `<a href="../../../../../manualpages/PC/PCMatSetApplyOperation.html">PCMatSetApplyOperation</a>(pc, MATOP_SOLVE)`.</font>
+
+<a name="line148">148: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/PC/PCMAT.html">PCMAT</a>`, `<a href="../../../../../manualpages/PC/PCMatGetApplyOperation.html">PCMatGetApplyOperation</a>()`, `<a href="../../../../../manualpages/PC/PCApply.html">PCApply</a>()`, `MatOperation`</font>
+<a name="line149">149: </a><font color="#B22222">@*/</font>
+<a name="line150">150: </a><strong><font color="#4169E1"><a name="PCMatSetApplyOperation"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/PC/PCMatSetApplyOperation.html">PCMatSetApplyOperation</a>(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, MatOperation matop)</font></strong>
+<a name="line151">151: </a>{
+<a name="line152">152: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line154">154: </a>  <a href="../../../../../manualpages/Sys/PetscTryMethod.html">PetscTryMethod</a>(pc, <font color="#666666">"PCMatSetApplyOperation_C"</font>, (<a href="../../../../../manualpages/PC/PC.html">PC</a>, MatOperation), (pc, matop));
+<a name="line155">155: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line156">156: </a>}
+
+<a name="line158">158: </a><font color="#B22222">/*@</font>
+<a name="line159">159: </a><font color="#B22222">  <a href="../../../../../manualpages/PC/PCMatGetApplyOperation.html">PCMatGetApplyOperation</a> - Get which matrix operation of the matrix implements `<a href="../../../../../manualpages/PC/PCApply.html">PCApply</a>()` for `<a href="../../../../../manualpages/PC/PCMAT.html">PCMAT</a>`.</font>
+
+<a name="line161">161: </a><font color="#B22222">  Logically collective</font>
+
+<a name="line163">163: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line164">164: </a><font color="#B22222">. pc - An instance of `<a href="../../../../../manualpages/PC/PCMAT.html">PCMAT</a>`</font>
+
+<a name="line166">166: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line167">167: </a><font color="#B22222">. matop - The `MatOperation`</font>
+
+<a name="line169">169: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line171">171: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/PC/PCMAT.html">PCMAT</a>`, `<a href="../../../../../manualpages/PC/PCMatSetApplyOperation.html">PCMatSetApplyOperation</a>()`, `<a href="../../../../../manualpages/PC/PCApply.html">PCApply</a>()`, `MatOperation`</font>
+<a name="line172">172: </a><font color="#B22222">@*/</font>
+<a name="line173">173: </a><strong><font color="#4169E1"><a name="PCMatGetApplyOperation"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/PC/PCMatGetApplyOperation.html">PCMatGetApplyOperation</a>(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, MatOperation *matop)</font></strong>
+<a name="line174">174: </a>{
+<a name="line175">175: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line177">177: </a>  PetscAssertPointer(matop, 2);
+<a name="line178">178: </a>  <a href="../../../../../manualpages/Sys/PetscUseMethod.html">PetscUseMethod</a>(pc, <font color="#666666">"PCMatGetApplyOperation_C"</font>, (<a href="../../../../../manualpages/PC/PC.html">PC</a>, MatOperation *), (pc, matop));
+<a name="line179">179: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line180">180: </a>}
+
+<a name="line182">182: </a><strong><font color="#4169E1"><a name="PCMatSetApplyOperation_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCMatSetApplyOperation_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, MatOperation matop)</font></strong>
+<a name="line183">183: </a>{
+<a name="line184">184: </a>  PC_Mat        *pcmat = (PC_Mat *)pc-&gt;data;
+<a name="line185">185: </a>  PCMatOperation pcmatop;
+
+<a name="line187">187: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line188">188: </a>  <font color="#B22222">// clang-format off</font>
+<a name="line189">189: </a><strong><font color="#228B22">#define MATOP_TO_PCMATOP_CASE(var, OP) case MATOP_##OP: (var) = PCMATOP_##OP; break</font></strong>
+<a name="line190">190: </a>  <font color="#4169E1">switch</font> (matop) {
+<a name="line191">191: </a>  MATOP_TO_PCMATOP_CASE(pcmatop, MULT);
+<a name="line192">192: </a>  MATOP_TO_PCMATOP_CASE(pcmatop, MULT_TRANSPOSE);
+<a name="line193">193: </a>  MATOP_TO_PCMATOP_CASE(pcmatop, MULT_HERMITIAN_TRANSPOSE);
+<a name="line194">194: </a>  MATOP_TO_PCMATOP_CASE(pcmatop, SOLVE);
+<a name="line195">195: </a>  MATOP_TO_PCMATOP_CASE(pcmatop, SOLVE_TRANSPOSE);
+<a name="line196">196: </a>  <font color="#4169E1">default</font>:
+<a name="line197">197: </a>    <a href="../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Unsupported MatOperation %d for <a href="../../../../../manualpages/PC/PCMatSetApplyOperation.html">PCMatSetApplyOperation</a>()"</font>, (int)matop);
+<a name="line198">198: </a>  }
+<a name="line199">199: </a><strong><font color="#228B22">#undef MATOP_TO_PCMATOP_CASE</font></strong>
+<a name="line200">200: </a>  <font color="#B22222">// clang-format on</font>
+
+<a name="line202">202: </a>  pcmat-&gt;apply = pcmatop;
+<a name="line203">203: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line204">204: </a>}
+
+<a name="line206">206: </a><strong><font color="#4169E1"><a name="PCMatGetApplyOperation_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCMatGetApplyOperation_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, MatOperation *matop_p)</font></strong>
+<a name="line207">207: </a>{
+<a name="line208">208: </a>  PC_Mat      *pcmat = (PC_Mat *)pc-&gt;data;
+<a name="line209">209: </a>  MatOperation matop = MATOP_MULT;
+
+<a name="line211">211: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line212">212: </a>  <font color="#4169E1">if</font> (!pc-&gt;setupcalled) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCSetUp.html">PCSetUp</a>(pc));
+
+<a name="line214">214: </a>  <font color="#B22222">// clang-format off</font>
+<a name="line215">215: </a><strong><font color="#228B22">#define PCMATOP_TO_MATOP_CASE(var, OP) case PCMATOP_##OP: (var) = MATOP_##OP; break</font></strong>
+<a name="line216">216: </a>  <font color="#4169E1">switch</font> (pcmat-&gt;apply) {
+<a name="line217">217: </a>  PCMATOP_TO_MATOP_CASE(matop, MULT);
+<a name="line218">218: </a>  PCMATOP_TO_MATOP_CASE(matop, MULT_TRANSPOSE);
+<a name="line219">219: </a>  PCMATOP_TO_MATOP_CASE(matop, MULT_HERMITIAN_TRANSPOSE);
+<a name="line220">220: </a>  PCMATOP_TO_MATOP_CASE(matop, SOLVE);
+<a name="line221">221: </a>  PCMATOP_TO_MATOP_CASE(matop, SOLVE_TRANSPOSE);
+<a name="line222">222: </a>  <font color="#4169E1">default</font>:
+<a name="line223">223: </a>    <a href="../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Unsupported %s case"</font>, PCMatOpTypes[pcmat-&gt;apply]);
+<a name="line224">224: </a>  }
+<a name="line225">225: </a><strong><font color="#228B22">#undef PCMATOP_TO_MATOP_CASE</font></strong>
+<a name="line226">226: </a>  <font color="#B22222">// clang-format on</font>
+
+<a name="line228">228: </a>  *matop_p = matop;
+<a name="line229">229: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line230">230: </a>}
+
+<a name="line232">232: </a><strong><font color="#4169E1"><a name="PCView_Mat"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCView_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer)</font></strong>
+<a name="line233">233: </a>{
+<a name="line234">234: </a>  PC_Mat   *pcmat = (PC_Mat *)pc-&gt;data;
+<a name="line235">235: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> isascii;
+
+<a name="line237">237: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line238">238: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)viewer, <a href="../../../../../manualpages/Viewer/PETSCVIEWERASCII.html">PETSCVIEWERASCII</a>, &amp;isascii));
+<a name="line239">239: </a>  <font color="#4169E1">if</font> (isascii) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"<a href="../../../../../manualpages/PC/PCApply.html">PCApply</a>() == <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>%s()\n"</font>, PCMatOpTypes[pcmat-&gt;apply]));
+<a name="line240">240: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line241">241: </a>}
+
+<a name="line243">243: </a><font color="#B22222">/*MC</font>
+<a name="line244">244: </a><font color="#B22222">     <a href="../../../../../manualpages/PC/PCMAT.html">PCMAT</a> - A preconditioner obtained by applying an operation of the `pmat` provided in</font>
+<a name="line245">245: </a><font color="#B22222">             in `<a href="../../../../../manualpages/PC/PCSetOperators.html">PCSetOperators</a>(pc,amat,pmat)` or `<a href="../../../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp,amat,pmat)`.  By default, the operation is `MATOP_MULT`,</font>
+<a name="line246">246: </a><font color="#B22222">             meaning that the `pmat` provides an approximate inverse of `amat`.</font>
+<a name="line247">247: </a><font color="#B22222">             If some other operation of `pmat` implements the approximate inverse,</font>
+<a name="line248">248: </a><font color="#B22222">             use `<a href="../../../../../manualpages/PC/PCMatSetApplyOperation.html">PCMatSetApplyOperation</a>()` to select that operation.</font>
+
+<a name="line250">250: </a><font color="#B22222">   Level: intermediate</font>
+
+<a name="line252">252: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/PC/PCCreate.html">PCCreate</a>()`, `<a href="../../../../../manualpages/PC/PCSetType.html">PCSetType</a>()`, `<a href="../../../../../manualpages/PC/PCType.html">PCType</a>`, `<a href="../../../../../manualpages/PC/PC.html">PC</a>`, `<a href="../../../../../manualpages/PC/PCSHELL.html">PCSHELL</a>`, `MatOperation`, `<a href="../../../../../manualpages/PC/PCMatSetApplyOperation.html">PCMatSetApplyOperation</a>()`, `<a href="../../../../../manualpages/PC/PCMatGetApplyOperation.html">PCMatGetApplyOperation</a>()`</font>
+<a name="line253">253: </a><font color="#B22222">M*/</font>
+
+<a name="line255">255: </a><strong><font color="#4169E1"><a name="PCCreate_Mat"></a>PETSC_EXTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCCreate_Mat(<a href="../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line256">256: </a>{
+<a name="line257">257: </a>  PC_Mat *data;
+
+<a name="line259">259: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line260">260: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;data));
+<a name="line261">261: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCMatSetApplyOperation_C"</font>, PCMatSetApplyOperation_Mat));
+<a name="line262">262: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCMatGetApplyOperation_C"</font>, PCMatGetApplyOperation_Mat));
+<a name="line263">263: </a>  pc-&gt;data                     = data;
+<a name="line264">264: </a>  pc-&gt;ops-&gt;apply               = PCApply_Mat;
+<a name="line265">265: </a>  pc-&gt;ops-&gt;matapply            = PCMatApply_Mat;
+<a name="line266">266: </a>  pc-&gt;ops-&gt;applytranspose      = PCApplyTranspose_Mat;
+<a name="line267">267: </a>  pc-&gt;ops-&gt;setup               = PCSetUp_Mat;
+<a name="line268">268: </a>  pc-&gt;ops-&gt;destroy             = PCDestroy_Mat;
+<a name="line269">269: </a>  pc-&gt;ops-&gt;setfromoptions      = NULL;
+<a name="line270">270: </a>  pc-&gt;ops-&gt;view                = PCView_Mat;
+<a name="line271">271: </a>  pc-&gt;ops-&gt;applyrichardson     = NULL;
+<a name="line272">272: </a>  pc-&gt;ops-&gt;applysymmetricleft  = NULL;
+<a name="line273">273: </a>  pc-&gt;ops-&gt;applysymmetricright = NULL;
+<a name="line274">274: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line275">275: </a>}
+</pre>
+</body>
+
+</html>
+

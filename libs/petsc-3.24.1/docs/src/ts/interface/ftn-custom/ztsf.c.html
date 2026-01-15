@@ -1,0 +1,317 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ts/interface/ftn-custom/ztsf.c">Actual source code: ztsf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscts.h.html">&lt;petscts.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petscviewer.h.html">&lt;petscviewer.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define tsmonitorlgsettransform_      TSMONITORLGSETTRANSFORM</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define tssetrhsfunction_             TSSETRHSFUNCTION</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define tsgetrhsfunction_             TSGETRHSFUNCTION</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define tssetrhsjacobian_             TSSETRHSJACOBIAN</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define tsgetrhsjacobian_             TSGETRHSJACOBIAN</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define tssetifunction_               TSSETIFUNCTION</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define tsgetifunction_               TSGETIFUNCTION</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define tssetijacobian_               TSSETIJACOBIAN</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  #define tsgetijacobian_               TSGETIJACOBIAN</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  #define tsmonitorset_                 TSMONITORSET</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  #define tssetrhsjacobianp_            TSSETRHSJACOBIANP</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  #define tsgetrhsjacobianp_            TSGETRHSJACOBIANP</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  #define tssetijacobianp_              TSSETIJACOBIANP</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  #define tsgetijacobianp_              TSGETIJACOBIANP</font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">  #define tscomputerhsfunctionlinear_   TSCOMPUTERHSFUNCTIONLINEAR</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  #define tscomputerhsjacobianconstant_ TSCOMPUTERHSJACOBIANCONSTANT</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">  #define tscomputeifunctionlinear_     TSCOMPUTEIFUNCTIONLINEAR</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">  #define tscomputeijacobianconstant_   TSCOMPUTEIJACOBIANCONSTANT</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">  #define tsmonitordefault_             TSMONITORDEFAULT</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">  #define tssetprestep_                 TSSETPRESTEP</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">  #define tssetpoststep_                TSSETPOSTSTEP</font></strong>
+<a name="line27"> 27: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line28"> 28: </a><strong><font color="#228B22">  #define tsmonitorlgsettransform_      tsmonitorlgsettransform</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">  #define tssetrhsfunction_             tssetrhsfunction</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">  #define tsgetrhsfunction_             tsgetrhsfunction</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">  #define tssetrhsjacobian_             tssetrhsjacobian</font></strong>
+<a name="line32"> 32: </a><strong><font color="#228B22">  #define tsgetrhsjacobian_             tsgetrhsjacobian</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  #define tssetifunction_               tssetifunction</font></strong>
+<a name="line34"> 34: </a><strong><font color="#228B22">  #define tsgetifunction_               tsgetifunction</font></strong>
+<a name="line35"> 35: </a><strong><font color="#228B22">  #define tssetijacobian_               tssetijacobian</font></strong>
+<a name="line36"> 36: </a><strong><font color="#228B22">  #define tsgetijacobian_               tsgetijacobian</font></strong>
+<a name="line37"> 37: </a><strong><font color="#228B22">  #define tssetijacobianp_              tssetijacobianp</font></strong>
+<a name="line38"> 38: </a><strong><font color="#228B22">  #define tsgetijacobianp_              tsgetijacobianp</font></strong>
+<a name="line39"> 39: </a><strong><font color="#228B22">  #define tssetrhsjacobianp_            tssetrhsjacobianp</font></strong>
+<a name="line40"> 40: </a><strong><font color="#228B22">  #define tsgetrhsjacobianp_            tsgetrhsjacobianp</font></strong>
+<a name="line41"> 41: </a><strong><font color="#228B22">  #define tsmonitorset_                 tsmonitorset</font></strong>
+<a name="line42"> 42: </a><strong><font color="#228B22">  #define tscomputerhsfunctionlinear_   tscomputerhsfunctionlinear</font></strong>
+<a name="line43"> 43: </a><strong><font color="#228B22">  #define tscomputerhsjacobianconstant_ tscomputerhsjacobianconstant</font></strong>
+<a name="line44"> 44: </a><strong><font color="#228B22">  #define tscomputeifunctionlinear_     tscomputeifunctionlinear</font></strong>
+<a name="line45"> 45: </a><strong><font color="#228B22">  #define tscomputeijacobianconstant_   tscomputeijacobianconstant</font></strong>
+<a name="line46"> 46: </a><strong><font color="#228B22">  #define tsmonitordefault_             tsmonitordefault</font></strong>
+<a name="line47"> 47: </a><strong><font color="#228B22">  #define tssetprestep_                 tssetprestep</font></strong>
+<a name="line48"> 48: </a><strong><font color="#228B22">  #define tssetpoststep_                tssetpoststep</font></strong>
+<a name="line49"> 49: </a><font color="#A020F0">#endif</font>
+
+<a name="line51"> 51: </a>static <font color="#4169E1">struct</font> {
+<a name="line52"> 52: </a>  PetscFortranCallbackId prestep;
+<a name="line53"> 53: </a>  PetscFortranCallbackId poststep;
+<a name="line54"> 54: </a>  PetscFortranCallbackId rhsfunction;
+<a name="line55"> 55: </a>  PetscFortranCallbackId rhsjacobian;
+<a name="line56"> 56: </a>  PetscFortranCallbackId ifunction;
+<a name="line57"> 57: </a>  PetscFortranCallbackId ijacobian;
+<a name="line58"> 58: </a>  PetscFortranCallbackId rhsjacobianp;
+<a name="line59"> 59: </a>  PetscFortranCallbackId ijacobianp;
+<a name="line60"> 60: </a>  PetscFortranCallbackId monitor;
+<a name="line61"> 61: </a>  PetscFortranCallbackId mondestroy;
+<a name="line62"> 62: </a>  PetscFortranCallbackId transform;
+<a name="line63"> 63: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG)</font>
+<a name="line64"> 64: </a>  PetscFortranCallbackId function_pgiptr;
+<a name="line65"> 65: </a><font color="#A020F0">#endif</font>
+<a name="line66"> 66: </a>} _cb;
+
+<a name="line68"> 68: </a><strong><font color="#4169E1"><a name="ourprestep"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourprestep(<a href="../../../../manualpages/TS/TS.html">TS</a> ts)</font></strong>
+<a name="line69"> 69: </a>{
+<a name="line70"> 70: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line71"> 71: </a>  void *ptr;
+<a name="line72"> 72: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line73"> 73: </a><font color="#A020F0">#endif</font>
+<a name="line74"> 74: </a>  PetscObjectUseFortranCallback(ts, _cb.prestep, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line75"> 75: </a>}
+<a name="line76"> 76: </a><strong><font color="#4169E1"><a name="ourpoststep"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourpoststep(<a href="../../../../manualpages/TS/TS.html">TS</a> ts)</font></strong>
+<a name="line77"> 77: </a>{
+<a name="line78"> 78: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line79"> 79: </a>  void *ptr;
+<a name="line80"> 80: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line81"> 81: </a><font color="#A020F0">#endif</font>
+<a name="line82"> 82: </a>  PetscObjectUseFortranCallback(ts, _cb.poststep, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line83"> 83: </a>}
+<a name="line84"> 84: </a><strong><font color="#4169E1"><a name="ourrhsfunction"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourrhsfunction(<a href="../../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> f, void *ctx)</font></strong>
+<a name="line85"> 85: </a>{
+<a name="line86"> 86: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line87"> 87: </a>  void *ptr;
+<a name="line88"> 88: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line89"> 89: </a><font color="#A020F0">#endif</font>
+<a name="line90"> 90: </a>  PetscObjectUseFortranCallback(ts, _cb.rhsfunction, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;d, &amp;x, &amp;f, _ctx, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line91"> 91: </a>}
+<a name="line92"> 92: </a><strong><font color="#4169E1"><a name="ourifunction"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourifunction(<a href="../../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> xdot, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> f, void *ctx)</font></strong>
+<a name="line93"> 93: </a>{
+<a name="line94"> 94: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line95"> 95: </a>  void *ptr;
+<a name="line96"> 96: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line97"> 97: </a><font color="#A020F0">#endif</font>
+<a name="line98"> 98: </a>  PetscObjectUseFortranCallback(ts, _cb.ifunction, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;d, &amp;x, &amp;xdot, &amp;f, _ctx, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line99"> 99: </a>}
+<a name="line100">100: </a><strong><font color="#4169E1"><a name="ourrhsjacobian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourrhsjacobian(<a href="../../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> m, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> p, void *ctx)</font></strong>
+<a name="line101">101: </a>{
+<a name="line102">102: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line103">103: </a>  void *ptr;
+<a name="line104">104: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line105">105: </a><font color="#A020F0">#endif</font>
+<a name="line106">106: </a>  PetscObjectUseFortranCallback(ts, _cb.rhsjacobian, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;d, &amp;x, &amp;m, &amp;p, _ctx, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line107">107: </a>}
+<a name="line108">108: </a><strong><font color="#4169E1"><a name="ourijacobian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourijacobian(<a href="../../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> xdot, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> shift, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> m, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> p, void *ctx)</font></strong>
+<a name="line109">109: </a>{
+<a name="line110">110: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line111">111: </a>  void *ptr;
+<a name="line112">112: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line113">113: </a><font color="#A020F0">#endif</font>
+<a name="line114">114: </a>  PetscObjectUseFortranCallback(ts, _cb.ijacobian, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;d, &amp;x, &amp;xdot, &amp;shift, &amp;m, &amp;p, _ctx, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line115">115: </a>}
+<a name="line116">116: </a><strong><font color="#4169E1"><a name="ourijacobianp"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourijacobianp(<a href="../../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> xdot, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> shift, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> m, void *ctx)</font></strong>
+<a name="line117">117: </a>{
+<a name="line118">118: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line119">119: </a>  void *ptr;
+<a name="line120">120: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line121">121: </a><font color="#A020F0">#endif</font>
+<a name="line122">122: </a>  PetscObjectUseFortranCallback(ts, _cb.ijacobianp, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;d, &amp;x, &amp;xdot, &amp;shift, &amp;m, _ctx, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line123">123: </a>}
+<a name="line124">124: </a><strong><font color="#4169E1"><a name="ourrhsjacobianp"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourrhsjacobianp(<a href="../../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> m, void *ctx)</font></strong>
+<a name="line125">125: </a>{
+<a name="line126">126: </a><font color="#A020F0">#if defined(PETSC_HAVE_F90_2PTR_ARG) &amp;&amp; defined(foo)</font>
+<a name="line127">127: </a>  void *ptr;
+<a name="line128">128: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetFortranCallback.html">PetscObjectGetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, PETSC_FORTRAN_CALLBACK_CLASS, _cb.function_pgiptr, NULL, &amp;ptr));
+<a name="line129">129: </a><font color="#A020F0">#endif</font>
+<a name="line130">130: </a>  PetscObjectUseFortranCallback(ts, _cb.rhsjacobianp, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> * <font color="#B22222">/* PETSC_F90_2PTR_PROTO_NOVAR */</font>), (&amp;ts, &amp;d, &amp;x, &amp;m, _ctx, &amp;ierr <font color="#B22222">/* PETSC_F90_2PTR_PARAM(ptr) */</font>));
+<a name="line131">131: </a>}
+
+<a name="line133">133: </a><strong><font color="#4169E1"><a name="ourmonitordestroy"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourmonitordestroy(void **ctx)</font></strong>
+<a name="line134">134: </a>{
+<a name="line135">135: </a>  <a href="../../../../manualpages/TS/TS.html">TS</a> ts = (<a href="../../../../manualpages/TS/TS.html">TS</a>)*ctx;
+<a name="line136">136: </a>  PetscObjectUseFortranCallback(ts, _cb.mondestroy, (void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), (_ctx, &amp;ierr));
+<a name="line137">137: </a>}
+
+<a name="line139">139: </a><font color="#B22222">/*</font>
+<a name="line140">140: </a><font color="#B22222">   Note ctx is the same as ts so we need to get the Fortran context out of the <a href="../../../../manualpages/TS/TS.html">TS</a></font>
+<a name="line141">141: </a><font color="#B22222">*/</font>
+<a name="line142">142: </a><strong><font color="#4169E1"><a name="ourmonitor"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourmonitor(<a href="../../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> v, void *ctx)</font></strong>
+<a name="line143">143: </a>{
+<a name="line144">144: </a>  PetscObjectUseFortranCallback(ts, _cb.monitor, (<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), (&amp;ts, &amp;i, &amp;d, &amp;v, _ctx, &amp;ierr));
+<a name="line145">145: </a>}
+
+<a name="line147">147: </a><font color="#B22222">/*</font>
+<a name="line148">148: </a><font color="#B22222">   Currently does not handle destroy or context</font>
+<a name="line149">149: </a><font color="#B22222">*/</font>
+<a name="line150">150: </a><strong><font color="#4169E1"><a name="ourtransform"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourtransform(void *ctx, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *xout)</font></strong>
+<a name="line151">151: </a>{
+<a name="line152">152: </a>  PetscObjectUseFortranCallback((<a href="../../../../manualpages/TS/TS.html">TS</a>)ctx, _cb.transform, (void *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), (_ctx, &amp;x, xout, &amp;ierr));
+<a name="line153">153: </a>}
+
+<a name="line155">155: </a><strong><font color="#4169E1"><a name="tsmonitorlgsettransform_"></a>PETSC_EXTERN void tsmonitorlgsettransform_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, void (*f)(void *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*d)(void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line156">156: </a>{
+<a name="line157">157: </a>  *ierr = <a href="../../../../manualpages/TS/TSMonitorLGSetTransform.html">TSMonitorLGSetTransform</a>(*ts, ourtransform, NULL, NULL);
+<a name="line158">158: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line159">159: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.transform, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, ctx);
+<a name="line160">160: </a>}
+
+<a name="line162">162: </a><strong><font color="#4169E1"><a name="tssetprestep_"></a>PETSC_EXTERN void tssetprestep_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line163">163: </a>{
+<a name="line164">164: </a>  *ierr = <a href="../../../../manualpages/TS/TSSetPreStep.html">TSSetPreStep</a>(*ts, ourprestep);
+<a name="line165">165: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line166">166: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.prestep, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, NULL);
+<a name="line167">167: </a>}
+
+<a name="line169">169: </a><strong><font color="#4169E1"><a name="tssetpoststep_"></a>PETSC_EXTERN void tssetpoststep_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line170">170: </a>{
+<a name="line171">171: </a>  *ierr = <a href="../../../../manualpages/TS/TSSetPostStep.html">TSSetPostStep</a>(*ts, ourpoststep);
+<a name="line172">172: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line173">173: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.poststep, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, NULL);
+<a name="line174">174: </a>}
+
+<a name="line176">176: </a><strong><font color="#4169E1">PETSC_EXTERN void tscomputerhsfunctionlinear_(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *)</font></strong>;
+
+<a name="line178">178: </a><strong><font color="#4169E1"><a name="tssetrhsfunction_"></a>PETSC_EXTERN void tssetrhsfunction_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *r, void (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *fP, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line179">179: </a>{
+<a name="line180">180: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> R;
+<a name="line181">181: </a>  CHKFORTRANNULLOBJECT(r);
+<a name="line182">182: </a>  CHKFORTRANNULLFUNCTION(f);
+<a name="line183">183: </a>  R = r ? *r : (<a href="../../../../manualpages/Vec/Vec.html">Vec</a>)NULL;
+<a name="line184">184: </a>  <font color="#4169E1">if</font> (f == tscomputerhsfunctionlinear_) {
+<a name="line185">185: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetRHSFunction.html">TSSetRHSFunction</a>(*ts, R, <a href="../../../../manualpages/TS/TSComputeRHSFunctionLinear.html">TSComputeRHSFunctionLinear</a>, fP);
+<a name="line186">186: </a>  } <font color="#4169E1">else</font> {
+<a name="line187">187: </a>    *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.rhsfunction, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, fP);
+<a name="line188">188: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetRHSFunction.html">TSSetRHSFunction</a>(*ts, R, ourrhsfunction, NULL);
+<a name="line189">189: </a>  }
+<a name="line190">190: </a>}
+<a name="line191">191: </a><strong><font color="#4169E1"><a name="tsgetrhsfunction_"></a>PETSC_EXTERN void tsgetrhsfunction_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *r, void *func, void **ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line192">192: </a>{
+<a name="line193">193: </a>  CHKFORTRANNULLINTEGER(ctx);
+<a name="line194">194: </a>  CHKFORTRANNULLOBJECT(r);
+<a name="line195">195: </a>  *ierr = <a href="../../../../manualpages/TS/TSGetRHSFunction.html">TSGetRHSFunction</a>(*ts, r, NULL, ctx);
+<a name="line196">196: </a>}
+
+<a name="line198">198: </a><strong><font color="#4169E1">PETSC_EXTERN void tscomputeifunctionlinear_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *t, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *X, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *Xdot, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *F, void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>;
+
+<a name="line200">200: </a><strong><font color="#4169E1"><a name="tssetifunction_"></a>PETSC_EXTERN void tssetifunction_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *r, void (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *fP, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line201">201: </a>{
+<a name="line202">202: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> R;
+<a name="line203">203: </a>  CHKFORTRANNULLOBJECT(r);
+<a name="line204">204: </a>  CHKFORTRANNULLFUNCTION(f);
+<a name="line205">205: </a>  R = r ? *r : (<a href="../../../../manualpages/Vec/Vec.html">Vec</a>)NULL;
+<a name="line206">206: </a>  <font color="#4169E1">if</font> (f == tscomputeifunctionlinear_) {
+<a name="line207">207: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetIFunction.html">TSSetIFunction</a>(*ts, R, <a href="../../../../manualpages/TS/TSComputeIFunctionLinear.html">TSComputeIFunctionLinear</a>, fP);
+<a name="line208">208: </a>  } <font color="#4169E1">else</font> {
+<a name="line209">209: </a>    *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.ifunction, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, fP);
+<a name="line210">210: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetIFunction.html">TSSetIFunction</a>(*ts, R, ourifunction, NULL);
+<a name="line211">211: </a>  }
+<a name="line212">212: </a>}
+<a name="line213">213: </a><strong><font color="#4169E1"><a name="tsgetifunction_"></a>PETSC_EXTERN void tsgetifunction_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *r, void *func, void **ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line214">214: </a>{
+<a name="line215">215: </a>  CHKFORTRANNULLINTEGER(ctx);
+<a name="line216">216: </a>  CHKFORTRANNULLOBJECT(r);
+<a name="line217">217: </a>  *ierr = <a href="../../../../manualpages/TS/TSGetIFunction.html">TSGetIFunction</a>(*ts, r, NULL, ctx);
+<a name="line218">218: </a>}
+
+<a name="line220">220: </a><font color="#B22222">/* ---------------------------------------------------------*/</font>
+<a name="line221">221: </a><strong><font color="#4169E1">PETSC_EXTERN void tscomputerhsjacobianconstant_(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *)</font></strong>;
+
+<a name="line223">223: </a><strong><font color="#4169E1"><a name="tssetrhsjacobian_"></a>PETSC_EXTERN void tssetrhsjacobian_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *A, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *B, void (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *fP, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line224">224: </a>{
+<a name="line225">225: </a>  CHKFORTRANNULLFUNCTION(f);
+<a name="line226">226: </a>  <font color="#4169E1">if</font> (f == tscomputerhsjacobianconstant_) {
+<a name="line227">227: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetRHSJacobian.html">TSSetRHSJacobian</a>(*ts, *A, *B, <a href="../../../../manualpages/TS/TSComputeRHSJacobianConstant.html">TSComputeRHSJacobianConstant</a>, fP);
+<a name="line228">228: </a>  } <font color="#4169E1">else</font> {
+<a name="line229">229: </a>    *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.rhsjacobian, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, fP);
+<a name="line230">230: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetRHSJacobian.html">TSSetRHSJacobian</a>(*ts, *A, *B, ourrhsjacobian, NULL);
+<a name="line231">231: </a>  }
+<a name="line232">232: </a>}
+
+<a name="line234">234: </a><strong><font color="#4169E1">PETSC_EXTERN void tscomputeijacobianconstant_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *t, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *X, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *Xdot, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *shift, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *A, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *B, void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>;
+
+<a name="line236">236: </a><strong><font color="#4169E1"><a name="tssetijacobian_"></a>PETSC_EXTERN void tssetijacobian_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *A, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *B, void (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *fP, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line237">237: </a>{
+<a name="line238">238: </a>  CHKFORTRANNULLFUNCTION(f);
+<a name="line239">239: </a>  <font color="#4169E1">if</font> (f == tscomputeijacobianconstant_) {
+<a name="line240">240: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetIJacobian.html">TSSetIJacobian</a>(*ts, *A, *B, <a href="../../../../manualpages/TS/TSComputeIJacobianConstant.html">TSComputeIJacobianConstant</a>, fP);
+<a name="line241">241: </a>  } <font color="#4169E1">else</font> {
+<a name="line242">242: </a>    *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.ijacobian, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, fP);
+<a name="line243">243: </a>    *ierr = <a href="../../../../manualpages/TS/TSSetIJacobian.html">TSSetIJacobian</a>(*ts, *A, *B, ourijacobian, NULL);
+<a name="line244">244: </a>  }
+<a name="line245">245: </a>}
+<a name="line246">246: </a><strong><font color="#4169E1"><a name="tsgetijacobian_"></a>PETSC_EXTERN void tsgetijacobian_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *J, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *M, int *func, void **ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line247">247: </a>{
+<a name="line248">248: </a>  CHKFORTRANNULLINTEGER(ctx);
+<a name="line249">249: </a>  CHKFORTRANNULLOBJECT(J);
+<a name="line250">250: </a>  CHKFORTRANNULLOBJECT(M);
+<a name="line251">251: </a>  *ierr = <a href="../../../../manualpages/TS/TSGetIJacobian.html">TSGetIJacobian</a>(*ts, J, M, NULL, ctx);
+<a name="line252">252: </a>}
+<a name="line253">253: </a><strong><font color="#4169E1"><a name="tssetijacobianp_"></a>PETSC_EXTERN void tssetijacobianp_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *A, void (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *fP, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line254">254: </a>{
+<a name="line255">255: </a>  CHKFORTRANNULLFUNCTION(f);
+<a name="line256">256: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.ijacobianp, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, fP);
+<a name="line257">257: </a>  *ierr = <a href="../../../../manualpages/Sensitivity/TSSetIJacobianP.html">TSSetIJacobianP</a>(*ts, *A, ourijacobianp, NULL);
+<a name="line258">258: </a>}
+<a name="line259">259: </a><strong><font color="#4169E1"><a name="tsgetijacobianp_"></a>PETSC_EXTERN void tsgetijacobianp_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *J, int *func, void **ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line260">260: </a>{
+<a name="line261">261: </a>  CHKFORTRANNULLINTEGER(ctx);
+<a name="line262">262: </a>  CHKFORTRANNULLOBJECT(J);
+<a name="line263">263: </a>  *ierr = <a href="../../../../manualpages/Sensitivity/TSGetIJacobianP.html">TSGetIJacobianP</a>(*ts, J, NULL, ctx);
+<a name="line264">264: </a>}
+<a name="line265">265: </a><strong><font color="#4169E1"><a name="tssetrhsjacobianp_"></a>PETSC_EXTERN void tssetrhsjacobianp_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *A, void (*f)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *fP, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line266">266: </a>{
+<a name="line267">267: </a>  CHKFORTRANNULLFUNCTION(f);
+<a name="line268">268: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.rhsjacobianp, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f, fP);
+<a name="line269">269: </a>  *ierr = <a href="../../../../manualpages/Sensitivity/TSSetRHSJacobianP.html">TSSetRHSJacobianP</a>(*ts, *A, ourrhsjacobianp, NULL);
+<a name="line270">270: </a>}
+<a name="line271">271: </a><strong><font color="#4169E1"><a name="tsgetrhsjacobianp_"></a>PETSC_EXTERN void tsgetrhsjacobianp_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *J, int *func, void **ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line272">272: </a>{
+<a name="line273">273: </a>  CHKFORTRANNULLINTEGER(ctx);
+<a name="line274">274: </a>  CHKFORTRANNULLOBJECT(J);
+<a name="line275">275: </a>  *ierr = <a href="../../../../manualpages/Sensitivity/TSGetRHSJacobianP.html">TSGetRHSJacobianP</a>(*ts, J, NULL, ctx);
+<a name="line276">276: </a>}
+
+<a name="line278">278: </a><strong><font color="#4169E1">PETSC_EXTERN void tsmonitordefault_(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, PetscViewerAndFormat **, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *)</font></strong>;
+
+<a name="line280">280: </a><font color="#B22222">/* ---------------------------------------------------------*/</font>
+
+<a name="line282">282: </a><font color="#B22222">/* PETSC_EXTERN void tsmonitordefault_(<a href="../../../../manualpages/TS/TS.html">TS</a>*,<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>*,<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>*,<a href="../../../../manualpages/Vec/Vec.html">Vec</a>*,void*,<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>*); */</font>
+
+<a name="line284">284: </a><strong><font color="#4169E1"><a name="tsmonitorset_"></a>PETSC_EXTERN void tsmonitorset_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, void (*func)(<a href="../../../../manualpages/TS/TS.html">TS</a> *, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *mctx, void (*d)(void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line285">285: </a>{
+<a name="line286">286: </a>  CHKFORTRANNULLFUNCTION(d);
+<a name="line287">287: </a>  <font color="#4169E1">if</font> ((<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)func == (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)tsmonitordefault_) {
+<a name="line288">288: </a>    *ierr = <a href="../../../../manualpages/TS/TSMonitorSet.html">TSMonitorSet</a>(*ts, (<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*)(<a href="../../../../manualpages/TS/TS.html">TS</a>, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, void *))<a href="../../../../manualpages/TS/TSMonitorDefault.html">TSMonitorDefault</a>, *(PetscViewerAndFormat **)mctx, (<a href="../../../../manualpages/Sys/PetscCtxDestroyFn.html">PetscCtxDestroyFn</a> *)<a href="../../../../manualpages/Viewer/PetscViewerAndFormatDestroy.html">PetscViewerAndFormatDestroy</a>);
+<a name="line289">289: </a>  } <font color="#4169E1">else</font> {
+<a name="line290">290: </a>    *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.monitor, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)func, mctx);
+<a name="line291">291: </a>    *ierr = <a href="../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ts, PETSC_FORTRAN_CALLBACK_CLASS, &amp;_cb.mondestroy, (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)d, mctx);
+<a name="line292">292: </a>    *ierr = <a href="../../../../manualpages/TS/TSMonitorSet.html">TSMonitorSet</a>(*ts, ourmonitor, *ts, ourmonitordestroy);
+<a name="line293">293: </a>  }
+<a name="line294">294: </a>}
+
+<a name="line296">296: </a><font color="#B22222">/* ---------------------------------------------------------*/</font>
+<a name="line297">297: </a><font color="#B22222">/*  func is currently ignored from Fortran */</font>
+<a name="line298">298: </a><strong><font color="#4169E1"><a name="tsgetrhsjacobian_"></a>PETSC_EXTERN void tsgetrhsjacobian_(<a href="../../../../manualpages/TS/TS.html">TS</a> *ts, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *J, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *M, int *func, void **ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line299">299: </a>{
+<a name="line300">300: </a>  *ierr = <a href="../../../../manualpages/TS/TSGetRHSJacobian.html">TSGetRHSJacobian</a>(*ts, J, M, NULL, ctx);
+<a name="line301">301: </a>}
+</pre>
+</body>
+
+</html>
+

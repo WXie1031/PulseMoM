@@ -1,0 +1,498 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petscdevicetypes.h">Actual source code: petscdevicetypes.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:43+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#B22222">// Some overzealous older gcc versions warn that the comparisons below are always true. Neat</font>
+<a name="line6">  6: </a><font color="#B22222">// that it can detect this, but the tautology *is* the point of the static_assert()!</font>
+<a name="line7">  7: </a><font color="#A020F0">#if defined(__GNUC__) &amp;&amp; __GNUC__ &gt;= 6 &amp;&amp; !<a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_WINDOWS_COMPILERS)</font>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING 1</font></strong>
+<a name="line9">  9: </a><font color="#A020F0">#else</font>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING 0</font></strong>
+<a name="line11"> 11: </a><font color="#A020F0">#endif</font>
+
+<a name="line13"> 13: </a><font color="#B22222">/* SUBMANSEC = Sys */</font>
+
+<a name="line15"> 15: </a><font color="#B22222">/*E</font>
+<a name="line16"> 16: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscMemType.html">PetscMemType</a> - Memory type of a pointer</font>
+
+<a name="line18"> 18: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line20"> 20: </a><font color="#B22222">  Note:</font>
+<a name="line21"> 21: </a><font color="#B22222">  `PETSC_MEMTYPE_KOKKOS` depends on the Kokkos backend configuration</font>
+
+<a name="line23"> 23: </a><font color="#B22222">  Developer Notes:</font>
+<a name="line24"> 24: </a><font color="#B22222">  This enum uses a function (`PetscMemTypeToString()`) to convert to string representation so</font>
+<a name="line25"> 25: </a><font color="#B22222">  cannot be used in `<a href="../manualpages/Sys/PetscOptionsEnum.html">PetscOptionsEnum</a>()`.</font>
+
+<a name="line27"> 27: </a><font color="#B22222">  Encoding of the bitmask in binary\: xxxxyyyz</font>
+<a name="line28"> 28: </a><font color="#B22222">.vb</font>
+<a name="line29"> 29: </a><font color="#B22222"> z = 0                - Host memory</font>
+<a name="line30"> 30: </a><font color="#B22222"> z = 1                - Device memory</font>
+<a name="line31"> 31: </a><font color="#B22222"> yyy = 000            - CUDA-related memory</font>
+<a name="line32"> 32: </a><font color="#B22222"> yyy = 001            - HIP-related memory</font>
+<a name="line33"> 33: </a><font color="#B22222"> yyy = 010            - SYCL-related memory</font>
+<a name="line34"> 34: </a><font color="#B22222"> xxxxyyy1 = 0000,0001 - CUDA memory</font>
+<a name="line35"> 35: </a><font color="#B22222"> xxxxyyy1 = 0001,0001 - CUDA NVSHMEM memory</font>
+<a name="line36"> 36: </a><font color="#B22222"> xxxxyyy1 = 0000,0011 - HIP memory</font>
+<a name="line37"> 37: </a><font color="#B22222"> xxxxyyy1 = 0000,0101 - SYCL memory</font>
+<a name="line38"> 38: </a><font color="#B22222">.ve</font>
+
+<a name="line40"> 40: </a><font color="#B22222">  Other types of memory, e.g., CUDA managed memory, can be added when needed.</font>
+
+<a name="line42"> 42: </a><font color="#B22222">.seealso: `PetscMemTypeToString()`, `<a href="../manualpages/Vec/VecGetArrayAndMemType.html">VecGetArrayAndMemType</a>()`,</font>
+<a name="line43"> 43: </a><font color="#B22222">`<a href="../manualpages/PetscSF/PetscSFBcastWithMemTypeBegin.html">PetscSFBcastWithMemTypeBegin</a>()`, `<a href="../manualpages/PetscSF/PetscSFReduceWithMemTypeBegin.html">PetscSFReduceWithMemTypeBegin</a>()`</font>
+<a name="line44"> 44: </a><font color="#B22222">E*/</font>
+<a name="line45"> 45: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line46"> 46: </a>  <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>    = 0,
+<a name="line47"> 47: </a>  <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>  = 1,  <font color="#B22222">/* 0x01 */</font>
+<a name="line48"> 48: </a>  <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a>    = 1,  <font color="#B22222">/* 0x01 */</font>
+<a name="line49"> 49: </a>  <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_NVSHMEM</a> = 17, <font color="#B22222">/* 0x11 */</font>
+<a name="line50"> 50: </a>  <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HIP</a>     = 3,  <font color="#B22222">/* 0x03 */</font>
+<a name="line51"> 51: </a>  <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_SYCL</a>    = 5   <font color="#B22222">/* 0x05 */</font>
+<a name="line52"> 52: </a>} <a href="../manualpages/Sys/PetscMemType.html">PetscMemType</a>;
+<a name="line53"> 53: </a><font color="#A020F0">#if <a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line54"> 54: </a><strong><font color="#228B22">  #define PETSC_MEMTYPE_KOKKOS <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a></font></strong>
+<a name="line55"> 55: </a><font color="#A020F0">#elif <a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line56"> 56: </a><strong><font color="#228B22">  #define PETSC_MEMTYPE_KOKKOS <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HIP</a></font></strong>
+<a name="line57"> 57: </a><font color="#A020F0">#elif <a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_SYCL)</font>
+<a name="line58"> 58: </a><strong><font color="#228B22">  #define PETSC_MEMTYPE_KOKKOS <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_SYCL</a></font></strong>
+<a name="line59"> 59: </a><font color="#A020F0">#else</font>
+<a name="line60"> 60: </a><strong><font color="#228B22">  #define PETSC_MEMTYPE_KOKKOS <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a></font></strong>
+<a name="line61"> 61: </a><font color="#A020F0">#endif</font>
+
+<a name="line63"> 63: </a><strong><font color="#228B22">#define PetscMemTypeHost(m)    (((m) &amp; 0x1) == <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>)</font></strong>
+<a name="line64"> 64: </a><strong><font color="#228B22">#define PetscMemTypeDevice(m)  (((m) &amp; 0x1) == <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>)</font></strong>
+<a name="line65"> 65: </a><strong><font color="#228B22">#define PetscMemTypeCUDA(m)    (((m) &amp; 0xF) == <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a>)</font></strong>
+<a name="line66"> 66: </a><strong><font color="#228B22">#define PetscMemTypeHIP(m)     (((m) &amp; 0xF) == <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HIP</a>)</font></strong>
+<a name="line67"> 67: </a><strong><font color="#228B22">#define PetscMemTypeSYCL(m)    (((m) &amp; 0xF) == <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_SYCL</a>)</font></strong>
+<a name="line68"> 68: </a><strong><font color="#228B22">#define PetscMemTypeNVSHMEM(m) ((m) == <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_NVSHMEM</a>)</font></strong>
+
+<a name="line70"> 70: </a><font color="#A020F0">#if defined(__cplusplus)</font>
+<a name="line71"> 71: </a><font color="#A020F0">  #if PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING</font>
+<a name="line72"> 72: </a><font color="#A020F0">    #pragma GCC diagnostic push</font>
+<a name="line73"> 73: </a><font color="#A020F0">    #pragma GCC diagnostic ignored </font><font color="#666666">"-Wtautological-compare"</font><font color="#A020F0"></font>
+<a name="line74"> 74: </a><font color="#A020F0">  #endif</font>
+<a name="line75"> 75: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeHost(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line76"> 76: </a>static_assert(!PetscMemTypeHost(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>), <font color="#666666">""</font>);
+<a name="line77"> 77: </a>static_assert(!PetscMemTypeHost(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a>), <font color="#666666">""</font>);
+<a name="line78"> 78: </a>static_assert(!PetscMemTypeHost(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HIP</a>), <font color="#666666">""</font>);
+<a name="line79"> 79: </a>static_assert(!PetscMemTypeHost(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_SYCL</a>), <font color="#666666">""</font>);
+<a name="line80"> 80: </a>static_assert(!PetscMemTypeHost(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_NVSHMEM</a>), <font color="#666666">""</font>);
+
+<a name="line82"> 82: </a>static_assert(!PetscMemTypeDevice(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>), <font color="#666666">""</font>);
+<a name="line83"> 83: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeDevice(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line84"> 84: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeDevice(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line85"> 85: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeDevice(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HIP</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line86"> 86: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeDevice(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_SYCL</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line87"> 87: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeDevice(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_NVSHMEM</a>)</font></strong>, <font color="#666666">""</font>);
+
+<a name="line89"> 89: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeCUDA(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line90"> 90: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemTypeCUDA(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_NVSHMEM</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line91"> 91: </a><font color="#A020F0">  #if PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING</font>
+<a name="line92"> 92: </a><font color="#A020F0">    #pragma GCC diagnostic pop</font>
+<a name="line93"> 93: </a><font color="#A020F0">  #endif</font>
+<a name="line94"> 94: </a><font color="#A020F0">#endif // __cplusplus</font>
+
+<a name="line96"> 96: </a><strong><font color="#4169E1"><a name="PetscMemTypeToString"></a><a href="../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static inline <a href="../manualpages/Sys/PETSC_CONSTEXPR_14.html">PETSC_CONSTEXPR_14</a> const char *PetscMemTypeToString(<a href="../manualpages/Sys/PetscMemType.html">PetscMemType</a> mtype)</font></strong>
+<a name="line97"> 97: </a>{
+<a name="line98"> 98: </a><font color="#A020F0">#ifdef __cplusplus</font>
+<a name="line99"> 99: </a>  static_assert(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a> == <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>, <font color="#666666">""</font>);
+<a name="line100">100: </a><font color="#A020F0">#endif</font>
+<a name="line101">101: </a><strong><font color="#228B22">#define PETSC_CASE_NAME(v) \</font></strong>
+<a name="line102">102: </a><strong><font color="#228B22">  case v: \</font></strong>
+<a name="line103">103: </a><strong><font color="#228B22">    return <a href="../manualpages/Sys/PetscStringize.html">PetscStringize</a>(v)</font></strong>
+
+<a name="line105">105: </a>  <font color="#4169E1">switch</font> (mtype) {
+<a name="line106">106: </a>    PETSC_CASE_NAME(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>);
+<a name="line107">107: </a>    <font color="#B22222">/* PETSC_CASE_NAME(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>); same as <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a> */</font>
+<a name="line108">108: </a>    PETSC_CASE_NAME(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_CUDA</a>);
+<a name="line109">109: </a>    PETSC_CASE_NAME(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_NVSHMEM</a>);
+<a name="line110">110: </a>    PETSC_CASE_NAME(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HIP</a>);
+<a name="line111">111: </a>    PETSC_CASE_NAME(<a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_SYCL</a>);
+<a name="line112">112: </a>  }
+<a name="line113">113: </a>  <a href="../manualpages/Sys/PetscUnreachable.html">PetscUnreachable</a>();
+<a name="line114">114: </a>  <font color="#4169E1">return</font> <font color="#666666">"invalid"</font>;
+<a name="line115">115: </a><strong><font color="#228B22">#undef PETSC_CASE_NAME</font></strong>
+<a name="line116">116: </a>}
+
+<a name="line118">118: </a><strong><font color="#228B22">#define <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_VECKOKKOS_DEPRECATED</a> PETSC_OFFLOAD_VECKOKKOS PETSC_DEPRECATED_ENUM(3, 17, 0, </font><font color="#666666">"<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>"</font><font color="#228B22">, )</font></strong>
+
+<a name="line120">120: </a><font color="#B22222">/*E</font>
+<a name="line121">121: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscOffloadMask.html">PetscOffloadMask</a> - indicates which memory (CPU, GPU, or none) contains valid data</font>
+
+<a name="line123">123: </a><font color="#B22222">  Values:</font>
+<a name="line124">124: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>` - no memory contains valid matrix entries; NEVER used for vectors</font>
+<a name="line125">125: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>`         - GPU has valid vector/matrix entries</font>
+<a name="line126">126: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>`         - CPU has valid vector/matrix entries</font>
+<a name="line127">127: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>`        - Both GPU and CPU have valid vector/matrix entries and they match</font>
+<a name="line128">128: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>`      - Reserved for Kokkos matrix and vector. It means the offload is managed by Kokkos, thus this flag itself cannot tell you where the valid data is.</font>
+
+<a name="line130">130: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line132">132: </a><font color="#B22222">  Developer Note:</font>
+<a name="line133">133: </a><font color="#B22222">  This enum uses a function (`PetscOffloadMaskToString()`) to convert to string representation so</font>
+<a name="line134">134: </a><font color="#B22222">  cannot be used in `<a href="../manualpages/Sys/PetscOptionsEnum.html">PetscOptionsEnum</a>()`.</font>
+
+<a name="line136">136: </a><font color="#B22222">.seealso: `PetscOffloadMaskToString()`, `PetscOffloadMaskToMemType()`, `PetscOffloadMaskToDeviceCopyMode()`</font>
+<a name="line137">137: </a><font color="#B22222">E*/</font>
+<a name="line138">138: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line139">139: </a>  <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>          = 0,   <font color="#B22222">/* 0x0 */</font>
+<a name="line140">140: </a>  <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>                  = 1,   <font color="#B22222">/* 0x1 */</font>
+<a name="line141">141: </a>  <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>                  = 2,   <font color="#B22222">/* 0x2 */</font>
+<a name="line142">142: </a>  <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>                 = 3,   <font color="#B22222">/* 0x3 */</font>
+<a name="line143">143: </a>  <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_VECKOKKOS_DEPRECATED</a> = 256, <font color="#B22222">/* 0x100 */</font>
+<a name="line144">144: </a>  <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>               = 256  <font color="#B22222">/* 0x100 */</font>
+<a name="line145">145: </a>} <a href="../manualpages/Sys/PetscOffloadMask.html">PetscOffloadMask</a>;
+
+<a name="line147">147: </a><strong><font color="#228B22">#define PetscOffloadUnallocated(m) ((m) == <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>)</font></strong>
+<a name="line148">148: </a><strong><font color="#228B22">#define PetscOffloadHost(m)        (((m) &amp; <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>) == <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>)</font></strong>
+<a name="line149">149: </a><strong><font color="#228B22">#define PetscOffloadDevice(m)      (((m) &amp; <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>) == <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>)</font></strong>
+<a name="line150">150: </a><strong><font color="#228B22">#define PetscOffloadBoth(m)        ((m) == <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>)</font></strong>
+
+<a name="line152">152: </a><font color="#A020F0">#if defined(__cplusplus)</font>
+<a name="line153">153: </a><font color="#A020F0">  #if PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING</font>
+<a name="line154">154: </a><font color="#A020F0">    #pragma GCC diagnostic push</font>
+<a name="line155">155: </a><font color="#A020F0">    #pragma GCC diagnostic ignored </font><font color="#666666">"-Wtautological-compare"</font><font color="#A020F0"></font>
+<a name="line156">156: </a><font color="#A020F0">  #endif</font>
+<a name="line157">157: </a>static_assert(!PetscOffloadHost(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>), <font color="#666666">""</font>);
+<a name="line158">158: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscOffloadHost(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line159">159: </a>static_assert(!PetscOffloadHost(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>), <font color="#666666">""</font>);
+<a name="line160">160: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscOffloadHost(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line161">161: </a>static_assert(!PetscOffloadHost(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>), <font color="#666666">""</font>);
+
+<a name="line163">163: </a>static_assert(!PetscOffloadDevice(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>), <font color="#666666">""</font>);
+<a name="line164">164: </a>static_assert(!PetscOffloadDevice(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>), <font color="#666666">""</font>);
+<a name="line165">165: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscOffloadDevice(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line166">166: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscOffloadDevice(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line167">167: </a>static_assert(!PetscOffloadDevice(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>), <font color="#666666">""</font>);
+
+<a name="line169">169: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscOffloadBoth(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line170">170: </a>static_assert(!PetscOffloadBoth(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>), <font color="#666666">""</font>);
+<a name="line171">171: </a>static_assert(!PetscOffloadBoth(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>), <font color="#666666">""</font>);
+<a name="line172">172: </a>static_assert(!PetscOffloadBoth(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>), <font color="#666666">""</font>);
+<a name="line173">173: </a>static_assert(!PetscOffloadBoth(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>), <font color="#666666">""</font>);
+<a name="line174">174: </a><font color="#A020F0">  #if PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING</font>
+<a name="line175">175: </a><font color="#A020F0">    #pragma GCC diagnostic pop</font>
+<a name="line176">176: </a><font color="#A020F0">  #endif</font>
+<a name="line177">177: </a><font color="#A020F0">#endif // __cplusplus</font>
+
+<a name="line179">179: </a><strong><font color="#4169E1"><a name="PetscOffloadMaskToString"></a><a href="../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static inline <a href="../manualpages/Sys/PETSC_CONSTEXPR_14.html">PETSC_CONSTEXPR_14</a> const char *PetscOffloadMaskToString(<a href="../manualpages/Sys/PetscOffloadMask.html">PetscOffloadMask</a> mask)</font></strong>
+<a name="line180">180: </a>{
+<a name="line181">181: </a><strong><font color="#228B22">#define PETSC_CASE_RETURN(v) \</font></strong>
+<a name="line182">182: </a><strong><font color="#228B22">  case v: \</font></strong>
+<a name="line183">183: </a><strong><font color="#228B22">    return <a href="../manualpages/Sys/PetscStringize.html">PetscStringize</a>(v)</font></strong>
+
+<a name="line185">185: </a>  <font color="#4169E1">switch</font> (mask) {
+<a name="line186">186: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>);
+<a name="line187">187: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>);
+<a name="line188">188: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>);
+<a name="line189">189: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>);
+<a name="line190">190: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>);
+<a name="line191">191: </a>  }
+<a name="line192">192: </a>  <a href="../manualpages/Sys/PetscUnreachable.html">PetscUnreachable</a>();
+<a name="line193">193: </a>  <font color="#4169E1">return</font> <font color="#666666">"invalid"</font>;
+<a name="line194">194: </a><strong><font color="#228B22">#undef PETSC_CASE_RETURN</font></strong>
+<a name="line195">195: </a>}
+
+<a name="line197">197: </a><strong><font color="#4169E1"><a name="PetscOffloadMaskToMemType"></a><a href="../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static inline <a href="../manualpages/Sys/PETSC_CONSTEXPR_14.html">PETSC_CONSTEXPR_14</a> <a href="../manualpages/Sys/PetscMemType.html">PetscMemType</a> PetscOffloadMaskToMemType(<a href="../manualpages/Sys/PetscOffloadMask.html">PetscOffloadMask</a> mask)</font></strong>
+<a name="line198">198: </a>{
+<a name="line199">199: </a>  <font color="#4169E1">switch</font> (mask) {
+<a name="line200">200: </a>  <font color="#4169E1">case</font> <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>:
+<a name="line201">201: </a>  <font color="#4169E1">case</font> <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_CPU</a>:
+<a name="line202">202: </a>    <font color="#4169E1">return</font> <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>;
+<a name="line203">203: </a>  <font color="#4169E1">case</font> <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_GPU</a>:
+<a name="line204">204: </a>  <font color="#4169E1">case</font> <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_BOTH</a>:
+<a name="line205">205: </a>    <font color="#4169E1">return</font> <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>;
+<a name="line206">206: </a>  <font color="#4169E1">case</font> <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_KOKKOS</a>:
+<a name="line207">207: </a>    <font color="#4169E1">return</font> PETSC_MEMTYPE_KOKKOS;
+<a name="line208">208: </a>  }
+<a name="line209">209: </a>  <a href="../manualpages/Sys/PetscUnreachable.html">PetscUnreachable</a>();
+<a name="line210">210: </a>  <font color="#4169E1">return</font> <a href="../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>;
+<a name="line211">211: </a>}
+
+<a name="line213">213: </a><font color="#B22222">/*E</font>
+<a name="line214">214: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscDeviceInitType.html">PetscDeviceInitType</a> - Initialization strategy for `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>`</font>
+
+<a name="line216">216: </a><font color="#B22222">  Values:</font>
+<a name="line217">217: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscDeviceInitType.html">PETSC_DEVICE_INIT_NONE</a>`  - <a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a> is never initialized</font>
+<a name="line218">218: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceInitType.html">PETSC_DEVICE_INIT_LAZY</a>`  - <a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a> is initialized on demand</font>
+<a name="line219">219: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscDeviceInitType.html">PETSC_DEVICE_INIT_EAGER</a>` - <a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a> is initialized as soon as possible</font>
+
+<a name="line221">221: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line223">223: </a><font color="#B22222">  Note:</font>
+<a name="line224">224: </a><font color="#B22222">  `<a href="../manualpages/Sys/PetscDeviceInitType.html">PETSC_DEVICE_INIT_NONE</a>` implies that any initialization of `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>` is disallowed and</font>
+<a name="line225">225: </a><font color="#B22222">  doing so results in an error. Useful to ensure that no accelerator is used in a program.</font>
+
+<a name="line227">227: </a><font color="#B22222">.seealso: `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>`, `<a href="../manualpages/Sys/PetscDeviceType.html">PetscDeviceType</a>`, `<a href="../manualpages/Device/PetscDeviceInitialize.html">PetscDeviceInitialize</a>()`,</font>
+<a name="line228">228: </a><font color="#B22222">`<a href="../manualpages/Device/PetscDeviceInitialized.html">PetscDeviceInitialized</a>()`, `<a href="../manualpages/Device/PetscDeviceCreate.html">PetscDeviceCreate</a>()`</font>
+<a name="line229">229: </a><font color="#B22222">E*/</font>
+<a name="line230">230: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line231">231: </a>  <a href="../manualpages/Sys/PetscDeviceInitType.html">PETSC_DEVICE_INIT_NONE</a>,
+<a name="line232">232: </a>  <a href="../manualpages/Sys/PetscDeviceInitType.html">PETSC_DEVICE_INIT_LAZY</a>,
+<a name="line233">233: </a>  <a href="../manualpages/Sys/PetscDeviceInitType.html">PETSC_DEVICE_INIT_EAGER</a>
+<a name="line234">234: </a>} <a href="../manualpages/Sys/PetscDeviceInitType.html">PetscDeviceInitType</a>;
+<a name="line235">235: </a>PETSC_EXTERN const char *const PetscDeviceInitTypes[];
+
+<a name="line237">237: </a><font color="#B22222">/*E</font>
+<a name="line238">238: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscDeviceType.html">PetscDeviceType</a> - Kind of accelerator device backend</font>
+
+<a name="line240">240: </a><font color="#B22222">  Values:</font>
+<a name="line241">241: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_HOST</a>` - Host, no accelerator backend found</font>
+<a name="line242">242: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_CUDA</a>` - CUDA enabled GPU</font>
+<a name="line243">243: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_HIP</a>`  - ROCM/HIP enabled GPU</font>
+<a name="line244">244: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_SYCL</a>` - SYCL enabled device</font>
+<a name="line245">245: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_MAX</a>`  - Always 1 greater than the largest valid `<a href="../manualpages/Sys/PetscDeviceType.html">PetscDeviceType</a>`, invalid type, do not use</font>
+
+<a name="line247">247: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line249">249: </a><font color="#B22222">  Note:</font>
+<a name="line250">250: </a><font color="#B22222">  One can also use the `<a href="../manualpages/Device/PETSC_DEVICE_DEFAULT.html">PETSC_DEVICE_DEFAULT</a>()` routine to get the current default `<a href="../manualpages/Sys/PetscDeviceType.html">PetscDeviceType</a>`.</font>
+
+<a name="line252">252: </a><font color="#B22222">.seealso: `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>`, `<a href="../manualpages/Sys/PetscDeviceInitType.html">PetscDeviceInitType</a>`, `<a href="../manualpages/Device/PetscDeviceCreate.html">PetscDeviceCreate</a>()`, `<a href="../manualpages/Device/PETSC_DEVICE_DEFAULT.html">PETSC_DEVICE_DEFAULT</a>()`</font>
+<a name="line253">253: </a><font color="#B22222">E*/</font>
+<a name="line254">254: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line255">255: </a>  <a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_HOST</a>,
+<a name="line256">256: </a>  <a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_CUDA</a>,
+<a name="line257">257: </a>  <a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_HIP</a>,
+<a name="line258">258: </a>  <a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_SYCL</a>,
+<a name="line259">259: </a>  <a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_MAX</a>
+<a name="line260">260: </a>} <a href="../manualpages/Sys/PetscDeviceType.html">PetscDeviceType</a>;
+<a name="line261">261: </a>PETSC_EXTERN const char *const PetscDeviceTypes[];
+
+<a name="line263">263: </a><font color="#B22222">/*E</font>
+<a name="line264">264: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscDeviceAttribute.html">PetscDeviceAttribute</a> - Attribute detailing a property or feature of a `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>`</font>
+
+<a name="line266">266: </a><font color="#B22222">  Values:</font>
+<a name="line267">267: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscDeviceAttribute.html">PETSC_DEVICE_ATTR_SIZE_T_SHARED_MEM_PER_BLOCK</a>` - The maximum amount of shared memory per block in a device kernel</font>
+<a name="line268">268: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscDeviceAttribute.html">PETSC_DEVICE_ATTR_MAX</a>`                         - Invalid attribute, do not use</font>
+
+<a name="line270">270: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line272">272: </a><font color="#B22222">.seealso: `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>`, `<a href="../manualpages/Device/PetscDeviceGetAttribute.html">PetscDeviceGetAttribute</a>()`</font>
+<a name="line273">273: </a><font color="#B22222">E*/</font>
+<a name="line274">274: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line275">275: </a>  <a href="../manualpages/Sys/PetscDeviceAttribute.html">PETSC_DEVICE_ATTR_SIZE_T_SHARED_MEM_PER_BLOCK</a>,
+<a name="line276">276: </a>  <a href="../manualpages/Sys/PetscDeviceAttribute.html">PETSC_DEVICE_ATTR_MAX</a>
+<a name="line277">277: </a>} <a href="../manualpages/Sys/PetscDeviceAttribute.html">PetscDeviceAttribute</a>;
+<a name="line278">278: </a>PETSC_EXTERN const char *const PetscDeviceAttributes[];
+
+<a name="line280">280: </a><font color="#B22222">/*S</font>
+<a name="line281">281: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a> - Object to manage an accelerator "device" (usually a GPU)</font>
+
+<a name="line283">283: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line285">285: </a><font color="#B22222">  Note:</font>
+<a name="line286">286: </a><font color="#B22222">  This object is used to house configuration and state of a device, but does not offer any</font>
+<a name="line287">287: </a><font color="#B22222">  ability to interact with or drive device computation. This functionality is facilitated</font>
+<a name="line288">288: </a><font color="#B22222">  instead by the `<a href="../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a>` object.</font>
+
+<a name="line290">290: </a><font color="#B22222">.seealso: `<a href="../manualpages/Sys/PetscDeviceType.html">PetscDeviceType</a>`, `<a href="../manualpages/Sys/PetscDeviceInitType.html">PetscDeviceInitType</a>`, `<a href="../manualpages/Device/PetscDeviceCreate.html">PetscDeviceCreate</a>()`,</font>
+<a name="line291">291: </a><font color="#B22222">`<a href="../manualpages/Device/PetscDeviceConfigure.html">PetscDeviceConfigure</a>()`, `<a href="../manualpages/Device/PetscDeviceDestroy.html">PetscDeviceDestroy</a>()`, `<a href="../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a>`,</font>
+<a name="line292">292: </a><font color="#B22222">`<a href="../manualpages/Device/PetscDeviceContextSetDevice.html">PetscDeviceContextSetDevice</a>()`, `<a href="../manualpages/Device/PetscDeviceContextGetDevice.html">PetscDeviceContextGetDevice</a>()`, `<a href="../manualpages/Device/PetscDeviceGetAttribute.html">PetscDeviceGetAttribute</a>()`</font>
+<a name="line293">293: </a><font color="#B22222">S*/</font>
+<a name="line294">294: </a><font color="#4169E1">typedef struct _n_PetscDevice *<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>;</font>
+
+<a name="line296">296: </a><font color="#B22222">/*E</font>
+<a name="line297">297: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscStreamType.html">PetscStreamType</a> - indicates how a stream implementation will interact</font>
+<a name="line298">298: </a><font color="#B22222">  with other streams and if it blocks the host.</font>
+
+<a name="line300">300: </a><font color="#B22222">  Values:</font>
+<a name="line301">301: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_DEFAULT</a>`                  - Same as the default stream in CUDA or HIP. Streams of this type may or may not synchronize implicitly with other streams. It does not block the host.</font>
+<a name="line302">302: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_NONBLOCKING</a>`              - Same as the nonblocking stream in CUDA or HIP. Streams of this type is truly asynchronous, and is blocked by nothing. It does not block the host. In CUDA, it is created with cudaStreamCreateWithFlags(&amp;stream, cudaStreamNonBlocking).</font>
+<a name="line303">303: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_DEFAULT_WITH_BARRIER</a>`     - Same as the default stream in CUDA or HIP. PETSc async functions using this kind of stream will end with a stream synchronization. Stream of this type may or may not synchronize implicitly with other streams.</font>
+<a name="line304">304: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_NONBLOCKING_WITH_BARRIER</a>` - Same as the nonblocking stream in CUDA or HIP. PETSc async functions using this kind of stream will end with a stream synchronization. Streams of this type are truly asynchronous and are blocked by nothing.</font>
+<a name="line305">305: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_MAX</a>`                - Always 1 greater than the largest `<a href="../manualpages/Sys/PetscStreamType.html">PetscStreamType</a>`, do not use</font>
+
+<a name="line307">307: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line309">309: </a><font color="#B22222">  Note:</font>
+<a name="line310">310: </a><font color="#B22222">  The default stream, also known as the NULL stream or stream 0, can have two different behaviors: legacy behavior and per-thread behavior.</font>
+<a name="line311">311: </a><font color="#B22222">  The behavior is determined at compile time. By default, the legacy default stream is used.</font>
+<a name="line312">312: </a><font color="#B22222">  The legacy default stream implicitly synchronizes with per-thread default streams.</font>
+<a name="line313">313: </a><font color="#B22222">  The per-thread default stream, like nonblocking streams, does not synchronizes with other per-thread streams, but synchronize with the default stream.</font>
+<a name="line314">314: </a><font color="#B22222">  The per-thread default stream may be useful for running kernels launched from different threads concurrently on the same GPU when the Multi-Process Service is not available.</font>
+<a name="line315">315: </a><font color="#B22222">  To use the per-thread default stream, one can enable it by using the nvcc option "--default-stream per-thread" or the hipcc option "-fgpu-default-stream=per-thread", depending on the backend used.</font>
+
+<a name="line317">317: </a><font color="#B22222">.seealso: `<a href="../manualpages/Device/PetscDeviceContextSetStreamType.html">PetscDeviceContextSetStreamType</a>()`, `<a href="../manualpages/Device/PetscDeviceContextGetStreamType.html">PetscDeviceContextGetStreamType</a>()`</font>
+<a name="line318">318: </a><font color="#B22222">E*/</font>
+<a name="line319">319: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line320">320: </a>  <a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_DEFAULT</a>,
+<a name="line321">321: </a>  <a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_NONBLOCKING</a>,
+<a name="line322">322: </a>  <a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_DEFAULT_WITH_BARRIER</a>,
+<a name="line323">323: </a>  <a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_NONBLOCKING_WITH_BARRIER</a>,
+<a name="line324">324: </a>  <a href="../manualpages/Sys/PetscStreamType.html">PETSC_STREAM_MAX</a>
+<a name="line325">325: </a>} <a href="../manualpages/Sys/PetscStreamType.html">PetscStreamType</a>;
+<a name="line326">326: </a>PETSC_EXTERN const char *const PetscStreamTypes[];
+
+<a name="line328">328: </a><font color="#B22222">/*E</font>
+<a name="line329">329: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PetscDeviceContextJoinMode</a> - Describes the type of join operation to perform in</font>
+<a name="line330">330: </a><font color="#B22222">  `<a href="../manualpages/Device/PetscDeviceContextJoin.html">PetscDeviceContextJoin</a>()`</font>
+
+<a name="line332">332: </a><font color="#B22222">  Values:</font>
+<a name="line333">333: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PETSC_DEVICE_CONTEXT_JOIN_DESTROY</a>` - Destroy all incoming sub-contexts after join.</font>
+<a name="line334">334: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PETSC_DEVICE_CONTEXT_JOIN_SYNC</a>`    - Synchronize incoming sub-contexts after join.</font>
+<a name="line335">335: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PETSC_DEVICE_CONTEXT_JOIN_NO_SYNC</a>` - Do not synchronize incoming sub-contexts after join.</font>
+
+<a name="line337">337: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line339">339: </a><font color="#B22222">.seealso: `<a href="../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a>`, `<a href="../manualpages/Device/PetscDeviceContextFork.html">PetscDeviceContextFork</a>()`, `<a href="../manualpages/Device/PetscDeviceContextJoin.html">PetscDeviceContextJoin</a>()`</font>
+<a name="line340">340: </a><font color="#B22222">E*/</font>
+<a name="line341">341: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line342">342: </a>  <a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PETSC_DEVICE_CONTEXT_JOIN_DESTROY</a>,
+<a name="line343">343: </a>  <a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PETSC_DEVICE_CONTEXT_JOIN_SYNC</a>,
+<a name="line344">344: </a>  <a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PETSC_DEVICE_CONTEXT_JOIN_NO_SYNC</a>
+<a name="line345">345: </a>} <a href="../manualpages/Sys/PetscDeviceContextJoinMode.html">PetscDeviceContextJoinMode</a>;
+<a name="line346">346: </a>PETSC_EXTERN const char *const PetscDeviceContextJoinModes[];
+
+<a name="line348">348: </a><font color="#B22222">/*S</font>
+<a name="line349">349: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a> - Container to manage stream dependencies and the various solver handles</font>
+<a name="line350">350: </a><font color="#B22222">  for asynchronous device compute.</font>
+
+<a name="line352">352: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line354">354: </a><font color="#B22222">.seealso: `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>`, `<a href="../manualpages/Device/PetscDeviceContextCreate.html">PetscDeviceContextCreate</a>()`, `<a href="../manualpages/Device/PetscDeviceContextSetDevice.html">PetscDeviceContextSetDevice</a>()`,</font>
+<a name="line355">355: </a><font color="#B22222">`<a href="../manualpages/Device/PetscDeviceContextDestroy.html">PetscDeviceContextDestroy</a>()`, `<a href="../manualpages/Device/PetscDeviceContextFork.html">PetscDeviceContextFork</a>()`, `<a href="../manualpages/Device/PetscDeviceContextJoin.html">PetscDeviceContextJoin</a>()`</font>
+<a name="line356">356: </a><font color="#B22222">S*/</font>
+<a name="line357">357: </a><font color="#4169E1">typedef struct _p_PetscDeviceContext *<a href="../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a>;</font>
+
+<a name="line359">359: </a><font color="#B22222">/*E</font>
+<a name="line360">360: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PetscDeviceCopyMode</a> - Describes the copy direction of a device-aware `memcpy`</font>
+
+<a name="line362">362: </a><font color="#B22222">  Values:</font>
+<a name="line363">363: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOH</a>` - Copy from host memory to host memory</font>
+<a name="line364">364: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOH</a>` - Copy from device memory to host memory</font>
+<a name="line365">365: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOD</a>` - Copy from host memory to device memory</font>
+<a name="line366">366: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOD</a>` - Copy from device memory to device memory</font>
+<a name="line367">367: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_AUTO</a>` - Infer the copy direction from the pointers</font>
+
+<a name="line369">369: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line371">371: </a><font color="#B22222">.seealso: `<a href="../manualpages/Device/PetscDeviceArrayCopy.html">PetscDeviceArrayCopy</a>()`, `<a href="../manualpages/Device/PetscDeviceMemcpy.html">PetscDeviceMemcpy</a>()`</font>
+<a name="line372">372: </a><font color="#B22222">E*/</font>
+<a name="line373">373: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line374">374: </a>  <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOH</a>,
+<a name="line375">375: </a>  <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOH</a>,
+<a name="line376">376: </a>  <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOD</a>,
+<a name="line377">377: </a>  <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOD</a>,
+<a name="line378">378: </a>  <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_AUTO</a>,
+<a name="line379">379: </a>} <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PetscDeviceCopyMode</a>;
+<a name="line380">380: </a>PETSC_EXTERN const char *const PetscDeviceCopyModes[];
+
+<a name="line382">382: </a><strong><font color="#4169E1"><a name="PetscOffloadMaskToDeviceCopyMode"></a><a href="../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static inline <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PetscDeviceCopyMode</a> PetscOffloadMaskToDeviceCopyMode(<a href="../manualpages/Sys/PetscOffloadMask.html">PetscOffloadMask</a> dest, <a href="../manualpages/Sys/PetscOffloadMask.html">PetscOffloadMask</a> src)</font></strong>
+<a name="line383">383: </a>{
+<a name="line384">384: </a>  <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PetscDeviceCopyMode</a> mode;
+
+<a name="line386">386: </a>  <a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line387">387: </a>  <a href="../manualpages/Sys/PetscAssertAbort.html">PetscAssertAbort</a>(dest != <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>, <a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Cannot copy to unallocated"</font>);
+<a name="line388">388: </a>  <a href="../manualpages/Sys/PetscAssertAbort.html">PetscAssertAbort</a>(src != <a href="../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>, <a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Cannot copy from unallocated"</font>);
+
+<a name="line390">390: </a>  <font color="#4169E1">if</font> (PetscOffloadDevice(dest)) {
+<a name="line391">391: </a>    mode = PetscOffloadHost(src) ? <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOD</a> : <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOD</a>;
+<a name="line392">392: </a>  } <font color="#4169E1">else</font> {
+<a name="line393">393: </a>    mode = PetscOffloadHost(src) ? <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOH</a> : <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOH</a>;
+<a name="line394">394: </a>  }
+<a name="line395">395: </a>  <a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(mode);
+<a name="line396">396: </a>}
+
+<a name="line398">398: </a><strong><font color="#4169E1"><a name="PetscMemTypeToDeviceCopyMode"></a><a href="../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static inline <a href="../manualpages/Sys/PETSC_CONSTEXPR_14.html">PETSC_CONSTEXPR_14</a> <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PetscDeviceCopyMode</a> PetscMemTypeToDeviceCopyMode(<a href="../manualpages/Sys/PetscMemType.html">PetscMemType</a> dest, <a href="../manualpages/Sys/PetscMemType.html">PetscMemType</a> src)</font></strong>
+<a name="line399">399: </a>{
+<a name="line400">400: </a>  <font color="#4169E1">if</font> (PetscMemTypeHost(dest)) {
+<a name="line401">401: </a>    <font color="#4169E1">return</font> PetscMemTypeHost(src) ? <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOH</a> : <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOH</a>;
+<a name="line402">402: </a>  } <font color="#4169E1">else</font> {
+<a name="line403">403: </a>    <font color="#4169E1">return</font> PetscMemTypeDevice(src) ? <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_DTOD</a> : <a href="../manualpages/Sys/PetscDeviceCopyMode.html">PETSC_DEVICE_COPY_HTOD</a>;
+<a name="line404">404: </a>  }
+<a name="line405">405: </a>}
+
+<a name="line407">407: </a><font color="#B22222">/*E</font>
+<a name="line408">408: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PetscMemoryAccessMode</a> - Describes the intended usage of a memory region</font>
+
+<a name="line410">410: </a><font color="#B22222">  Values:</font>
+<a name="line411">411: </a><font color="#B22222">+ `<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>`       - Read only</font>
+<a name="line412">412: </a><font color="#B22222">. `<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>`      - Write only</font>
+<a name="line413">413: </a><font color="#B22222">- `<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a>` - Read and write</font>
+
+<a name="line415">415: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line417">417: </a><font color="#B22222">  Notes:</font>
+<a name="line418">418: </a><font color="#B22222">  This `enum` is a bitmask with the following encoding (assuming 2 bit)\:</font>
+
+<a name="line420">420: </a><font color="#B22222">.vb</font>
+<a name="line421">421: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>       = 0b01</font>
+<a name="line422">422: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>      = 0b10</font>
+<a name="line423">423: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a> = 0b11</font>
+
+<a name="line425">425: </a><font color="#B22222">  // consequently</font>
+<a name="line426">426: </a><font color="#B22222">  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a> | <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a> = <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a></font>
+<a name="line427">427: </a><font color="#B22222">.ve</font>
+
+<a name="line429">429: </a><font color="#B22222">  The following convenience macros are also provided\:</font>
+
+<a name="line431">431: </a><font color="#B22222">+ `PetscMemoryAccessRead(mode)` - `true` if `mode` is any kind of read, `false` otherwise</font>
+<a name="line432">432: </a><font color="#B22222">- `PetscMemoryAccessWrite(mode)` - `true` if `mode` is any kind of write, `false` otherwise</font>
+
+<a name="line434">434: </a><font color="#B22222">  Developer Note:</font>
+<a name="line435">435: </a><font color="#B22222">  This enum uses a function (`PetscMemoryAccessModeToString()`) to convert values to string</font>
+<a name="line436">436: </a><font color="#B22222">  representation, so cannot be used in `<a href="../manualpages/Sys/PetscOptionsEnum.html">PetscOptionsEnum</a>()`.</font>
+
+<a name="line438">438: </a><font color="#B22222">.seealso: `PetscMemoryAccessModeToString()`, `<a href="../manualpages/Sys/PetscDevice.html">PetscDevice</a>`, `<a href="../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a>`</font>
+<a name="line439">439: </a><font color="#B22222">E*/</font>
+<a name="line440">440: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line441">441: </a>  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>       = 1, <font color="#B22222">/* 01 */</font>
+<a name="line442">442: </a>  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>      = 2, <font color="#B22222">/* 10 */</font>
+<a name="line443">443: </a>  <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a> = 3  <font color="#B22222">/* 11 */</font>
+<a name="line444">444: </a>} <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PetscMemoryAccessMode</a>;
+
+<a name="line446">446: </a><strong><font color="#228B22">#define PetscMemoryAccessRead(m)  (((m) &amp; <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>) == <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>)</font></strong>
+<a name="line447">447: </a><strong><font color="#228B22">#define PetscMemoryAccessWrite(m) (((m) &amp; <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>) == <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>)</font></strong>
+
+<a name="line449">449: </a><font color="#A020F0">#if defined(__cplusplus)</font>
+<a name="line450">450: </a><font color="#A020F0">  #if PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING</font>
+<a name="line451">451: </a><font color="#A020F0">    #pragma GCC diagnostic push</font>
+<a name="line452">452: </a><font color="#A020F0">    #pragma GCC diagnostic ignored </font><font color="#666666">"-Wtautological-compare"</font><font color="#A020F0"></font>
+<a name="line453">453: </a><font color="#A020F0">  #endif</font>
+<a name="line454">454: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemoryAccessRead(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line455">455: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemoryAccessRead(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line456">456: </a>static_assert(!PetscMemoryAccessRead(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>), <font color="#666666">""</font>);
+<a name="line457">457: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemoryAccessWrite(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line458">458: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(PetscMemoryAccessWrite(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a>)</font></strong>, <font color="#666666">""</font>);
+<a name="line459">459: </a>static_assert(!PetscMemoryAccessWrite(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>), <font color="#666666">""</font>);
+<a name="line460">460: </a>static_assert((<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a> | <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>) == <a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a>, <font color="#666666">""</font>);
+<a name="line461">461: </a><font color="#A020F0">  #if PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING</font>
+<a name="line462">462: </a><font color="#A020F0">    #pragma GCC diagnostic pop</font>
+<a name="line463">463: </a><font color="#A020F0">  #endif</font>
+<a name="line464">464: </a><font color="#A020F0">#endif</font>
+
+<a name="line466">466: </a><strong><font color="#4169E1"><a name="PetscMemoryAccessModeToString"></a><a href="../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static inline <a href="../manualpages/Sys/PETSC_CONSTEXPR_14.html">PETSC_CONSTEXPR_14</a> const char *PetscMemoryAccessModeToString(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PetscMemoryAccessMode</a> mode)</font></strong>
+<a name="line467">467: </a>{
+<a name="line468">468: </a><strong><font color="#228B22">#define PETSC_CASE_RETURN(v) \</font></strong>
+<a name="line469">469: </a><strong><font color="#228B22">  case v: \</font></strong>
+<a name="line470">470: </a><strong><font color="#228B22">    return <a href="../manualpages/Sys/PetscStringize.html">PetscStringize</a>(v)</font></strong>
+
+<a name="line472">472: </a>  <font color="#4169E1">switch</font> (mode) {
+<a name="line473">473: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ</a>);
+<a name="line474">474: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_WRITE</a>);
+<a name="line475">475: </a>    PETSC_CASE_RETURN(<a href="../manualpages/Sys/PetscMemoryAccessMode.html">PETSC_MEMORY_ACCESS_READ_WRITE</a>);
+<a name="line476">476: </a>  }
+<a name="line477">477: </a>  <a href="../manualpages/Sys/PetscUnreachable.html">PetscUnreachable</a>();
+<a name="line478">478: </a>  <font color="#4169E1">return</font> <font color="#666666">"invalid"</font>;
+<a name="line479">479: </a><strong><font color="#228B22">#undef PETSC_CASE_RETURN</font></strong>
+<a name="line480">480: </a>}
+
+<a name="line482">482: </a><strong><font color="#228B22">#undef PETSC_SHOULD_SILENCE_GCC_TAUTOLOGICAL_COMPARE_WARNING</font></strong>
+</pre>
+</body>
+
+</html>
+

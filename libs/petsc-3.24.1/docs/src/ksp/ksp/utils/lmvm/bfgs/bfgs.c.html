@@ -1,0 +1,385 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/utils/lmvm/bfgs/bfgs.c">Actual source code: bfgs.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../src/ksp/ksp/utils/lmvm/symbrdn/symbrdn.h.html">&lt;../src/ksp/ksp/utils/lmvm/symbrdn/symbrdn.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/vecimpl.h.html">&lt;petsc/private/vecimpl.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petscdevice.h.html">&lt;petscdevice.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#B22222">/* The BFGS update can be written</font>
+
+<a name="line7">  7: </a><font color="#B22222">   B_{k+1} = B_k + y_k (y_k^T s_k)^{-1} y_k^T - B_k s_k (s_k^T B_k s_k)^{-1} s_k^T B_k + y_k (y_k^T s_k)^{-1} y_k^T</font>
+
+<a name="line9">  9: </a><font color="#B22222">   Which can be unrolled as a parallel sum</font>
+
+<a name="line11"> 11: </a><font color="#B22222">   B_{k+1} = B_0 + \sum_i B_i y_i (y_i^T s_i)^{-1} y_i^T - s_i (s_i^T B_i s_i)^{-1} s_i^T B_i</font>
+
+<a name="line13"> 13: </a><font color="#B22222">   Once the (B_i y_i) vectors, (y_i^T s_i), and (s_i^T B_i s_i) products have been computed</font>
+<a name="line14"> 14: </a><font color="#B22222"> */</font>
+<a name="line15"> 15: </a><strong><font color="#4169E1"><a name="BFGSKernel_Recursive_Inner"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BFGSKernel_Recursive_Inner(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, MatLMVMMode mode, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> oldest, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> next, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> B0X)</font></strong>
+<a name="line16"> 16: </a>{
+<a name="line17"> 17: </a>  Mat_LMVM        *lmvm = (Mat_LMVM *)B-&gt;data;
+<a name="line18"> 18: </a>  Mat_SymBrdn     *lsb  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+<a name="line19"> 19: </a>  MatLMVMBasisType Y_t  = LMVMModeMap(LMBASIS_Y, mode);
+<a name="line20"> 20: </a>  LMBasis          BkS  = lsb-&gt;basis[LMVMModeMap(SYMBROYDEN_BASIS_BKS, mode)];
+<a name="line21"> 21: </a>  LMProducts       YtS;
+<a name="line22"> 22: </a>  LMProducts       StBkS = lsb-&gt;products[LMVMModeMap(SYMBROYDEN_PRODUCTS_STBKS, mode)];
+<a name="line23"> 23: </a>  LMBasis          Y;
+<a name="line24"> 24: </a>  <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>              StBkX, YtX;
+
+<a name="line26"> 26: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line27"> 27: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedBasis(B, Y_t, &amp;Y, NULL, NULL));
+<a name="line28"> 28: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedProducts(B, LMBASIS_Y, LMBASIS_S, LMBLOCK_DIAGONAL, &amp;YtS));
+<a name="line29"> 29: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetWorkRow(B, &amp;StBkX));
+<a name="line30"> 30: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetWorkRow(B, &amp;YtX));
+<a name="line31"> 31: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGEMVH(BkS, oldest, next, 1.0, X, 0.0, StBkX));
+<a name="line32"> 32: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsSolve(StBkS, oldest, next, StBkX, StBkX, <font color="#B22222">/* ^H */</font> <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line33"> 33: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGEMV(BkS, oldest, next, -1.0, StBkX, 1.0, B0X));
+<a name="line34"> 34: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGEMVH(Y, oldest, next, 1.0, X, 0.0, YtX));
+<a name="line35"> 35: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsSolve(YtS, oldest, next, YtX, YtX, <font color="#B22222">/* ^H */</font> <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line36"> 36: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGEMV(Y, oldest, next, 1.0, YtX, 1.0, B0X));
+<a name="line37"> 37: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMRestoreWorkRow(B, &amp;YtX));
+<a name="line38"> 38: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMRestoreWorkRow(B, &amp;StBkX));
+<a name="line39"> 39: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line40"> 40: </a>}
+
+<a name="line42"> 42: </a><font color="#B22222">/*</font>
+<a name="line43"> 43: </a><font color="#B22222">   The B_i s_i vectors and (s_i^T B_i s_i) products are computed recursively</font>
+<a name="line44"> 44: </a><font color="#B22222"> */</font>
+<a name="line45"> 45: </a><strong><font color="#4169E1"><a name="BFGSRecursiveBasisUpdate"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BFGSRecursiveBasisUpdate(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, MatLMVMMode mode)</font></strong>
+<a name="line46"> 46: </a>{
+<a name="line47"> 47: </a>  Mat_LMVM              *lmvm    = (Mat_LMVM *)B-&gt;data;
+<a name="line48"> 48: </a>  Mat_SymBrdn           *lsb     = (Mat_SymBrdn *)lmvm-&gt;ctx;
+<a name="line49"> 49: </a>  MatLMVMBasisType       S_t     = LMVMModeMap(LMBASIS_S, mode);
+<a name="line50"> 50: </a>  MatLMVMBasisType       B0S_t   = LMVMModeMap(LMBASIS_B0S, mode);
+<a name="line51"> 51: </a>  SymBroydenProductsType StBkS_t = LMVMModeMap(SYMBROYDEN_PRODUCTS_STBKS, mode);
+<a name="line52"> 52: </a>  SymBroydenBasisType    BkS_t   = LMVMModeMap(SYMBROYDEN_BASIS_BKS, mode);
+<a name="line53"> 53: </a>  LMBasis                BkS;
+<a name="line54"> 54: </a>  LMProducts             StBkS, YtS;
+<a name="line55"> 55: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>               oldest, start, next;
+<a name="line56"> 56: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>               products_oldest;
+<a name="line57"> 57: </a>  LMBasis                S;
+
+<a name="line59"> 59: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line60"> 60: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetRange(B, &amp;oldest, &amp;next));
+<a name="line61"> 61: </a>  <font color="#4169E1">if</font> (!lsb-&gt;basis[BkS_t]) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisCreate(MatLMVMBasisSizeOf(B0S_t) == LMBASIS_S ? lmvm-&gt;Xprev : lmvm-&gt;Fprev, lmvm-&gt;m, &amp;lsb-&gt;basis[BkS_t]));
+<a name="line62"> 62: </a>  BkS = lsb-&gt;basis[BkS_t];
+<a name="line63"> 63: </a>  <font color="#4169E1">if</font> (!lsb-&gt;products[StBkS_t]) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMCreateProducts(B, LMBLOCK_DIAGONAL, &amp;lsb-&gt;products[StBkS_t]));
+<a name="line64"> 64: </a>  StBkS = lsb-&gt;products[StBkS_t];
+<a name="line65"> 65: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsPrepare(StBkS, lmvm-&gt;J0, oldest, next));
+<a name="line66"> 66: </a>  products_oldest = <a href="../../../../../../manualpages/Sys/PetscMax.html">PetscMax</a>(0, StBkS-&gt;k - lmvm-&gt;m);
+<a name="line67"> 67: </a>  <font color="#4169E1">if</font> (oldest &gt; products_oldest) {
+<a name="line68"> 68: </a>    <font color="#B22222">// recursion is starting from a different starting index, it must be recomputed</font>
+<a name="line69"> 69: </a>    StBkS-&gt;k = oldest;
+<a name="line70"> 70: </a>  }
+<a name="line71"> 71: </a>  BkS-&gt;k = start = StBkS-&gt;k;
+<a name="line72"> 72: </a>  <font color="#4169E1">if</font> (start == next) <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+
+<a name="line74"> 74: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedBasis(B, S_t, &amp;S, NULL, NULL));
+<a name="line75"> 75: </a>  <font color="#B22222">// make sure YtS is updated before entering the loop</font>
+<a name="line76"> 76: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedProducts(B, LMBASIS_Y, LMBASIS_S, LMBLOCK_DIAGONAL, &amp;YtS));
+<a name="line77"> 77: </a>  <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> j = start; j &lt; next; j++) {
+<a name="line78"> 78: </a>    <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>         p_j, s_j, B0s_j;
+<a name="line79"> 79: </a>    <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> alpha, sjtbjsj;
+
+<a name="line81"> 81: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGetWorkVec(BkS, &amp;p_j));
+<a name="line82"> 82: </a>    <font color="#B22222">// p_j starts as B_0 * s_j</font>
+<a name="line83"> 83: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMBasisGetVecRead(B, B0S_t, j, &amp;B0s_j, &amp;alpha));
+<a name="line84"> 84: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecAXPBY.html">VecAXPBY</a>(p_j, alpha, 0.0, B0s_j));
+<a name="line85"> 85: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMBasisRestoreVecRead(B, B0S_t, j, &amp;B0s_j, &amp;alpha));
+
+<a name="line87"> 87: </a>    <font color="#B22222">// Use the matmult kernel to compute p_j = B_j * p_j</font>
+<a name="line88"> 88: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGetVecRead(S, j, &amp;s_j));
+<a name="line89"> 89: </a>    <font color="#4169E1">if</font> (j &gt; oldest) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_Recursive_Inner(B, mode, oldest, j, s_j, p_j));
+<a name="line90"> 90: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecDot.html">VecDot</a>(p_j, s_j, &amp;sjtbjsj));
+<a name="line91"> 91: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisRestoreVecRead(S, j, &amp;s_j));
+<a name="line92"> 92: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsInsertNextDiagonalValue(StBkS, j, sjtbjsj));
+<a name="line93"> 93: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisSetNextVec(BkS, p_j));
+<a name="line94"> 94: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisRestoreWorkVec(BkS, &amp;p_j));
+<a name="line95"> 95: </a>  }
+<a name="line96"> 96: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line97"> 97: </a>}
+
+<a name="line99"> 99: </a><strong><font color="#4169E1"><a name="BFGSKernel_Recursive"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BFGSKernel_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, MatLMVMMode mode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> Y)</font></strong>
+<a name="line100">100: </a>{
+<a name="line101">101: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> oldest, next;
+
+<a name="line103">103: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line104">104: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMApplyJ0Mode(mode)(B, X, Y));
+<a name="line105">105: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetRange(B, &amp;oldest, &amp;next));
+<a name="line106">106: </a>  <font color="#4169E1">if</font> (next &gt; oldest) {
+<a name="line107">107: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSRecursiveBasisUpdate(B, mode));
+<a name="line108">108: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_Recursive_Inner(B, mode, oldest, next, X, Y));
+<a name="line109">109: </a>  }
+<a name="line110">110: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line111">111: </a>}
+
+<a name="line113">113: </a><strong><font color="#4169E1"><a name="BFGSCompactDenseProductsUpdate"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BFGSCompactDenseProductsUpdate(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, MatLMVMMode mode)</font></strong>
+<a name="line114">114: </a>{
+<a name="line115">115: </a>  Mat_LMVM              *lmvm = (Mat_LMVM *)B-&gt;data;
+<a name="line116">116: </a>  Mat_SymBrdn           *lsb  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+<a name="line117">117: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>               oldest, next, k;
+<a name="line118">118: </a>  MatLMVMBasisType       S_t   = LMVMModeMap(LMBASIS_S, mode);
+<a name="line119">119: </a>  MatLMVMBasisType       B0S_t = LMVMModeMap(LMBASIS_B0S, mode);
+<a name="line120">120: </a>  MatLMVMBasisType       Y_t   = LMVMModeMap(LMBASIS_Y, mode);
+<a name="line121">121: </a>  SymBroydenProductsType M00_t = LMVMModeMap(SYMBROYDEN_PRODUCTS_M00, mode);
+<a name="line122">122: </a>  LMProducts             M00, StB0S, YtS, D;
+<a name="line123">123: </a>  <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>                    YtS_local, StB0S_local, M00_local;
+<a name="line124">124: </a>  <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>                    D_local;
+<a name="line125">125: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>              local_is_nonempty;
+
+<a name="line127">127: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line128">128: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetRange(B, &amp;oldest, &amp;next));
+<a name="line129">129: </a>  <font color="#4169E1">if</font> (lsb-&gt;products[M00_t] &amp;&amp; lsb-&gt;products[M00_t]-&gt;block_type != LMBLOCK_FULL) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsDestroy(&amp;lsb-&gt;products[M00_t]));
+<a name="line130">130: </a>  <font color="#4169E1">if</font> (!lsb-&gt;products[M00_t]) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMCreateProducts(B, LMBLOCK_FULL, &amp;lsb-&gt;products[M00_t]));
+<a name="line131">131: </a>  M00 = lsb-&gt;products[M00_t];
+<a name="line132">132: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsPrepare(M00, lmvm-&gt;J0, oldest, next));
+<a name="line133">133: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsGetLocalMatrix(M00, &amp;M00_local, &amp;k, &amp;local_is_nonempty));
+<a name="line134">134: </a>  <font color="#4169E1">if</font> (k &lt; next) {
+<a name="line135">135: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedProducts(B, Y_t, S_t, LMBLOCK_STRICT_UPPER_TRIANGLE, &amp;YtS));
+<a name="line136">136: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedProducts(B, LMBASIS_Y, LMBASIS_S, LMBLOCK_DIAGONAL, &amp;D));
+<a name="line137">137: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedProducts(B, S_t, B0S_t, LMBLOCK_UPPER_TRIANGLE, &amp;StB0S));
+
+<a name="line139">139: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsGetLocalMatrix(StB0S, &amp;StB0S_local, NULL, NULL));
+<a name="line140">140: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsGetLocalMatrix(YtS, &amp;YtS_local, NULL, NULL));
+<a name="line141">141: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsGetLocalDiagonal(D, &amp;D_local));
+<a name="line142">142: </a>    <font color="#4169E1">if</font> (local_is_nonempty) {
+<a name="line143">143: </a>      <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> invD;
+<a name="line144">144: </a>      <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> stril_StY;
+
+<a name="line146">146: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetUnfactored.html">MatSetUnfactored</a>(M00_local));
+<a name="line147">147: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatCopy.html">MatCopy</a>(StB0S_local, M00_local, <a href="../../../../../../manualpages/Mat/MatStructure.html">SAME_NONZERO_PATTERN</a>));
+<a name="line148">148: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(D_local, &amp;invD));
+<a name="line149">149: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(D_local, invD));
+<a name="line150">150: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecReciprocal.html">VecReciprocal</a>(invD));
+<a name="line151">151: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatTranspose.html">MatTranspose</a>(YtS_local, <a href="../../../../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, &amp;stril_StY));
+<a name="line152">152: </a>      <font color="#4169E1">if</font> (<a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatConjugate.html">MatConjugate</a>(stril_StY));
+
+<a name="line154">154: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDiagonalScale.html">MatDiagonalScale</a>(stril_StY, NULL, invD));
+<a name="line155">155: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatMatMult.html">MatMatMult</a>(stril_StY, YtS_local, <a href="../../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>, <a href="../../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;M00_local));
+<a name="line156">156: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatAXPY.html">MatAXPY</a>(M00_local, 1.0, StB0S_local, <a href="../../../../../../manualpages/Mat/MatStructure.html">UNKNOWN_NONZERO_PATTERN</a>));
+<a name="line157">157: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsMakeHermitian(M00_local, oldest, next));
+<a name="line158">158: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsOnesOnUnusedDiagonal(M00_local, oldest, next));
+<a name="line159">159: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(M00_local, <a href="../../../../../../manualpages/Mat/MatOption.html">MAT_HERMITIAN</a>, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line160">160: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(M00_local, <a href="../../../../../../manualpages/Mat/MatOption.html">MAT_SPD</a>, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line161">161: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatCholeskyFactor.html">MatCholeskyFactor</a>(M00_local, NULL, NULL));
+<a name="line162">162: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;stril_StY));
+<a name="line163">163: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;invD));
+<a name="line164">164: </a>    }
+<a name="line165">165: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsRestoreLocalDiagonal(D, &amp;D_local));
+<a name="line166">166: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsRestoreLocalMatrix(YtS, &amp;YtS_local, NULL));
+<a name="line167">167: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsRestoreLocalMatrix(StB0S, &amp;StB0S_local, NULL));
+<a name="line168">168: </a>  }
+<a name="line169">169: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsRestoreLocalMatrix(M00, &amp;M00_local, &amp;next));
+<a name="line170">170: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line171">171: </a>}
+
+<a name="line173">173: </a><strong><font color="#4169E1"><a name="BFGSKernel_CompactDense"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BFGSKernel_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, MatLMVMMode mode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> BX)</font></strong>
+<a name="line174">174: </a>{
+<a name="line175">175: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> oldest, next;
+
+<a name="line177">177: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line178">178: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMApplyJ0Mode(mode)(B, X, BX));
+<a name="line179">179: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetRange(B, &amp;oldest, &amp;next));
+<a name="line180">180: </a>  <font color="#4169E1">if</font> (next &gt; oldest) {
+<a name="line181">181: </a>    Mat_LMVM              *lmvm  = (Mat_LMVM *)B-&gt;data;
+<a name="line182">182: </a>    Mat_SymBrdn           *bfgs  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+<a name="line183">183: </a>    MatLMVMBasisType       S_t   = LMVMModeMap(LMBASIS_S, mode);
+<a name="line184">184: </a>    MatLMVMBasisType       Y_t   = LMVMModeMap(LMBASIS_Y, mode);
+<a name="line185">185: </a>    MatLMVMBasisType       B0S_t = LMVMModeMap(LMBASIS_B0S, mode);
+<a name="line186">186: </a>    SymBroydenProductsType M00_t = LMVMModeMap(SYMBROYDEN_PRODUCTS_M00, mode);
+<a name="line187">187: </a>    LMBasis                S, Y;
+<a name="line188">188: </a>    <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>              use_B0S;
+<a name="line189">189: </a>    <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>                    YtX, StB0X, u, v;
+<a name="line190">190: </a>    LMProducts             M00, YtS, D;
+
+<a name="line192">192: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSCompactDenseProductsUpdate(B, mode));
+<a name="line193">193: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedBasis(B, S_t, &amp;S, NULL, NULL));
+<a name="line194">194: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedBasis(B, Y_t, &amp;Y, NULL, NULL));
+<a name="line195">195: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedProducts(B, Y_t, S_t, LMBLOCK_STRICT_UPPER_TRIANGLE, &amp;YtS));
+<a name="line196">196: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetUpdatedProducts(B, LMBASIS_Y, LMBASIS_S, LMBLOCK_DIAGONAL, &amp;D));
+<a name="line197">197: </a>    M00 = bfgs-&gt;products[M00_t];
+
+<a name="line199">199: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetWorkRow(B, &amp;YtX));
+<a name="line200">200: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetWorkRow(B, &amp;StB0X));
+<a name="line201">201: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetWorkRow(B, &amp;u));
+<a name="line202">202: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMGetWorkRow(B, &amp;v));
+
+<a name="line204">204: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGEMVH(Y, oldest, next, 1.0, X, 0.0, YtX));
+<a name="line205">205: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenCompactDenseKernelUseB0S(B, mode, X, &amp;use_B0S));
+<a name="line206">206: </a>    <font color="#4169E1">if</font> (use_B0S) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMBasisGEMVH(B, B0S_t, oldest, next, 1.0, X, 0.0, StB0X));
+<a name="line207">207: </a>    <font color="#4169E1">else</font> <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGEMVH(S, oldest, next, 1.0, BX, 0.0, StB0X));
+
+<a name="line209">209: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsSolve(D, oldest, next, YtX, YtX, <font color="#B22222">/* ^H */</font> <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line210">210: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsMult(YtS, oldest, next, 1.0, YtX, 1.0, StB0X, <font color="#B22222">/* ^H */</font> <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line211">211: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsSolve(M00, oldest, next, StB0X, u, <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line212">212: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecScale.html">VecScale</a>(u, -1.0));
+<a name="line213">213: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsMult(YtS, oldest, next, 1.0, u, 0.0, v, <font color="#B22222">/* ^H */</font> <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line214">214: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMProductsSolve(D, oldest, next, v, v, <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line215">215: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(v, 1.0, YtX));
+
+<a name="line217">217: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(LMBasisGEMV(Y, oldest, next, 1.0, v, 1.0, BX));
+<a name="line218">218: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMBasisGEMV(B, B0S_t, oldest, next, 1.0, u, 1.0, BX));
+
+<a name="line220">220: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMRestoreWorkRow(B, &amp;v));
+<a name="line221">221: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMRestoreWorkRow(B, &amp;u));
+<a name="line222">222: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMRestoreWorkRow(B, &amp;StB0X));
+<a name="line223">223: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMRestoreWorkRow(B, &amp;YtX));
+<a name="line224">224: </a>  }
+<a name="line225">225: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line226">226: </a>}
+
+<a name="line228">228: </a><strong><font color="#4169E1"><a name="MatMult_LMVMBFGS_Recursive"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMult_LMVMBFGS_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> Y)</font></strong>
+<a name="line229">229: </a>{
+<a name="line230">230: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line231">231: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_Recursive(B, MATLMVM_MODE_PRIMAL, X, Y));
+<a name="line232">232: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line233">233: </a>}
+
+<a name="line235">235: </a><strong><font color="#4169E1"><a name="MatMult_LMVMBFGS_CompactDense"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMult_LMVMBFGS_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> Y)</font></strong>
+<a name="line236">236: </a>{
+<a name="line237">237: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line238">238: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_CompactDense(B, MATLMVM_MODE_PRIMAL, X, Y));
+<a name="line239">239: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line240">240: </a>}
+
+<a name="line242">242: </a><strong><font color="#4169E1"><a name="MatSolve_LMVMBFGS_Recursive"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolve_LMVMBFGS_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> HX)</font></strong>
+<a name="line243">243: </a>{
+<a name="line244">244: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line245">245: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DFPKernel_Recursive(B, MATLMVM_MODE_DUAL, X, HX));
+<a name="line246">246: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line247">247: </a>}
+
+<a name="line249">249: </a><strong><font color="#4169E1"><a name="MatSolve_LMVMBFGS_CompactDense"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolve_LMVMBFGS_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> HX)</font></strong>
+<a name="line250">250: </a>{
+<a name="line251">251: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line252">252: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DFPKernel_CompactDense(B, MATLMVM_MODE_DUAL, X, HX));
+<a name="line253">253: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line254">254: </a>}
+
+<a name="line256">256: </a><strong><font color="#4169E1"><a name="MatSolve_LMVMBFGS_Dense"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolve_LMVMBFGS_Dense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> HX)</font></strong>
+<a name="line257">257: </a>{
+<a name="line258">258: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line259">259: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DFPKernel_Dense(B, MATLMVM_MODE_DUAL, X, HX));
+<a name="line260">260: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line261">261: </a>}
+
+<a name="line263">263: </a><strong><font color="#4169E1"><a name="MatSetFromOptions_LMVMBFGS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSetFromOptions_LMVMBFGS(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, PetscOptionItems PetscOptionsObject)</font></strong>
+<a name="line264">264: </a>{
+<a name="line265">265: </a>  Mat_LMVM    *lmvm  = (Mat_LMVM *)B-&gt;data;
+<a name="line266">266: </a>  Mat_SymBrdn *lbfgs = (Mat_SymBrdn *)lmvm-&gt;ctx;
+
+<a name="line268">268: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line269">269: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSetFromOptions_LMVM(B, PetscOptionsObject));
+<a name="line270">270: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadBegin.html">PetscOptionsHeadBegin</a>(PetscOptionsObject, <font color="#666666">"L-BFGS method for approximating SPD Jacobian actions (MATLMVMBFGS)"</font>);
+<a name="line271">271: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenRescaleSetFromOptions(B, lbfgs-&gt;rescale, PetscOptionsObject));
+<a name="line272">272: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadEnd.html">PetscOptionsHeadEnd</a>();
+<a name="line273">273: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line274">274: </a>}
+
+<a name="line276">276: </a><strong><font color="#4169E1"><a name="MatLMVMSetMultAlgorithm_BFGS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLMVMSetMultAlgorithm_BFGS(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B)</font></strong>
+<a name="line277">277: </a>{
+<a name="line278">278: </a>  Mat_LMVM *lmvm = (Mat_LMVM *)B-&gt;data;
+
+<a name="line280">280: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line281">281: </a>  <font color="#4169E1">switch</font> (lmvm-&gt;mult_alg) {
+<a name="line282">282: </a>  <font color="#4169E1">case</font> <a href="../../../../../../manualpages/KSP/MatLMVMMultAlgorithm.html">MAT_LMVM_MULT_RECURSIVE</a>:
+<a name="line283">283: </a>    lmvm-&gt;ops-&gt;mult  = MatMult_LMVMBFGS_Recursive;
+<a name="line284">284: </a>    lmvm-&gt;ops-&gt;solve = MatSolve_LMVMBFGS_Recursive;
+<a name="line285">285: </a>    <font color="#4169E1">break</font>;
+<a name="line286">286: </a>  <font color="#4169E1">case</font> <a href="../../../../../../manualpages/KSP/MatLMVMMultAlgorithm.html">MAT_LMVM_MULT_DENSE</a>:
+<a name="line287">287: </a>    lmvm-&gt;ops-&gt;mult  = MatMult_LMVMBFGS_CompactDense;
+<a name="line288">288: </a>    lmvm-&gt;ops-&gt;solve = MatSolve_LMVMBFGS_Dense;
+<a name="line289">289: </a>    <font color="#4169E1">break</font>;
+<a name="line290">290: </a>  <font color="#4169E1">case</font> <a href="../../../../../../manualpages/KSP/MatLMVMMultAlgorithm.html">MAT_LMVM_MULT_COMPACT_DENSE</a>:
+<a name="line291">291: </a>    lmvm-&gt;ops-&gt;mult  = MatMult_LMVMBFGS_CompactDense;
+<a name="line292">292: </a>    lmvm-&gt;ops-&gt;solve = MatSolve_LMVMBFGS_CompactDense;
+<a name="line293">293: </a>    <font color="#4169E1">break</font>;
+<a name="line294">294: </a>  }
+<a name="line295">295: </a>  lmvm-&gt;ops-&gt;multht  = lmvm-&gt;ops-&gt;mult;
+<a name="line296">296: </a>  lmvm-&gt;ops-&gt;solveht = lmvm-&gt;ops-&gt;solve;
+<a name="line297">297: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line298">298: </a>}
+
+<a name="line300">300: </a><strong><font color="#4169E1"><a name="MatCreate_LMVMBFGS"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreate_LMVMBFGS(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B)</font></strong>
+<a name="line301">301: </a>{
+<a name="line302">302: </a>  Mat_LMVM    *lmvm;
+<a name="line303">303: </a>  Mat_SymBrdn *lbfgs;
+
+<a name="line305">305: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line306">306: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatCreate_LMVMSymBrdn(B));
+<a name="line307">307: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscObjectChangeTypeName((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B, MATLMVMBFGS));
+<a name="line308">308: </a>  B-&gt;ops-&gt;setfromoptions = MatSetFromOptions_LMVMBFGS;
+
+<a name="line310">310: </a>  lmvm                        = (Mat_LMVM *)B-&gt;data;
+<a name="line311">311: </a>  lmvm-&gt;ops-&gt;setmultalgorithm = MatLMVMSetMultAlgorithm_BFGS;
+<a name="line312">312: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMSetMultAlgorithm_BFGS(B));
+
+<a name="line314">314: </a>  lbfgs = (Mat_SymBrdn *)lmvm-&gt;ctx;
+
+<a name="line316">316: </a>  lbfgs-&gt;phi_scalar = 0.0;
+<a name="line317">317: </a>  lbfgs-&gt;psi_scalar = 1.0;
+<a name="line318">318: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B, <font color="#666666">"MatLMVMSymBroydenSetPhi_C"</font>, NULL));
+<a name="line319">319: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line320">320: </a>}
+
+<a name="line322">322: </a><font color="#B22222">/*@</font>
+<a name="line323">323: </a><font color="#B22222">  <a href="../../../../../../manualpages/KSP/MatCreateLMVMBFGS.html">MatCreateLMVMBFGS</a> - Creates a limited-memory Broyden-Fletcher-Goldfarb-Shano (BFGS)</font>
+<a name="line324">324: </a><font color="#B22222">  matrix used for approximating Jacobians. L-BFGS is symmetric positive-definite by</font>
+<a name="line325">325: </a><font color="#B22222">  construction, and is commonly used to approximate Hessians in optimization</font>
+<a name="line326">326: </a><font color="#B22222">  problems.</font>
+
+<a name="line328">328: </a><font color="#B22222">  To use the L-BFGS matrix with other vector types, the matrix must be</font>
+<a name="line329">329: </a><font color="#B22222">  created using `<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>()` and `<a href="../../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>()`, followed by `<a href="../../../../../../manualpages/KSP/MatLMVMAllocate.html">MatLMVMAllocate</a>()`.</font>
+<a name="line330">330: </a><font color="#B22222">  This ensures that the internal storage and work vectors are duplicated from the</font>
+<a name="line331">331: </a><font color="#B22222">  correct type of vector.</font>
+
+<a name="line333">333: </a><font color="#B22222">  Collective</font>
+
+<a name="line335">335: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line336">336: </a><font color="#B22222">+ comm - MPI communicator</font>
+<a name="line337">337: </a><font color="#B22222">. n    - number of local rows for storage vectors</font>
+<a name="line338">338: </a><font color="#B22222">- N    - global size of the storage vectors</font>
+
+<a name="line340">340: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line341">341: </a><font color="#B22222">. B - the matrix</font>
+
+<a name="line343">343: </a><font color="#B22222">  Options Database Keys:</font>
+<a name="line344">344: </a><font color="#B22222">+ -mat_lmvm_scale_type - (developer) type of scaling applied to J0 (none, scalar, diagonal)</font>
+<a name="line345">345: </a><font color="#B22222">. -mat_lmvm_theta      - (developer) convex ratio between BFGS and DFP components of the diagonal J0 scaling</font>
+<a name="line346">346: </a><font color="#B22222">. -mat_lmvm_rho        - (developer) update limiter for the J0 scaling</font>
+<a name="line347">347: </a><font color="#B22222">. -mat_lmvm_alpha      - (developer) coefficient factor for the quadratic subproblem in J0 scaling</font>
+<a name="line348">348: </a><font color="#B22222">. -mat_lmvm_beta       - (developer) exponential factor for the diagonal J0 scaling</font>
+<a name="line349">349: </a><font color="#B22222">- -mat_lmvm_sigma_hist - (developer) number of past updates to use in J0 scaling</font>
+
+<a name="line351">351: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line353">353: </a><font color="#B22222">  Note:</font>
+<a name="line354">354: </a><font color="#B22222">  It is recommended that one use the `<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>()`, `<a href="../../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>()` and/or `<a href="../../../../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>()`</font>
+<a name="line355">355: </a><font color="#B22222">  paradigm instead of this routine directly.</font>
+
+<a name="line357">357: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>()`, `<a href="../../../../../../manualpages/KSP/MATLMVM.html">MATLMVM</a>`, `MATLMVMBFGS`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMDFP.html">MatCreateLMVMDFP</a>()`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMSR1.html">MatCreateLMVMSR1</a>()`,</font>
+<a name="line358">358: </a><font color="#B22222">          `<a href="../../../../../../manualpages/KSP/MatCreateLMVMBroyden.html">MatCreateLMVMBroyden</a>()`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMBadBroyden.html">MatCreateLMVMBadBroyden</a>()`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMSymBroyden.html">MatCreateLMVMSymBroyden</a>()`</font>
+<a name="line359">359: </a><font color="#B22222">@*/</font>
+<a name="line360">360: </a><strong><font color="#4169E1"><a name="MatCreateLMVMBFGS"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../../manualpages/KSP/MatCreateLMVMBFGS.html">MatCreateLMVMBFGS</a>(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> N, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> *B)</font></strong>
+<a name="line361">361: </a>{
+<a name="line362">362: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line363">363: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPInitializePackage.html">KSPInitializePackage</a>());
+<a name="line364">364: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(comm, B));
+<a name="line365">365: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(*B, n, n, N, N));
+<a name="line366">366: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(*B, MATLMVMBFGS));
+<a name="line367">367: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetUp.html">MatSetUp</a>(*B));
+<a name="line368">368: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line369">369: </a>}
+</pre>
+</body>
+
+</html>
+

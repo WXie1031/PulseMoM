@@ -1,0 +1,165 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ts/interface/tshistory.c">Actual source code: tshistory.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../include/petsc/private/tshistoryimpl.h.html">&lt;petsc/private/tshistoryimpl.h&gt;</A>
+
+<a name="line3">  3: </a><font color="#4169E1"><a name="_n_TSHistory"></a>struct _n_TSHistory </font>{
+<a name="line4">  4: </a>  <a href="../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>   comm;    <font color="#B22222">/* used for runtime collective checks */</font>
+<a name="line5">  5: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *hist;    <font color="#B22222">/* time history */</font>
+<a name="line6">  6: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  *hist_id; <font color="#B22222">/* stores the stepid in time history */</font>
+<a name="line7">  7: </a>  <a href="../../../manualpages/Sys/PetscCount.html">PetscCount</a> n;       <font color="#B22222">/* current number of steps registered */</font>
+<a name="line8">  8: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>  sorted;  <font color="#B22222">/* if the history is sorted in ascending order */</font>
+<a name="line9">  9: </a>  <a href="../../../manualpages/Sys/PetscCount.html">PetscCount</a> c;       <font color="#B22222">/* current capacity of history */</font>
+<a name="line10"> 10: </a>  <a href="../../../manualpages/Sys/PetscCount.html">PetscCount</a> s;       <font color="#B22222">/* reallocation size */</font>
+<a name="line11"> 11: </a>};
+
+<a name="line13"> 13: </a><strong><font color="#4169E1"><a name="TSHistoryGetNumSteps"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryGetNumSteps(TSHistory tsh, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n)</font></strong>
+<a name="line14"> 14: </a>{
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line16"> 16: </a>  PetscAssertPointer(n, 2);
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscIntCast.html">PetscIntCast</a>(tsh-&gt;n, n));
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line19"> 19: </a>}
+
+<a name="line21"> 21: </a><strong><font color="#4169E1"><a name="TSHistoryUpdate"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryUpdate(TSHistory tsh, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> id, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> time)</font></strong>
+<a name="line22"> 22: </a>{
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line24"> 24: </a>  <font color="#4169E1">if</font> (tsh-&gt;n == tsh-&gt;c) { <font color="#B22222">/* reallocation */</font>
+<a name="line25"> 25: </a>    tsh-&gt;c += tsh-&gt;s;
+<a name="line26"> 26: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRealloc.html">PetscRealloc</a>(tsh-&gt;c * <font color="#4169E1">sizeof</font>(*tsh-&gt;hist), &amp;tsh-&gt;hist));
+<a name="line27"> 27: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRealloc.html">PetscRealloc</a>(tsh-&gt;c * <font color="#4169E1">sizeof</font>(*tsh-&gt;hist_id), &amp;tsh-&gt;hist_id));
+<a name="line28"> 28: </a>  }
+<a name="line29"> 29: </a>  tsh-&gt;sorted = (<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>)(tsh-&gt;sorted &amp;&amp; (tsh-&gt;n ? (<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>)(time &gt;= tsh-&gt;hist[tsh-&gt;n - 1]) : <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line30"> 30: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG)</font>
+<a name="line31"> 31: </a>  <font color="#4169E1">if</font> (tsh-&gt;n) { <font color="#B22222">/* id should be unique */</font>
+<a name="line32"> 32: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> loc, *ids;
+
+<a name="line34"> 34: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(tsh-&gt;n, &amp;ids));
+<a name="line35"> 35: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(ids, tsh-&gt;hist_id, tsh-&gt;n));
+<a name="line36"> 36: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSortInt.html">PetscSortInt</a>(tsh-&gt;n, ids));
+<a name="line37"> 37: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFindInt.html">PetscFindInt</a>(id, tsh-&gt;n, ids, &amp;loc));
+<a name="line38"> 38: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(ids));
+<a name="line39"> 39: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(loc &lt; 0, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"History id should be unique"</font>);
+<a name="line40"> 40: </a>  }
+<a name="line41"> 41: </a><font color="#A020F0">#endif</font>
+<a name="line42"> 42: </a>  tsh-&gt;hist[tsh-&gt;n]    = time;
+<a name="line43"> 43: </a>  tsh-&gt;hist_id[tsh-&gt;n] = id;
+<a name="line44"> 44: </a>  tsh-&gt;n += 1;
+<a name="line45"> 45: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line46"> 46: </a>}
+
+<a name="line48"> 48: </a><strong><font color="#4169E1"><a name="TSHistoryGetTime"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryGetTime(TSHistory tsh, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> backward, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> step, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *t)</font></strong>
+<a name="line49"> 49: </a>{
+<a name="line50"> 50: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line51"> 51: </a>  <font color="#4169E1">if</font> (!t) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line52"> 52: </a>  PetscAssertPointer(t, 4);
+<a name="line53"> 53: </a>  <font color="#4169E1">if</font> (!tsh-&gt;sorted) {
+<a name="line54"> 54: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSortRealWithArrayInt.html">PetscSortRealWithArrayInt</a>(tsh-&gt;n, tsh-&gt;hist, tsh-&gt;hist_id));
+<a name="line55"> 55: </a>    tsh-&gt;sorted = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line56"> 56: </a>  }
+<a name="line57"> 57: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(step &gt;= 0 &amp;&amp; step &lt; tsh-&gt;n, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Given time step %"</font> PetscInt_FMT <font color="#666666">" does not match any in history [0,%"</font> PetscCount_FMT <font color="#666666">"]"</font>, step, tsh-&gt;n);
+<a name="line58"> 58: </a>  <font color="#4169E1">if</font> (!backward) *t = tsh-&gt;hist[step];
+<a name="line59"> 59: </a>  <font color="#4169E1">else</font> *t = tsh-&gt;hist[tsh-&gt;n - step - 1];
+<a name="line60"> 60: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line61"> 61: </a>}
+
+<a name="line63"> 63: </a><strong><font color="#4169E1"><a name="TSHistoryGetTimeStep"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryGetTimeStep(TSHistory tsh, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> backward, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> step, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *dt)</font></strong>
+<a name="line64"> 64: </a>{
+<a name="line65"> 65: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line66"> 66: </a>  <font color="#4169E1">if</font> (!dt) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line67"> 67: </a>  PetscAssertPointer(dt, 4);
+<a name="line68"> 68: </a>  <font color="#4169E1">if</font> (!tsh-&gt;sorted) {
+<a name="line69"> 69: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSortRealWithArrayInt.html">PetscSortRealWithArrayInt</a>(tsh-&gt;n, tsh-&gt;hist, tsh-&gt;hist_id));
+<a name="line70"> 70: </a>    tsh-&gt;sorted = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line71"> 71: </a>  }
+<a name="line72"> 72: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(step &gt;= 0 &amp;&amp; step &lt;= tsh-&gt;n, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Given time step %"</font> PetscInt_FMT <font color="#666666">" does not match any in history [0,%"</font> PetscCount_FMT <font color="#666666">"]"</font>, step, tsh-&gt;n);
+<a name="line73"> 73: </a>  <font color="#4169E1">if</font> (!backward) *dt = tsh-&gt;hist[<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(step + 1, tsh-&gt;n - 1)] - tsh-&gt;hist[<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(step, tsh-&gt;n - 1)];
+<a name="line74"> 74: </a>  <font color="#4169E1">else</font> *dt = tsh-&gt;hist[<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(tsh-&gt;n - step - 1, 0)] - tsh-&gt;hist[<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(tsh-&gt;n - step - 2, 0)];
+<a name="line75"> 75: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line76"> 76: </a>}
+
+<a name="line78"> 78: </a><strong><font color="#4169E1"><a name="TSHistoryGetLocFromTime"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryGetLocFromTime(TSHistory tsh, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> time, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *loc)</font></strong>
+<a name="line79"> 79: </a>{
+<a name="line80"> 80: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line81"> 81: </a>  PetscAssertPointer(loc, 3);
+<a name="line82"> 82: </a>  <font color="#4169E1">if</font> (!tsh-&gt;sorted) {
+<a name="line83"> 83: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSortRealWithArrayInt.html">PetscSortRealWithArrayInt</a>(tsh-&gt;n, tsh-&gt;hist, tsh-&gt;hist_id));
+<a name="line84"> 84: </a>    tsh-&gt;sorted = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line85"> 85: </a>  }
+<a name="line86"> 86: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFindReal.html">PetscFindReal</a>(time, tsh-&gt;n, tsh-&gt;hist, <a href="../../../manualpages/Sys/PETSC_SMALL.html">PETSC_SMALL</a>, loc));
+<a name="line87"> 87: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line88"> 88: </a>}
+
+<a name="line90"> 90: </a><strong><font color="#4169E1"><a name="TSHistorySetHistory"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistorySetHistory(TSHistory tsh, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> hist[], <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> hist_id[], <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> sorted)</font></strong>
+<a name="line91"> 91: </a>{
+<a name="line92"> 92: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line94"> 94: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(n &gt;= 0, tsh-&gt;comm, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Cannot request a negative size for history storage"</font>);
+<a name="line95"> 95: </a>  <font color="#4169E1">if</font> (n) PetscAssertPointer(hist, 3);
+<a name="line96"> 96: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(tsh-&gt;hist));
+<a name="line97"> 97: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(tsh-&gt;hist_id));
+<a name="line98"> 98: </a>  tsh-&gt;n = (size_t)n;
+<a name="line99"> 99: </a>  tsh-&gt;c = (size_t)n;
+<a name="line100">100: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(tsh-&gt;n, &amp;tsh-&gt;hist));
+<a name="line101">101: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(tsh-&gt;n, &amp;tsh-&gt;hist_id));
+<a name="line102">102: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; n; i++) {
+<a name="line103">103: </a>    tsh-&gt;hist[i]    = hist[i];
+<a name="line104">104: </a>    tsh-&gt;hist_id[i] = hist_id ? hist_id[i] : i;
+<a name="line105">105: </a>  }
+<a name="line106">106: </a>  <font color="#4169E1">if</font> (!sorted) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSortRealWithArrayInt.html">PetscSortRealWithArrayInt</a>(tsh-&gt;n, tsh-&gt;hist, tsh-&gt;hist_id));
+<a name="line107">107: </a>  tsh-&gt;sorted = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line108">108: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line109">109: </a>}
+
+<a name="line111">111: </a><strong><font color="#4169E1"><a name="TSHistoryGetHistory"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryGetHistory(TSHistory tsh, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *hist[], const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *hist_id[], <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *sorted)</font></strong>
+<a name="line112">112: </a>{
+<a name="line113">113: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line114">114: </a>  <font color="#4169E1">if</font> (n) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscIntCast.html">PetscIntCast</a>(tsh-&gt;n, n));
+<a name="line115">115: </a>  <font color="#4169E1">if</font> (hist) *hist = tsh-&gt;hist;
+<a name="line116">116: </a>  <font color="#4169E1">if</font> (hist_id) *hist_id = tsh-&gt;hist_id;
+<a name="line117">117: </a>  <font color="#4169E1">if</font> (sorted) *sorted = tsh-&gt;sorted;
+<a name="line118">118: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line119">119: </a>}
+
+<a name="line121">121: </a><strong><font color="#4169E1"><a name="TSHistoryDestroy"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryDestroy(TSHistory *tsh)</font></strong>
+<a name="line122">122: </a>{
+<a name="line123">123: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line124">124: </a>  <font color="#4169E1">if</font> (!*tsh) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line125">125: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>((*tsh)-&gt;hist));
+<a name="line126">126: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>((*tsh)-&gt;hist_id));
+<a name="line127">127: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscCommDestroy.html">PetscCommDestroy</a>(&amp;(*tsh)-&gt;comm));
+<a name="line128">128: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(*tsh));
+<a name="line129">129: </a>  *tsh = NULL;
+<a name="line130">130: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line131">131: </a>}
+
+<a name="line133">133: </a><strong><font color="#4169E1"><a name="TSHistoryCreate"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TSHistoryCreate(<a href="../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, TSHistory *hst)</font></strong>
+<a name="line134">134: </a>{
+<a name="line135">135: </a>  TSHistory tsh;
+
+<a name="line137">137: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line138">138: </a>  PetscAssertPointer(hst, 2);
+<a name="line139">139: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;tsh));
+<a name="line140">140: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscCommDuplicate.html">PetscCommDuplicate</a>(comm, &amp;tsh-&gt;comm, NULL));
+
+<a name="line142">142: </a>  tsh-&gt;c      = 1024; <font color="#B22222">/* capacity */</font>
+<a name="line143">143: </a>  tsh-&gt;s      = 1024; <font color="#B22222">/* reallocation size */</font>
+<a name="line144">144: </a>  tsh-&gt;sorted = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line146">146: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(tsh-&gt;c, &amp;tsh-&gt;hist));
+<a name="line147">147: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(tsh-&gt;c, &amp;tsh-&gt;hist_id));
+<a name="line148">148: </a>  *hst = tsh;
+<a name="line149">149: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line150">150: </a>}
+</pre>
+</body>
+
+</html>
+

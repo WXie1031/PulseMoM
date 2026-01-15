@@ -1,0 +1,40 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/impls/cg/nash/nashimpl.h">Actual source code: nashimpl.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#B22222">/*</font>
+<a name="line2">  2: </a><font color="#B22222">   Context for using preconditioned conjugate gradient method to minimized a</font>
+<a name="line3">  3: </a><font color="#B22222">   quadratic function subject to a trust region constraint.  If the matrix</font>
+<a name="line4">  4: </a><font color="#B22222">   is indefinite, a direction of negative curvature may be encountered.  If</font>
+<a name="line5">  5: </a><font color="#B22222">   a direction of negative curvature is found during the first iteration,</font>
+<a name="line6">  6: </a><font color="#B22222">   then it is a preconditioned gradient direction and we follow it to the</font>
+<a name="line7">  7: </a><font color="#B22222">   boundary of the trust region.  If a direction of negative curvature is</font>
+<a name="line8">  8: </a><font color="#B22222">   encountered on subsequent iterations, then we terminate the algorithm.</font>
+
+<a name="line10"> 10: </a><font color="#B22222">   This method is described in:</font>
+<a name="line11"> 11: </a><font color="#B22222">     S. Nash, "Newton-type Minimization via the Lanczos Method", SIAM</font>
+<a name="line12"> 12: </a><font color="#B22222">       Journal on Numerical Analysis, 21, pages 553-572, 1984.</font>
+<a name="line13"> 13: </a><font color="#B22222">*/</font>
+
+<a name="line15"> 15: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line17"> 17: </a>#include <A href="../../../../include/petsc/private/kspimpl.h.html">&lt;petsc/private/kspimpl.h&gt;</A>
+
+<a name="line19"> 19: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line20"> 20: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> radius;
+<a name="line21"> 21: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> norm_d;
+<a name="line22"> 22: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> o_fcn;
+<a name="line23"> 23: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  dtype;
+<a name="line24"> 24: </a>} KSPCG_NASH;
+</pre>
+</body>
+
+</html>
+

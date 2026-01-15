@@ -1,0 +1,69 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/classes/viewer/impls/pyvista/pyvistaviewer.c">Actual source code: pyvistaviewer.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#include </font><font color="#666666">"petscviewer.h"</font><font color="#A020F0"></font>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/viewerimpl.h.html">&lt;petsc/private/viewerimpl.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#B22222">/*@C</font>
+<a name="line5">  5: </a><font color="#B22222">     <a href="../../../../../../manualpages/Viewer/PETSC_VIEWER_PYVISTA_.html">PETSC_VIEWER_PYVISTA_</a> - Creates a PyVista `<a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>` shared by all MPI processes in a communicator.</font>
+
+<a name="line7">  7: </a><font color="#B22222">     Collective</font>
+
+<a name="line9">  9: </a><font color="#B22222">     Input Parameter:</font>
+<a name="line10"> 10: </a><font color="#B22222">.    comm - the MPI communicator to share the `<a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>`</font>
+
+<a name="line12"> 12: </a><font color="#B22222">     Level: developer</font>
+
+<a name="line14"> 14: </a><font color="#B22222">     Note:</font>
+<a name="line15"> 15: </a><font color="#B22222">     Unlike almost all other PETSc routines, `<a href="../../../../../../manualpages/Viewer/PETSC_VIEWER_PYVISTA_.html">PETSC_VIEWER_PYVISTA_</a>()` does not return</font>
+<a name="line16"> 16: </a><font color="#B22222">     an error code.  It is usually used in the form</font>
+<a name="line17"> 17: </a><font color="#B22222">   .vb</font>
+<a name="line18"> 18: </a><font color="#B22222">          XXXView(XXX object, <a href="../../../../../../manualpages/Viewer/PETSC_VIEWER_PYVISTA_.html">PETSC_VIEWER_PYVISTA_</a>(comm));</font>
+<a name="line19"> 19: </a><font color="#B22222">   .ve</font>
+
+<a name="line21"> 21: </a><font color="#B22222">.seealso: [](sec_viewers), `<a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>`</font>
+<a name="line22"> 22: </a><font color="#B22222">@*/</font>
+<a name="line23"> 23: </a><strong><font color="#4169E1"><a name="PETSC_VIEWER_PYVISTA_"></a><a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> <a href="../../../../../../manualpages/Viewer/PETSC_VIEWER_PYVISTA_.html">PETSC_VIEWER_PYVISTA_</a>(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm)</font></strong>
+<a name="line24"> 24: </a>{
+<a name="line25"> 25: </a>  <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer;
+
+<a name="line27"> 27: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line28"> 28: </a>  <a href="../../../../../../manualpages/Sys/PetscCallNull.html">PetscCallNull</a>(<a href="../../../../../../manualpages/Viewer/PetscViewerCreate.html">PetscViewerCreate</a>(comm, &amp;viewer));
+<a name="line29"> 29: </a>  <a href="../../../../../../manualpages/Sys/PetscCallNull.html">PetscCallNull</a>(<a href="../../../../../../manualpages/Viewer/PetscViewerSetType.html">PetscViewerSetType</a>(viewer, <a href="../../../../../../manualpages/Viewer/PETSCVIEWERPYVISTA.html">PETSCVIEWERPYVISTA</a>));
+<a name="line30"> 30: </a>  <a href="../../../../../../manualpages/Sys/PetscCallNull.html">PetscCallNull</a>(<a href="../../../../../../manualpages/Viewer/PetscViewerSetFromOptions.html">PetscViewerSetFromOptions</a>(viewer));
+<a name="line31"> 31: </a>  <a href="../../../../../../manualpages/Sys/PetscCallNull.html">PetscCallNull</a>(<a href="../../../../../../manualpages/Sys/PetscObjectRegisterDestroy.html">PetscObjectRegisterDestroy</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)viewer));
+<a name="line32"> 32: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(viewer);
+<a name="line33"> 33: </a>}
+
+<a name="line35"> 35: </a><font color="#B22222">/*MC</font>
+<a name="line36"> 36: </a><font color="#B22222">   <a href="../../../../../../manualpages/Viewer/PETSCVIEWERPYVISTA.html">PETSCVIEWERPYVISTA</a> - A PyVista viewer implemented using Python code</font>
+
+<a name="line38"> 38: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line40"> 40: </a><font color="#B22222">  Notes:</font>
+<a name="line41"> 41: </a><font color="#B22222">  Currently the `<a href="../../../../../../manualpages/DM/DM.html">DM</a>` viewer only supports `<a href="../../../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` meshes.</font>
+
+<a name="line43"> 43: </a><font color="#B22222">.seealso: [](sec_viewers), `<a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>`, `<a href="../../../../../../manualpages/Viewer/PetscViewerCreate.html">PetscViewerCreate</a>()`, `<a href="../../../../../../manualpages/Vec/VecView.html">VecView</a>()`, `<a href="../../../../../../manualpages/DM/DMView.html">DMView</a>()`, `<a href="../../../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>`</font>
+<a name="line44"> 44: </a><font color="#B22222">M*/</font>
+<a name="line45"> 45: </a><strong><font color="#4169E1"><a name="PetscViewerCreate_PyVista"></a>PETSC_EXTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscViewerCreate_PyVista(<a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer)</font></strong>
+<a name="line46"> 46: </a>{
+<a name="line47"> 47: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line48"> 48: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPythonInitialize.html">PetscPythonInitialize</a>(NULL, NULL));
+<a name="line49"> 49: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Viewer/PetscViewerSetType.html">PetscViewerSetType</a>(viewer, <a href="../../../../../../manualpages/Viewer/PETSCVIEWERPYTHON.html">PETSCVIEWERPYTHON</a>));
+<a name="line50"> 50: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscObjectChangeTypeName((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)viewer, <a href="../../../../../../manualpages/Viewer/PETSCVIEWERPYVISTA.html">PETSCVIEWERPYVISTA</a>));
+<a name="line51"> 51: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Viewer/PetscViewerPythonSetType.html">PetscViewerPythonSetType</a>(viewer, <font color="#666666">"petsc4py.lib._pytypes.viewer.petscpyvista.PetscPyVista"</font>));
+<a name="line52"> 52: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line53"> 53: </a>}
+</pre>
+</body>
+
+</html>
+

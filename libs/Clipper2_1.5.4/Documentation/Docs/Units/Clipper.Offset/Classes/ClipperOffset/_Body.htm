@@ -1,0 +1,110 @@
+<html>
+<head>
+  <title>ClipperOffset</title><script type="text/javascript" src="../../../../../CodeScripts/SyntaxHighlighter/scripts/shCore.js"></script><script type="text/javascript" src="../../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushDelphi.js"></script><script type="text/javascript" src="../../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCpp.js"></script><script type="text/javascript" src="../../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCSharp.js"></script><link rel="stylesheet" type="text/css" href="../../../../../Styles/default.css"/><link rel="stylesheet" type="text/css" href="../../../../../Menu/menu.css"/><link rel="stylesheet" type="text/css" href="../../../../../CodeScripts/SyntaxHighlighter/styles/shCoreDefault.css"/><link rel="stylesheet" type="text/css" href="../../../../../CodeScripts/SyntaxHighlighter/styles/shThemeDefault.css"/><meta name="viewport" content="width=device-width, initial-scale=1.0"><script type="text/javascript" src="../../../../../Menu/menu.js"></script><script type="text/javascript" src="../../../../../CodeScripts/bootstrap.js"></script>
+</head>
+<body bgcolor="#FFFFFF">
+  <div class="menu" id="menu"><a class="ancestor" href="../../../../_Body.htm">Index</a><a class="ancestor" href="../../_Body.htm">Clipper.Offset</a><span class="active">ClipperOffset</span>
+  </div><br><br>
+
+  <h1>ClipperOffset</h1><br>
+  <p class="Body"> Geometric <b>offsetting</b> refers to the process of creating <a href="https://en.wikipedia.org/wiki/Parallel_curve"><b>parallel curves</b></a> that are offset a specified distance from their primary curves.<br><br> The ClipperOffset class manages the process of offsetting (inflating/deflating) both open and closed paths using a number of different join types and end types. The library user will rarely need to access this unit directly since it will generally be easier to use the <a href="../../../Clipper/Functions/InflatePaths.htm"><b>InflatePaths</b></a> function when doing polygon offsetting.<br><br> <a id="notes"> <b>Notes:</b> <ol>
+      <li> When offsetting <i>closed</i> paths (polygons), a positive offset <span class="monobold2">delta</span> specifies how much outer polygon contours will expand and how much inner "hole" contours will contract. The converse occurs with negative deltas. (Outer polygons should all have the same winding orientation, and holes should have the opposite orientation.)</li>
+      <li>You cannot offset <i>open</i> paths (polylines) with negative deltas because it's not possible to contract/shrink open paths.</li>
+      <li>When offsetting, it's important not to confuse <b><a href="../../../Clipper/Types/EndType.htm">EndType</a>.Polygon</b> with <b>EndType.Joined</b>.<br> <b>EndType.Polygon</b> should be used when offsetting polygons (<em>closed</em> paths).<br> <b>EndType.Joined</b> should be used with polylines (<em>open</em> paths).<br> <img src="../../../../../Images/offset_polygon.svg" alt="" border="0" style="float:none;"> <img src="../../../../../Images/offset_joined.svg" alt="" border="0" style="float:none;"><br> </li>
+      <li>Offsetting should <b>not</b> be performed on <b>intersecting closed paths</b>, as doing so will almost always produce undesirable results. 
+        <pre class="brush: cpp;">
+  PathsD pp { MakePathD({ 40,40, 360,360, 360,40, 40,360 }) };
+  PathsD sol = InflatePaths(pp, 40, JoinType::Square, EndType::Polygon);
+  
+
+        </pre> <img src="../../../../../Images/offset_bad.svg" alt="" border="0" style="float:none;"><br> Intersections must be removed before offsetting, and this can be achieved through a <a href="../../../Clipper/Functions/Union.htm"><b>Union</b></a> clipping operation. 
+        <pre class="brush: cpp;">
+  PathsD pp { MakePathD({ 40,40, 360,360, 360,40, 40,360 }) };
+  pp = Union(pp, FillRule::NonZero);
+  PathsD sol = InflatePaths(pp, 40, JoinType::Square, EndType::Polygon);  
+
+        </pre> <img src="../../../../../Images/offset_bad2.svg" alt="" border="0" style="float:none;"><br> And it's not just self-intersections that must be avoided, offsetting any paths that intersect will very likely produce undesirable results.<br> <img src="../../../../../Images/offset_bad3.svg" alt="" border="0" style="float:none;">&nbsp; <img src="../../../../../Images/offset_bad4.svg" alt="" border="0" style="float:none;"><br> </li>
+      <li>It is, however, quite OK to offset self-intersecting open paths (polylines), though the intersecting (ie overlapping) regions will be flattened in the solution polygon. This is demonstrated in the following example: 
+        <pre class="brush: cpp;">
+  PathsD paths = PathsD{ MakePathD({10,10, 100,200, 10,200, 100,10}) };
+  PathsD sol = InflatePaths(paths, 10, JoinType::Round, EndType::Round);
+  
+
+        </pre> <img src="../../../../../Images/offset_good.svg" alt="" border="0" style="float:none;"><br> </li>
+      <li>When offsetting closed paths (polygons), the <b>winding direction</b> of paths in the solution will match that of the paths prior to offsetting. Because of this, polygons with hole regions should comply with <a href="../../../Clipper/Types/FillRule.htm"><b>NonZero filling</b></a>.</li>
+      <li>When offsetting open paths (polylines), the solutions will always have <a href="../../../Clipper/Functions/IsPositive.htm"><b>Positive</b></a> <b>orientation</b>. </li>
+      <li> Path <b>order</b> following offsetting very likely <i>won't</i> match path order prior to offsetting.</li>
+      <li>While the <span class="monobold2">ClipperOffset</span> class itself won't accept paths with floating point coordinates, the <a href="../../../Clipper/Functions/InflatePaths.htm"><b>InflatePaths</b></a> function that encapsulates the functionality of this class will accept paths with floating point coordinates. (The float-integer conversions will be performed by the InflatePaths function.) </li>
+      <li>Paths often contain redundant segments that don't contribute to path shape. These segments are either extremely short (&lt; 2 units), or extremely short relative to their adjacent segments. <span class="maroon">These redundant segments not only slow down offsetting, but they can cause unexpected blemishes in offset solutions (see an example <a href="https://github.com/AngusJohnson/Clipper2/issues/934">here</a>). So redundant segments should be removed before offsetting (see <a href="../../../Clipper/Functions/SimplifyPaths.htm"><b>SimplifyPaths</b></a>), and between offsetting operations too.</span> (Why aren't redundant segments removed as part of the offset procedure? Because users don't want that additional overhead when they know their paths are free of redundant segments.)</li>
+    </ol> </p>
+  <p class="Body"> 
+    <div class="pseudoTbl">
+      <div>C++ Example:
+      </div>
+      <pre class="brush: cpp;">
+#include "clipper2/clipper.h"  
+...
+using namespace Clipper2Lib;
+
+int main()
+{
+  Paths64 subject;
+  subject.push_back(MakePath({ 3480,2570, 3640,1480, 
+    3620,1480, 3260,2410, 2950,2190, 2580,880, 
+    4400,1290, 3700,1960, 3720,2750 }));
+  Paths64 solution;
+  ClipperOffset offsetter;
+  offsetter.AddPaths(subject, JoinType::Round, EndType::Polygon);
+  offsetter.Execute(-70, solution);
+  solution = SimplifyPaths(solution, 2.5);
+  
+  //draw solution ...
+  DrawPolygons(solution, 0x4000FF00, 0xFF009900);
+}
+      </pre>
+    </div> <img src="../../../../../Images/offset.svg" alt="" border="0" style="margin-left:40px;"> </p>
+  <p class="Body"> </p>
+  <h2 id="Auto-Reference">Reference</h2>
+  <p>
+    <table class="autoTbl">
+      <tr>
+        <th>Methods</th>
+        <th style="width: 100%;">Properties</th>
+      </tr>
+      <tr>
+        <td><a href="Functions/AddPath.htm">AddPath</a>
+        </td>
+        <td><a href="Properties/ArcTolerance.htm">ArcTolerance</a>
+        </td>
+      </tr>
+      <tr>
+        <td><a href="Functions/AddPaths.htm">AddPaths</a>
+        </td>
+        <td><a href="Properties/MiterLimit.htm">MiterLimit</a>
+        </td>
+      </tr>
+      <tr>
+        <td><a href="Functions/Clear.htm">Clear</a>
+        </td>
+        <td><a href="Properties/ReverseSolution.htm">ReverseSolution</a>
+        </td>
+      </tr>
+      <tr>
+        <td><a href="Functions/Constructor.htm">Constructor</a>
+        </td>
+        <td>
+        </td>
+      </tr>
+      <tr>
+        <td><a href="Functions/Execute.htm">Execute</a>
+        </td>
+        <td>
+        </td>
+      </tr>
+    </table></p>
+  <h2 id="Auto-SeeAlso">See Also</h2>
+  <p class="Body"><a href="../../../Clipper/Functions/InflatePaths.htm">InflatePaths</a>, <a href="../../../Clipper/Functions/IsPositive.htm">IsPositive</a>, <a href="../../../Clipper/Functions/SimplifyPaths.htm">SimplifyPaths</a>, <a href="../../../Clipper/Functions/Union.htm">Union</a>, <a href="../../../Clipper/Types/EndType.htm">EndType</a>, <a href="../../../Clipper/Types/FillRule.htm">FillRule</a></p>
+  <p class="Copyright" id="auto"> <br><br> Copyright &#169; 2010-2024 Angus Johnson &#160; - &#160; Clipper2 1.5.2 &#160; - &#160; Help file built on 3 Mar 2025<br><br> </p>
+
+</body>
+</html>

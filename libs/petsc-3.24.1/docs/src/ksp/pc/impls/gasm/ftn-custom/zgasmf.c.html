@@ -1,0 +1,74 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/pc/impls/gasm/ftn-custom/zgasmf.c">Actual source code: zgasmf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:56+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define pcgasmdestroysubdomains_  PCGASMDESTROYSUBDOMAINS</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define pcgasmgetsubksp_          PCGASMGETSUBKSP</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define pcgasmrestoresubksp_      PCGASMRESTORESUBKSP</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define pcgasmcreatesubdomains2d_ PCGASMCREATESUBDOMAINS2D</font></strong>
+<a name="line9">  9: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define pcgasmdestroysubdomains_  pcgasmdestroysubdomains</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define pcgasmgetsubksp_          pcgasmgetsubksp</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define pcgasmrestoresubksp_      pcgasmrestoresubksp</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define pcgasmcreatesubdomains2d_ pcgasmcreatesubdomains2d</font></strong>
+<a name="line14"> 14: </a><font color="#A020F0">#endif</font>
+
+<a name="line16"> 16: </a><strong><font color="#4169E1"><a name="pcgasmdestroysubdomains_"></a>PETSC_EXTERN void pcgasmdestroysubdomains_(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n, F90Array1d *is1, F90Array1d *is2, int *ierr PETSC_F90_2PTR_PROTO(ptrd1) PETSC_F90_2PTR_PROTO(ptrd2))</font></strong>
+<a name="line17"> 17: </a>{
+<a name="line18"> 18: </a>  <a href="../../../../../../manualpages/IS/IS.html">IS</a> *isa, *isb;
+
+<a name="line20"> 20: </a>  *ierr = F90Array1dAccess(is1, MPIU_FORTRANADDR, (void **)&amp;isa PETSC_F90_2PTR_PARAM(ptrd1));
+<a name="line21"> 21: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line22"> 22: </a>  *ierr = F90Array1dAccess(is2, MPIU_FORTRANADDR, (void **)&amp;isb PETSC_F90_2PTR_PARAM(ptrd2));
+<a name="line23"> 23: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line24"> 24: </a>  *ierr = F90Array1dDestroy(is1, MPIU_FORTRANADDR PETSC_F90_2PTR_PARAM(ptrd1));
+<a name="line25"> 25: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line26"> 26: </a>  *ierr = F90Array1dDestroy(is2, MPIU_FORTRANADDR PETSC_F90_2PTR_PARAM(ptrd2));
+<a name="line27"> 27: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line28"> 28: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCGASMDestroySubdomains.html">PCGASMDestroySubdomains</a>(*n, &amp;isa, &amp;isb);
+<a name="line29"> 29: </a>}
+
+<a name="line31"> 31: </a><strong><font color="#4169E1"><a name="pcgasmcreatesubdomains2d_"></a>PETSC_EXTERN void pcgasmcreatesubdomains2d_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *m, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *M, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *dof, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *overlap, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *Nsub, F90Array1d *is1, F90Array1d *is2, int *ierr PETSC_F90_2PTR_PROTO(ptrd1) PETSC_F90_2PTR_PROTO(ptrd2))</font></strong>
+<a name="line32"> 32: </a>{
+<a name="line33"> 33: </a>  <a href="../../../../../../manualpages/IS/IS.html">IS</a> *iis, *iisl;
+<a name="line34"> 34: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCGASMCreateSubdomains2D.html">PCGASMCreateSubdomains2D</a>(*pc, *m, *n, *M, *N, *dof, *overlap, Nsub, &amp;iis, &amp;iisl);
+<a name="line35"> 35: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line36"> 36: </a>  *ierr = F90Array1dCreate(iis, MPIU_FORTRANADDR, 1, *Nsub, is1 PETSC_F90_2PTR_PARAM(ptrd1));
+<a name="line37"> 37: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line38"> 38: </a>  *ierr = F90Array1dCreate(iisl, MPIU_FORTRANADDR, 1, *Nsub, is2 PETSC_F90_2PTR_PARAM(ptrd2));
+<a name="line39"> 39: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line40"> 40: </a>}
+
+<a name="line42"> 42: </a><strong><font color="#4169E1"><a name="pcgasmgetsubksp_"></a>PETSC_EXTERN void pcgasmgetsubksp_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n_local, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *first_local, F90Array1d *ksp, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line43"> 43: </a>{
+<a name="line44"> 44: </a>  <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>     *tksp;
+<a name="line45"> 45: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nloc, flocal;
+
+<a name="line47"> 47: </a>  CHKFORTRANNULLINTEGER(n_local);
+<a name="line48"> 48: </a>  CHKFORTRANNULLINTEGER(first_local);
+<a name="line49"> 49: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCGASMGetSubKSP.html">PCGASMGetSubKSP</a>(*pc, &amp;nloc, &amp;flocal, &amp;tksp);
+<a name="line50"> 50: </a>  <font color="#4169E1">if</font> (n_local) *n_local = nloc;
+<a name="line51"> 51: </a>  <font color="#4169E1">if</font> (first_local) *first_local = flocal;
+<a name="line52"> 52: </a>  *ierr = F90Array1dCreate(tksp, MPIU_FORTRANADDR, 1, nloc, ksp PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line53"> 53: </a>}
+
+<a name="line55"> 55: </a><strong><font color="#4169E1"><a name="pcgasmrestoresubksp_"></a>PETSC_EXTERN void pcgasmrestoresubksp_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n_local, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *first_local, F90Array1d *ksp, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line56"> 56: </a>{
+<a name="line57"> 57: </a>  *ierr = F90Array1dDestroy(ksp, MPIU_FORTRANADDR PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line58"> 58: </a>}
+</pre>
+</body>
+
+</html>
+

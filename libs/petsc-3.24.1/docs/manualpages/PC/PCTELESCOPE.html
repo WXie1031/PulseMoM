@@ -1,0 +1,759 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>PCTELESCOPE &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'manualpages/PC/PCTELESCOPE';</script>
+    <link rel="icon" href="../../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">PCTELESCOPE</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="pctelescope">
+<h1>PCTELESCOPE<a class="headerlink" href="#pctelescope" title="Link to this heading">#</a></h1>
+<p>Runs a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code> solver on a sub-communicator <span id="id1">[<a class="reference internal" href="#id835" title="Dave A. May, Patrick Sanan, Karl Rupp, Matthew G. Knepley, and Barry F. Smith. Extreme-scale multigrid components within PETSc. In Proceedings of the Platform for Advanced Scientific Computing Conference, PASC '16, 5:1–5:12. New York, NY, USA, 2016. ACM. doi:10.1145/2929908.2929913.">MSR+16</a>]</span> of the communicator used by the original <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code>. MPI processes not in the sub-communicator are idle during the solve. Usually used to solve the smaller coarser grid problems in multigrid (<code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCMG.html">PCMG</a></span></code>) that could not be efficiently solved on the entire communication</p>
+<section id="options-database-keys">
+<h2>Options Database Keys<a class="headerlink" href="#options-database-keys" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><em><strong>-pc_telescope_reduction_factor <r>                 -</strong></em> factor to reduce the communicator size by. e.g. with 64 MPI ranks and r=4, the new sub-communicator will have 64/4 = 16 ranks.</p></li>
+<li><p><em><strong>-pc_telescope_ignore_dm                            -</strong></em> flag to indicate whether an attached <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> should be ignored in constructing the new <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PC.html">PC</a></span></code></p></li>
+<li><p><em><strong>-pc_telescope_subcomm_type &lt;interlaced,contiguous&gt; -</strong></em> defines the selection of MPI processes on the sub-communicator. see <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Sys/PetscSubcomm.html">PetscSubcomm</a></span></code> for more information.</p></li>
+<li><p><em><strong>-pc_telescope_ignore_kspcomputeoperators           -</strong></em> flag to indicate whether <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSetComputeOperators.html">KSPSetComputeOperators</a>()</span></code> should be used on the sub-<code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code>.</p></li>
+<li><p><em><strong>-pc_telescope_use_coarse_dm                        -</strong></em> flag to indicate whether the coarse <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> should be used to define the sub-communicator.</p></li>
+</ul>
+</section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading">#</a></h2>
+<p>Assuming that the parent preconditioner <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PC.html">PC</a></span></code> is defined on a communicator c, this implementation
+creates a child sub-communicator (c’) containing fewer MPI processes than the original parent preconditioner <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PC.html">PC</a></span></code>.
+The preconditioner is deemed telescopic as it only calls <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSolve.html">KSPSolve</a>()</span></code> on a single
+sub-communicator, in contrast with <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCREDUNDANT.html">PCREDUNDANT</a></span></code> which calls <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSolve.html">KSPSolve</a>()</span></code> on N sub-communicators.
+This means there will be MPI processes which will be idle during the application of this preconditioner.
+Additionally, in comparison with <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCREDUNDANT.html">PCREDUNDANT</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTELESCOPE.html">PCTELESCOPE</a></span></code> can utilize an attached <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> to construct <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> dependent preconditioner, such as <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCMG.html">PCMG</a></span></code></p>
+<p>The default type <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPType.html">KSPType</a></span></code> of the sub <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code> (the <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code> defined on c’) is <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPPREONLY.html">KSPPREONLY</a></span></code>.</p>
+<p>There are three setup mechanisms for <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTELESCOPE.html">PCTELESCOPE</a></span></code>. Features support by each type are described below.
+In the following, we will refer to the operators B and B’, these are the <code class="docutils notranslate"><span class="pre">Bmat</span></code> provided to the <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code> on the
+communicators c and c’ respectively.</p>
+<p>[1] Default setup
+The sub-communicator c’ is created via <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Sys/PetscSubcommCreate.html">PetscSubcommCreate</a>()</span></code>.
+Any explicitly defined nullspace and near nullspace vectors attached to B with <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatSetNullSpace.html">MatSetNullSpace</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatSetNearNullSpace.html">MatSetNearNullSpace</a>()</span></code> are transferred to B’.
+Currently there is no support for nullspaces provided with <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatNullSpaceSetFunction.html">MatNullSpaceSetFunction</a>()</span></code>).
+No support is provided for <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSetComputeOperators.html">KSPSetComputeOperators</a>()</span></code>.
+Currently there is no support for the flag <code class="docutils notranslate"><span class="pre">-pc_use_amat</span></code>.</p>
+<p>[2] <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> aware setup
+The sub-communicator c’ is created via <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Sys/PetscSubcommCreate.html">PetscSubcommCreate</a>()</span></code>.
+If a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> is attached to the <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PC.html">PC</a></span></code>, it is re-partitioned on the sub-communicator c’.
+Both the <code class="docutils notranslate"><span class="pre">Bmat</span></code> operator and the right-hand side vector are permuted into the new DOF ordering defined by the re-partitioned <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code>.
+Currently only support for re-partitioning a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code> is provided.
+Any explicitly defined nullspace or near nullspace vectors attached to the original B with <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatSetNullSpace.html">MatSetNullSpace</a>()</span></code>
+and <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatSetNearNullSpace.html">MatSetNearNullSpace</a>()</span></code> are extracted, re-partitioned and set on B’
+(currently there is no support for nullspaces provided with <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatNullSpaceSetFunction.html">MatNullSpaceSetFunction</a>()</span></code>).
+Support is provided for <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSetComputeOperators.html">KSPSetComputeOperators</a>()</span></code>. The user provided function and context is propagated to the sub <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code>.
+This is fragile since the user must ensure that their user context is valid for use on c’.
+Currently there is no support for the flag <code class="docutils notranslate"><span class="pre">-pc_use_amat</span></code>.</p>
+<p>[3] Coarse <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> setup
+If a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> (dmfine) is attached to the <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PC.html">PC</a></span></code>, dmfine is queried for a “coarse” <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> (call this dmcoarse) via <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DMGetCoarseDM.html">DMGetCoarseDM</a>()</span></code>.
+<code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTELESCOPE.html">PCTELESCOPE</a></span></code> will interpret the coarse <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> as being defined on a sub-communicator of c.
+The communicator associated with dmcoarse will define the c’ to be used within <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTELESCOPE.html">PCTELESCOPE</a></span></code>.
+<code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTELESCOPE.html">PCTELESCOPE</a></span></code> will check that c’ is in fact a sub-communicator of c. If it is not, an error will be reported.
+The intention of this setup type is that <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTELESCOPE.html">PCTELESCOPE</a></span></code> will use an existing (e.g. user defined) communicator hierarchy, say as would be
+available with using multi-grid on unstructured meshes.
+This setup will not use the command line options <code class="docutils notranslate"><span class="pre">-pc_telescope_reduction_factor</span></code> or <code class="docutils notranslate"><span class="pre">-pc_telescope_subcomm_type</span></code>.
+Any explicitly defined nullspace or near nullspace vectors attached to the B are extracted, scattered into the correct ordering consistent
+with dmcoarse and set on B’
+(currently there is no support for nullspaces provided with <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatNullSpaceSetFunction.html">MatNullSpaceSetFunction</a>()</span></code>).
+There is no general method to permute field orderings, hence only <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSetComputeOperators.html">KSPSetComputeOperators</a>()</span></code> is supported.
+The user must use <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>()</span></code> with dmfine to define the method to scatter fields from dmfine to dmcoarse.
+Propagation of the user context for <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSetComputeOperators.html">KSPSetComputeOperators</a>()</span></code> on the sub <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code> is attempted by querying the <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> contexts associated with
+dmfine and dmcoarse. Alternatively, the user may use <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>()</span></code> with dmcoarse to define a method which will return the appropriate user context for <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSetComputeOperators.html">KSPSetComputeOperators</a>()</span></code>.
+Currently there is no support for the flag <code class="docutils notranslate"><span class="pre">-pc_use_amat</span></code>.
+This setup can be invoked by the option <code class="docutils notranslate"><span class="pre">-pc_telescope_use_coarse_dm</span></code> or by calling <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeSetUseCoarseDM.html">PCTelescopeSetUseCoarseDM</a></span></code>(pc,<code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a></span></code>);
+Further information about the user-provided methods required by this setup type are described here <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeSetUseCoarseDM.html">PCTelescopeSetUseCoarseDM</a>()</span></code>.</p>
+</section>
+<section id="developer-notes">
+<h2>Developer Notes<a class="headerlink" href="#developer-notes" title="Link to this heading">#</a></h2>
+<p>During <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCSetUp.html">PCSetUp</a>()</span></code>, the B operator is scattered onto c’.
+Within <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCApply.html">PCApply</a>()</span></code>, the RHS vector (x) is scattered into a redundant vector, xred (defined on c’).
+Then, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSolve.html">KSPSolve</a>()</span></code> is executed on the c’ communicator.</p>
+<p>The communicator used within the telescoping preconditioner is defined by a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Sys/PetscSubcomm.html">PetscSubcomm</a></span></code> using the INTERLACED
+creation routine by default (this can be changed with <code class="docutils notranslate"><span class="pre">-pc_telescope_subcomm_type</span></code>). We run the sub <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code> on only
+the ranks within the communicator which have a color equal to zero.</p>
+<p>The telescoping preconditioner is aware of nullspaces and near nullspaces which are attached to the B operator.
+In the case where B has a (near) nullspace attached, the (near) nullspace vectors are extracted from B and mapped into
+a new (near) nullspace, defined on the sub-communicator, which is attached to B’ (the B operator which was scattered to c’)</p>
+<p>The telescoping preconditioner can re-partition an attached <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> if it is a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code> (2D or 3D -
+support for 1D <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code>s is not provided). If a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code> is found, a topologically equivalent <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code> is created on c’
+and this new <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code> is attached the sub <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSP.html">KSP</a></span></code>. The design of telescope is such that it should be possible to extend support
+for re-partitioning other to <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code>’s (e.g. <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a></span></code>). The user can supply a flag to ignore attached DMs.
+Alternatively, user-provided re-partitioned <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DM.html">DM</a></span></code>s can be used via <code class="docutils notranslate"><span class="pre">-pc_telescope_use_coarse_dm</span></code>.</p>
+<p>With the default setup mode, B’ is defined by fusing rows (in order) associated with MPI processes common to c and c’.</p>
+<p>When a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code> is attached to the parent preconditioner, B’ is defined by: (i) performing a symmetric permutation of B
+into the ordering defined by the <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code> on c’, (ii) extracting the local chunks via <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatCreateSubMatrices.html">MatCreateSubMatrices</a>()</span></code>, (iii) fusing the
+locally (sequential) matrices defined on the ranks common to c and c’ into B’ using <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatCreateMPIMatConcatenateSeqMat.html">MatCreateMPIMatConcatenateSeqMat</a>()</span></code></p>
+<p>Limitations/improvements include the following.
+<code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Vec/VecPlaceArray.html">VecPlaceArray</a>()</span></code> could be used within <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCApply.html">PCApply</a>()</span></code> to improve efficiency and reduce memory usage.
+A unified mechanism to query for user contexts as required by <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/KSP/KSPSetComputeOperators.html">KSPSetComputeOperators</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatNullSpaceSetFunction.html">MatNullSpaceSetFunction</a>()</span></code>.</p>
+<p>The symmetric permutation used when a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DMDA/DMDA.html">DMDA</a></span></code> is encountered is performed via explicitly assembling a permutation matrix P,
+and performing P^T.A.P. Possibly it might be more efficient to use <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Mat/MatPermute.html">MatPermute</a>()</span></code>. We opted to use P^T.A.P as it appears
+<code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Vec/VecPermute.html">VecPermute</a>()</span></code> does not support the use case required here. By computing P, one can permute both the operator and RHS in a
+consistent manner.</p>
+<p>Mapping of vectors (default setup mode) is performed in the following way.
+Suppose the parent communicator size was 4, and we set a reduction factor of 2; this would give a comm size on c’ of 2.
+Using the interlaced creation routine, the ranks in c with color = 0 will be rank 0 and 2.
+We perform the scatter to the sub-communicator in the following way.
+[1] Given a vector x defined on communicator c</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>   rank(c)  local values of x
+   ------- ----------------------------------------
+        0   [  0.0,  1.0,  2.0,  3.0,  4.0,  5.0 ]
+        1   [  6.0,  7.0,  8.0,  9.0, 10.0, 11.0 ]
+        2   [ 12.0, 13.0, 14.0, 15.0, 16.0, 17.0 ]
+        3   [ 18.0, 19.0, 20.0, 21.0, 22.0, 23.0 ]
+</pre></div>
+</div>
+<p>scatter into xtmp defined also on comm c, so that we have the following values</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>   rank(c)  local values of xtmp
+   ------- ----------------------------------------------------------------------------
+        0   [  0.0,  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0, 10.0, 11.0 ]
+        1   [ ]
+        2   [ 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0 ]
+        3   [ ]
+</pre></div>
+</div>
+<p>The entries on rank 1 and 3 (ranks which do not have a color = 0 in c’) have no values</p>
+<p>[2] Copy the values from ranks 0, 2 (indices with respect to comm c) into the vector xred which is defined on communicator c’.
+Ranks 0 and 2 are the only ranks in the subcomm which have a color = 0.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>   rank(c&#39;)  local values of xred
+   -------- ----------------------------------------------------------------------------
+         0   [  0.0,  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0, 10.0, 11.0 ]
+         1   [ 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0 ]
+</pre></div>
+</div>
+</section>
+<section id="contributed-by">
+<h2>Contributed by<a class="headerlink" href="#contributed-by" title="Link to this heading">#</a></h2>
+<p>Dave May</p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
+<div class="docutils container" id="id2">
+<div role="list" class="citation-list">
+<div class="citation" id="id835" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">MSR+16</a><span class="fn-bracket">]</span></span>
+<p>Dave A. May, Patrick Sanan, Karl Rupp, Matthew G. Knepley, and Barry F. Smith. Extreme-scale multigrid components within PETSc. In <em>Proceedings of the Platform for Advanced Scientific Computing Conference</em>, PASC '16, 5:1–5:12. New York, NY, USA, 2016. ACM. <a class="reference external" href="https://doi.org/10.1145/2929908.2929913">doi:10.1145/2929908.2929913</a>.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../../manual/ksp.html#ch-ksp"><span class="std std-ref">KSP: Linear System Solvers</span></a>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeGetKSP.html">PCTelescopeGetKSP</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeGetDM.html">PCTelescopeGetDM</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeGetReductionFactor.html">PCTelescopeGetReductionFactor</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeSetReductionFactor.html">PCTelescopeSetReductionFactor</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeGetIgnoreDM.html">PCTelescopeGetIgnoreDM</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCTelescopeSetIgnoreDM.html">PCTelescopeSetIgnoreDM</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/PC/PCREDUNDANT.html">PCREDUNDANT</a></span></code></p>
+</section>
+<section id="level">
+<h2>Level<a class="headerlink" href="#level" title="Link to this heading">#</a></h2>
+<p>advanced</p>
+</section>
+<section id="location">
+<h2>Location<a class="headerlink" href="#location" title="Link to this heading">#</a></h2>
+<p><A HREF="../../src/ksp/pc/impls/telescope/telescope.c.html#PCTELESCOPE">src/ksp/pc/impls/telescope/telescope.c</A></p>
+<hr class="docutils" />
+<p><a class="reference internal" href="index.html"><span class="std std-doc">Index of all PC routines</span></a><br />
+<a class="reference internal" href="../index.html"><span class="std std-doc">Table of Contents for all manual pages</span></a><br />
+<a class="reference internal" href="../singleindex.html"><span class="std std-doc">Index of all manual pages</span></a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#options-database-keys">Options Database Keys</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notes">Notes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#developer-notes">Developer Notes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contributed-by">Contributed by</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See Also</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#level">Level</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#location">Location</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+<a href=https://gitlab.com/petsc/petsc/-/edit/release/src/ksp/pc/impls/telescope/telescope.c>
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../../_sources/manualpages/PC/PCTELESCOPE.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

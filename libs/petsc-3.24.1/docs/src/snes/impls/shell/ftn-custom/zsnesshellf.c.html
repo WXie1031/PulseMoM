@@ -1,0 +1,40 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/snes/impls/shell/ftn-custom/zsnesshellf.c">Actual source code: zsnesshellf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:06+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscsnes.h.html">&lt;petscsnes.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define snesshellsetsolve_ SNESSHELLSETSOLVE</font></strong>
+<a name="line6">  6: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define snesshellsetsolve_ snesshellsetsolve</font></strong>
+<a name="line8">  8: </a><font color="#A020F0">#endif</font>
+
+<a name="line10"> 10: </a><strong><font color="#4169E1"><a name="oursnesshellsolve"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> oursnesshellsolve(<a href="../../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> x)</font></strong>
+<a name="line11"> 11: </a>{
+<a name="line12"> 12: </a>  void (*func)(<a href="../../../../../manualpages/SNES/SNES.html">SNES</a> *, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *);
+<a name="line13"> 13: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQueryFunction.html">PetscObjectQueryFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESShellSolve_C"</font>, &amp;func));
+<a name="line14"> 14: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(func, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"<a href="../../../../../manualpages/SNES/SNESShellSetSolve.html">SNESShellSetSolve</a>() must be called before <a href="../../../../../manualpages/SNES/SNESSolve.html">SNESSolve</a>()"</font>);
+<a name="line15"> 15: </a>  PetscCallFortranVoidFunction(func(&amp;snes, &amp;x, &amp;ierr));
+<a name="line16"> 16: </a>  <font color="#4169E1">return</font> <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line17"> 17: </a>}
+
+<a name="line19"> 19: </a><strong><font color="#4169E1"><a name="snesshellsetsolve_"></a>PETSC_EXTERN void snesshellsetsolve_(<a href="../../../../../manualpages/SNES/SNES.html">SNES</a> *snes, void (*func)(<a href="../../../../../manualpages/SNES/SNES.html">SNES</a> *, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line20"> 20: </a>{
+<a name="line21"> 21: </a>  *ierr = <a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*snes, <font color="#666666">"SNESShellSolve_C"</font>, (<a href="../../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)func);
+<a name="line22"> 22: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line23"> 23: </a>  *ierr = <a href="../../../../../manualpages/SNES/SNESShellSetSolve.html">SNESShellSetSolve</a>(*snes, oursnesshellsolve);
+<a name="line24"> 24: </a>}
+</pre>
+</body>
+
+</html>
+

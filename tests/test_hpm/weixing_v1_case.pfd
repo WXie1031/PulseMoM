@@ -1,0 +1,206 @@
+# ========================================
+# 卫星高功率微波激励仿真配置文件
+# ========================================
+# 计算域：3400×3400×1400 mm  对应10GHz--100波长
+# 网格间距：10 mm (网格：310×310×120 cells)
+# 物体：2800×2800×1000 mm
+# 源：包围物体的平面波（文件激励）
+# ========================================
+
+# ==================== 单位设置 ====================
+UNITS
+LENGTH mm
+TIME   ns
+FREQ   GHz
+
+COMPUTATION_PRECISION 1  # 同义词
+
+# ==================== GPU设置（可选）====================
+#GPU 1
+#THREADS 0 
+
+
+# ==================== 计算域和网格 ====================
+# 计算最小波长：lambda_min = c0 / max_frequency = 3e8 / 10e9 = 0.03 m = 30 mm
+# 计算所需最小cell size：min_cell_size = lambda_min / PPW = 30mm / 10 = 3mm
+# 如果min_cell_size < GRID_SPACING，使用min_cell_size
+# 否则，使用GRID_SPACING / 4 = 2.5mm
+# 域中心在(0,0,0)（默认）
+ANCHOR center               # 放置在中心
+DOMAIN_SIZE 3400 3400 1400       # 无后缀→按 UNITS.length，即 mm
+
+GRID_SPACING 20 20 20            # 网格间距
+
+# 
+GRID_MODE NONUNIFORM
+FORCE_UNIFORM_FALLBACK OFF
+BLOCK_LTS_ENABLED 1
+
+#MIN_CELL_SIZE 2               # 自动计算（推荐）
+
+# 波长细化（注意单位！）
+#MAX_FREQUENCY 10              # GHz，用于PPW检查
+#WAVELENGTH_REFINEMENT 10        # PPW目标值
+
+# 距离细化（降低以避免过度细化）
+DISTANCE_REFINEMENT 1           # 从2.0降到1.5
+SURFACE_REFINEMENT_LAYERS 2       # 从4降到2
+
+# 其他参数
+SDF_RESOLUTION 0.15
+MAX_LEVEL 7
+
+USE_EMBREE  1
+
+
+# 1. 降低dtmult（最重要）
+DT_MULT 0.5  # 降低到50% CFL以提高数值稳定性
+
+
+# ==================== 边界条件 ====================
+# 边界条件（示例：全向 PML）  ABSORBING  PML
+# 如果边界反射明显，可以改用：
+# BOUNDARY_ALL PML
+# PML_DEPTH 10 10 10 10 10 10
+BOUNDARY_ALL PML
+
+
+# 计算步数/时长（必须在 SOURCE_TSF 之前）
+COMP T 20 ns 
+
+
+# ==================== 材料定义 ====================
+# 物体材料（如果需要指定，否则使用默认）
+# 常数介质库绑定（等效无频散的常数介质）
+# MATERIAL_FILE data/spectra/
+# MATERIAL_TAB 3 name=Const_eps2p5_sig0
+# PEC金属（使用极大sigma近似PEC，避免高电导率材料的时间步长限制）
+MATERIAL_DEFINE id=1 name=PEC epsr=1.0 mur=1.0 sigma=1e20
+
+
+# ==================== 几何导入 ====================
+# 导入物体STL（2800×2800×1000 mm）（按 UNITS 自动从 mm 缩放到 SI；ANCHOR 默认 center）
+# 注意：物体应该位于域中心附近，确保有足够的边界距离
+# 坐标系：anchor=center，域中心为(0,0,0)
+# 物体中心应在(0, 0, 0)附近，范围约：[-1400, 1400] × [-1400, 1400] × [-500, 500] mm
+GEOMETRY_IMPORT STL weixing_v1.stl 1
+
+
+# 如果STL文件坐标系与域不匹配，可以使用平移调整物体位置
+# 例如：如果STL原点在左下角，需要平移到中心
+GEOMETRY_TRANSLATE 0 0 -550
+
+
+# ==================== 源设置 ====================
+# 平面波源：（平面波入射）
+# 角度说明：
+#   - theta: 极角，从z轴正向测量的角度（0-180度）
+#   - phi: 方位角，在xy平面内的角度（0-360度）
+#   - psi: 极化角（通常与phi相同）
+# 从y正向入射：theta=90°, phi=90°（在xy平面，沿+y方向）
+TSF_ANGLE_DEG 45.0 45.0 45.0    # theta=90°, phi=90°（y正向入射）, psi=90°
+# 跳过非入射面的注入（只从j0面注入，避免6个面同时注入导致数值误差累积）
+TSF_SKIP i0 in jn k0 kn
+
+
+# 源设置方式1：使用物理坐标（SOURCE_TSF_PHYS，推荐用于指定位置）
+# 源设置方式2：使用网格索引（SOURCE_TSF，推荐用于从文件加载）
+# SOURCE_TSF格式：i0 j0 k0 in jn kn theta phi psi type wavelength amplitude component filename
+# type=0 表示从文件加载波形，需要指定文件名
+# 源区域索引：[15, 285] × [15, 285] × [10, 100]
+# 注意：in, jn, kn是闭区间结束索引（包含该索引）
+# 物理坐标：x[-500, 500] mm, y[-500, 500] mm, z[-200, 200] mm
+# 对应网格索引：约i[167, 833] j[167, 833] k[116, 250]
+SOURCE_TSF_PHYS 0 1e-3 1e4 -1550 -1550 -6000 1550 1550 600 Ey hpm_waveform_X(10.0GHz)_20ns.txt
+
+
+# 源文件格式说明：
+# TSF源文件格式：
+# 方式1：带ndata头部（推荐）
+#   第一行：ndata（数据点数，整数）
+#   后续ndata行：每行两个数字（空格分隔）
+#   格式：pos e_value
+#   - pos: 位置索引（整数，通常从0开始）
+#   - e_value: E场值（浮点数）
+#
+# 方式2：不带ndata头部（自动检测行数）
+#   直接从数据开始，每行两个数字（空格分隔）
+#   格式：pos e_value
+#   程序会自动统计有效数据行数（忽略空行和以#开头的注释行）
+#
+# 后续ndata行：每行两个数字（空格分隔）
+#   格式：pos e_value
+#   - pos: 位置索引（整数，通常从0开始）
+#   - e_value: E场值（浮点数）
+# 格式示例：
+#   2000
+#   0 0.000000e+00
+#   1 -1.046176e+03
+#   2 3.071992e+03
+#   3 -3.626920e+03
+#   ...
+# 注意：数据点数量应该 >= NSTEPS（否则会有警告）
+
+# ==================== 输出设置 ====================
+OUTPUT_DIRECTORY output/weixing_v1_test
+
+
+# 输出格式 
+OUTPUT_FORMAT HDF5         # HDF5格式   OUTPUT_FORMAT VTK  HDF5
+OUTPUT_VIS_FORMAT VTK_XML  # 可视化格式（混合模式）
+OUTPUT_MULTISTEP 1         # 多时间步模式
+
+
+# 输出步长（每N步输出一次）
+OUTPUT_STEP 10
+
+
+
+
+# ==================== 切面输出 ====================
+# 坐标系说明：默认anchor=center，即域中心为(0,0,0)
+# 域范围：x[-1500, 1500], y[-1500, 1500], z[-550, 550] mm
+# 物体中心应在(0, 0, 0)附近
+#
+# 1. x=0 切面（YZ平面，通过域中心）
+OUT_PLANE_PHYS comp=Ez axis=X pos=0  id=1 step=10
+OUT_PLANE_PHYS comp=Ex axis=X pos=0 id=2 step=10
+OUT_PLANE_PHYS comp=Ey axis=X pos=0  id=3 step=10
+
+# 2. y=0 切面（XZ平面，通过域中心）
+OUT_PLANE_PHYS comp=Ez axis=Y pos=0  id=4 step=10
+OUT_PLANE_PHYS comp=Ex axis=Y pos=0 id=5 step=10
+OUT_PLANE_PHYS comp=Ey axis=Y pos=0  id=6 step=10
+
+# ==================== 体积输出 ====================
+# 体测量：物体内部或周围区域
+# 坐标系anchor=center，物体范围（假设物体中心在(0,0,0)）：
+# x: [-1400, 1400] mm（2800/2 = 1400）
+# y: [-1400, 1400] mm
+# z: [-500, 500] mm（1000/2 = 500）
+# 使用物理坐标输出整个物体区域
+ OUT_VOLUME_PHYS comp=Ez x0=-1500 x1=1500 y0=-1500 y1=1500 z0=-550 z1=550 id=7 step=20
+
+# 或者输出物体中心区域（减小文件大小）
+#OUT_VOLUME_PHYS comp=Ey x0=-700 x1=700 y0=-700 y1=700 z0=-250 z1=250 id=8 step=20
+
+# ==================== 点输出（可选）====================
+# 物体中心点监测（坐标系anchor=center）
+OUT_POINT_PHYS comp=Ez x=0 y=0 z=0 id=1 step=10
+OUT_POINT_PHYS comp=Ex x=0 y=0 z=0 id=2 step=10
+OUT_POINT_PHYS comp=Ey x=0 y=0 z=0 id=3 step=10
+
+
+
+# 在参数文件中添加
+EXPORT_MODEL_INFO model_info.vtk
+
+# 或者使用默认文件名
+# EXPORT_MODEL_INFO
+
+
+# ==================== 调试输出 ====================
+VERBOSE 1
+
+
+

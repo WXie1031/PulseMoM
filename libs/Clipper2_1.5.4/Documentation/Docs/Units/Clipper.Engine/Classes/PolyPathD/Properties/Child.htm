@@ -1,0 +1,88 @@
+<html>
+<head>
+  <title>Child</title><script type="text/javascript" src="../../../../../../CodeScripts/SyntaxHighlighter/scripts/shCore.js"></script><script type="text/javascript" src="../../../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushDelphi.js"></script><script type="text/javascript" src="../../../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCpp.js"></script><script type="text/javascript" src="../../../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCSharp.js"></script><link rel="stylesheet" type="text/css" href="../../../../../../Styles/default.css"/><link rel="stylesheet" type="text/css" href="../../../../../../Menu/menu.css"/><link rel="stylesheet" type="text/css" href="../../../../../../CodeScripts/SyntaxHighlighter/styles/shCoreDefault.css"/><link rel="stylesheet" type="text/css" href="../../../../../../CodeScripts/SyntaxHighlighter/styles/shThemeDefault.css"/><meta name="viewport" content="width=device-width, initial-scale=1.0"><script type="text/javascript" src="../../../../../../Menu/menu.js"></script><script type="text/javascript" src="../../../../../../CodeScripts/bootstrap.js"></script>
+</head>
+<body bgcolor="#FFFFFF">
+  <div class="menu" id="menu"><a class="ancestor" href="../../../../../_Body.htm">Index</a><a class="ancestor" href="../../../_Body.htm">Clipper.Engine</a><a class="ancestor" href="../_Body.htm">PolyPathD</a><span class="active">Child</span>
+  </div><br><br>
+
+  <h1>PolyPathD.Child</h1>
+  <p class="Decl"><span class="Language">Delphi</span> <b>property</b> Child[index: Integer]: TPolyPathD; <b>default</b>; <span class="Comment">//read-only</span></p><br class="half">
+  <p class="Decl"><span class="Language"> C++</span> const PolyPathD* Child(size_t index) const</p>
+  <p class="Decl"><span class="Language"> C++</span> const PolyPathD* operator [] (size_t index) const</p><br class="half">
+  <p class="Decl"><span class="Language"> C#&nbsp;</span> PolyPathD Child(int index);</p>
+  <p class="Decl"><span class="Language"> C#&nbsp;</span> PolyPathD this[int index]{ get{} }</p><br class="half">
+  <p> <span class="monobold">Child</span> is perhaps the most explicit way of accessing children (ie nested polygon contours that are contained within <a href="./Polygon.htm"><b>Polygon</b></a>).<br> The array operator <span class="monobold2">[ ]</span> is another (simpler) way of access children, and <span class="monobold2">iterators</span> can also be used. </p>
+  <p> 
+    <div class="pseudoTbl">
+      <div>C++
+      </div>
+      <pre class="brush: cpp;">
+  // nice and simple
+  for (const auto&amp; poly : polytree)
+    for (const auto&amp; hole : *poly)
+    {
+      if (!hole-&gt;IsHole() || hole-&gt;Level() != 2)
+        std::cout &lt;&lt; "oops!";
+    }
+
+  // or full disclosure
+  PolyPathDList::const_iterator ppi, ppi2;
+  for (ppi = polytree.begin(); ppi != polytree.end(); ++ppi)
+    for (ppi2 = (*ppi)-&gt;begin(); ppi != (*ppi)-&gt;end(); ++ppi2)
+    {
+      const std::unique_ptr&lt;PolyPathD&gt;&amp; hole = *ppi2;
+      if (!hole-&gt;IsHole() || hole-&gt;Level() != 2)
+        std::cout &lt;&lt; "oops!";
+    }
+    
+  // and other somewhat messy options
+  const auto&amp; first_poly = polytree.Child(0);
+  if (first_poly-&gt;Count() && 
+    first_poly-&gt;Child(0)-&gt;Level() != 2 ||
+    !first_poly[0].IsHole())
+      std::cout &lt;&lt; "oops!" &lt;&lt; std::endl;
+      </pre>
+    </div> </p>
+  <p> 
+    <div class="pseudoTbl">
+      <div>C#
+      </div>
+      <pre class="brush: csharp;">
+    PolyTreeD polytree;
+    // do boolean op that populates polytree
+    // now access the polytree
+    foreach (PolyPathD poly in polytree)
+      foreach (PolyPathD hole in poly)
+        if (hole.Count &gt; 0)
+          Debug.Assert(!hole[0].IsHole && hole.Child(0).Level == 3);
+    // and another way to access nested PolyPathD objects
+    PolyPathD holeInsideSecondPoly = polytree[1][0];
+  
+      </pre>
+    </div> </p>
+  <p> 
+    <div class="pseudoTbl">
+      <div>Delphi
+      </div>
+      <pre class="brush: delphi;">
+    var 
+      i,j     : Integer;
+      polytree: TPolyTreeD;
+    begin
+      // do boolean op that populates polytree
+      // now access the polytree
+        for i := 0 to polytree.Count -1 do
+          for j := 0 to polytree[i].Count -1 do
+            if not polytree[i][j].IsHole or
+              (polytree[i][j].Level &lt;&gt; 2) then
+                WriteLn('oops!');
+    end;
+      </pre>
+    </div> </p>
+  <h2 id="Auto-SeeAlso">See Also</h2>
+  <p class="Body"><a href="Polygon.htm">Polygon</a></p>
+  <p class="Copyright" id="auto"> <br><br> Copyright &#169; 2010-2024 Angus Johnson &#160; - &#160; Clipper2 1.5.2 &#160; - &#160; Help file built on 3 Mar 2025<br><br> </p>
+
+</body>
+</html>

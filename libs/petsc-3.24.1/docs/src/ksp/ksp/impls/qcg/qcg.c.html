@@ -1,0 +1,449 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/impls/qcg/qcg.c">Actual source code: qcg.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../src/ksp/ksp/impls/qcg/qcgimpl.h.html">&lt;../src/ksp/ksp/impls/qcg/qcgimpl.h&gt;</A>
+
+<a name="line3">  3: </a><font color="#B22222">/*</font>
+<a name="line4">  4: </a><font color="#B22222">  KSPQCGQuadraticRoots - Computes the roots of the quadratic,</font>
+<a name="line5">  5: </a><font color="#B22222">         ||s + step*p|| - delta = 0</font>
+<a name="line6">  6: </a><font color="#B22222">   such that step1 &gt;= 0 &gt;= step2.</font>
+<a name="line7">  7: </a><font color="#B22222">   where</font>
+<a name="line8">  8: </a><font color="#B22222">      delta:</font>
+<a name="line9">  9: </a><font color="#B22222">        On entry delta must contain scalar delta.</font>
+<a name="line10"> 10: </a><font color="#B22222">        On exit delta is unchanged.</font>
+<a name="line11"> 11: </a><font color="#B22222">      step1:</font>
+<a name="line12"> 12: </a><font color="#B22222">        On entry step1 need not be specified.</font>
+<a name="line13"> 13: </a><font color="#B22222">        On exit step1 contains the non-negative root.</font>
+<a name="line14"> 14: </a><font color="#B22222">      step2:</font>
+<a name="line15"> 15: </a><font color="#B22222">        On entry step2 need not be specified.</font>
+<a name="line16"> 16: </a><font color="#B22222">        On exit step2 contains the non-positive root.</font>
+<a name="line17"> 17: </a><font color="#B22222">   C code is translated from the Fortran version of the MINPACK-2 Project,</font>
+<a name="line18"> 18: </a><font color="#B22222">   Argonne National Laboratory, Brett M. Averick and Richard G. Carter.</font>
+<a name="line19"> 19: </a><font color="#B22222">*/</font>
+<a name="line20"> 20: </a><strong><font color="#4169E1"><a name="KSPQCGQuadraticRoots"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPQCGQuadraticRoots(<a href="../../../../../manualpages/Vec/Vec.html">Vec</a> s, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> p, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> delta, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *step1, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *step2)</font></strong>
+<a name="line21"> 21: </a>{
+<a name="line22"> 22: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> dsq, ptp, pts, rad, sts;
+
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line25"> 25: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(p, s, &amp;pts));
+<a name="line26"> 26: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(p, p, &amp;ptp));
+<a name="line27"> 27: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(s, s, &amp;sts));
+<a name="line28"> 28: </a>  dsq = delta * delta;
+<a name="line29"> 29: </a>  rad = PetscSqrtReal((pts * pts) - ptp * (sts - dsq));
+<a name="line30"> 30: </a>  <font color="#4169E1">if</font> (pts &gt; 0.0) {
+<a name="line31"> 31: </a>    *step2 = -(pts + rad) / ptp;
+<a name="line32"> 32: </a>    *step1 = (sts - dsq) / (ptp * *step2);
+<a name="line33"> 33: </a>  } <font color="#4169E1">else</font> {
+<a name="line34"> 34: </a>    *step1 = -(pts - rad) / ptp;
+<a name="line35"> 35: </a>    *step2 = (sts - dsq) / (ptp * *step1);
+<a name="line36"> 36: </a>  }
+<a name="line37"> 37: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line38"> 38: </a>}
+
+<a name="line40"> 40: </a><font color="#B22222">/*@</font>
+<a name="line41"> 41: </a><font color="#B22222">  <a href="../../../../../manualpages/KSP/KSPQCGSetTrustRegionRadius.html">KSPQCGSetTrustRegionRadius</a> - Sets the radius of the trust region for `<a href="../../../../../manualpages/KSP/KSPQCG.html">KSPQCG</a>`</font>
+
+<a name="line43"> 43: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line45"> 45: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line46"> 46: </a><font color="#B22222">+ ksp   - the iterative context</font>
+<a name="line47"> 47: </a><font color="#B22222">- delta - the trust region radius (Infinity is the default)</font>
+
+<a name="line49"> 49: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line50"> 50: </a><font color="#B22222">. -ksp_qcg_trustregionradius &lt;delta&gt; - trust region radius</font>
+
+<a name="line52"> 52: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line54"> 54: </a><font color="#B22222">  Developer Note:</font>
+<a name="line55"> 55: </a><font color="#B22222">  `<a href="../../../../../manualpages/KSP/KSPMINRESSetRadius.html">KSPMINRESSetRadius</a>()`, for example, does not have TrustRegion in the name</font>
+
+<a name="line57"> 57: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/KSP/KSPQCG.html">KSPQCG</a>`, `<a href="../../../../../manualpages/KSP/KSPQCGGetTrialStepNorm.html">KSPQCGGetTrialStepNorm</a>()`</font>
+<a name="line58"> 58: </a><font color="#B22222">@*/</font>
+<a name="line59"> 59: </a><strong><font color="#4169E1"><a name="KSPQCGSetTrustRegionRadius"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/KSP/KSPQCGSetTrustRegionRadius.html">KSPQCGSetTrustRegionRadius</a>(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> delta)</font></strong>
+<a name="line60"> 60: </a>{
+<a name="line61"> 61: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line63"> 63: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(delta &gt;= 0.0, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Tolerance must be non-negative"</font>);
+<a name="line64"> 64: </a>  <a href="../../../../../manualpages/Sys/PetscTryMethod.html">PetscTryMethod</a>(ksp, <font color="#666666">"KSPQCGSetTrustRegionRadius_C"</font>, (<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>), (ksp, delta));
+<a name="line65"> 65: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line66"> 66: </a>}
+
+<a name="line68"> 68: </a><font color="#B22222">/*@</font>
+<a name="line69"> 69: </a><font color="#B22222">  <a href="../../../../../manualpages/KSP/KSPQCGGetTrialStepNorm.html">KSPQCGGetTrialStepNorm</a> - Gets the norm of a trial step vector in `<a href="../../../../../manualpages/KSP/KSPQCG.html">KSPQCG</a>`.  The WCG step may be</font>
+<a name="line70"> 70: </a><font color="#B22222">  constrained, so this is not necessarily the length of the ultimate step taken in `<a href="../../../../../manualpages/KSP/KSPQCG.html">KSPQCG</a>`.</font>
+
+<a name="line72"> 72: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line74"> 74: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line75"> 75: </a><font color="#B22222">. ksp - the iterative context</font>
+
+<a name="line77"> 77: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line78"> 78: </a><font color="#B22222">. tsnorm - the norm</font>
+
+<a name="line80"> 80: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line82"> 82: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/KSP/KSPQCG.html">KSPQCG</a>`, `<a href="../../../../../manualpages/KSP/KSPQCGSetTrustRegionRadius.html">KSPQCGSetTrustRegionRadius</a>()`</font>
+<a name="line83"> 83: </a><font color="#B22222">@*/</font>
+<a name="line84"> 84: </a><strong><font color="#4169E1"><a name="KSPQCGGetTrialStepNorm"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/KSP/KSPQCGGetTrialStepNorm.html">KSPQCGGetTrialStepNorm</a>(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *tsnorm)</font></strong>
+<a name="line85"> 85: </a>{
+<a name="line86"> 86: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line88"> 88: </a>  <a href="../../../../../manualpages/Sys/PetscUseMethod.html">PetscUseMethod</a>(ksp, <font color="#666666">"KSPQCGGetTrialStepNorm_C"</font>, (<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *), (ksp, tsnorm));
+<a name="line89"> 89: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line90"> 90: </a>}
+
+<a name="line92"> 92: </a><font color="#B22222">/*@</font>
+<a name="line93"> 93: </a><font color="#B22222">  <a href="../../../../../manualpages/KSP/KSPQCGGetQuadratic.html">KSPQCGGetQuadratic</a> - Gets the value of the quadratic function, evaluated at the new iterate</font>
+
+<a name="line95"> 95: </a><font color="#B22222">  Collective</font>
+
+<a name="line97"> 97: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line98"> 98: </a><font color="#B22222">. ksp - the iterative context</font>
+
+<a name="line100">100: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line101">101: </a><font color="#B22222">. quadratic - the quadratic function evaluated at the new iterate</font>
+
+<a name="line103">103: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line105">105: </a><font color="#B22222">  Note:</font>
+<a name="line106">106: </a><font color="#B22222">  The quadratic function is</font>
+
+<a name="line108">108: </a><font color="#B22222">  $$</font>
+<a name="line109">109: </a><font color="#B22222">  q(s) = g^T * s + 0.5 * s^T * H * s</font>
+<a name="line110">110: </a><font color="#B22222">  $$</font>
+
+<a name="line112">112: </a><font color="#B22222">  which satisfies the Euclidean Norm trust region constraint</font>
+
+<a name="line114">114: </a><font color="#B22222">  $$</font>
+<a name="line115">115: </a><font color="#B22222">  || D * s || \le delta,</font>
+<a name="line116">116: </a><font color="#B22222">  $$</font>
+
+<a name="line118">118: </a><font color="#B22222">  where</font>
+<a name="line119">119: </a><font color="#B22222">.vb</font>
+<a name="line120">120: </a><font color="#B22222">  delta is the trust region radius,</font>
+<a name="line121">121: </a><font color="#B22222">  g is the gradient vector, and</font>
+<a name="line122">122: </a><font color="#B22222">  H is Hessian matrix,</font>
+<a name="line123">123: </a><font color="#B22222">  D is a scaling matrix.</font>
+<a name="line124">124: </a><font color="#B22222">.ve</font>
+
+<a name="line126">126: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/KSP/KSPQCG.html">KSPQCG</a>`</font>
+<a name="line127">127: </a><font color="#B22222">@*/</font>
+<a name="line128">128: </a><strong><font color="#4169E1"><a name="KSPQCGGetQuadratic"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/KSP/KSPQCGGetQuadratic.html">KSPQCGGetQuadratic</a>(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *quadratic)</font></strong>
+<a name="line129">129: </a>{
+<a name="line130">130: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line132">132: </a>  <a href="../../../../../manualpages/Sys/PetscUseMethod.html">PetscUseMethod</a>(ksp, <font color="#666666">"KSPQCGGetQuadratic_C"</font>, (<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *), (ksp, quadratic));
+<a name="line133">133: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line134">134: </a>}
+
+<a name="line136">136: </a><strong><font color="#4169E1"><a name="KSPSolve_QCG"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPSolve_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line137">137: </a>{
+<a name="line138">138: </a>  <font color="#B22222">/*</font>
+<a name="line139">139: </a><font color="#B22222">   Correspondence with documentation above:</font>
+<a name="line140">140: </a><font color="#B22222">      B = g = gradient,</font>
+<a name="line141">141: </a><font color="#B22222">      X = s = step</font>
+<a name="line142">142: </a><font color="#B22222">   Note:  This is not coded correctly for complex arithmetic!</font>
+<a name="line143">143: </a><font color="#B22222"> */</font>
+
+<a name="line145">145: </a>  KSP_QCG    *pcgP = (KSP_QCG *)ksp-&gt;data;
+<a name="line146">146: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>         Amat, Pmat;
+<a name="line147">147: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>         W, WA, WA2, R, P, ASP, BS, X, B;
+<a name="line148">148: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> scal, beta, rntrn, step;
+<a name="line149">149: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   q1, q2, xnorm, step1, step2, rnrm = 0.0, btx, xtax;
+<a name="line150">150: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   ptasp, rtr, wtasp, bstp;
+<a name="line151">151: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   dzero = 0.0, bsnrm = 0.0;
+<a name="line152">152: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    i, maxit;
+<a name="line153">153: </a>  <a href="../../../../../manualpages/PC/PC.html">PC</a>          pc = ksp-&gt;pc;
+<a name="line154">154: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>   diagonalscale;
+
+<a name="line156">156: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line157">157: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCGetDiagonalScale.html">PCGetDiagonalScale</a>(ksp-&gt;pc, &amp;diagonalscale));
+<a name="line158">158: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!diagonalscale, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Krylov method %s does not support diagonal scaling"</font>, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp)-&gt;type_name);
+<a name="line159">159: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!ksp-&gt;transpose_solve, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Currently does not support transpose solve"</font>);
+
+<a name="line161">161: </a>  ksp-&gt;its = 0;
+<a name="line162">162: </a>  maxit    = ksp-&gt;max_it;
+<a name="line163">163: </a>  WA       = ksp-&gt;work[0];
+<a name="line164">164: </a>  R        = ksp-&gt;work[1];
+<a name="line165">165: </a>  P        = ksp-&gt;work[2];
+<a name="line166">166: </a>  ASP      = ksp-&gt;work[3];
+<a name="line167">167: </a>  BS       = ksp-&gt;work[4];
+<a name="line168">168: </a>  W        = ksp-&gt;work[5];
+<a name="line169">169: </a>  WA2      = ksp-&gt;work[6];
+<a name="line170">170: </a>  X        = ksp-&gt;vec_sol;
+<a name="line171">171: </a>  B        = ksp-&gt;vec_rhs;
+
+<a name="line173">173: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(pcgP-&gt;delta &gt; dzero, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Input error: delta &lt;= 0"</font>);
+
+<a name="line175">175: </a>  <font color="#B22222">/* Initialize variables */</font>
+<a name="line176">176: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecSet.html">VecSet</a>(W, 0.0)); <font color="#B22222">/* W = 0 */</font>
+<a name="line177">177: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecSet.html">VecSet</a>(X, 0.0)); <font color="#B22222">/* X = 0 */</font>
+<a name="line178">178: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCGetOperators.html">PCGetOperators</a>(pc, &amp;Amat, &amp;Pmat));
+
+<a name="line180">180: </a>  <font color="#B22222">/* Compute:  BS = D^{-1} B */</font>
+<a name="line181">181: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCApplySymmetricLeft.html">PCApplySymmetricLeft</a>(pc, B, BS));
+
+<a name="line183">183: </a>  <font color="#4169E1">if</font> (ksp-&gt;normtype != <a href="../../../../../manualpages/KSP/KSP_NORM_NONE.html">KSP_NORM_NONE</a>) {
+<a name="line184">184: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(BS, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;bsnrm));
+<a name="line185">185: </a>    <a href="../../../../../manualpages/KSP/KSPCheckNorm.html">KSPCheckNorm</a>(ksp, bsnrm);
+<a name="line186">186: </a>  }
+<a name="line187">187: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSAWsTakeAccess.html">PetscObjectSAWsTakeAccess</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp));
+<a name="line188">188: </a>  ksp-&gt;its   = 0;
+<a name="line189">189: </a>  ksp-&gt;rnorm = bsnrm;
+<a name="line190">190: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSAWsGrantAccess.html">PetscObjectSAWsGrantAccess</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp));
+<a name="line191">191: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSPLogResidualHistory(ksp, bsnrm));
+<a name="line192">192: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPMonitor.html">KSPMonitor</a>(ksp, 0, bsnrm));
+<a name="line193">193: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*ksp-&gt;converged)(ksp, 0, bsnrm, &amp;ksp-&gt;reason, ksp-&gt;cnvP));
+<a name="line194">194: </a>  <font color="#4169E1">if</font> (ksp-&gt;reason) <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+
+<a name="line196">196: </a>  <font color="#B22222">/* Compute the initial scaled direction and scaled residual */</font>
+<a name="line197">197: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(BS, R));
+<a name="line198">198: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecScale.html">VecScale</a>(R, -1.0));
+<a name="line199">199: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(R, P));
+<a name="line200">200: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(R, R, &amp;rtr));
+
+<a name="line202">202: </a>  <font color="#4169E1">for</font> (i = 0; i &lt;= maxit; i++) {
+<a name="line203">203: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSAWsTakeAccess.html">PetscObjectSAWsTakeAccess</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp));
+<a name="line204">204: </a>    ksp-&gt;its++;
+<a name="line205">205: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSAWsGrantAccess.html">PetscObjectSAWsGrantAccess</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp));
+
+<a name="line207">207: </a>    <font color="#B22222">/* Compute:  asp = D^{-T}*A*D^{-1}*p  */</font>
+<a name="line208">208: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCApplySymmetricRight.html">PCApplySymmetricRight</a>(pc, P, WA));
+<a name="line209">209: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSP_MatMult(ksp, Amat, WA, WA2));
+<a name="line210">210: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCApplySymmetricLeft.html">PCApplySymmetricLeft</a>(pc, WA2, ASP));
+
+<a name="line212">212: </a>    <font color="#B22222">/* Check for negative curvature */</font>
+<a name="line213">213: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(P, ASP, &amp;ptasp));
+<a name="line214">214: </a>    <font color="#4169E1">if</font> (ptasp &lt;= dzero) {
+<a name="line215">215: </a>      <font color="#B22222">/* Scaled negative curvature direction:  Compute a step so that</font>
+<a name="line216">216: </a><font color="#B22222">        ||w + step*p|| = delta and QS(w + step*p) is least */</font>
+
+<a name="line218">218: </a>      <font color="#4169E1">if</font> (!i) {
+<a name="line219">219: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(P, X));
+<a name="line220">220: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(X, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;xnorm));
+<a name="line221">221: </a>        <a href="../../../../../manualpages/KSP/KSPCheckNorm.html">KSPCheckNorm</a>(ksp, xnorm);
+<a name="line222">222: </a>        scal = pcgP-&gt;delta / xnorm;
+<a name="line223">223: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecScale.html">VecScale</a>(X, scal));
+<a name="line224">224: </a>      } <font color="#4169E1">else</font> {
+<a name="line225">225: </a>        <font color="#B22222">/* Compute roots of quadratic */</font>
+<a name="line226">226: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSPQCGQuadraticRoots(W, P, pcgP-&gt;delta, &amp;step1, &amp;step2));
+<a name="line227">227: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(W, ASP, &amp;wtasp));
+<a name="line228">228: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(BS, P, &amp;bstp));
+<a name="line229">229: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(W, X));
+<a name="line230">230: </a>        q1 = step1 * (bstp + wtasp + .5 * step1 * ptasp);
+<a name="line231">231: </a>        q2 = step2 * (bstp + wtasp + .5 * step2 * ptasp);
+<a name="line232">232: </a>        <font color="#4169E1">if</font> (q1 &lt;= q2) {
+<a name="line233">233: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(X, step1, P));
+<a name="line234">234: </a>        } <font color="#4169E1">else</font> {
+<a name="line235">235: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(X, step2, P));
+<a name="line236">236: </a>        }
+<a name="line237">237: </a>      }
+<a name="line238">238: </a>      pcgP-&gt;ltsnrm = pcgP-&gt;delta; <font color="#B22222">/* convergence in direction of */</font>
+<a name="line239">239: </a>      ksp-&gt;reason  = ksp-&gt;converged_neg_curve ? <a href="../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_NEG_CURVE</a> : <a href="../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_DIVERGED_INDEFINITE_MAT</a>;
+<a name="line240">240: </a>      <font color="#4169E1">if</font> (!i) {
+<a name="line241">241: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(ksp, <font color="#666666">"negative curvature: delta=%g\n"</font>, (double)pcgP-&gt;delta));
+<a name="line242">242: </a>      } <font color="#4169E1">else</font> {
+<a name="line243">243: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(ksp, <font color="#666666">"negative curvature: step1=%g, step2=%g, delta=%g\n"</font>, (double)step1, (double)step2, (double)pcgP-&gt;delta));
+<a name="line244">244: </a>      }
+
+<a name="line246">246: </a>    } <font color="#4169E1">else</font> {
+<a name="line247">247: </a>      <font color="#B22222">/* Compute step along p */</font>
+<a name="line248">248: </a>      step = rtr / ptasp;
+<a name="line249">249: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(W, X));       <font color="#B22222">/*  x = w  */</font>
+<a name="line250">250: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(X, step, P)); <font color="#B22222">/*  x &lt;- step*p + x  */</font>
+<a name="line251">251: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(X, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;pcgP-&gt;ltsnrm));
+<a name="line252">252: </a>      <a href="../../../../../manualpages/KSP/KSPCheckNorm.html">KSPCheckNorm</a>(ksp, pcgP-&gt;ltsnrm);
+
+<a name="line254">254: </a>      <font color="#4169E1">if</font> (pcgP-&gt;ltsnrm &gt; pcgP-&gt;delta) {
+<a name="line255">255: </a>        <font color="#B22222">/* Since the trial iterate is outside the trust region,</font>
+<a name="line256">256: </a><font color="#B22222">            evaluate a constrained step along p so that</font>
+<a name="line257">257: </a><font color="#B22222">                    ||w + step*p|| = delta</font>
+<a name="line258">258: </a><font color="#B22222">          The positive step is always better in this case. */</font>
+<a name="line259">259: </a>        <font color="#4169E1">if</font> (!i) {
+<a name="line260">260: </a>          scal = pcgP-&gt;delta / pcgP-&gt;ltsnrm;
+<a name="line261">261: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecScale.html">VecScale</a>(X, scal));
+<a name="line262">262: </a>        } <font color="#4169E1">else</font> {
+<a name="line263">263: </a>          <font color="#B22222">/* Compute roots of quadratic */</font>
+<a name="line264">264: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSPQCGQuadraticRoots(W, P, pcgP-&gt;delta, &amp;step1, &amp;step2));
+<a name="line265">265: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(W, X));
+<a name="line266">266: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(X, step1, P)); <font color="#B22222">/*  x &lt;- step1*p + x  */</font>
+<a name="line267">267: </a>        }
+<a name="line268">268: </a>        pcgP-&gt;ltsnrm = pcgP-&gt;delta;
+<a name="line269">269: </a>        ksp-&gt;reason  = <a href="../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_STEP_LENGTH</a>; <font color="#B22222">/* convergence along constrained step */</font>
+<a name="line270">270: </a>        <font color="#4169E1">if</font> (!i) {
+<a name="line271">271: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(ksp, <font color="#666666">"constrained step: delta=%g\n"</font>, (double)pcgP-&gt;delta));
+<a name="line272">272: </a>        } <font color="#4169E1">else</font> {
+<a name="line273">273: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(ksp, <font color="#666666">"constrained step: step1=%g, step2=%g, delta=%g\n"</font>, (double)step1, (double)step2, (double)pcgP-&gt;delta));
+<a name="line274">274: </a>        }
+
+<a name="line276">276: </a>      } <font color="#4169E1">else</font> {
+<a name="line277">277: </a>        <font color="#B22222">/* Evaluate the current step */</font>
+<a name="line278">278: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(X, W));          <font color="#B22222">/* update interior iterate */</font>
+<a name="line279">279: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(R, -step, ASP)); <font color="#B22222">/* r &lt;- -step*asp + r */</font>
+<a name="line280">280: </a>        <font color="#4169E1">if</font> (ksp-&gt;normtype != <a href="../../../../../manualpages/KSP/KSP_NORM_NONE.html">KSP_NORM_NONE</a>) {
+<a name="line281">281: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(R, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;rnrm));
+<a name="line282">282: </a>          <a href="../../../../../manualpages/KSP/KSPCheckNorm.html">KSPCheckNorm</a>(ksp, rnrm);
+<a name="line283">283: </a>        }
+<a name="line284">284: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSAWsTakeAccess.html">PetscObjectSAWsTakeAccess</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp));
+<a name="line285">285: </a>        ksp-&gt;rnorm = rnrm;
+<a name="line286">286: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSAWsGrantAccess.html">PetscObjectSAWsGrantAccess</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp));
+<a name="line287">287: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSPLogResidualHistory(ksp, rnrm));
+<a name="line288">288: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPMonitor.html">KSPMonitor</a>(ksp, i + 1, rnrm));
+<a name="line289">289: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*ksp-&gt;converged)(ksp, i + 1, rnrm, &amp;ksp-&gt;reason, ksp-&gt;cnvP));
+<a name="line290">290: </a>        <font color="#4169E1">if</font> (ksp-&gt;reason) { <font color="#B22222">/* convergence for */</font>
+<a name="line291">291: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(ksp, <font color="#666666">"truncated step: step=%g, rnrm=%g, delta=%g\n"</font>, (double)<a href="../../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(step), (double)rnrm, (double)pcgP-&gt;delta));
+<a name="line292">292: </a>        }
+<a name="line293">293: </a>      }
+<a name="line294">294: </a>    }
+<a name="line295">295: </a>    <font color="#4169E1">if</font> (ksp-&gt;reason) <font color="#4169E1">break</font>; <font color="#B22222">/* Convergence has been attained */</font>
+<a name="line296">296: </a>    <font color="#4169E1">else</font> { <font color="#B22222">/* Compute a new AS-orthogonal direction */</font> <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDot.html">VecDot</a>(R, R, &amp;rntrn));
+<a name="line297">297: </a>      beta = rntrn / rtr;
+<a name="line298">298: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecAYPX.html">VecAYPX</a>(P, beta, R)); <font color="#B22222">/*  p &lt;- r + beta*p  */</font>
+<a name="line299">299: </a>      rtr = <a href="../../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(rntrn);
+<a name="line300">300: </a>    }
+<a name="line301">301: </a>  }
+<a name="line302">302: </a>  <font color="#4169E1">if</font> (!ksp-&gt;reason) ksp-&gt;reason = <a href="../../../../../manualpages/KSP/KSP_DIVERGED_ITS.html">KSP_DIVERGED_ITS</a>;
+
+<a name="line304">304: </a>  <font color="#B22222">/* Unscale x */</font>
+<a name="line305">305: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(X, WA2));
+<a name="line306">306: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCApplySymmetricRight.html">PCApplySymmetricRight</a>(pc, WA2, X));
+
+<a name="line308">308: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSP_MatMult(ksp, Amat, X, WA));
+<a name="line309">309: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(B, X, &amp;btx));
+<a name="line310">310: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(X, WA, &amp;xtax));
+
+<a name="line312">312: </a>  pcgP-&gt;quadratic = btx + .5 * xtax;
+<a name="line313">313: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line314">314: </a>}
+
+<a name="line316">316: </a><strong><font color="#4169E1"><a name="KSPSetUp_QCG"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPSetUp_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line317">317: </a>{
+<a name="line318">318: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line319">319: </a>  <font color="#B22222">/* Get work vectors from user code */</font>
+<a name="line320">320: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetWorkVecs.html">KSPSetWorkVecs</a>(ksp, 7));
+<a name="line321">321: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line322">322: </a>}
+
+<a name="line324">324: </a><strong><font color="#4169E1"><a name="KSPDestroy_QCG"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPDestroy_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line325">325: </a>{
+<a name="line326">326: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line327">327: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp, <font color="#666666">"KSPQCGGetQuadratic_C"</font>, NULL));
+<a name="line328">328: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp, <font color="#666666">"KSPQCGGetTrialStepNorm_C"</font>, NULL));
+<a name="line329">329: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp, <font color="#666666">"KSPQCGSetTrustRegionRadius_C"</font>, NULL));
+<a name="line330">330: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSPDestroyDefault(ksp));
+<a name="line331">331: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line332">332: </a>}
+
+<a name="line334">334: </a><strong><font color="#4169E1"><a name="KSPQCGSetTrustRegionRadius_QCG"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPQCGSetTrustRegionRadius_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> delta)</font></strong>
+<a name="line335">335: </a>{
+<a name="line336">336: </a>  KSP_QCG *cgP = (KSP_QCG *)ksp-&gt;data;
+
+<a name="line338">338: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line339">339: </a>  cgP-&gt;delta = delta;
+<a name="line340">340: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line341">341: </a>}
+
+<a name="line343">343: </a><strong><font color="#4169E1"><a name="KSPQCGGetTrialStepNorm_QCG"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPQCGGetTrialStepNorm_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *ltsnrm)</font></strong>
+<a name="line344">344: </a>{
+<a name="line345">345: </a>  KSP_QCG *cgP = (KSP_QCG *)ksp-&gt;data;
+
+<a name="line347">347: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line348">348: </a>  *ltsnrm = cgP-&gt;ltsnrm;
+<a name="line349">349: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line350">350: </a>}
+
+<a name="line352">352: </a><strong><font color="#4169E1"><a name="KSPQCGGetQuadratic_QCG"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPQCGGetQuadratic_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *quadratic)</font></strong>
+<a name="line353">353: </a>{
+<a name="line354">354: </a>  KSP_QCG *cgP = (KSP_QCG *)ksp-&gt;data;
+
+<a name="line356">356: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line357">357: </a>  *quadratic = cgP-&gt;quadratic;
+<a name="line358">358: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line359">359: </a>}
+
+<a name="line361">361: </a><strong><font color="#4169E1"><a name="KSPSetFromOptions_QCG"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPSetFromOptions_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, PetscOptionItems PetscOptionsObject)</font></strong>
+<a name="line362">362: </a>{
+<a name="line363">363: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> delta;
+<a name="line364">364: </a>  KSP_QCG  *cgP = (KSP_QCG *)ksp-&gt;data;
+<a name="line365">365: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> flg;
+
+<a name="line367">367: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line368">368: </a>  <a href="../../../../../manualpages/Sys/PetscOptionsHeadBegin.html">PetscOptionsHeadBegin</a>(PetscOptionsObject, <font color="#666666">"<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> QCG Options"</font>);
+<a name="line369">369: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-ksp_qcg_trustregionradius"</font>, <font color="#666666">"Trust Region Radius"</font>, <font color="#666666">"<a href="../../../../../manualpages/KSP/KSPQCGSetTrustRegionRadius.html">KSPQCGSetTrustRegionRadius</a>"</font>, cgP-&gt;delta, &amp;delta, &amp;flg));
+<a name="line370">370: </a>  <font color="#4169E1">if</font> (flg) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPQCGSetTrustRegionRadius.html">KSPQCGSetTrustRegionRadius</a>(ksp, delta));
+<a name="line371">371: </a>  <a href="../../../../../manualpages/Sys/PetscOptionsHeadEnd.html">PetscOptionsHeadEnd</a>();
+<a name="line372">372: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line373">373: </a>}
+
+<a name="line375">375: </a><font color="#B22222">/*MC</font>
+<a name="line376">376: </a><font color="#B22222">   <a href="../../../../../manualpages/KSP/KSPQCG.html">KSPQCG</a> - Code to run conjugate gradient method subject to a constraint on the solution norm  {cite}`steihaug:83`.</font>
+
+<a name="line378">378: </a><font color="#B22222">   Options Database Key:</font>
+<a name="line379">379: </a><font color="#B22222">.      -ksp_qcg_trustregionradius &lt;r&gt; - Trust Region Radius</font>
+
+<a name="line381">381: </a><font color="#B22222">   Level: developer</font>
+
+<a name="line383">383: </a><font color="#B22222">   Notes:</font>
+<a name="line384">384: </a><font color="#B22222">   This is rarely used directly, ir is used in Trust Region methods for nonlinear equations, `<a href="../../../../../manualpages/SNES/SNESNEWTONTR.html">SNESNEWTONTR</a>`</font>
+
+<a name="line386">386: </a><font color="#B22222">   Uses preconditioned conjugate gradient to compute</font>
+<a name="line387">387: </a><font color="#B22222">   an approximate minimizer of the quadratic function $ q(s) = g^T * s + .5 * s^T * H * s $   subject to the Euclidean norm trust region constraint</font>
+<a name="line388">388: </a><font color="#B22222">   $ || D * s || \le delta$, where</font>
+<a name="line389">389: </a><font color="#B22222">.vb</font>
+<a name="line390">390: </a><font color="#B22222">     delta is the trust region radius,</font>
+<a name="line391">391: </a><font color="#B22222">     g is the gradient vector, and</font>
+<a name="line392">392: </a><font color="#B22222">     H is Hessian matrix,</font>
+<a name="line393">393: </a><font color="#B22222">     D is a scaling matrix.</font>
+<a name="line394">394: </a><font color="#B22222">.ve</font>
+
+<a name="line396">396: </a><font color="#B22222">   `<a href="../../../../../manualpages/KSP/KSPConvergedReason.html">KSPConvergedReason</a>` may include</font>
+<a name="line397">397: </a><font color="#B22222">+  `<a href="../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_NEG_CURVE</a>` - if convergence is reached along a negative curvature direction,</font>
+<a name="line398">398: </a><font color="#B22222">-  `<a href="../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_STEP_LENGTH</a>` - if convergence is reached along a constrained step,</font>
+
+<a name="line400">400: </a><font color="#B22222">  Note:</font>
+<a name="line401">401: </a><font color="#B22222">  Allows symmetric preconditioning with the following scaling matrices:</font>
+<a name="line402">402: </a><font color="#B22222">.vb</font>
+<a name="line403">403: </a><font color="#B22222">      `<a href="../../../../../manualpages/PC/PCNONE.html">PCNONE</a>`:   D = Identity matrix</font>
+<a name="line404">404: </a><font color="#B22222">      `<a href="../../../../../manualpages/PC/PCJACOBI.html">PCJACOBI</a>`: D = diag [d_1, d_2, ...., d_n], where d_i = sqrt(H[i,i])</font>
+<a name="line405">405: </a><font color="#B22222">      `<a href="../../../../../manualpages/PC/PCICC.html">PCICC</a>`:    D = L^T, implemented with forward and backward solves. Here L is an incomplete Cholesky factor of H.</font>
+<a name="line406">406: </a><font color="#B22222">.ve</font>
+
+<a name="line408">408: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/KSP/KSPNASH.html">KSPNASH</a>`, `<a href="../../../../../manualpages/KSP/KSPGLTR.html">KSPGLTR</a>`, `<a href="../../../../../manualpages/KSP/KSPSTCG.html">KSPSTCG</a>`, `<a href="../../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>()`, `<a href="../../../../../manualpages/KSP/KSPSetType.html">KSPSetType</a>()`, `<a href="../../../../../manualpages/KSP/KSPType.html">KSPType</a>`, `<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>`, `<a href="../../../../../manualpages/KSP/KSPQCGSetTrustRegionRadius.html">KSPQCGSetTrustRegionRadius</a>()`</font>
+<a name="line409">409: </a><font color="#B22222">          `<a href="../../../../../manualpages/KSP/KSPQCGGetTrialStepNorm.html">KSPQCGGetTrialStepNorm</a>()`, `<a href="../../../../../manualpages/KSP/KSPQCGGetQuadratic.html">KSPQCGGetQuadratic</a>()`</font>
+<a name="line410">410: </a><font color="#B22222">M*/</font>
+
+<a name="line412">412: </a><strong><font color="#4169E1"><a name="KSPCreate_QCG"></a>PETSC_EXTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPCreate_QCG(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line413">413: </a>{
+<a name="line414">414: </a>  KSP_QCG *cgP;
+
+<a name="line416">416: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line417">417: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_PRECONDITIONED.html">KSP_NORM_PRECONDITIONED</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_SYMMETRIC</a>, 3));
+<a name="line418">418: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_NONE.html">KSP_NORM_NONE</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_SYMMETRIC</a>, 1));
+<a name="line419">419: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetConvergedNegativeCurvature.html">KSPSetConvergedNegativeCurvature</a>(ksp, <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line420">420: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;cgP));
+
+<a name="line422">422: </a>  ksp-&gt;data                = (void *)cgP;
+<a name="line423">423: </a>  ksp-&gt;ops-&gt;setup          = KSPSetUp_QCG;
+<a name="line424">424: </a>  ksp-&gt;ops-&gt;setfromoptions = KSPSetFromOptions_QCG;
+<a name="line425">425: </a>  ksp-&gt;ops-&gt;solve          = KSPSolve_QCG;
+<a name="line426">426: </a>  ksp-&gt;ops-&gt;destroy        = KSPDestroy_QCG;
+<a name="line427">427: </a>  ksp-&gt;ops-&gt;buildsolution  = KSPBuildSolutionDefault;
+<a name="line428">428: </a>  ksp-&gt;ops-&gt;buildresidual  = <a href="../../../../../manualpages/KSP/KSPBuildResidualDefault.html">KSPBuildResidualDefault</a>;
+<a name="line429">429: </a>  ksp-&gt;ops-&gt;view           = NULL;
+
+<a name="line431">431: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp, <font color="#666666">"KSPQCGGetQuadratic_C"</font>, KSPQCGGetQuadratic_QCG));
+<a name="line432">432: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp, <font color="#666666">"KSPQCGGetTrialStepNorm_C"</font>, KSPQCGGetTrialStepNorm_QCG));
+<a name="line433">433: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp, <font color="#666666">"KSPQCGSetTrustRegionRadius_C"</font>, KSPQCGSetTrustRegionRadius_QCG));
+<a name="line434">434: </a>  cgP-&gt;delta = <a href="../../../../../manualpages/Sys/PETSC_MAX_REAL.html">PETSC_MAX_REAL</a>; <font color="#B22222">/* default trust region radius is infinite */</font>
+<a name="line435">435: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line436">436: </a>}
+</pre>
+</body>
+
+</html>
+

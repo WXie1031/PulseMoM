@@ -1,0 +1,88 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/logging/handler/impls/nested/lognested.h">Actual source code: lognested.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/loghandlerimpl.h.html">&lt;petsc/private/loghandlerimpl.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petsc/private/logimpl.h.html">&lt;petsc/private/logimpl.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../src/sys/logging/handler/impls/default/logdefault.h.html">&lt;../src/sys/logging/handler/impls/default/logdefault.h&gt;</A>
+<a name="line6">  6: </a>#include <A href="../../../../include/petsc/private/hashmap.h.html">&lt;petsc/private/hashmap.h&gt;</A>
+
+<a name="line8">  8: </a><font color="#4169E1">typedef int NestedId;</font>
+
+<a name="line10"> 10: </a><strong><font color="#4169E1"><a name="NestedIdFromEvent"></a>static inline PETSC_UNUSED NestedId NestedIdFromEvent(<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> e)</font></strong>
+<a name="line11"> 11: </a>{
+<a name="line12"> 12: </a>  <font color="#4169E1">return</font> e;
+<a name="line13"> 13: </a>}
+
+<a name="line15"> 15: </a><strong><font color="#4169E1"><a name="NestedIdToEvent"></a>static inline PETSC_UNUSED <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> NestedIdToEvent(NestedId e)</font></strong>
+<a name="line16"> 16: </a>{
+<a name="line17"> 17: </a>  <font color="#4169E1">return</font> e;
+<a name="line18"> 18: </a>}
+
+<a name="line20"> 20: </a><strong><font color="#4169E1"><a name="NestedIdFromStage"></a>static inline PETSC_UNUSED NestedId NestedIdFromStage(<a href="../../../../../../manualpages/Log/PetscLogStage.html">PetscLogStage</a> s)</font></strong>
+<a name="line21"> 21: </a>{
+<a name="line22"> 22: </a>  <font color="#4169E1">return</font> -(s + 2);
+<a name="line23"> 23: </a>}
+
+<a name="line25"> 25: </a><strong><font color="#4169E1"><a name="NestedIdToStage"></a>static inline PETSC_UNUSED <a href="../../../../../../manualpages/Log/PetscLogStage.html">PetscLogStage</a> NestedIdToStage(NestedId s)</font></strong>
+<a name="line26"> 26: </a>{
+<a name="line27"> 27: </a>  <font color="#4169E1">return</font> -(s + 2);
+<a name="line28"> 28: </a>}
+
+<a name="line30"> 30: </a><font color="#4169E1">typedef struct _n_NestedIdPair NestedIdPair;</font>
+<a name="line31"> 31: </a><font color="#4169E1"><a name="_n_NestedIdPair"></a>struct _n_NestedIdPair </font>{
+<a name="line32"> 32: </a>  <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> root;
+<a name="line33"> 33: </a>  NestedId      leaf;
+<a name="line34"> 34: </a>};
+
+<a name="line36"> 36: </a><strong><font color="#228B22">#define NestedIdPairHash(key)     PetscHashCombine(PetscHash_UInt32((PetscHash32_t)((key).root)), PetscHash_UInt32((PetscHash32_t)((key).leaf)))</font></strong>
+<a name="line37"> 37: </a><strong><font color="#228B22">#define NestedIdPairEqual(k1, k2) (((k1).root == (k2).root) &amp;&amp; ((k1).leaf == (k2).leaf))</font></strong>
+
+<a name="line39"> 39: </a><a href="../../../../../../manualpages/PetscH/PETSC_HASH_MAP.html">PETSC_HASH_MAP</a>(NestedHash, NestedIdPair, <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>, NestedIdPairHash, NestedIdPairEqual, -1)
+
+<a name="line41"> 41: </a><font color="#4169E1">typedef struct _n_PetscLogHandler_Nested *PetscLogHandler_Nested;</font>
+<a name="line42"> 42: </a><font color="#4169E1"><a name="_n_PetscLogHandler_Nested"></a>struct _n_PetscLogHandler_Nested </font>{
+<a name="line43"> 43: </a>  <a href="../../../../../../manualpages/Log/PetscLogState.html">PetscLogState</a>   state;
+<a name="line44"> 44: </a>  <a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler;
+<a name="line45"> 45: </a>  PetscNestedHash pair_map;
+<a name="line46"> 46: </a>  PetscIntStack   nested_stack; <font color="#B22222">// stack of nested ids</font>
+<a name="line47"> 47: </a>  PetscIntStack   orig_stack;   <font color="#B22222">// stack of the original ids</font>
+<a name="line48"> 48: </a>  <a href="../../../../../../manualpages/Sys/PetscClassId.html">PetscClassId</a>    nested_stage_id;
+<a name="line49"> 49: </a>  <a href="../../../../../../manualpages/Sys/PetscLogDouble.html">PetscLogDouble</a>  threshold;
+<a name="line50"> 50: </a>};
+
+<a name="line52"> 52: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line53"> 53: </a>  const char *name;
+<a name="line54"> 54: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    id;
+<a name="line55"> 55: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    parent;
+<a name="line56"> 56: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    num_descendants;
+<a name="line57"> 57: </a>} PetscNestedEventNode;
+
+<a name="line59"> 59: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line60"> 60: </a>  <a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>              comm;
+<a name="line61"> 61: </a>  PetscLogGlobalNames   global_events;
+<a name="line62"> 62: </a>  PetscNestedEventNode *nodes;
+<a name="line63"> 63: </a>  <a href="../../../../../../manualpages/Log/PetscEventPerfInfo.html">PetscEventPerfInfo</a>   *perf;
+<a name="line64"> 64: </a>} PetscNestedEventTree;
+
+<a name="line66"> 66: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line67"> 67: </a>  PETSC_LOG_NESTED_XML,
+<a name="line68"> 68: </a>  PETSC_LOG_NESTED_FLAMEGRAPH
+<a name="line69"> 69: </a>} PetscLogNestedType;
+
+<a name="line71"> 71: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerView_Nested_XML(PetscLogHandler_Nested, PetscNestedEventTree *, <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+<a name="line72"> 72: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerView_Nested_Flamegraph(PetscLogHandler_Nested, PetscNestedEventTree *, <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+</pre>
+</body>
+
+</html>
+

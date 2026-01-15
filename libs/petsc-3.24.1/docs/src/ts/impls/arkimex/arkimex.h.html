@@ -1,0 +1,71 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ts/impls/arkimex/arkimex.h">Actual source code: arkimex.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:14+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#4169E1">typedef struct _ARKTableau *ARKTableau;</font>
+<a name="line2">  2: </a><font color="#4169E1"><a name="_ARKTableau"></a>struct _ARKTableau </font>{
+<a name="line3">  3: </a>  char      *name;
+<a name="line4">  4: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>  additive;             <font color="#B22222">/* If False, it is a DIRK method */</font>
+<a name="line5">  5: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   order;                <font color="#B22222">/* Classical approximation order of the method */</font>
+<a name="line6">  6: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   s;                    <font color="#B22222">/* Number of stages */</font>
+<a name="line7">  7: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>  stiffly_accurate;     <font color="#B22222">/* The implicit part is stiffly accurate */</font>
+<a name="line8">  8: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>  FSAL_implicit;        <font color="#B22222">/* The implicit part is FSAL */</font>
+<a name="line9">  9: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>  explicit_first_stage; <font color="#B22222">/* The implicit part has an explicit first stage */</font>
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   pinterp;              <font color="#B22222">/* Interpolation order */</font>
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *At, *bt, *ct;         <font color="#B22222">/* Stiff tableau */</font>
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *A, *b, *c;            <font color="#B22222">/* Non-stiff tableau */</font>
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *bembedt, *bembed;     <font color="#B22222">/* Embedded formula of order one less (order-1) */</font>
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *binterpt, *binterp;   <font color="#B22222">/* Dense output formula */</font>
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>  ccfl;                 <font color="#B22222">/* Placeholder for CFL coefficient relative to forward Euler */</font>
+<a name="line16"> 16: </a>};
+<a name="line17"> 17: </a><font color="#4169E1">typedef struct _ARKTableauLink *ARKTableauLink;</font>
+<a name="line18"> 18: </a><font color="#4169E1"><a name="_ARKTableauLink"></a>struct _ARKTableauLink </font>{
+<a name="line19"> 19: </a>  <font color="#4169E1">struct _ARKTableau</font> tab;
+<a name="line20"> 20: </a>  ARKTableauLink     next;
+<a name="line21"> 21: </a>};
+
+<a name="line23"> 23: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line24"> 24: </a>  ARKTableau   tableau;
+<a name="line25"> 25: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         *Y;            <font color="#B22222">/* States computed during the step */</font>
+<a name="line26"> 26: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         *YdotI;        <font color="#B22222">/* Time derivatives for the stiff part */</font>
+<a name="line27"> 27: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         *YdotRHS;      <font color="#B22222">/* Function evaluations for the non-stiff part */</font>
+<a name="line28"> 28: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         *Y_prev;       <font color="#B22222">/* States computed during the previous time step */</font>
+<a name="line29"> 29: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         *YdotI_prev;   <font color="#B22222">/* Time derivatives for the stiff part for the previous time step*/</font>
+<a name="line30"> 30: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         *YdotRHS_prev; <font color="#B22222">/* Function evaluations for the non-stiff part for the previous time step*/</font>
+<a name="line31"> 31: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>          Ydot0;        <font color="#B22222">/* Holds the slope from the previous step in FSAL case */</font>
+<a name="line32"> 32: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>          Ydot;         <font color="#B22222">/* Work vector holding Ydot during residual evaluation */</font>
+<a name="line33"> 33: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>          Z;            <font color="#B22222">/* Ydot = shift(Y-Z) */</font>
+<a name="line34"> 34: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>           alg_is;       <font color="#B22222">/* Index set for algebraic variables, needed when restarting with DIRK */</font>
+<a name="line35"> 35: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *work;         <font color="#B22222">/* Scalar work */</font>
+<a name="line36"> 36: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>    scoeff;       <font color="#B22222">/* shift = scoeff/dt */</font>
+<a name="line37"> 37: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>    stage_time;
+<a name="line38"> 38: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>    imex;
+<a name="line39"> 39: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>    extrapolate; <font color="#B22222">/* Extrapolate initial guess from previous time-step stage values */</font>
+<a name="line40"> 40: </a>  TSStepStatus status;
+
+<a name="line42"> 42: </a>  <font color="#B22222">/* context for fast-slow split */</font>
+<a name="line43"> 43: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>       Y_snes;       <font color="#B22222">/* Work vector for <a href="../../../../manualpages/SNES/SNES.html">SNES</a> */</font>
+<a name="line44"> 44: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>      *YdotI_fast;   <font color="#B22222">/* Function evaluations for the fast components in YdotI */</font>
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>      *YdotRHS_fast; <font color="#B22222">/* Function evaluations for the fast components in YdotRHS */</font>
+<a name="line46"> 46: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>      *YdotRHS_slow; <font color="#B22222">/* Function evaluations for the slow components in YdotRHS */</font>
+<a name="line47"> 47: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>        is_slow, is_fast;
+<a name="line48"> 48: </a>  <a href="../../../../manualpages/TS/TS.html">TS</a>        subts_slow, subts_fast;
+<a name="line49"> 49: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> fastslowsplit;
+
+<a name="line51"> 51: </a>  <font color="#B22222">/* context for sensitivity analysis */</font>
+<a name="line52"> 52: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *VecsDeltaLam;   <font color="#B22222">/* Increment of the adjoint sensitivity w.r.t IC at stage */</font>
+<a name="line53"> 53: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *VecsSensiTemp;  <font color="#B22222">/* Vectors to be multiplied with Jacobian transpose */</font>
+<a name="line54"> 54: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *VecsSensiPTemp; <font color="#B22222">/* Temporary Vectors to store JacobianP-transpose-vector product */</font>
+<a name="line55"> 55: </a>} TS_ARKIMEX;
+</pre>
+</body>
+
+</html>
+

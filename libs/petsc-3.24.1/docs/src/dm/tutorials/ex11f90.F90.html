@@ -1,0 +1,194 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/tutorials/ex11f90.F90">Actual source code: ex11f90.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>!     Tests DMDAGetVecGetArray()
+
+<a name="line3">  3: </a>program main
+<a name="line4">  4: </a><font color="#A020F0">#include &lt;petsc/finclude/petscdm.h&gt;</font>
+<a name="line5">  5: </a><font color="#A020F0">#include &lt;petsc/finclude/petscdmda.h&gt;</font>
+<a name="line6">  6: </a>  use petscdmda
+<a name="line7">  7: </a>  use petsc
+<a name="line8">  8: </a>  implicit none
+
+<a name="line10"> 10: </a>  Type(tVec) g
+<a name="line11"> 11: </a>  Type(tDM) ada
+
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, pointer :: x1(:), x2(:, :)
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, pointer :: x3(:, :, :), x4(:, :, :, :)
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> m, n, p, dof, s, i, j, k, xs, xl
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> ys, yl
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> zs, zl, sw
+
+<a name="line20"> 20: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> nen, nel
+<a name="line21"> 21: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, pointer :: elements(:)
+
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> nfields
+<a name="line24"> 24: </a>  character(80), pointer :: namefields(:)
+<a name="line25"> 25: </a>  <a href="../../../manualpages/IS/IS.html">IS</a>, pointer :: isfields(:)
+<a name="line26"> 26: </a>  <a href="../../../manualpages/DM/DM.html">DM</a>, pointer :: dmfields(:)
+<a name="line27"> 27: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> zero, one
+
+<a name="line29"> 29: </a>  m = 5
+<a name="line30"> 30: </a>  n = 6
+<a name="line31"> 31: </a>  p = 4
+<a name="line32"> 32: </a>  s = 1
+<a name="line33"> 33: </a>  dof = 1
+<a name="line34"> 34: </a>  sw = 1
+<a name="line35"> 35: </a>  zero = 0
+<a name="line36"> 36: </a>  one = 1
+<a name="line37"> 37: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(ierr))
+<a name="line38"> 38: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDACreate1d.html">DMDACreate1d</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, m, dof, sw, PETSC_NULL_INTEGER_ARRAY, ada, ierr))
+<a name="line39"> 39: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(ada, ierr))
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(ada, g, ierr))
+<a name="line41"> 41: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(ada, xs, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, xl, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, ierr))
+<a name="line42"> 42: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>(ada, g, x1, ierr))
+<a name="line43"> 43: </a>  <font color="#4169E1">do</font> i = xs, xs + xl - 1
+<a name="line44"> 44: </a>!         <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line45"> 45: </a>    x1(i) = i
+<a name="line46"> 46: </a>!         <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line47"> 47: </a>  end <font color="#4169E1">do</font>
+<a name="line48"> 48: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecRestoreArray.html">DMDAVecRestoreArray</a>(ada, g, x1, ierr))
+<a name="line49"> 49: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecView.html">VecView</a>(g, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>, ierr))
+<a name="line50"> 50: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(ada, g, ierr))
+<a name="line51"> 51: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(ada, ierr))
+
+<a name="line53"> 53: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDACreate2d.html">DMDACreate2d</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DMDA/DMDAStencilType.html">DMDA_STENCIL_BOX</a>, m, n, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, dof, s, PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_INTEGER_ARRAY, ada, ierr))
+<a name="line54"> 54: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(ada, ierr))
+<a name="line55"> 55: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(ada, g, ierr))
+<a name="line56"> 56: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(ada, xs, ys, PETSC_NULL_INTEGER, xl, yl, PETSC_NULL_INTEGER, ierr))
+<a name="line57"> 57: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>(ada, g, x2, ierr))
+<a name="line58"> 58: </a>  <font color="#4169E1">do</font> i = xs, xs + xl - 1
+<a name="line59"> 59: </a>    <font color="#4169E1">do</font> j = ys, ys + yl - 1
+<a name="line60"> 60: </a>!           <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line61"> 61: </a>      x2(i, j) = i + j
+<a name="line62"> 62: </a>!           <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line63"> 63: </a>    end <font color="#4169E1">do</font>
+<a name="line64"> 64: </a>  end <font color="#4169E1">do</font>
+<a name="line65"> 65: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecRestoreArray.html">DMDAVecRestoreArray</a>(ada, g, x2, ierr))
+<a name="line66"> 66: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecView.html">VecView</a>(g, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>, ierr))
+<a name="line67"> 67: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(ada, g, ierr))
+
+<a name="line69"> 69: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetElements.html">DMDAGetElements</a>(ada, nen, nel, elements, ierr))
+<a name="line70"> 70: </a>  <font color="#4169E1">do</font> i = 1, nen*nel
+<a name="line71"> 71: </a>    PetscCheckA(elements(i) &gt;= 0, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, 'Error getting <a href="../../../manualpages/DMDA/DMDA.html">DMDA</a> elements')
+<a name="line72"> 72: </a>  end <font color="#4169E1">do</font>
+<a name="line73"> 73: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDARestoreElements.html">DMDARestoreElements</a>(ada, nen, nel, elements, ierr))
+<a name="line74"> 74: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(ada, ierr))
+
+<a name="line76"> 76: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDACreate3d.html">DMDACreate3d</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DMDA/DMDAStencilType.html">DMDA_STENCIL_BOX</a>, m, n, p, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, dof, s, PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_INTEGER_ARRAY, ada, ierr))
+<a name="line77"> 77: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(ada, ierr))
+<a name="line78"> 78: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(ada, g, ierr))
+<a name="line79"> 79: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(ada, xs, ys, zs, xl, yl, zl, ierr))
+<a name="line80"> 80: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>(ada, g, x3, ierr))
+<a name="line81"> 81: </a>  <font color="#4169E1">do</font> i = xs, xs + xl - 1
+<a name="line82"> 82: </a>    <font color="#4169E1">do</font> j = ys, ys + yl - 1
+<a name="line83"> 83: </a>      <font color="#4169E1">do</font> k = zs, zs + zl - 1
+<a name="line84"> 84: </a>!            <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line85"> 85: </a>        x3(i, j, k) = i + j + k
+<a name="line86"> 86: </a>!            <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line87"> 87: </a>      end <font color="#4169E1">do</font>
+<a name="line88"> 88: </a>    end <font color="#4169E1">do</font>
+<a name="line89"> 89: </a>  end <font color="#4169E1">do</font>
+<a name="line90"> 90: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecRestoreArray.html">DMDAVecRestoreArray</a>(ada, g, x3, ierr))
+<a name="line91"> 91: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecView.html">VecView</a>(g, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>, ierr))
+<a name="line92"> 92: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(ada, g, ierr))
+<a name="line93"> 93: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(ada, ierr))
+
+<a name="line95"> 95: </a>!
+<a name="line96"> 96: </a>!  Same tests but now with DOF &gt; 1, so dimensions of array are one higher
+<a name="line97"> 97: </a>!
+<a name="line98"> 98: </a>  dof = 2
+<a name="line99"> 99: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDACreate1d.html">DMDACreate1d</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, m, dof, sw, PETSC_NULL_INTEGER_ARRAY, ada, ierr))
+<a name="line100">100: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(ada, ierr))
+<a name="line101">101: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(ada, g, ierr))
+<a name="line102">102: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(ada, xs, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, xl, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, ierr))
+<a name="line103">103: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>(ada, g, x2, ierr))
+<a name="line104">104: </a>  <font color="#4169E1">do</font> i = xs, xs + xl - 1
+<a name="line105">105: </a>!         <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line106">106: </a>    x2(0, i) = i
+<a name="line107">107: </a>    x2(1, i) = -i
+<a name="line108">108: </a>!         <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line109">109: </a>  end <font color="#4169E1">do</font>
+<a name="line110">110: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecRestoreArray.html">DMDAVecRestoreArray</a>(ada, g, x1, ierr))
+<a name="line111">111: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecView.html">VecView</a>(g, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>, ierr))
+<a name="line112">112: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(ada, g, ierr))
+
+<a name="line114">114: </a>  ! some testing unrelated to the example
+<a name="line115">115: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDASetFieldName.html">DMDASetFieldName</a>(ada, zero, 'Field 0', ierr))
+<a name="line116">116: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDASetFieldName.html">DMDASetFieldName</a>(ada, one, 'Field 1', ierr))
+<a name="line117">117: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMCreateFieldDecomposition.html">DMCreateFieldDecomposition</a>(ada, nfields, namefields, PETSC_NULL_IS_POINTER, PETSC_NULL_DM_POINTER, ierr))
+<a name="line118">118: </a>  ! print*,nfields,trim(namefields(1)),trim(namefields(2))
+<a name="line119">119: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(DMDestroyFieldDecomposition(ada, nfields, namefields, PETSC_NULL_IS_POINTER, PETSC_NULL_DM_POINTER, ierr))
+<a name="line120">120: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMCreateFieldDecomposition.html">DMCreateFieldDecomposition</a>(ada, nfields, namefields, isfields, dmfields, ierr))
+<a name="line121">121: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(DMDestroyFieldDecomposition(ada, nfields, namefields, isfields, dmfields, ierr))
+
+<a name="line123">123: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(ada, ierr))
+
+<a name="line125">125: </a>  dof = 2
+<a name="line126">126: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDACreate2d.html">DMDACreate2d</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DMDA/DMDAStencilType.html">DMDA_STENCIL_BOX</a>, m, n, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, dof, s, PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_INTEGER_ARRAY, ada, ierr))
+<a name="line127">127: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(ada, ierr))
+<a name="line128">128: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(ada, g, ierr))
+<a name="line129">129: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(ada, xs, ys, PETSC_NULL_INTEGER, xl, yl, PETSC_NULL_INTEGER, ierr))
+<a name="line130">130: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>(ada, g, x3, ierr))
+<a name="line131">131: </a>  <font color="#4169E1">do</font> i = xs, xs + xl - 1
+<a name="line132">132: </a>    <font color="#4169E1">do</font> j = ys, ys + yl - 1
+<a name="line133">133: </a>!           <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line134">134: </a>      x3(0, i, j) = i + j
+<a name="line135">135: </a>      x3(1, i, j) = -(i + j)
+<a name="line136">136: </a>!           <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line137">137: </a>    end <font color="#4169E1">do</font>
+<a name="line138">138: </a>  end <font color="#4169E1">do</font>
+<a name="line139">139: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecRestoreArray.html">DMDAVecRestoreArray</a>(ada, g, x3, ierr))
+<a name="line140">140: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecView.html">VecView</a>(g, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>, ierr))
+<a name="line141">141: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(ada, g, ierr))
+<a name="line142">142: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(ada, ierr))
+
+<a name="line144">144: </a>  dof = 3
+<a name="line145">145: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDACreate3d.html">DMDACreate3d</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, <a href="../../../manualpages/DMDA/DMDAStencilType.html">DMDA_STENCIL_BOX</a>, m, n, p, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, dof, s, PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_INTEGER_ARRAY, ada, ierr))
+<a name="line146">146: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(ada, ierr))
+<a name="line147">147: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(ada, g, ierr))
+<a name="line148">148: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(ada, xs, ys, zs, xl, yl, zl, ierr))
+<a name="line149">149: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>(ada, g, x4, ierr))
+<a name="line150">150: </a>  <font color="#4169E1">do</font> i = xs, xs + xl - 1
+<a name="line151">151: </a>    <font color="#4169E1">do</font> j = ys, ys + yl - 1
+<a name="line152">152: </a>      <font color="#4169E1">do</font> k = zs, zs + zl - 1
+<a name="line153">153: </a>!            <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line154">154: </a>        x4(0, i, j, k) = i + j + k
+<a name="line155">155: </a>        x4(1, i, j, k) = -(i + j + k)
+<a name="line156">156: </a>        x4(2, i, j, k) = i + j + k
+<a name="line157">157: </a>!            <a href="../../../manualpages/Sys/CHKMEMQ.html">CHKMEMQ</a>
+<a name="line158">158: </a>      end <font color="#4169E1">do</font>
+<a name="line159">159: </a>    end <font color="#4169E1">do</font>
+<a name="line160">160: </a>  end <font color="#4169E1">do</font>
+<a name="line161">161: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAVecRestoreArray.html">DMDAVecRestoreArray</a>(ada, g, x4, ierr))
+<a name="line162">162: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecView.html">VecView</a>(g, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>, ierr))
+<a name="line163">163: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(ada, g, ierr))
+<a name="line164">164: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(ada, ierr))
+
+<a name="line166">166: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>(ierr))
+<a name="line167">167: </a>END PROGRAM
+
+<a name="line169">169: </a>!
+<a name="line170">170: </a>!<font color="#B22222">/*TEST</font>
+<a name="line171">171: </a><font color="#B22222">!</font>
+<a name="line172">172: </a><font color="#B22222">!   build:</font>
+<a name="line173">173: </a><font color="#B22222">!     requires: !complex</font>
+<a name="line174">174: </a><font color="#B22222">!</font>
+<a name="line175">175: </a><font color="#B22222">!   test:</font>
+<a name="line176">176: </a><font color="#B22222">!     filter: Error: grep -v "<a href="../../../manualpages/Vec/Vec.html">Vec</a> Object" | grep -v "Warning: ieee_inexact is signaling"</font>
+<a name="line177">177: </a><font color="#B22222">!</font>
+<a name="line178">178: </a><font color="#B22222">!TEST*/</font>
+</pre>
+</body>
+
+</html>
+

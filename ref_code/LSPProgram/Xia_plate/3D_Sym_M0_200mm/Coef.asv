@@ -1,0 +1,70 @@
+function [Coe_jx,Coe_jy,Coe_ux,Coe_uy]=Coef(NXx,NXy,NYx,NYy,Nz)
+
+NXxc=fix(NXx/2); NXyc=NXy/2;
+NYxc=NYx/2; NYyc=fix(NYy/2);
+
+Nxc=NXxc+1;
+Nyc=NYyc+1;
+
+Nxy=Nxc*Nyc;
+NXxy=NXxc*NXyc;
+NYxy=NYxc*NYyc;
+NN=Nxy*Nz;
+NX=NXxy*Nz;
+NY=NYxy*Nz;
+
+one=ones(1,NXxc);
+Ejx1=diag(one,1);
+Ejx1=Ejx1(:,2:Nxc);
+Ejx2=diag(one,-1);
+Ejx2=Ejx2(:,1:NXxc);
+Ejx=Ejx1-Ejx2;
+%Ejx=sparse(Ejx);
+clear Ejx1 Ejx2;
+
+Eux1=speye(NXxc,Nxc);
+Eux2=diag(one,1);
+Eux2=Eux2(1:NXxc,:);
+Eux=Eux1-Eux2;
+%Eux=sparse(Eux);
+clear one Eux1 Eux2;
+
+for j=1:NXyc
+    Coe_j(Nxc*(j-1)+1:Nxc*j,NXxc*(j-1)+1:NXxc*j)=Ejx;
+    Coe_u(NXxc*(j-1)+1:NXxc*j,Nxc*(j-1)+1:Nxc*j)=Eux; 
+    Coe_j_m(j*Nxc,j)=1;
+    Coe_u_m(j,j*Nxc)=2;        
+end
+
+for i=1:Nz
+    Coe_jx(Nxy*(i-1)+1:Nxy*i,NXxy*(i-1)+1:NXxy*i)=Coe_j; 
+    Coe_jx_m(Nxy*(i-1)+1:Nxy*i,NXyc*(i-1)+1:NXyc*i)=Coe_j_m; 
+    Coe_ux(NXxy*(i-1)+1:NXxy*i,Nxy*(i-1)+1:Nxy*i)=Coe_u;        
+    Coe_ux_m(NXyc*(i-1)+1:NXyc*i,Nxy*(i-1)+1:Nxy*i)=Coe_u_m; 
+end
+Coe_jx=[Coe_jx  Coe_jx_m];
+Coe_ux=[Coe_ux; Coe_ux_m];
+
+clear Ejx Eux Coe_j Coe_u Coe_j_m Coe_u_m;
+
+Ejy=speye(Nxc,NYxc);
+Euy=speye(NYxc,Nxc);
+for i=1:NYyc        
+    Coe_j(Nxc*(i-1)+1:Nxc*i,NYxc*(i-1)+1:NYxc*i)=Ejy;
+    Coe_j(Nxc*i+1:Nxc*(i+1),NYxc*(i-1)+1:NYxc*i)=-Ejy;
+    Coe_u(NYxc*(i-1)+1:NYxc*i,Nxc*(i-1)+1:Nxc*i)=Euy;
+    Coe_u(NYxc*(i-1)+1:NYxc*i,Nxc*i+1:Nxc*(i+1))=-Euy;   
+end
+for k=1:Nz
+    
+    Coe_jy(Nxy*(k-1)+1:Nxy*k,NYxy*(k-1)+1:NYxy*k)=Coe_j; 
+    Coe_j_m(Nxy*k-NYxc+1:Nxy*k,NYxc*(k-1)+1:NYxc*k)=Ejy;
+    Coe_uy(NYxy*(k-1)+1:NYxy*k,Nxy*(k-1)+1:Nxy*k)=Coe_u;      
+    Coe_u_m(NYxc*(k-1)+1:NYxc*k,Nxy*k-NYxc+1:Nxy*k)=2*Euy;
+end
+Coe_jy=[Coe_jy  Coe_j_m];
+Coe_uy=[Coe_uy; Coe_u_m];
+
+clear Ejy Euy Coe_j Coe_u Coe_j_m Coe_u_m;
+
+end

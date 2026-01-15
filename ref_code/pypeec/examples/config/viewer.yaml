@@ -1,0 +1,100 @@
+# PyPEEC options for the viewer renderings.
+#
+# A plot is described by a dictionary with the following fields:
+#   - framework: framework used for the rendering ("pyvista" or "matplotlib")
+#   - layout: string describing the plot type (see description below)
+#   - data_window: dictionary describing the plot window
+#   - data_options: dictionary describing the plot options
+#   - data_plot: dictionary describing the plot content
+#
+# For the viewer, the following types of plots are available:
+#
+#   - "domain": plot the different domains composing the voxel structure
+#       - title: title located at the corner of the plot (null for hiding)
+#       - colormap: colormap used to plot the different voxel groups
+#       - opacity: opacity of the face color
+#
+#   - "component": plot the connected components of the voxel structure
+#       - title: title located at the corner of the plot (null for hiding)
+#       - colormap: colormap used to plot the different voxel groups
+#       - opacity: opacity of the face color
+#
+#   - "voxelization": plot the deviation between the voxelized and reference geometries
+#       - title: title located at the corner of the plot (null for hiding)
+#       - color_voxel: face color for the voxelized structure
+#       - color_reference: face color for the reference structure
+#       - width_voxel: edge thickness for the voxelized structure
+#       - width_reference: edge thickness for the reference structure
+#       - opacity_voxel: face opacity for the voxelized structure
+#       - opacity_reference: face opacity for the reference structure
+#
+#   - "component": plot a matrix showing the connected domains (matplotlib)
+#       - title: title located at the top of the plot (null for hiding)
+#       - color_edge: line color between the elements
+#       - color_true: fill color for the true values
+#       - color_false: fill color for the false values
+#       - width: line width between the elements
+#
+#   - "adjacent": plot a matrix showing the adjacent domains (matplotlib)
+#       - title: title located at the top of the plot (null for hiding)
+#       - color_edge: line color between the elements
+#       - color_true: fill color for the true values
+#       - color_false: fill color for the false values
+#       - width: line width between the elements
+#
+# Thomas Guillod - Dartmouth College
+# Mozilla Public License Version 2.0
+
+"domain":
+    "framework": "pyvista"
+    "layout": "domain"
+    "data_window": !include cfg_data_window.yaml
+    "data_options": !include cfg_data_pyvista.yaml
+    "data_plot":
+        "title": "Voxel Domains"
+        "colormap": "Accent"
+        "opacity": 1.0
+"component":
+    "framework": "pyvista"
+    "layout": "component"
+    "data_window": !include cfg_data_window.yaml
+    "data_options": !include cfg_data_pyvista.yaml
+    "data_plot":
+        "title": "Connected Components"
+        "colormap": "Accent"
+        "opacity": 1.0
+"voxelization":
+    "framework": "pyvista"
+    "layout": "voxelization"
+    "data_window": !include cfg_data_window.yaml
+    "data_options": !include cfg_data_pyvista.yaml
+    "data_plot":
+        "title": "Voxelization Results"
+        "color_voxel": "red"
+        "color_reference": "blue"
+        "width_voxel": 2.0
+        "width_reference": 2.0
+        "opacity_voxel": 0.5
+        "opacity_reference": 0.5
+"connected":
+    "framework": "matplotlib"
+    "layout": "connected"
+    "data_window": !include cfg_data_window.yaml
+    "data_options": !include cfg_data_matplotlib.yaml
+    "data_plot":
+        "title": "Connected Domains"
+        "color_edge": "black"
+        "color_true": "green"
+        "color_false": "gray"
+        "width": 2.0
+"adjacent":
+    "framework": "matplotlib"
+    "layout": "adjacent"
+    "data_window": !include cfg_data_window.yaml
+    "data_options": !include cfg_data_matplotlib.yaml
+    "data_plot":
+        "title": "Adjacent Domains"
+        "color_edge": "black"
+        "color_true": "green"
+        "color_false": "gray"
+        "width": 2.0

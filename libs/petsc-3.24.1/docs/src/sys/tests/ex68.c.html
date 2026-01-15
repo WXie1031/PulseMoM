@@ -1,0 +1,138 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tests/ex68.c">Actual source code: ex68.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:11+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>const char help[] = <font color="#666666">"Test <a href="../../../manualpages/Log/PetscLogEventsPause.html">PetscLogEventsPause</a>() and PetscLogEventsUnpause()"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line6">  6: </a>{
+<a name="line7">  7: </a>  const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  num_log_events = 4;
+<a name="line8">  8: </a>  <a href="../../../manualpages/Log/PetscLogStage.html">PetscLogStage</a>   main_stage, unrelated_stage_1, unrelated_stage_2;
+<a name="line9">  9: </a>  <a href="../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>   runtime_event, unrelated_event[4];
+<a name="line10"> 10: </a>  <a href="../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> default_handler;
+<a name="line11"> 11: </a>  <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a>    runtime_classid, unrelated_classid[4];
+<a name="line12"> 12: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>       main_visible      = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>       unrelated_visible = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>       get_main_visible;
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>       get_unrelated_1_visible;
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>       get_unrelated_2_visible;
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>       is_active;
+
+<a name="line19"> 19: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line20"> 20: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogIsActive.html">PetscLogIsActive</a>(&amp;is_active));
+<a name="line21"> 21: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(is_active, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Logging must be active for this test"</font>);
+<a name="line22"> 22: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogActions.html">PetscLogActions</a>(<a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogObjects.html">PetscLogObjects</a>(<a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+
+<a name="line25"> 25: </a>  <a href="../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, help, NULL);
+<a name="line26"> 26: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-main_visible"</font>, <font color="#666666">"The logging visibility of the main stage"</font>, NULL, main_visible, &amp;main_visible, NULL));
+<a name="line27"> 27: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-unrelated_visible"</font>, <font color="#666666">"The logging visibility of the unrelated stage"</font>, NULL, unrelated_visible, &amp;unrelated_visible, NULL));
+<a name="line28"> 28: </a>  <a href="../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+
+<a name="line30"> 30: </a>  <font color="#B22222">/* This test simulates a program with unrelated logging stages and events</font>
+<a name="line31"> 31: </a><font color="#B22222">     that has to "stop the world" to lazily initialize a runtime.</font>
+
+<a name="line33"> 33: </a><font color="#B22222">     - Pausing events should send the log data for the runtime initialization</font>
+<a name="line34"> 34: </a><font color="#B22222">       to the Main Stage</font>
+
+<a name="line36"> 36: </a><font color="#B22222">     - Turning the Main Stage invisible should hide it from -log_view</font>
+
+<a name="line38"> 38: </a><font color="#B22222">     So the runtime initialization should be more or less missing from -log_view. */</font>
+
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"External runtime"</font>, &amp;runtime_classid));
+<a name="line41"> 41: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"External runtime initialization"</font>, runtime_classid, &amp;runtime_event));
+
+<a name="line43"> 43: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; num_log_events; i++) {
+<a name="line44"> 44: </a>    char name[32];
+
+<a name="line46"> 46: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(name, <font color="#4169E1">sizeof</font>(name) / <font color="#4169E1">sizeof</font>(char), <font color="#666666">"Unrelated event %"</font> PetscInt_FMT, i));
+<a name="line47"> 47: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(name, &amp;unrelated_classid[i]));
+<a name="line48"> 48: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(name, unrelated_classid[i], &amp;unrelated_event[i]));
+<a name="line49"> 49: </a>  }
+<a name="line50"> 50: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageRegister.html">PetscLogStageRegister</a>(<font color="#666666">"Unrelated stage 1"</font>, &amp;unrelated_stage_1));
+<a name="line51"> 51: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageRegister.html">PetscLogStageRegister</a>(<font color="#666666">"Unrelated stage 2"</font>, &amp;unrelated_stage_2));
+<a name="line52"> 52: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageGetId.html">PetscLogStageGetId</a>(<font color="#666666">"Main Stage"</font>, &amp;main_stage));
+<a name="line53"> 53: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageSetVisible.html">PetscLogStageSetVisible</a>(main_stage, main_visible));
+<a name="line54"> 54: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageSetVisible.html">PetscLogStageSetVisible</a>(unrelated_stage_1, unrelated_visible));
+<a name="line55"> 55: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageSetVisible.html">PetscLogStageSetVisible</a>(unrelated_stage_2, unrelated_visible));
+<a name="line56"> 56: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogGetDefaultHandler.html">PetscLogGetDefaultHandler</a>(&amp;default_handler));
+<a name="line57"> 57: </a>  <font color="#4169E1">if</font> (default_handler) {
+<a name="line58"> 58: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageGetVisible.html">PetscLogStageGetVisible</a>(main_stage, &amp;get_main_visible));
+<a name="line59"> 59: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageGetVisible.html">PetscLogStageGetVisible</a>(unrelated_stage_1, &amp;get_unrelated_1_visible));
+<a name="line60"> 60: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageGetVisible.html">PetscLogStageGetVisible</a>(unrelated_stage_2, &amp;get_unrelated_2_visible));
+<a name="line61"> 61: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(main_visible == get_main_visible, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Get/Set stage visibility discrepancy"</font>);
+<a name="line62"> 62: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(unrelated_visible == get_unrelated_1_visible, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Get/Set stage visibility discrepancy"</font>);
+<a name="line63"> 63: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(unrelated_visible == get_unrelated_2_visible, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Get/Set stage visibility discrepancy"</font>);
+<a name="line64"> 64: </a>  }
+
+<a name="line66"> 66: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStagePush.html">PetscLogStagePush</a>(unrelated_stage_1));
+<a name="line67"> 67: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(unrelated_event[0], NULL, NULL, NULL, NULL));
+<a name="line68"> 68: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line69"> 69: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(unrelated_event[1], NULL, NULL, NULL, NULL));
+<a name="line70"> 70: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line71"> 71: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStagePush.html">PetscLogStagePush</a>(unrelated_stage_2));
+<a name="line72"> 72: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(unrelated_event[2], NULL, NULL, NULL, NULL));
+<a name="line73"> 73: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line74"> 74: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(unrelated_event[3], NULL, NULL, NULL, NULL));
+<a name="line75"> 75: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line76"> 76: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventsPause.html">PetscLogEventsPause</a>());
+<a name="line77"> 77: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(runtime_event, NULL, NULL, NULL, NULL));
+<a name="line78"> 78: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.2));
+<a name="line79"> 79: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(runtime_event, NULL, NULL, NULL, NULL));
+<a name="line80"> 80: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventsResume.html">PetscLogEventsResume</a>());
+<a name="line81"> 81: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(unrelated_event[3], NULL, NULL, NULL, NULL));
+<a name="line82"> 82: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line83"> 83: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(unrelated_event[2], NULL, NULL, NULL, NULL));
+<a name="line84"> 84: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line85"> 85: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStagePop.html">PetscLogStagePop</a>());
+<a name="line86"> 86: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line87"> 87: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(unrelated_event[1], NULL, NULL, NULL, NULL));
+<a name="line88"> 88: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSleep.html">PetscSleep</a>(0.05));
+<a name="line89"> 89: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(unrelated_event[0], NULL, NULL, NULL, NULL));
+<a name="line90"> 90: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStagePop.html">PetscLogStagePop</a>());
+<a name="line91"> 91: </a>  { <font color="#B22222">// test of <a href="../../../manualpages/Log/PetscLogStageGetPerfInfo.html">PetscLogStageGetPerfInfo</a>()</font>
+<a name="line92"> 92: </a>    <a href="../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler;
+
+<a name="line94"> 94: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogGetDefaultHandler.html">PetscLogGetDefaultHandler</a>(&amp;handler));
+<a name="line95"> 95: </a>    <font color="#4169E1">if</font> (handler) {
+<a name="line96"> 96: </a>      <a href="../../../manualpages/Log/PetscEventPerfInfo.html">PetscEventPerfInfo</a> stage_info;
+
+<a name="line98"> 98: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogStageGetPerfInfo.html">PetscLogStageGetPerfInfo</a>(unrelated_stage_1, &amp;stage_info));
+<a name="line99"> 99: </a>      (void)stage_info;
+<a name="line100">100: </a>    }
+<a name="line101">101: </a>  }
+<a name="line102">102: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line103">103: </a>  <font color="#4169E1">return</font> 0;
+<a name="line104">104: </a>}
+
+<a name="line106">106: </a><font color="#B22222">/*TEST</font>
+
+<a name="line108">108: </a><font color="#B22222">  # main stage invisible, "External runtime initialization" shouldn't appear in the log</font>
+<a name="line109">109: </a><font color="#B22222">  test:</font>
+<a name="line110">110: </a><font color="#B22222">    requires: defined(PETSC_USE_LOG)</font>
+<a name="line111">111: </a><font color="#B22222">    suffix: 0</font>
+<a name="line112">112: </a><font color="#B22222">    args: -log_view -unrelated_visible -log_view_memory</font>
+<a name="line113">113: </a><font color="#B22222">    filter: grep -o "\\(External runtime initialization\\|Unrelated event\\)"</font>
+
+<a name="line115">115: </a><font color="#B22222">  # unrelated stage invisible, "Unrelated event" shouldn't appear in the log</font>
+<a name="line116">116: </a><font color="#B22222">  test:</font>
+<a name="line117">117: </a><font color="#B22222">    requires: defined(PETSC_USE_LOG)</font>
+<a name="line118">118: </a><font color="#B22222">    suffix: 1</font>
+<a name="line119">119: </a><font color="#B22222">    args: -log_view -main_visible -log_view_memory</font>
+<a name="line120">120: </a><font color="#B22222">    filter: grep -o "\\(External runtime initialization\\|Unrelated event\\)"</font>
+
+<a name="line122">122: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

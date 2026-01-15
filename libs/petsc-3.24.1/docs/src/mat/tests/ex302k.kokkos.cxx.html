@@ -1,0 +1,187 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/tests/ex302k.kokkos.cxx">Actual source code: ex302k.kokkos.cxx</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:04+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Testing <a href="../../../manualpages/Mat/MatCreateSeqAIJKokkosWithKokkosViews.html">MatCreateSeqAIJKokkosWithKokkosViews</a>() and building <a href="../../../manualpages/Mat/Mat.html">Mat</a> on the device.\n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../include/petscvec_kokkos.hpp.html">&lt;petscvec_kokkos.hpp&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../include/petscdevice.h.html">&lt;petscdevice.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../include/petscmat.h.html">&lt;petscmat.h&gt;</A>
+<a name="line6">  6: </a>#include <A href="../../../include/petscmat_kokkos.hpp.html">&lt;petscmat_kokkos.hpp&gt;</A>
+<a name="line7">  7: </a><font color="#A020F0">#include &lt;Kokkos_Core.hpp&gt;</font>
+<a name="line8">  8: </a><font color="#A020F0">#include &lt;Kokkos_DualView.hpp&gt;</font>
+
+<a name="line10"> 10: </a>using HostMirrorMemorySpace = Kokkos::DualView&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *&gt;::host_mirror_space::memory_space;
+
+<a name="line12"> 12: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line13"> 13: </a>{
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>             A, B, BT;
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>        i, j, column, M, N, m, n, m_ab, n_ab;
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       *di, *dj, *oi, *oj, nd;
+<a name="line17"> 17: </a>  const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *garray;
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       *garray_h;
+<a name="line19"> 19: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>    *oa, *da;
+<a name="line20"> 20: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>     value;
+<a name="line21"> 21: </a>  <a href="../../../manualpages/Sys/PetscRandom.html">PetscRandom</a>     rctx;
+<a name="line22"> 22: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>       equal, done;
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>             AA, AB;
+<a name="line24"> 24: </a>  <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>     size, rank;
+
+<a name="line26"> 26: </a>  <font color="#B22222">// ~~~~~~~~~~~~~~~~~~~~~</font>
+<a name="line27"> 27: </a>  <font color="#B22222">// This test shows the routines needed to build a kokkos matrix without preallocation</font>
+<a name="line28"> 28: </a>  <font color="#B22222">// on the host</font>
+<a name="line29"> 29: </a>  <font color="#B22222">// ~~~~~~~~~~~~~~~~~~~~~</font>
+
+<a name="line31"> 31: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line32"> 32: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line33"> 33: </a>  <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_size.html#MPI_Comm_size">MPI_Comm_size</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;size));
+<a name="line34"> 34: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(size &gt; 1, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_WRONG_MPI_SIZE</a>, <font color="#666666">"Must run with 2 or more processes"</font>);
+<a name="line35"> 35: </a>  <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;rank));
+
+<a name="line37"> 37: </a>  <font color="#B22222">/* Create a mpiaij matrix for checking */</font>
+<a name="line38"> 38: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateAIJ.html">MatCreateAIJ</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 5, 5, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, 0, NULL, 0, NULL, &amp;A));
+<a name="line39"> 39: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>(A));
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(A, <a href="../../../manualpages/Mat/MatOption.html">MAT_NEW_NONZERO_LOCATION_ERR</a>, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line41"> 41: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetUp.html">MatSetUp</a>(A));
+<a name="line42"> 42: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomCreate.html">PetscRandomCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;rctx));
+<a name="line43"> 43: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomSetFromOptions.html">PetscRandomSetFromOptions</a>(rctx));
+
+<a name="line45"> 45: </a>  <font color="#4169E1">for</font> (i = 5 * rank; i &lt; 5 * rank + 5; i++) {
+<a name="line46"> 46: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; 5 * size; j++) {
+<a name="line47"> 47: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomGetValue.html">PetscRandomGetValue</a>(rctx, &amp;value));
+<a name="line48"> 48: </a>      column = (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>)(5 * size * <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(value));
+
+<a name="line50"> 50: </a>      <font color="#B22222">// rank 0 has no off-process entries</font>
+<a name="line51"> 51: </a>      <font color="#4169E1">if</font> (rank == 0 &amp;&amp; (column &lt; i || column &gt;= i)) column = i;
+
+<a name="line53"> 53: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomGetValue.html">PetscRandomGetValue</a>(rctx, &amp;value));
+<a name="line54"> 54: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(A, 1, &amp;i, 1, &amp;column, &amp;value, <a href="../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line55"> 55: </a>    }
+<a name="line56"> 56: </a>  }
+<a name="line57"> 57: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(A, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line58"> 58: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(A, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line60"> 60: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(A, &amp;M, &amp;N));
+<a name="line61"> 61: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetLocalSize.html">MatGetLocalSize</a>(A, &amp;m, &amp;n));
+<a name="line62"> 62: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMPIAIJGetSeqAIJ.html">MatMPIAIJGetSeqAIJ</a>(A, &amp;AA, &amp;AB, &amp;garray));
+<a name="line63"> 63: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetRowIJ.html">MatGetRowIJ</a>(AA, 0, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, &amp;nd, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;di, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;dj, &amp;done));
+<a name="line64"> 64: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSeqAIJGetArray.html">MatSeqAIJGetArray</a>(AA, &amp;da));
+<a name="line65"> 65: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetRowIJ.html">MatGetRowIJ</a>(AB, 0, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, &amp;nd, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;oi, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;oj, &amp;done));
+<a name="line66"> 66: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSeqAIJGetArray.html">MatSeqAIJGetArray</a>(AB, &amp;oa));
+<a name="line67"> 67: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(AB, &amp;m_ab, &amp;n_ab));
+
+<a name="line69"> 69: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a> output_mat_local, output_mat_nonlocal;
+<a name="line70"> 70: </a>  <font color="#B22222">// Be careful about scope given the kokkos memory reference counts</font>
+<a name="line71"> 71: </a>  {
+<a name="line72"> 72: </a>    <font color="#B22222">// Local</font>
+<a name="line73"> 73: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *&gt; a_local_d;
+<a name="line74"> 74: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;    i_local_d;
+<a name="line75"> 75: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;    j_local_d;
+
+<a name="line77"> 77: </a>    <font color="#B22222">// Nonlocal</font>
+<a name="line78"> 78: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *&gt; a_nonlocal_d;
+<a name="line79"> 79: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;    i_nonlocal_d;
+<a name="line80"> 80: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;    j_nonlocal_d;
+
+<a name="line82"> 82: </a>    <font color="#B22222">// Create device memory</font>
+<a name="line83"> 83: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(a_local_d = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *&gt;(<font color="#666666">"a_local_d"</font>, di[5]));
+<a name="line84"> 84: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(i_local_d = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;(<font color="#666666">"i_local_d"</font>, m + 1));
+<a name="line85"> 85: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(j_local_d = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;(<font color="#666666">"j_local_d"</font>, di[5]));
+
+<a name="line87"> 87: </a>    <font color="#B22222">// Create non-local device memory</font>
+<a name="line88"> 88: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(a_nonlocal_d = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *&gt;(<font color="#666666">"a_nonlocal_d"</font>, oi[5]));
+<a name="line89"> 89: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(i_nonlocal_d = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;(<font color="#666666">"i_nonlocal_d"</font>, m + 1));
+<a name="line90"> 90: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(j_nonlocal_d = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;(<font color="#666666">"j_nonlocal_d"</font>, oi[5]));
+
+<a name="line92"> 92: </a>    <font color="#B22222">// ~~~~~~~~~~~~~~~~~~~~~</font>
+<a name="line93"> 93: </a>    <font color="#B22222">// Could fill the aij on the device - we're just going to test</font>
+<a name="line94"> 94: </a>    <font color="#B22222">// by copying in the existing host values</font>
+<a name="line95"> 95: </a>    <font color="#B22222">// ~~~~~~~~~~~~~~~~~~~~~</font>
+<a name="line96"> 96: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *, HostMirrorMemorySpace&gt; a_local_h;
+<a name="line97"> 97: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;    i_local_h;
+<a name="line98"> 98: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;    j_local_h;
+<a name="line99"> 99: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *, HostMirrorMemorySpace&gt; a_nonlocal_h;
+<a name="line100">100: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;    i_nonlocal_h;
+<a name="line101">101: </a>    Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;    j_nonlocal_h;
+
+<a name="line103">103: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(a_local_h = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *, HostMirrorMemorySpace&gt;(da, di[5]));
+<a name="line104">104: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(i_local_h = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;(di, m + 1));
+<a name="line105">105: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(j_local_h = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;(dj, di[5]));
+<a name="line106">106: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(a_nonlocal_h = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *, HostMirrorMemorySpace&gt;(oa, oi[5]));
+<a name="line107">107: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(i_nonlocal_h = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;(oi, m + 1));
+<a name="line108">108: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(j_nonlocal_h = Kokkos::View&lt;<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, HostMirrorMemorySpace&gt;(oj, oi[5]));
+
+<a name="line110">110: </a>    <font color="#B22222">// Haven't specified an exec space so these will all be synchronous</font>
+<a name="line111">111: </a>    <font color="#B22222">// and finish without a need to call fence after</font>
+<a name="line112">112: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::deep_copy(a_local_d, a_local_h));
+<a name="line113">113: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::deep_copy(i_local_d, i_local_h));
+<a name="line114">114: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::deep_copy(j_local_d, j_local_h));
+<a name="line115">115: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::deep_copy(a_nonlocal_d, a_nonlocal_h));
+<a name="line116">116: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::deep_copy(i_nonlocal_d, i_nonlocal_h));
+<a name="line117">117: </a>    <a href="../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::deep_copy(j_nonlocal_d, j_nonlocal_h));
+
+<a name="line119">119: </a>    <font color="#B22222">// The garray passed in has to be on the host, but it can be created</font>
+<a name="line120">120: </a>    <font color="#B22222">// on device and copied to the host</font>
+<a name="line121">121: </a>    <font color="#B22222">// We're just going to copy the existing host values here</font>
+<a name="line122">122: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(n_ab, &amp;garray_h));
+<a name="line123">123: </a>    <font color="#4169E1">for</font> (int i = 0; i &lt; n_ab; i++) garray_h[i] = garray[i];
+
+<a name="line125">125: </a>    <font color="#B22222">// ~~~~~~~~~~~~~~~~~~~~~</font>
+
+<a name="line127">127: </a>    <font color="#B22222">// ~~~~~~~~~~~~~~~~~</font>
+<a name="line128">128: </a>    <font color="#B22222">// Test <a href="../../../manualpages/Mat/MatCreateSeqAIJKokkosWithKokkosViews.html">MatCreateSeqAIJKokkosWithKokkosViews</a></font>
+<a name="line129">129: </a>    <font color="#B22222">// ~~~~~~~~~~~~~~~~~</font>
+
+<a name="line131">131: </a>    <font color="#B22222">// We can create our local diagonal block matrix directly on the device</font>
+<a name="line132">132: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateSeqAIJKokkosWithKokkosViews.html">MatCreateSeqAIJKokkosWithKokkosViews</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, m, n, i_local_d, j_local_d, a_local_d, &amp;output_mat_local));
+
+<a name="line134">134: </a>    <font color="#B22222">// We can create our nonlocal diagonal block matrix directly on the device</font>
+<a name="line135">135: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateSeqAIJKokkosWithKokkosViews.html">MatCreateSeqAIJKokkosWithKokkosViews</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, m, n_ab, i_nonlocal_d, j_nonlocal_d, a_nonlocal_d, &amp;output_mat_nonlocal));
+
+<a name="line137">137: </a>    <font color="#B22222">// Build our MPI matrix</font>
+<a name="line138">138: </a>    <font color="#B22222">// If we provide garray and output_mat_nonlocal with local indices and the compactified size</font>
+<a name="line139">139: </a>    <font color="#B22222">// almost nothing happens on the host</font>
+<a name="line140">140: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateMPIAIJWithSeqAIJ.html">MatCreateMPIAIJWithSeqAIJ</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, M, N, output_mat_local, output_mat_nonlocal, garray_h, &amp;B));
+
+<a name="line142">142: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatEqual.html">MatEqual</a>(A, B, &amp;equal));
+<a name="line143">143: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatRestoreRowIJ.html">MatRestoreRowIJ</a>(AA, 0, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, &amp;nd, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;di, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;dj, &amp;done));
+<a name="line144">144: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSeqAIJRestoreArray.html">MatSeqAIJRestoreArray</a>(AA, &amp;da));
+<a name="line145">145: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatRestoreRowIJ.html">MatRestoreRowIJ</a>(AB, 0, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, &amp;nd, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;oi, (const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;oj, &amp;done));
+<a name="line146">146: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSeqAIJRestoreArray.html">MatSeqAIJRestoreArray</a>(AB, &amp;oa));
+<a name="line147">147: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(equal, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Likely a bug in <a href="../../../manualpages/Mat/MatCreateSeqAIJKokkosWithKokkosViews.html">MatCreateSeqAIJKokkosWithKokkosViews</a>()"</font>);
+<a name="line148">148: </a>  }
+
+<a name="line150">150: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatTranspose.html">MatTranspose</a>(B, <a href="../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, &amp;BT));
+
+<a name="line152">152: </a>  <font color="#B22222">/* Free spaces */</font>
+<a name="line153">153: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomDestroy.html">PetscRandomDestroy</a>(&amp;rctx));
+<a name="line154">154: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+<a name="line155">155: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;B));
+<a name="line156">156: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;BT));
+<a name="line157">157: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line158">158: </a>  <font color="#4169E1">return</font> 0;
+<a name="line159">159: </a>}
+
+<a name="line161">161: </a><font color="#B22222">/*TEST</font>
+<a name="line162">162: </a><font color="#B22222">  build:</font>
+<a name="line163">163: </a><font color="#B22222">    requires: kokkos_kernels</font>
+
+<a name="line165">165: </a><font color="#B22222">  test:</font>
+<a name="line166">166: </a><font color="#B22222">    nsize: 2</font>
+<a name="line167">167: </a><font color="#B22222">    args: -mat_type aijkokkos</font>
+<a name="line168">168: </a><font color="#B22222">    requires: kokkos_kernels</font>
+<a name="line169">169: </a><font color="#B22222">    output_file: output/empty.out</font>
+
+<a name="line171">171: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

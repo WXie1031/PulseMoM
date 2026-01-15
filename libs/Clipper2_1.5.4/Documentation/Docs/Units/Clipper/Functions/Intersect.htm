@@ -1,0 +1,67 @@
+<html>
+
+<head>
+
+  <title>Intersect</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shCore.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushDelphi.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCpp.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCSharp.js"></script><link rel="stylesheet" type="text/css" href="../../../../Styles/default.css"/><link rel="stylesheet" type="text/css" href="../../../../Menu/menu.css"/><link rel="stylesheet" type="text/css" href="../../../../CodeScripts/SyntaxHighlighter/styles/shCoreDefault.css"/><link rel="stylesheet" type="text/css" href="../../../../CodeScripts/SyntaxHighlighter/styles/shThemeDefault.css"/><meta name="viewport" content="width=device-width, initial-scale=1.0"><script type="text/javascript" src="../../../../Menu/menu.js"></script><script type="text/javascript" src="../../../../CodeScripts/bootstrap.js"></script>
+</head>
+
+<body bgcolor="#FFFFFF">
+  <div class="menu" id="menu"><a class="ancestor" href="../../../_Body.htm">Index</a><a class="ancestor" href="../_Body.htm">Clipper</a><span class="active">Intersect</span>
+  </div><br><br>
+
+  <h1>Intersect</h1>
+  <p class="Decl"><span class="Language">Delphi</span><b>function</b> Intersect(<b>const</b> subjects, clips: TPaths64; fillRule: TFillRule): TPaths64;</p>
+
+  <p class="Decl"><span class="Language">Delphi</span><b>function</b> Intersect(<b>const</b> subjects, clips: TPathsD; fillRule: TFillRule; decimalPrec: integer): TPathsD;</p>
+<br class="half">
+  <p class="Decl"><span class="Language"> C++</span>Paths64 Intersect(<b>const</b> Paths64& subjects, const Paths64& clips, <a href="../Types/FillRule.htm"><b>FillRule</b></a> fillrule);</p>
+
+  <p class="Decl"><span class="Language"> C++</span>PathsD Intersect(<b>const</b> PathsD& subjects, const PathsD& clips, FillRule fillrule, int decimalPrec);</p>
+<br class="half">
+  <p class="Decl"><span class="Language"> C#&nbsp;</span><b>public static</b> Paths64 Intersect(Paths64 subject, Paths64 clip, FillRule fillRule);</p>
+
+  <p class="Decl"><span class="Language"> C#&nbsp;</span><b>public static</b> PathsD Intersect(PathsD subject, PathsD clip, FillRule fillRule, int decimalPrec);</p>
+<br class="half">
+  <p>This function only intersects <b>closed</b> <a href="../../../Overview.htm#terminology">subject</a> paths with <a href="../../../Overview.htm#terminology">clip</a> paths. More complex clipping operations (eg clipping <b>open</b> paths), will require you to use the <a href="../../Clipper.Engine/Classes/Clipper64/_Body.htm"><b>Clipper64</b></a> or <a href="../../Clipper.Engine/Classes/ClipperD/_Body.htm"><b>ClipperD</b></a> classes directly.<br><br> When using floating point types, the <span class="monobold2">precision</span> parameter specifies the desired coordinate precision (up to 8 decimal places).</p>
+  <p> <br> 
+    <div class="pseudoTbl">
+      <div>C++ Example:
+      </div>
+
+      <pre class="brush: cpp;">
+  Paths64 subject, clip, solution;
+  subject.push_back(MakePath({100, 50, 10, 79, 65, 2, 65, 98, 10, 21}));
+  clip.push_back(MakePath({98, 63, 4, 68, 77, 8, 52, 100, 19, 12}));
+  solution = Intersect(subject, clip, FillRule::NonZero);  
+  //draw solution
+
+      </pre>
+
+    </div> </p>
+  <p> 
+    <div class="pseudoTbl">
+      <div>C# Example:
+      </div>
+
+      <pre class="brush: csharp;">
+  Paths64 subj = new Paths64();
+  Paths64 clip = new Paths64();
+  subj.Add(Clipper.MakePath(new int[] { 100, 50, 10, 79, 65, 2, 65, 98, 10, 21 }));
+  clip.Add(Clipper.MakePath(new int[] { 98, 63, 4, 68, 77, 8, 52, 100, 19, 12 }));
+  Paths64 solution = Clipper.Intersect(subj, clip, FillRule.NonZero);
+  //draw solution
+
+      </pre>
+
+    </div> </p>
+  <p> <img src="../../../../Images/none.svg" alt="" border="0">&nbsp;&nbsp; <img src="../../../../Images/intersect.svg" alt="" border="0"> </p>
+  <h2 id="Auto-SeeAlso">See Also</h2>
+  <p class="Body"><a href="../../../Overview.htm">Overview</a>, <a href="../../Clipper.Engine/Classes/Clipper64/_Body.htm">Clipper64</a>, <a href="../../Clipper.Engine/Classes/ClipperD/_Body.htm">ClipperD</a>, <a href="../Types/FillRule.htm">FillRule</a></p>
+  <p class="Copyright" id="auto"> <br><br> Copyright &#169; 2010-2024 Angus Johnson &#160; - &#160; Clipper2 1.5.2 &#160; - &#160; Help file built on 3 Mar 2025<br><br> </p>
+
+</body>
+
+</html>

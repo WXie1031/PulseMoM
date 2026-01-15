@@ -1,0 +1,163 @@
+#[SYNONYMS 
+#]
+[PARAMETER
+	GScale UPDATE
+	Layer	UPDATE
+]
+# The pad dimensions and pad distance must be given by the expressions
+# pad_length, pad_width and spacing. Otherwise the advanced SMD models do not work.
+[EXPRESSIONS
+	# mm<-->inch*25.4
+	total_length=0.275*25.4
+	pad_length=0.085*25.4
+	pad_width=0.160*25.4
+	spacing=0.105*25.4
+	Scale = 0.001/GScale
+]
+
+#############################################################
+#
+# The Pads...
+#
+#############################################################
+
+[PROFILE Metal
+	[POLYGON 5
+		P
+			(-pad_length-spacing/2)*Scale
+			-pad_width/2*Scale
+		L
+		P
+			-spacing/2*Scale
+			-pad_width/2*Scale
+		L
+		P
+			-spacing/2*Scale
+			pad_width/2*Scale
+		L
+		P
+			(-pad_length-spacing/2)*Scale
+			pad_width/2*Scale
+		L
+		P
+			(-pad_length-spacing/2)*Scale
+			-pad_width/2*Scale
+	]
+]
+[PROFILE Metal
+	[POLYGON 5
+		P
+			(pad_length+spacing/2)*Scale
+			-pad_width/2*Scale
+		L
+		P
+			spacing/2*Scale
+			-pad_width/2*Scale
+		L
+		P
+			spacing/2*Scale
+			pad_width/2*Scale
+		L
+		P
+			(pad_length+spacing/2)*Scale
+			pad_width/2*Scale
+		L
+		P
+			(pad_length+spacing/2)*Scale
+			-pad_width/2*Scale
+	]
+]
+
+#############################################################
+#
+# two closed polygons, degenerated to lines, lying on the pins, used for describing the position of helper ports
+#
+#############################################################
+
+[PROFILE Metal
+	[POLYGON 3
+		P
+			-total_length/2*Scale
+			pad_width/2*Scale
+		L
+		P
+			-total_length/2*Scale
+			-pad_width/2*Scale
+		L
+		P
+			-total_length/2*Scale
+			pad_width/2*Scale
+	]
+]
+[PROFILE Metal
+	[POLYGON 3
+		P
+			total_length/2*Scale
+			pad_width/2*Scale
+		L
+		P
+			total_length/2*Scale
+			-pad_width/2*Scale
+		L
+		P
+			total_length/2*Scale
+			pad_width/2*Scale
+	]
+]
+
+#############################################################
+#
+#The pins
+#
+#############################################################
+
+[PIN Metal Layer
+	N
+		1
+	P
+		-total_length/2*Scale
+		0.0
+	D
+		-1.0
+		0
+]
+[WAVEGUIDEPORT Metal Layer
+	N
+		1
+	P
+		-total_length/2*Scale
+		0.0
+	D
+		-1.0
+		0
+	E
+		GetXExtensionMicrostrip(Layer,pad_width*Scale)
+		GetLowerHeight(Layer)
+		GetUpperHeight(Layer)
+]
+[PIN Metal Layer
+	N
+		2
+	P
+		total_length/2*Scale
+		0.0
+	D
+		1.0
+		0
+]
+[WAVEGUIDEPORT Metal Layer
+	N
+		2
+	P
+		total_length/2*Scale
+		0.0
+	D
+		1.0
+		0
+	E
+		GetXExtensionMicrostrip(Layer,pad_width*Scale)
+		GetLowerHeight(Layer)
+		GetUpperHeight(Layer)
+]
+
+#############################################################

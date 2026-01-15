@@ -1,0 +1,120 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ts/tests/ex26.c">Actual source code: ex26.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Solves the trivial ODE 2 du/dt = 1, u(0) = 0. \n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../include/petscts.h.html">&lt;petscts.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../include/petscpc.h.html">&lt;petscpc.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> IFunction(<a href="../../../manualpages/TS/TS.html">TS</a>, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../manualpages/Vec/Vec.html">Vec</a>, void *)</font></strong>;
+<a name="line7">  7: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> IJacobian(<a href="../../../manualpages/TS/TS.html">TS</a>, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a>, void *)</font></strong>;
+<a name="line8">  8: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> RHSFunction(<a href="../../../manualpages/TS/TS.html">TS</a>, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../manualpages/Vec/Vec.html">Vec</a>, void *)</font></strong>;
+
+<a name="line10"> 10: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line11"> 11: </a>{
+<a name="line12"> 12: </a>  <a href="../../../manualpages/TS/TS.html">TS</a>        ts;
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>       x;
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>       A;
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> flg = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, usingimex;
+
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+
+<a name="line20"> 20: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSCreate.html">TSCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;ts));
+<a name="line21"> 21: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetBool.html">PetscOptionsGetBool</a>(NULL, NULL, <font color="#666666">"-set_implicit"</font>, &amp;flg, NULL));
+<a name="line22"> 22: </a>  <font color="#4169E1">if</font> (flg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetEquationType.html">TSSetEquationType</a>(ts, <a href="../../../manualpages/TS/TSEquationType.html">TS_EQ_ODE_IMPLICIT</a>));
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetIFunction.html">TSSetIFunction</a>(ts, NULL, IFunction, NULL));
+<a name="line24"> 24: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetRHSFunction.html">TSSetRHSFunction</a>(ts, NULL, RHSFunction, &amp;usingimex));
+
+<a name="line26"> 26: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;A));
+<a name="line27"> 27: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(A, 1, 1, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>));
+<a name="line28"> 28: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>(A));
+<a name="line29"> 29: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetUp.html">MatSetUp</a>(A));
+<a name="line30"> 30: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(A, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line31"> 31: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(A, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line32"> 32: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetIJacobian.html">TSSetIJacobian</a>(ts, A, A, IJacobian, NULL));
+<a name="line33"> 33: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+
+<a name="line35"> 35: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecCreate.html">VecCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;x));
+<a name="line36"> 36: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetSizes.html">VecSetSizes</a>(x, 1, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>));
+<a name="line37"> 37: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetFromOptions.html">VecSetFromOptions</a>(x));
+<a name="line38"> 38: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetUp.html">VecSetUp</a>(x));
+<a name="line39"> 39: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetSolution.html">TSSetSolution</a>(ts, x));
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;x));
+<a name="line41"> 41: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetFromOptions.html">TSSetFromOptions</a>(ts));
+
+<a name="line43"> 43: </a>  <font color="#B22222">/* Need to know if we are using an IMEX scheme to decide on the form</font>
+<a name="line44"> 44: </a><font color="#B22222">     of the RHS function */</font>
+<a name="line45"> 45: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ts, <a href="../../../manualpages/TS/TSARKIMEX.html">TSARKIMEX</a>, &amp;usingimex));
+<a name="line46"> 46: </a>  <font color="#4169E1">if</font> (usingimex) {
+<a name="line47"> 47: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSARKIMEXGetFullyImplicit.html">TSARKIMEXGetFullyImplicit</a>(ts, &amp;flg));
+<a name="line48"> 48: </a>    <font color="#4169E1">if</font> (flg) usingimex = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line49"> 49: </a>  }
+<a name="line50"> 50: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetStepNumber.html">TSSetStepNumber</a>(ts, 0));
+<a name="line51"> 51: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetTimeStep.html">TSSetTimeStep</a>(ts, 1));
+<a name="line52"> 52: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetTime.html">TSSetTime</a>(ts, 0));
+<a name="line53"> 53: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetMaxTime.html">TSSetMaxTime</a>(ts, <a href="../../../manualpages/Sys/PETSC_MAX_REAL.html">PETSC_MAX_REAL</a>));
+<a name="line54"> 54: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetMaxSteps.html">TSSetMaxSteps</a>(ts, 3));
+
+<a name="line56"> 56: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSolve.html">TSSolve</a>(ts, NULL));
+
+<a name="line58"> 58: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSDestroy.html">TSDestroy</a>(&amp;ts));
+<a name="line59"> 59: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line60"> 60: </a>  <font color="#4169E1">return</font> 0;
+<a name="line61"> 61: </a>}
+
+<a name="line63"> 63: </a><strong><font color="#4169E1"><a name="RHSFunction"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> RHSFunction(<a href="../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> t, <a href="../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../manualpages/Vec/Vec.html">Vec</a> f, void *ctx)</font></strong>
+<a name="line64"> 64: </a>{
+<a name="line65"> 65: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> usingimex = *(<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *)ctx;
+
+<a name="line67"> 67: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line68"> 68: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSet.html">VecSet</a>(f, usingimex ? 0.5 : 1));
+<a name="line69"> 69: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line70"> 70: </a>}
+
+<a name="line72"> 72: </a><strong><font color="#4169E1"><a name="IFunction"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> IFunction(<a href="../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> t, <a href="../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../manualpages/Vec/Vec.html">Vec</a> xdot, <a href="../../../manualpages/Vec/Vec.html">Vec</a> f, void *ctx)</font></strong>
+<a name="line73"> 73: </a>{
+<a name="line74"> 74: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line75"> 75: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecCopy.html">VecCopy</a>(xdot, f));
+<a name="line76"> 76: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecScale.html">VecScale</a>(f, 2.0));
+<a name="line77"> 77: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line78"> 78: </a>}
+
+<a name="line80"> 80: </a><strong><font color="#4169E1"><a name="IJacobian"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> IJacobian(<a href="../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> t, <a href="../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../manualpages/Vec/Vec.html">Vec</a> xdot, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> shift, <a href="../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../manualpages/Mat/Mat.html">Mat</a> B, void *ctx)</font></strong>
+<a name="line81"> 81: </a>{
+<a name="line82"> 82: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> j;
+
+<a name="line84"> 84: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line85"> 85: </a>  j = shift * 2.0;
+<a name="line86"> 86: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetValue.html">MatSetValue</a>(B, 0, 0, j, <a href="../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line87"> 87: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(B, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line88"> 88: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(B, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line89"> 89: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line90"> 90: </a>}
+
+<a name="line92"> 92: </a><font color="#B22222">/*TEST</font>
+
+<a name="line94"> 94: </a><font color="#B22222">    test:</font>
+<a name="line95"> 95: </a><font color="#B22222">      suffix: arkimex_explicit_stage</font>
+<a name="line96"> 96: </a><font color="#B22222">      requires: !defined(PETSCTEST_VALGRIND) defined(PETSC_USE_DEBUG) !defined(PETSC_HAVE_SANITIZER)</font>
+<a name="line97"> 97: </a><font color="#B22222">      args: -ts_type arkimex -petsc_ci_portable_error_output -error_output_stdout -set_implicit</font>
+<a name="line98"> 98: </a><font color="#B22222">      filter: grep -E -v "(memory block|leaked context|not freed before <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Finalize.html#MPI_Finalize">MPI_Finalize</a>|Could be the program crashed)"</font>
+
+<a name="line100">100: </a><font color="#B22222">    test:</font>
+<a name="line101">101: </a><font color="#B22222">      suffix: arkimex_implicit_stage</font>
+<a name="line102">102: </a><font color="#B22222">      args: -ts_type arkimex -ts_arkimex_type {{3 l2}} -ts_monitor_solution -ts_monitor</font>
+
+<a name="line104">104: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

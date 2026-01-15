@@ -1,0 +1,42 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tests/ex77.c">Actual source code: ex77.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:12+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Tests <a href="../../../manualpages/Sys/MPIU_Allreduce.html">MPIU_Allreduce</a>() for mis-use.\n"</font>;
+<a name="line2">  2: </a>#include <A href="../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+
+<a name="line4">  4: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **args)</font></strong>
+<a name="line5">  5: </a>{
+<a name="line6">  6: </a>  <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> rank;
+<a name="line7">  7: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>   same = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line9">  9: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line10"> 10: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;args, NULL, help));
+<a name="line11"> 11: </a>  <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;rank));
+<a name="line12"> 12: </a>  <font color="#4169E1">if</font> (!rank) <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="../../../manualpages/Sys/MPIU_Allreduce.html">MPIU_Allreduce</a>(MPI_IN_PLACE, &amp;same, 1, MPI_C_BOOL, MPI_LAND, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>));
+<a name="line13"> 13: </a>  <font color="#4169E1">else</font> <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="../../../manualpages/Sys/MPIU_Allreduce.html">MPIU_Allreduce</a>(MPI_IN_PLACE, &amp;same, 1, MPI_C_BOOL, MPI_LAND, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>));
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line15"> 15: </a>  <font color="#4169E1">return</font> 0;
+<a name="line16"> 16: </a>}
+
+<a name="line18"> 18: </a><font color="#B22222">/*TEST</font>
+
+<a name="line20"> 20: </a><font color="#B22222">   test:</font>
+<a name="line21"> 21: </a><font color="#B22222">     requires: defined(PETSC_USE_DEBUG) !defined(PETSCTEST_VALGRIND) !defined(PETSC_HAVE_SANITIZER)</font>
+<a name="line22"> 22: </a><font color="#B22222">     args: -petsc_ci_portable_error_output -error_output_stdout</font>
+<a name="line23"> 23: </a><font color="#B22222">     nsize: 2</font>
+<a name="line24"> 24: </a><font color="#B22222">     filter: grep -E "(PETSC ERROR)" | grep -E "(Error Created|CreateError\(\)|main\(\))"</font>
+
+<a name="line26"> 26: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

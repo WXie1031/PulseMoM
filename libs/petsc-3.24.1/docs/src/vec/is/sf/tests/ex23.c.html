@@ -1,0 +1,105 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/is/sf/tests/ex23.c">Actual source code: ex23.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:19+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static const char help[] = <font color="#666666">"Test <a href="../../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a> with integers and MPIU_2INT \n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petscvec.h.html">&lt;petscvec.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petscsf.h.html">&lt;petscsf.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../include/petscdevice.h.html">&lt;petscdevice.h&gt;</A>
+
+<a name="line7">  7: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char *argv[])</font></strong>
+<a name="line8">  8: </a>{
+<a name="line9">  9: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           n, n2, N = 12;
+<a name="line10"> 10: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>          *indices;
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/IS/IS.html">IS</a>                 ix, iy;
+<a name="line12"> 12: </a>  <a href="../../../../../manualpages/PetscSF/VecScatter.html">VecScatter</a>         vscat;
+<a name="line13"> 13: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>                x, y;
+<a name="line14"> 14: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           rstart, rend;
+<a name="line15"> 15: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>          *xh, *yh, *xd, *yd;
+<a name="line16"> 16: </a>  <a href="../../../../../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a> dctx;
+
+<a name="line18"> 18: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line20"> 20: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCreateFromOptions.html">VecCreateFromOptions</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, <a href="../../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, N, &amp;x));
+<a name="line21"> 21: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(x, &amp;y));
+<a name="line22"> 22: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(x, &amp;n));
+
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecGetOwnershipRange.html">VecGetOwnershipRange</a>(x, &amp;rstart, &amp;rend));
+<a name="line25"> 25: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISCreateStride.html">ISCreateStride</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, n, rstart, 1, &amp;ix));
+<a name="line26"> 26: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(n, &amp;indices));
+<a name="line27"> 27: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = rstart; i &lt; rend; i++) indices[i - rstart] = i / 2;
+<a name="line28"> 28: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISCreateGeneral.html">ISCreateGeneral</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, n, indices, <a href="../../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>, &amp;iy));
+<a name="line29"> 29: </a>  <font color="#B22222">// connect y[0] to x[0..1], y[1] to x[2..3], etc</font>
+<a name="line30"> 30: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecScatterCreate.html">VecScatterCreate</a>(y, iy, x, ix, &amp;vscat)); <font color="#B22222">// y has roots, x has leaves</font>
+
+<a name="line32"> 32: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceContextGetCurrentContext.html">PetscDeviceContextGetCurrentContext</a>(&amp;dctx));
+
+<a name="line34"> 34: </a>  <font color="#B22222">// double the allocation since we will use MPIU_2INT later</font>
+<a name="line35"> 35: </a>  n2 = 2 * n;
+<a name="line36"> 36: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMalloc.html">PetscDeviceMalloc</a>(dctx, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>, n2, &amp;xh));
+<a name="line37"> 37: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMalloc.html">PetscDeviceMalloc</a>(dctx, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_HOST</a>, n2, &amp;yh));
+<a name="line38"> 38: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMalloc.html">PetscDeviceMalloc</a>(dctx, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>, n2, &amp;xd));
+<a name="line39"> 39: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMalloc.html">PetscDeviceMalloc</a>(dctx, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>, n2, &amp;yd));
+
+<a name="line41"> 41: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; n; i++) {
+<a name="line42"> 42: </a>    xh[i] = xh[i + n] = i + rstart;
+<a name="line43"> 43: </a>    yh[i] = yh[i + n] = i + rstart;
+<a name="line44"> 44: </a>  }
+<a name="line45"> 45: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMemcpy.html">PetscDeviceMemcpy</a>(dctx, xd, xh, <font color="#4169E1">sizeof</font>(<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>) * n2));
+<a name="line46"> 46: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMemcpy.html">PetscDeviceMemcpy</a>(dctx, yd, yh, <font color="#4169E1">sizeof</font>(<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>) * n2));
+
+<a name="line48"> 48: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFReduceWithMemTypeBegin.html">PetscSFReduceWithMemTypeBegin</a>(vscat, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>, xd, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>, yd, MPI_SUM));
+<a name="line49"> 49: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFReduceEnd.html">PetscSFReduceEnd</a>(vscat, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, xd, yd, MPI_SUM));
+<a name="line50"> 50: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMemcpy.html">PetscDeviceMemcpy</a>(dctx, yh, yd, <font color="#4169E1">sizeof</font>(<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>) * n));
+<a name="line51"> 51: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceContextSynchronize.html">PetscDeviceContextSynchronize</a>(dctx)); <font color="#B22222">// finish the async memcpy</font>
+<a name="line52"> 52: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscIntView.html">PetscIntView</a>(n, yh, <a href="../../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>));
+
+<a name="line54"> 54: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFBcastWithMemTypeBegin.html">PetscSFBcastWithMemTypeBegin</a>(vscat, MPIU_2INT, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>, yd, <a href="../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>, xd, MPI_MINLOC));
+<a name="line55"> 55: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFBcastEnd.html">PetscSFBcastEnd</a>(vscat, MPIU_2INT, yd, xd, MPI_MINLOC));
+<a name="line56"> 56: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceMemcpy.html">PetscDeviceMemcpy</a>(dctx, xh, xd, <font color="#4169E1">sizeof</font>(<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>) * n2));
+<a name="line57"> 57: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceContextSynchronize.html">PetscDeviceContextSynchronize</a>(dctx)); <font color="#B22222">// finish the async memcpy</font>
+<a name="line58"> 58: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscIntView.html">PetscIntView</a>(n2, xh, <a href="../../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>));
+
+<a name="line60"> 60: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceFree.html">PetscDeviceFree</a>(dctx, xh));
+<a name="line61"> 61: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceFree.html">PetscDeviceFree</a>(dctx, yh));
+<a name="line62"> 62: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceFree.html">PetscDeviceFree</a>(dctx, xd));
+<a name="line63"> 63: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Device/PetscDeviceFree.html">PetscDeviceFree</a>(dctx, yd));
+<a name="line64"> 64: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;ix));
+<a name="line65"> 65: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;iy));
+<a name="line66"> 66: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;x));
+<a name="line67"> 67: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;y));
+<a name="line68"> 68: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecScatterDestroy.html">VecScatterDestroy</a>(&amp;vscat));
+<a name="line69"> 69: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line70"> 70: </a>}
+
+<a name="line72"> 72: </a><font color="#B22222">/*TEST</font>
+<a name="line73"> 73: </a><font color="#B22222">  testset:</font>
+<a name="line74"> 74: </a><font color="#B22222">    output_file: output/ex23.out</font>
+<a name="line75"> 75: </a><font color="#B22222">    nsize: 3</font>
+
+<a name="line77"> 77: </a><font color="#B22222">    test:</font>
+<a name="line78"> 78: </a><font color="#B22222">      suffix: 1</font>
+<a name="line79"> 79: </a><font color="#B22222">      requires: cuda</font>
+
+<a name="line81"> 81: </a><font color="#B22222">    test:</font>
+<a name="line82"> 82: </a><font color="#B22222">      suffix: 2</font>
+<a name="line83"> 83: </a><font color="#B22222">      requires: hip</font>
+
+<a name="line85"> 85: </a><font color="#B22222">    test:</font>
+<a name="line86"> 86: </a><font color="#B22222">      suffix: 3</font>
+<a name="line87"> 87: </a><font color="#B22222">      requires: sycl</font>
+
+<a name="line89"> 89: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

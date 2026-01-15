@@ -1,0 +1,313 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsc/private/cpp/utility.hpp">Actual source code: utility.hpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:45+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/cpp/macros.hpp.html">&lt;petsc/private/cpp/macros.hpp&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petsc/private/cpp/type_traits.hpp.html">&lt;petsc/private/cpp/type_traits.hpp&gt;</A>
+
+<a name="line6">  6: </a><font color="#A020F0">#include &lt;utility&gt;</font>
+<a name="line7">  7: </a><font color="#A020F0">#include &lt;cstdint&gt; // std::uint32_t</font>
+
+<a name="line9">  9: </a>namespace Petsc
+<a name="line10"> 10: </a>{
+
+<a name="line12"> 12: </a>namespace util
+<a name="line13"> 13: </a>{
+
+<a name="line15"> 15: </a><font color="#A020F0">#if PETSC_CPP_VERSION &gt;= 14 // C++14</font>
+<a name="line16"> 16: </a>using std::exchange;
+<a name="line17"> 17: </a>using std::integer_sequence;
+<a name="line18"> 18: </a>using std::make_integer_sequence;
+<a name="line19"> 19: </a><font color="#A020F0">#else</font>
+<a name="line20"> 20: </a>template &lt;class T, class U = T&gt;
+<a name="line21"> 21: </a>inline T exchange(T &amp;orig, U &amp;&amp;new_value)
+<a name="line22"> 22: </a>{
+<a name="line23"> 23: </a>  T old_value = std::move(orig);
+<a name="line24"> 24: </a>  orig        = std::forward&lt;U&gt;(new_value);
+<a name="line25"> 25: </a>  <font color="#4169E1">return</font> old_value;
+<a name="line26"> 26: </a>}
+
+<a name="line28"> 28: </a>template &lt;class T, T... idx&gt;
+<a name="line29"> 29: </a><font color="#4169E1"><a name="integer_sequence"></a>struct integer_sequence </font>{
+<a name="line30"> 30: </a>  static_assert(std::is_integral&lt;T&gt;::value, <font color="#666666">""</font>);
+
+<a name="line32"> 32: </a>  using value_type = T;
+
+<a name="line34"> 34: </a>  static constexpr std::size_t size() noexcept { <font color="#4169E1">return</font> <font color="#4169E1">sizeof</font>...(idx); }
+<a name="line35"> 35: </a>};
+
+<a name="line37"> 37: </a><font color="#A020F0">  #ifndef __has_builtin</font>
+<a name="line39"> 39: </a><font color="#A020F0">  #endif</font>
+
+<a name="line41"> 41: </a><font color="#A020F0">  #if __has_builtin(__make_integer_seq)    // clang, MSVC</font>
+<a name="line42"> 42: </a>template &lt;class T, T N&gt;
+<a name="line43"> 43: </a>using make_integer_sequence = __make_integer_seq&lt;integer_sequence, T, N&gt;;
+<a name="line44"> 44: </a><font color="#A020F0">  #elif defined(__GNUC__) &amp;&amp; __GNUC__ &gt;= 8 // gcc</font>
+<a name="line45"> 45: </a>template &lt;class T, T N&gt;
+<a name="line46"> 46: </a>using make_integer_sequence = integer_sequence&lt;T, __integer_pack(N)...&gt;;
+<a name="line47"> 47: </a><font color="#A020F0">  #else                                    // __slow__ version</font>
+<a name="line48"> 48: </a>namespace detail
+<a name="line49"> 49: </a>{
+
+<a name="line51"> 51: </a>template &lt;class T, int N, T... idx&gt;
+<a name="line52"> 52: </a><font color="#4169E1"><a name="make_sequence"></a>struct make_sequence </font>: make_sequence&lt;T, N - 1, T(N - 1), idx...&gt; { };
+
+<a name="line54"> 54: </a>template &lt;class T, T... idx&gt;
+<a name="line55"> 55: </a><font color="#4169E1"><a name="make_sequence"></a>struct make_sequence</font>&lt;T, 0, idx...&gt; {
+<a name="line56"> 56: </a>  using type = integer_sequence&lt;T, idx...&gt;;
+<a name="line57"> 57: </a>};
+
+<a name="line59"> 59: </a>} <font color="#B22222">// namespace detail</font>
+
+<a name="line61"> 61: </a>template &lt;class T, T N&gt;
+<a name="line62"> 62: </a>using make_integer_sequence = typename detail::make_sequence&lt;T, int(N)&gt;::type;
+<a name="line63"> 63: </a><font color="#A020F0">  #endif                                   // __has_builtin(__make_integer_seq)</font>
+<a name="line64"> 64: </a><font color="#A020F0">#endif                                     // C++14</font>
+
+<a name="line66"> 66: </a>template &lt;std::size_t... idx&gt;
+<a name="line67"> 67: </a>using index_sequence = integer_sequence&lt;std::size_t, idx...&gt;;
+<a name="line68"> 68: </a>template &lt;std::size_t N&gt;
+<a name="line69"> 69: </a>using make_index_sequence = make_integer_sequence&lt;std::size_t, N&gt;;
+<a name="line70"> 70: </a>template &lt;class... T&gt;
+<a name="line71"> 71: </a>using index_sequence_for = make_index_sequence&lt;<font color="#4169E1">sizeof</font>...(T)&gt;;
+
+<a name="line73"> 73: </a><font color="#B22222">// ==========================================================================================</font>
+<a name="line74"> 74: </a><font color="#B22222">// compressed_pair</font>
+<a name="line75"> 75: </a><font color="#B22222">//</font>
+<a name="line76"> 76: </a><font color="#B22222">// Like std::pair except that it potentially stores both first and second as base classes if</font>
+<a name="line77"> 77: </a><font color="#B22222">// either or both are "empty" classes. This allows empty-base-optimization to kick in. Normally</font>
+<a name="line78"> 78: </a><font color="#B22222">// in C++ a structure must have a minimum memory footprint of 1 byte. For example</font>
+<a name="line79"> 79: </a><font color="#B22222">//</font>
+<a name="line80"> 80: </a><font color="#B22222">// struct Foo { }; // empty!</font>
+<a name="line81"> 81: </a><font color="#B22222">//</font>
+<a name="line82"> 82: </a><font color="#B22222">// struct Bar</font>
+<a name="line83"> 83: </a><font color="#B22222">// {</font>
+<a name="line84"> 84: </a><font color="#B22222">//   Foo f; // even though Foo is empty, member 'f' will always occupy 1 byte in memory</font>
+<a name="line85"> 85: </a><font color="#B22222">// };</font>
+<a name="line86"> 86: </a><font color="#B22222">//</font>
+<a name="line87"> 87: </a><font color="#B22222">// This restriction does not hold for base classes however, so changing the above declarations</font>
+<a name="line88"> 88: </a><font color="#B22222">// to</font>
+<a name="line89"> 89: </a><font color="#B22222">//</font>
+<a name="line90"> 90: </a><font color="#B22222">// struct Foo { }; // empty!</font>
+<a name="line91"> 91: </a><font color="#B22222">//</font>
+<a name="line92"> 92: </a><font color="#B22222">// struct Bar : Foo</font>
+<a name="line93"> 93: </a><font color="#B22222">// {</font>
+<a name="line94"> 94: </a><font color="#B22222">//</font>
+<a name="line95"> 95: </a><font color="#B22222">// };</font>
+<a name="line96"> 96: </a><font color="#B22222">//</font>
+<a name="line97"> 97: </a><font color="#B22222">// Results in Bar now potentially occupying no space whatsoever.</font>
+<a name="line98"> 98: </a><font color="#B22222">// ==========================================================================================</font>
+
+<a name="line100">100: </a>namespace detail
+<a name="line101">101: </a>{
+
+<a name="line103">103: </a>template &lt;bool t_empty, bool u_empty&gt;
+<a name="line104">104: </a><font color="#4169E1"><a name="compressed_pair_selector"></a>struct compressed_pair_selector</font>;
+
+<a name="line106">106: </a>template &lt;&gt;
+<a name="line107">107: </a><font color="#4169E1"><a name="compressed_pair_selector"></a>struct compressed_pair_selector</font>&lt;false, false&gt; : std::integral_constant&lt;int, 0&gt; { };
+
+<a name="line109">109: </a>template &lt;&gt;
+<a name="line110">110: </a><font color="#4169E1"><a name="compressed_pair_selector"></a>struct compressed_pair_selector</font>&lt;true, false&gt; : std::integral_constant&lt;int, 1&gt; { };
+
+<a name="line112">112: </a>template &lt;&gt;
+<a name="line113">113: </a><font color="#4169E1"><a name="compressed_pair_selector"></a>struct compressed_pair_selector</font>&lt;false, true&gt; : std::integral_constant&lt;int, 2&gt; { };
+
+<a name="line115">115: </a>template &lt;&gt;
+<a name="line116">116: </a><font color="#4169E1"><a name="compressed_pair_selector"></a>struct compressed_pair_selector</font>&lt;true, true&gt; : std::integral_constant&lt;int, 3&gt; { };
+
+<a name="line118">118: </a>template &lt;typename T, typename U, int selector&gt;
+<a name="line119">119: </a>class compressed_pair_impl;
+
+<a name="line121">121: </a><font color="#B22222">// selector = 0, neither are empty, derive directly from std::pair</font>
+<a name="line122">122: </a>template &lt;typename T, typename U&gt;
+<a name="line123">123: </a>class compressed_pair_impl&lt;T, U, 0&gt; : std::pair&lt;T, U&gt; {
+<a name="line124">124: </a>  using base_type = std::pair&lt;T, U&gt;;
+
+<a name="line126">126: </a>public:
+<a name="line127">127: </a>  using base_type::base_type;
+<a name="line128">128: </a>  using typename base_type::first_type;
+<a name="line129">129: </a>  using typename base_type::second_type;
+
+<a name="line131">131: </a>  first_type       &amp;first() noexcept { <font color="#4169E1">return</font> static_cast&lt;base_type &amp;&gt;(*this).first; }
+<a name="line132">132: </a>  const first_type &amp;first() const noexcept { <font color="#4169E1">return</font> static_cast&lt;const base_type &amp;&gt;(*this).first; }
+
+<a name="line134">134: </a>  second_type       &amp;second() noexcept { <font color="#4169E1">return</font> static_cast&lt;base_type &amp;&gt;(*this).second; }
+<a name="line135">135: </a>  const second_type &amp;second() const noexcept { <font color="#4169E1">return</font> static_cast&lt;const base_type &amp;&gt;(*this).second; }
+<a name="line136">136: </a>};
+
+<a name="line138">138: </a><font color="#B22222">// selector = 1, T is empty</font>
+<a name="line139">139: </a>template &lt;typename T, typename U&gt;
+<a name="line140">140: </a>class compressed_pair_impl&lt;T, U, 1&gt; : T {
+<a name="line141">141: </a>  using base_type = T;
+
+<a name="line143">143: </a>public:
+<a name="line144">144: </a>  using base_type::base_type;
+<a name="line145">145: </a>  using first_type  = T;
+<a name="line146">146: </a>  using second_type = U;
+
+<a name="line148">148: </a>  compressed_pair_impl() = <font color="#4169E1">default</font>;
+
+<a name="line150">150: </a>  compressed_pair_impl(first_type x, second_type y) : base_type(std::move_if_noexcept(x)), second_(std::move_if_noexcept(y)) { }
+
+<a name="line152">152: </a>  compressed_pair_impl(second_type x) : second_(std::move_if_noexcept(x)) { }
+
+<a name="line154">154: </a>  first_type       &amp;first() noexcept { <font color="#4169E1">return</font> *this; }
+<a name="line155">155: </a>  const first_type &amp;first() const noexcept { <font color="#4169E1">return</font> *this; }
+
+<a name="line157">157: </a>  second_type       &amp;second() noexcept { <font color="#4169E1">return</font> second_; }
+<a name="line158">158: </a>  const second_type &amp;second() const noexcept { <font color="#4169E1">return</font> second_; }
+
+<a name="line160">160: </a>private:
+<a name="line161">161: </a>  second_type second_;
+<a name="line162">162: </a>};
+
+<a name="line164">164: </a><font color="#B22222">// selector = 2, U is empty</font>
+<a name="line165">165: </a>template &lt;typename T, typename U&gt;
+<a name="line166">166: </a>class compressed_pair_impl&lt;T, U, 2&gt; : U {
+<a name="line167">167: </a>  using base_type = U;
+
+<a name="line169">169: </a>public:
+<a name="line170">170: </a>  using base_type::base_type;
+<a name="line171">171: </a>  using first_type  = T;
+<a name="line172">172: </a>  using second_type = U;
+
+<a name="line174">174: </a>  compressed_pair_impl() = <font color="#4169E1">default</font>;
+
+<a name="line176">176: </a>  compressed_pair_impl(first_type x, second_type y) : base_type(std::move_if_noexcept(y)), first_(std::move_if_noexcept(x)) { }
+
+<a name="line178">178: </a>  compressed_pair_impl(first_type x) : first_(std::move_if_noexcept(x)) { }
+
+<a name="line180">180: </a>  first_type       &amp;first() noexcept { <font color="#4169E1">return</font> first_; }
+<a name="line181">181: </a>  const first_type &amp;first() const noexcept { <font color="#4169E1">return</font> first_; }
+
+<a name="line183">183: </a>  second_type       &amp;second() noexcept { <font color="#4169E1">return</font> *this; }
+<a name="line184">184: </a>  const second_type &amp;second() const noexcept { <font color="#4169E1">return</font> *this; }
+
+<a name="line186">186: </a>private:
+<a name="line187">187: </a>  first_type first_;
+<a name="line188">188: </a>};
+
+<a name="line190">190: </a><font color="#B22222">// selector = 3, T and U are both empty</font>
+<a name="line191">191: </a>template &lt;typename T, typename U&gt;
+<a name="line192">192: </a>class compressed_pair_impl&lt;T, U, 3&gt; : T, U {
+<a name="line193">193: </a>  using first_base_type  = T;
+<a name="line194">194: </a>  using second_base_type = U;
+
+<a name="line196">196: </a>public:
+<a name="line197">197: </a>  using first_type  = T;
+<a name="line198">198: </a>  using second_type = U;
+
+<a name="line200">200: </a>  using first_type::first_type;
+<a name="line201">201: </a>  using second_type::second_type;
+
+<a name="line203">203: </a>  compressed_pair_impl() = <font color="#4169E1">default</font>;
+
+<a name="line205">205: </a>  compressed_pair_impl(first_type x, second_type y) : first_type(std::move_if_noexcept(x)), second_type(std::move_if_noexcept(y)) { }
+
+<a name="line207">207: </a>  <font color="#B22222">// Casts are needed to disambiguate case where T or U derive from one another, for example</font>
+<a name="line208">208: </a>  <font color="#B22222">//</font>
+<a name="line209">209: </a>  <font color="#B22222">// struct T { };</font>
+<a name="line210">210: </a>  <font color="#B22222">// struct U : T { };</font>
+<a name="line211">211: </a>  <font color="#B22222">//</font>
+<a name="line212">212: </a>  <font color="#B22222">// In this case both U and T are able to satisfy "conversion" to T</font>
+<a name="line213">213: </a>  first_type       &amp;first() noexcept { <font color="#4169E1">return</font> static_cast&lt;first_type &amp;&gt;(*this); }
+<a name="line214">214: </a>  const first_type &amp;first() const noexcept { <font color="#4169E1">return</font> static_cast&lt;const first_type &amp;&gt;(*this); }
+
+<a name="line216">216: </a>  second_type       &amp;second() noexcept { <font color="#4169E1">return</font> static_cast&lt;second_type &amp;&gt;(*this); }
+<a name="line217">217: </a>  const second_type &amp;second() const noexcept { <font color="#4169E1">return</font> static_cast&lt;const second_type &amp;&gt;(*this); }
+<a name="line218">218: </a>};
+
+<a name="line220">220: </a>} <font color="#B22222">// namespace detail</font>
+
+<a name="line222">222: </a><font color="#B22222">// clang-format off</font>
+<a name="line223">223: </a>template &lt;typename T, typename U&gt;
+<a name="line224">224: </a>class compressed_pair
+<a name="line225">225: </a>  : public detail::compressed_pair_impl&lt;
+<a name="line226">226: </a>      T, U,
+<a name="line227">227: </a>      detail::compressed_pair_selector&lt;std::is_empty&lt;T&gt;::value, std::is_empty&lt;U&gt;::value&gt;::value
+<a name="line228">228: </a>    &gt;
+<a name="line229">229: </a><font color="#B22222">// clang-format on</font>
+<a name="line230">230: </a>{
+<a name="line231">231: </a>  using base_type = detail::compressed_pair_impl&lt;T, U, detail::compressed_pair_selector&lt;std::is_empty&lt;T&gt;::value, std::is_empty&lt;U&gt;::value&gt;::value&gt;;
+
+<a name="line233">233: </a>public:
+<a name="line234">234: </a>  using base_type::base_type;
+<a name="line235">235: </a>};
+
+<a name="line237">237: </a><font color="#B22222">// intel compilers don't implement empty base optimization, so these tests fail</font>
+
+<a name="line240">240: </a>namespace compressed_pair_test
+<a name="line241">241: </a>{
+
+<a name="line243">243: </a><font color="#4169E1"><a name="Empty"></a>struct Empty </font>{ };
+
+<a name="line245">245: </a>static_assert(std::is_empty&lt;Empty&gt;::value, <font color="#666666">""</font>);
+<a name="line246">246: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(sizeof(Empty)</font></strong> == 1, <font color="#666666">""</font>);
+
+<a name="line248">248: </a><font color="#4169E1"><a name="Empty2"></a>struct Empty2 </font>{ };
+
+<a name="line250">250: </a>static_assert(std::is_empty&lt;Empty2&gt;::value, <font color="#666666">""</font>);
+<a name="line251">251: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(sizeof(Empty2)</font></strong> == 1, <font color="#666666">""</font>);
+
+<a name="line253">253: </a><font color="#4169E1"><a name="NotEmpty"></a>struct NotEmpty </font>{
+<a name="line254">254: </a>  std::uint32_t d{};
+<a name="line255">255: </a>};
+
+<a name="line257">257: </a>static_assert(!std::is_empty&lt;NotEmpty&gt;::value, <font color="#666666">""</font>);
+<a name="line258">258: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(sizeof(NotEmpty)</font></strong> &gt; 1, <font color="#666666">""</font>);
+
+<a name="line260">260: </a><font color="#4169E1"><a name="EmptyMember"></a>struct EmptyMember </font>{
+<a name="line261">261: </a>  Empty  m{};
+<a name="line262">262: </a>  Empty2 m2{};
+<a name="line263">263: </a>};
+
+<a name="line265">265: </a>static_assert(!std::is_empty&lt;EmptyMember&gt;::value, <font color="#666666">""</font>);
+<a name="line266">266: </a><strong><font color="#4169E1"><a name="tatic_assert"></a>static_assert(sizeof(EmptyMember)</font></strong> &gt; 1, <font color="#666666">""</font>);
+
+<a name="line268">268: </a><font color="#B22222">// empty-empty should only be 1 byte since both are compressed out</font>
+<a name="line269">269: </a>static_assert(std::is_empty&lt;compressed_pair&lt;Empty, Empty2&gt;&gt;::value, <font color="#666666">""</font>);
+<a name="line270">270: </a>static_assert(<font color="#4169E1">sizeof</font>(compressed_pair&lt;Empty, Empty2&gt;) == 1, <font color="#666666">""</font>);
+
+<a name="line272">272: </a><font color="#B22222">// flipping template param order changes nothing</font>
+<a name="line273">273: </a>static_assert(std::is_empty&lt;compressed_pair&lt;Empty2, Empty&gt;&gt;::value, <font color="#666666">""</font>);
+<a name="line274">274: </a>static_assert(<font color="#4169E1">sizeof</font>(compressed_pair&lt;Empty2, Empty&gt;) == 1, <font color="#666666">""</font>);
+
+<a name="line276">276: </a><font color="#B22222">// empty-not_empty should be less than sum of sizes, since empty is compressed out</font>
+<a name="line277">277: </a>static_assert(!std::is_empty&lt;compressed_pair&lt;Empty, NotEmpty&gt;&gt;::value, <font color="#666666">""</font>);
+<a name="line278">278: </a>static_assert(<font color="#4169E1">sizeof</font>(compressed_pair&lt;Empty, NotEmpty&gt;) &lt; (<font color="#4169E1">sizeof</font>(Empty) + <font color="#4169E1">sizeof</font>(NotEmpty)), <font color="#666666">""</font>);
+
+<a name="line280">280: </a><font color="#B22222">// flipping template param order changes nothing</font>
+<a name="line281">281: </a>static_assert(!std::is_empty&lt;compressed_pair&lt;NotEmpty, Empty&gt;&gt;::value, <font color="#666666">""</font>);
+<a name="line282">282: </a>static_assert(<font color="#4169E1">sizeof</font>(compressed_pair&lt;NotEmpty, Empty&gt;) &lt; (<font color="#4169E1">sizeof</font>(NotEmpty) + <font color="#4169E1">sizeof</font>(Empty)), <font color="#666666">""</font>);
+
+<a name="line284">284: </a><font color="#B22222">// empty_member-not_empty should also be greater than or equal to sum of sizes (g.t. because</font>
+<a name="line285">285: </a><font color="#B22222">// potential padding) because neither is compressed away</font>
+<a name="line286">286: </a>static_assert(!std::is_empty&lt;compressed_pair&lt;EmptyMember, NotEmpty&gt;&gt;::value, <font color="#666666">""</font>);
+<a name="line287">287: </a>static_assert(<font color="#4169E1">sizeof</font>(compressed_pair&lt;EmptyMember, NotEmpty&gt;) &gt;= (<font color="#4169E1">sizeof</font>(EmptyMember) + <font color="#4169E1">sizeof</font>(NotEmpty)), <font color="#666666">""</font>);
+
+<a name="line289">289: </a><font color="#B22222">// flipping template param order changes nothing</font>
+<a name="line290">290: </a>static_assert(!std::is_empty&lt;compressed_pair&lt;NotEmpty, EmptyMember&gt;&gt;::value, <font color="#666666">""</font>);
+<a name="line291">291: </a>static_assert(<font color="#4169E1">sizeof</font>(compressed_pair&lt;NotEmpty, EmptyMember&gt;) &gt;= (<font color="#4169E1">sizeof</font>(NotEmpty) + <font color="#4169E1">sizeof</font>(EmptyMember)), <font color="#666666">""</font>);
+
+<a name="line293">293: </a>} <font color="#B22222">// namespace compressed_pair_test</font>
+
+<a name="line295">295: </a><font color="#A020F0">#endif</font>
+
+<a name="line297">297: </a>} <font color="#B22222">// namespace util</font>
+
+<a name="line299">299: </a>} <font color="#B22222">// namespace Petsc</font>
+</pre>
+</body>
+
+</html>
+

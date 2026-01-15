@@ -1,0 +1,85 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/is/sf/tests/ex25.c">Actual source code: ex25.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:19+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static const char help[] = <font color="#666666">"Test <a href="../../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a> with derived data types created with MPI large count\n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petscsf.h.html">&lt;petscsf.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line7">  7: </a>{
+<a name="line8">  8: </a>  <a href="../../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a>        sf;
+<a name="line9">  9: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       i, nroots, nleaves;
+<a name="line10"> 10: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> m = 4, n = 64;
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/PetscSF/PetscSFNode.html">PetscSFNode</a>   *iremote = NULL;
+<a name="line12"> 12: </a>  <a href="../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>    rank, size;
+<a name="line13"> 13: </a>  int           *rootdata = NULL, *leafdata = NULL;
+<a name="line14"> 14: </a>  MPI_Datatype   newtype;
+
+<a name="line16"> 16: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line18"> 18: </a>  <a href="../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;rank));
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_size.html#MPI_Comm_size">MPI_Comm_size</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;size));
+<a name="line20"> 20: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(size == 2, <a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_WRONG_MPI_SIZE</a>, <font color="#666666">"The test can only run with two MPI ranks"</font>);
+
+<a name="line22"> 22: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFCreate.html">PetscSFCreate</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;sf));
+<a name="line23"> 23: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFSetFromOptions.html">PetscSFSetFromOptions</a>(sf));
+
+<a name="line25"> 25: </a>  <font color="#4169E1">if</font> (rank == 0) {
+<a name="line26"> 26: </a>    nroots  = n;
+<a name="line27"> 27: </a>    nleaves = 0;
+<a name="line28"> 28: </a>  } <font color="#4169E1">else</font> {
+<a name="line29"> 29: </a>    nroots  = 0;
+<a name="line30"> 30: </a>    nleaves = n;
+<a name="line31"> 31: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(nleaves, &amp;iremote));
+<a name="line32"> 32: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; nleaves; i++) {
+<a name="line33"> 33: </a>      iremote[i].rank  = 0;
+<a name="line34"> 34: </a>      iremote[i].index = i;
+<a name="line35"> 35: </a>    }
+<a name="line36"> 36: </a>  }
+<a name="line37"> 37: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFSetGraph.html">PetscSFSetGraph</a>(sf, nroots, nleaves, NULL, <a href="../../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>, iremote, <a href="../../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>));
+
+<a name="line39"> 39: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscCalloc2.html">PetscCalloc2</a>(nroots * m, &amp;rootdata, nleaves * m, &amp;leafdata)); <font color="#B22222">// allocate fat nodes to apply a derived data type of m MPI_INTs</font>
+
+<a name="line41"> 41: </a>  <font color="#4169E1">if</font> (rank == 0) rootdata[nroots * m - 1] = 123; <font color="#B22222">// set the last integer in rootdata and then check on leaves</font>
+
+<a name="line43"> 43: </a><font color="#A020F0">#if defined(PETSC_HAVE_MPI_LARGE_COUNT)</font>
+<a name="line44"> 44: </a>  <a href="../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(MPI_Type_contiguous_c(m, MPI_INT, &amp;newtype));
+<a name="line45"> 45: </a><font color="#A020F0">#else</font>
+<a name="line46"> 46: </a>  <a href="../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Type_contiguous.html#MPI_Type_contiguous">MPI_Type_contiguous</a>(m, MPI_INT, &amp;newtype));
+<a name="line47"> 47: </a><font color="#A020F0">#endif</font>
+
+<a name="line49"> 49: </a>  <a href="../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Type_commit.html#MPI_Type_commit">MPI_Type_commit</a>(&amp;newtype));
+
+<a name="line51"> 51: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFBcastBegin.html">PetscSFBcastBegin</a>(sf, newtype, rootdata, leafdata, MPI_REPLACE)); <font color="#B22222">//  bcast rootdata to leafdata</font>
+<a name="line52"> 52: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFBcastEnd.html">PetscSFBcastEnd</a>(sf, newtype, rootdata, leafdata, MPI_REPLACE));
+
+<a name="line54"> 54: </a>  <font color="#4169E1">if</font> (rank == 1) <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(leafdata[nleaves * m - 1] == 123, <a href="../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"SF: wrong results"</font>);
+
+<a name="line56"> 56: </a>  <a href="../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Type_free.html#MPI_Type_free">MPI_Type_free</a>(&amp;newtype));
+<a name="line57"> 57: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(rootdata, leafdata));
+<a name="line58"> 58: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscSF/PetscSFDestroy.html">PetscSFDestroy</a>(&amp;sf));
+<a name="line59"> 59: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line60"> 60: </a>  <font color="#4169E1">return</font> 0;
+<a name="line61"> 61: </a>}
+
+<a name="line63"> 63: </a><font color="#B22222">/**TEST</font>
+<a name="line64"> 64: </a><font color="#B22222">   test:</font>
+<a name="line65"> 65: </a><font color="#B22222">     nsize: 2</font>
+<a name="line66"> 66: </a><font color="#B22222">     output_file: output/empty.out</font>
+<a name="line67"> 67: </a><font color="#B22222">     args: -sf_type {{basic neighbor}}</font>
+
+<a name="line69"> 69: </a><font color="#B22222">TEST**/</font>
+</pre>
+</body>
+
+</html>
+

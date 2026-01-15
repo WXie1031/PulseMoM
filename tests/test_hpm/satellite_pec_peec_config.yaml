@@ -1,0 +1,60 @@
+# 卫星HPM电磁散射的PEEC模型配置
+# Satellite HPM Electromagnetic Scattering PEEC Model Configuration
+
+# Thomas Guillod - Dartmouth College
+# Mozilla Public License Version 2.0
+
+"material_def":
+    # PEC材料 (Perfect Electric Conductor) - 卫星结构
+    "satellite_pec":
+        "domain_list": ["satellite"]
+        "material_type": "electric"
+        "orientation_type": "isotropic"
+        "var_type": "lumped"
+    # 自由空间 (空气域)
+    "air":
+        "domain_list": ["air"]
+        "material_type": "electric"
+        "orientation_type": "isotropic"
+        "var_type": "lumped"
+
+"source_def":
+    # 平面波激励 - 10GHz HPM源
+    "plane_wave_excitation":
+        "domain_list": ["excitation_boundary"]
+        "source_type": "voltage"
+        "var_type": "lumped"
+    # 吸收边界条件
+    "absorbing_boundary":
+        "domain_list": ["absorbing_boundary"]
+        "source_type": "voltage"
+        "var_type": "lumped"
+
+"material_val": &material_val
+    # PEC材料参数 (epsr=1.0, mur=1.0, sigma=1e20 S/m)
+    "satellite_pec": {"rho_re": 1e-20, "rho_im": 0.0}  # 电导率极高，电阻率极低
+    # 自由空间参数 (epsr=1.0, mur=1.0, sigma=0 S/m)
+    "air": {"rho_re": 1e12, "rho_im": 0.0}  # 绝缘体，高电阻率
+
+"source_val": &source_val
+    # 平面波激励 - 10GHz，1V/m幅度
+    "plane_wave_excitation": {"V_re": 1.0, "V_im": 0.0, "Z_re": 50.0, "Z_im": 0.0}
+    # 吸收边界 - 匹配阻抗
+    "absorbing_boundary": {"V_re": 0.0, "V_im": 0.0, "Z_re": 377.0, "Z_im": 0.0}  # 自由空间阻抗
+
+"sweep_solver":
+    "hpm_simulation":
+        "init": null
+        "param":
+            "freq": 10.0e9  # 10GHz频率
+            "material_val": *material_val
+            "source_val": *source_val
+
+"sweep_post":
+    "field_extraction":
+        "init": null
+        "param":
+            "extract_current": true
+            "extract_potential": true
+            "extract_field": true
+            "extract_flux": false

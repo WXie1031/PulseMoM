@@ -1,0 +1,118 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/objects/kokkos/kinit.kokkos.cxx">Actual source code: kinit.kokkos.cxx</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:11+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/deviceimpl.h.html">&lt;petsc/private/deviceimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/kokkosimpl.hpp.html">&lt;petsc/private/kokkosimpl.hpp&gt;</A>
+<a name="line3">  3: </a><font color="#A020F0">#include &lt;petscpkg_version.h&gt;</font>
+<a name="line4">  4: </a>#include <A href="../../../../include/petsc_kokkos.hpp.html">&lt;petsc_kokkos.hpp&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../include/petscdevice_cupm.h.html">&lt;petscdevice_cupm.h&gt;</A>
+
+<a name="line7">  7: </a><a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>    PetscKokkosInitialized = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>; <font color="#B22222">// Has Kokkos been initialized (either by PETSc or by users)?</font>
+<a name="line8">  8: </a><a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *PetscScalarPool        = nullptr;
+<a name="line9">  9: </a><a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     PetscScalarPoolSize    = 0;
+
+<a name="line11"> 11: </a>Kokkos::DefaultExecutionSpace *PetscKokkosExecutionSpacePtr = nullptr;
+
+<a name="line13"> 13: </a><strong><font color="#4169E1"><a name="PetscKokkosFinalize_Private"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscKokkosFinalize_Private(void)</font></strong>
+<a name="line14"> 14: </a>{
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line16"> 16: </a>  <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(delete PetscKokkosExecutionSpacePtr);
+<a name="line17"> 17: </a>  PetscKokkosExecutionSpacePtr = nullptr;
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::kokkos_free(PetscScalarPool));
+<a name="line19"> 19: </a>  PetscScalarPoolSize = 0;
+<a name="line20"> 20: </a>  <font color="#4169E1">if</font> (PetscBeganKokkos) {
+<a name="line21"> 21: </a>    <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::finalize());
+<a name="line22"> 22: </a>    PetscBeganKokkos = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line23"> 23: </a>  }
+<a name="line24"> 24: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line25"> 25: </a>}
+
+<a name="line27"> 27: </a><strong><font color="#4169E1"><a name="PetscKokkosIsInitialized_Private"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscKokkosIsInitialized_Private(<a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *isInitialized)</font></strong>
+<a name="line28"> 28: </a>{
+<a name="line29"> 29: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line30"> 30: </a>  *isInitialized = Kokkos::is_initialized() ? <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a> : <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line31"> 31: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line32"> 32: </a>}
+
+<a name="line34"> 34: </a><font color="#B22222">/* Initialize Kokkos if not yet */</font>
+<a name="line35"> 35: </a><strong><font color="#4169E1"><a name="PetscKokkosInitializeCheck"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscKokkosInitializeCheck(void)</font></strong>
+<a name="line36"> 36: </a>{
+<a name="line37"> 37: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line38"> 38: </a>  <font color="#4169E1">if</font> (!Kokkos::is_initialized()) {
+<a name="line39"> 39: </a><font color="#A020F0">#if PETSC_PKG_KOKKOS_VERSION_GE(3, 7, 0)</font>
+<a name="line40"> 40: </a>    auto args = Kokkos::InitializationSettings();
+<a name="line41"> 41: </a><font color="#A020F0">#else</font>
+<a name="line42"> 42: </a>    auto args = Kokkos::InitArguments{}; <font color="#B22222">/* use default constructor */</font>
+<a name="line43"> 43: </a><font color="#A020F0">#endif</font>
+
+<a name="line45"> 45: </a><font color="#A020F0">#if (defined(KOKKOS_ENABLE_CUDA) &amp;&amp; defined(PETSC_HAVE_CUDA)) || (defined(KOKKOS_ENABLE_HIP) &amp;&amp; defined(PETSC_HAVE_HIP)) || (defined(KOKKOS_ENABLE_SYCL) &amp;&amp; defined(PETSC_HAVE_SYCL))</font>
+<a name="line46"> 46: </a>    <font color="#B22222">/* Kokkos does not support CUDA and HIP at the same time (but we do :)) */</font>
+<a name="line47"> 47: </a>    <a href="../../../../manualpages/Sys/PetscDevice.html">PetscDevice</a> device;
+<a name="line48"> 48: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    deviceId;
+<a name="line49"> 49: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Device/PetscDeviceCreate.html">PetscDeviceCreate</a>(<a href="../../../../manualpages/Device/PETSC_DEVICE_DEFAULT.html">PETSC_DEVICE_DEFAULT</a>(), <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, &amp;device));
+<a name="line50"> 50: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Device/PetscDeviceGetDeviceId.html">PetscDeviceGetDeviceId</a>(device, &amp;deviceId));
+<a name="line51"> 51: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Device/PetscDeviceDestroy.html">PetscDeviceDestroy</a>(&amp;device));
+<a name="line52"> 52: </a><font color="#A020F0">  #if PETSC_PKG_KOKKOS_VERSION_GE(4, 0, 0)</font>
+<a name="line53"> 53: </a>    <font color="#B22222">// if device_id is not set, and no gpus have been found, kokkos will use CPU</font>
+<a name="line54"> 54: </a>    <font color="#4169E1">if</font> (deviceId &gt;= 0) args.set_device_id(static_cast&lt;int&gt;(deviceId));
+<a name="line55"> 55: </a><font color="#A020F0">  #elif PETSC_PKG_KOKKOS_VERSION_GE(3, 7, 0)</font>
+<a name="line56"> 56: </a>    args.set_device_id(static_cast&lt;int&gt;(deviceId));
+<a name="line57"> 57: </a><font color="#A020F0">  #else</font>
+<a name="line58"> 58: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMPIIntCast.html">PetscMPIIntCast</a>(deviceId, &amp;args.device_id));
+<a name="line59"> 59: </a><font color="#A020F0">  #endif</font>
+<a name="line60"> 60: </a><font color="#A020F0">#endif</font>
+
+<a name="line62"> 62: </a>    <font color="#B22222">/* To use PetscNumOMPThreads, one has to configure PETSc --with-openmp.</font>
+<a name="line63"> 63: </a><font color="#B22222">       Otherwise, let's keep the default value (-1) of args.num_threads.</font>
+<a name="line64"> 64: </a><font color="#B22222">    */</font>
+<a name="line65"> 65: </a><font color="#A020F0">#if defined(KOKKOS_ENABLE_OPENMP) &amp;&amp; <a href="../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_OPENMP)</font>
+<a name="line66"> 66: </a><font color="#A020F0">  #if PETSC_PKG_KOKKOS_VERSION_GE(3, 7, 0)</font>
+<a name="line67"> 67: </a>    args.set_num_threads(PetscNumOMPThreads);
+<a name="line68"> 68: </a><font color="#A020F0">  #else</font>
+<a name="line69"> 69: </a>    args.num_threads = PetscNumOMPThreads;
+<a name="line70"> 70: </a><font color="#A020F0">  #endif</font>
+<a name="line71"> 71: </a><font color="#A020F0">#endif</font>
+<a name="line72"> 72: </a>    <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::initialize(args));
+<a name="line73"> 73: </a>    PetscBeganKokkos = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line74"> 74: </a>  }
+
+<a name="line76"> 76: </a>  <font color="#4169E1">if</font> (!PetscKokkosExecutionSpacePtr) { <font color="#B22222">// No matter Kokkos is init'ed by PETSc or by user, we need to init PetscKokkosExecutionSpacePtr</font>
+<a name="line77"> 77: </a><font color="#A020F0">#if (defined(KOKKOS_ENABLE_CUDA) &amp;&amp; defined(PETSC_HAVE_CUDA)) || (defined(KOKKOS_ENABLE_HIP) &amp;&amp; defined(PETSC_HAVE_HIP))</font>
+<a name="line78"> 78: </a>    <a href="../../../../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a> dctx;
+<a name="line79"> 79: </a>    <a href="../../../../manualpages/Sys/PetscDeviceType.html">PetscDeviceType</a>    dtype;
+
+<a name="line81"> 81: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Device/PetscDeviceContextGetCurrentContext.html">PetscDeviceContextGetCurrentContext</a>(&amp;dctx)); <font color="#B22222">// it internally sets PetscDefaultCuda/HipStream</font>
+<a name="line82"> 82: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Device/PetscDeviceContextGetDeviceType.html">PetscDeviceContextGetDeviceType</a>(dctx, &amp;dtype));
+
+<a name="line84"> 84: </a><font color="#A020F0">  #if defined(PETSC_HAVE_CUDA)</font>
+<a name="line85"> 85: </a>    <font color="#4169E1">if</font> (dtype == <a href="../../../../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_CUDA</a>) <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(PetscKokkosExecutionSpacePtr = new Kokkos::DefaultExecutionSpace(PetscDefaultCudaStream));
+<a name="line86"> 86: </a><font color="#A020F0">  #elif defined(PETSC_HAVE_HIP)</font>
+<a name="line87"> 87: </a>    <font color="#4169E1">if</font> (dtype == <a href="../../../../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_HIP</a>) <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(PetscKokkosExecutionSpacePtr = new Kokkos::DefaultExecutionSpace(PetscDefaultHipStream));
+<a name="line88"> 88: </a><font color="#A020F0">  #endif</font>
+<a name="line89"> 89: </a><font color="#A020F0">#else</font>
+<a name="line90"> 90: </a>    <font color="#B22222">// In all other cases, we use Kokkos default</font>
+<a name="line91"> 91: </a>    <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(PetscKokkosExecutionSpacePtr = new Kokkos::DefaultExecutionSpace());
+<a name="line92"> 92: </a><font color="#A020F0">#endif</font>
+<a name="line93"> 93: </a>  }
+
+<a name="line95"> 95: </a>  <font color="#4169E1">if</font> (!PetscScalarPoolSize) { <font color="#B22222">// A pool for a small count of PetscScalars</font>
+<a name="line96"> 96: </a>    PetscScalarPoolSize = 1024;
+<a name="line97"> 97: </a>    <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(PetscScalarPool = static_cast&lt;<a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *&gt;(Kokkos::kokkos_malloc(<font color="#4169E1">sizeof</font>(<a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>) * PetscScalarPoolSize)));
+<a name="line98"> 98: </a>  }
+
+<a name="line100">100: </a>  PetscKokkosInitialized = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>; <font color="#B22222">// PetscKokkosInitializeCheck() was called</font>
+<a name="line101">101: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line102">102: </a>}
+</pre>
+</body>
+
+</html>
+

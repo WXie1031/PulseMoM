@@ -1,0 +1,112 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/tutorials/ex44f.F90">Actual source code: ex44f.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>program main              !   Solves the linear system  J x = f
+<a name="line2">  2: </a><font color="#A020F0">#include &lt;petsc/finclude/petscksp.h&gt;</font>
+<a name="line3">  3: </a><font color="#A020F0">#include &lt;petsc/finclude/petscdmda.h&gt;</font>
+<a name="line4">  4: </a>  use petscmpi  ! or mpi or mpi_f08
+<a name="line5">  5: </a>  use petscksp
+<a name="line6">  6: </a>  use petscdmda
+<a name="line7">  7: </a>  implicit none
+
+<a name="line9">  9: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, f
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a> J
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/DM/DM.html">DM</a> da
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/KSP/KSP.html">KSP</a> ksp
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> eight, one
+
+<a name="line16"> 16: </a>  eight = 8
+<a name="line17"> 17: </a>  one = 1
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(ierr))
+<a name="line19"> 19: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/DMDA/DMDACreate1d.html">DMDACreate1d</a>(MPI_COMM_WORLD, <a href="../../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_NONE</a>, eight, one, one, PETSC_NULL_INTEGER_ARRAY, da, ierr))
+<a name="line20"> 20: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/DM/DMSetFromOptions.html">DMSetFromOptions</a>(da, ierr))
+<a name="line21"> 21: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(da, ierr))
+<a name="line22"> 22: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/DM/DMCreateGlobalVector.html">DMCreateGlobalVector</a>(da, x, ierr))
+<a name="line23"> 23: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(x, f, ierr))
+<a name="line24"> 24: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/DM/DMSetMatType.html">DMSetMatType</a>(da, <a href="../../../../manualpages/Mat/MATAIJ.html">MATAIJ</a>, ierr))
+<a name="line25"> 25: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/DM/DMCreateMatrix.html">DMCreateMatrix</a>(da, J, ierr))
+
+<a name="line27"> 27: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(ComputeRHS(da, f, ierr))
+<a name="line28"> 28: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(ComputeMatrix(da, J, ierr))
+
+<a name="line30"> 30: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>(MPI_COMM_WORLD, ksp, ierr))
+<a name="line31"> 31: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, J, J, ierr))
+<a name="line32"> 32: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSetFromOptions.html">KSPSetFromOptions</a>(ksp, ierr))
+<a name="line33"> 33: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(ksp, f, x, ierr))
+
+<a name="line35"> 35: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(J, ierr))
+<a name="line36"> 36: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(x, ierr))
+<a name="line37"> 37: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(f, ierr))
+<a name="line38"> 38: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(ksp, ierr))
+<a name="line39"> 39: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(da, ierr))
+<a name="line40"> 40: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>(ierr))
+
+<a name="line42"> 42: </a><strong><font color="#4169E1"><a name="ComputeRHS"></a>contains</font></strong>
+<a name="line43"> 43: </a><strong><font color="#4169E1">  subroutine ComputeRHS(da, x, ierr)</font></strong>
+<a name="line44"> 44: </a>    use petscdmda
+<a name="line45"> 45: </a>    implicit none
+
+<a name="line47"> 47: </a>    <a href="../../../../manualpages/DM/DM.html">DM</a> da
+<a name="line48"> 48: </a>    <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x
+<a name="line49"> 49: </a>    <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr
+<a name="line50"> 50: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> xs, xm, i, mx
+<a name="line51"> 51: </a>    <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> hx
+<a name="line52"> 52: </a>    <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, pointer :: xx(:)
+<a name="line53"> 53: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(da, PETSC_NULL_INTEGER, mx, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_DMBOUNDARYTYPE, PETSC_NULL_DMBOUNDARYTYPE, PETSC_NULL_DMBOUNDARYTYPE, PETSC_NULL_DMDASTENCILTYPE, ierr))
+<a name="line54"> 54: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(da, xs, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, xm, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, ierr))
+<a name="line55"> 55: </a>    hx = 1.0_PETSC_REAL_KIND/(mx - 1)
+<a name="line56"> 56: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>(da, x, xx, ierr))
+<a name="line57"> 57: </a>    <font color="#4169E1">do</font> i = xs, xs + xm - 1
+<a name="line58"> 58: </a>      xx(i) = i*hx
+<a name="line59"> 59: </a>    end <font color="#4169E1">do</font>
+<a name="line60"> 60: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMDA/DMDAVecRestoreArray.html">DMDAVecRestoreArray</a>(da, x, xx, ierr))
+<a name="line61"> 61: </a>  end
+
+<a name="line63"> 63: </a>  subroutine ComputeMatrix(da, J, ierr)
+<a name="line64"> 64: </a>    use petscdmda
+<a name="line65"> 65: </a>    use petscmat
+<a name="line66"> 66: </a>    implicit none
+
+<a name="line68"> 68: </a>    <a href="../../../../manualpages/Mat/Mat.html">Mat</a> J
+<a name="line69"> 69: </a>    <a href="../../../../manualpages/DM/DM.html">DM</a> da
+<a name="line70"> 70: </a>    <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr
+<a name="line71"> 71: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> xs, xm, i, mx
+<a name="line72"> 72: </a>    <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> hx, one
+
+<a name="line74"> 74: </a>    one = 1.0
+<a name="line75"> 75: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(da, PETSC_NULL_INTEGER, mx, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_DMBOUNDARYTYPE, PETSC_NULL_DMBOUNDARYTYPE, PETSC_NULL_DMBOUNDARYTYPE, PETSC_NULL_DMDASTENCILTYPE, ierr))
+<a name="line76"> 76: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(da, xs, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, xm, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, ierr))
+<a name="line77"> 77: </a>    hx = 1.0_PETSC_REAL_KIND/(mx - 1)
+<a name="line78"> 78: </a>    <font color="#4169E1">do</font> i = xs, xs + xm - 1
+<a name="line79"> 79: </a>      <font color="#4169E1">if</font> ((i == 0) .or. (i == mx - 1)) then
+<a name="line80"> 80: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValue.html">MatSetValue</a>(J, i, i, one, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, ierr))
+<a name="line81"> 81: </a>      <font color="#4169E1">else</font>
+<a name="line82"> 82: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValue.html">MatSetValue</a>(J, i, i - 1, -hx, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, ierr))
+<a name="line83"> 83: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValue.html">MatSetValue</a>(J, i, i + 1, -hx, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, ierr))
+<a name="line84"> 84: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValue.html">MatSetValue</a>(J, i, i, 2*hx, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, ierr))
+<a name="line85"> 85: </a>      end <font color="#4169E1">if</font>
+<a name="line86"> 86: </a>    end <font color="#4169E1">do</font>
+<a name="line87"> 87: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(J, <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>, ierr))
+<a name="line88"> 88: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(J, <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>, ierr))
+<a name="line89"> 89: </a>  end
+<a name="line90"> 90: </a>end program
+<a name="line91"> 91: </a>!<font color="#B22222">/*TEST</font>
+<a name="line92"> 92: </a><font color="#B22222">!</font>
+<a name="line93"> 93: </a><font color="#B22222">!   test:</font>
+<a name="line94"> 94: </a><font color="#B22222">!      args: -ksp_converged_reason</font>
+<a name="line95"> 95: </a><font color="#B22222">!</font>
+<a name="line96"> 96: </a><font color="#B22222">!TEST*/</font>
+</pre>
+</body>
+
+</html>
+

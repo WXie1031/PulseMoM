@@ -1,0 +1,38 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/classes/bag/ftn-custom/zbagf.c">Actual source code: zbagf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:07+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscbag.h.html">&lt;petscbag.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define petscbagregisterenumprivate_ PETSCBAGREGISTERENUMPRIVATE</font></strong>
+<a name="line6">  6: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define petscbagregisterenumprivate_ petscbagregisterenumprivate</font></strong>
+<a name="line8">  8: </a><font color="#A020F0">#endif</font>
+
+<a name="line10"> 10: </a><font color="#B22222">/* ---------------------------------------------------------------------*/</font>
+
+<a name="line12"> 12: </a><strong><font color="#4169E1"><a name="petscbagregisterenumprivate_"></a>PETSC_EXTERN void petscbagregisterenumprivate_(<a href="../../../../../manualpages/Bag/PetscBag.html">PetscBag</a> *bag, void *addr, const char *const *list, <a href="../../../../../manualpages/Sys/PetscEnum.html">PetscEnum</a> *def, char *name, char *help, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr, PETSC_FORTRAN_CHARLEN_T len1, PETSC_FORTRAN_CHARLEN_T len2)</font></strong>
+<a name="line13"> 13: </a>{
+<a name="line14"> 14: </a>  char *c1, *c2;
+
+<a name="line16"> 16: </a>  FIXCHAR(name, len1, c1);
+<a name="line17"> 17: </a>  FIXCHAR(help, len2, c2);
+<a name="line18"> 18: </a>  *ierr = <a href="../../../../../manualpages/Bag/PetscBagRegisterEnum.html">PetscBagRegisterEnum</a>(*bag, addr, list, *def, c1, c2);
+<a name="line19"> 19: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line20"> 20: </a>  FREECHAR(name, c1);
+<a name="line21"> 21: </a>  FREECHAR(help, c2);
+<a name="line22"> 22: </a>}
+</pre>
+</body>
+
+</html>
+

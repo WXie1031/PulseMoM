@@ -1,0 +1,1306 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Optimization Solvers (Tao) &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'manualpages/Tao/index';</script>
+    <link rel="icon" href="../../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Optimization Line Search (TaoLineSearch)" href="../TaoLineSearch/index.html" />
+    <link rel="prev" title="Optimization" href="../Optimization.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../overview/nutshell.html">PETSc in a nutshell</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/features.html">Supported Systems</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../../overview/gpu_roadmap.html">GPU Support Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/vector_table.html">Summary of Vector Types Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/matrix_table.html">Summary of Matrix Types Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/linear_solve_table.html">Summary of Sparse Linear Solvers Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/nonlinear_solve_table.html">Summary of Nonlinear Solvers Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/integrator_table.html">Summary of Time Integrators Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/tao_solve_table.html">Summary of Tao Solvers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/discrete_table.html">Summary of Discretization Management Systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview/plex_transform_table.html">Summary of Unstructured Mesh Transformations</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../manual/index.html">User-Guide</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../manual/introduction.html">Introduction to PETSc</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/about_this_manual.html">About This Manual</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/getting_started.html">Getting Started</a></li>
+
+
+
+
+
+
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../manual/programming.html">The Solvers in PETSc/TAO</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/vec.html">Vectors and Parallel Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/mat.html">Matrices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/ksp.html">KSP: Linear System Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/snes.html">SNES: Nonlinear Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/ts.html">TS: Scalable ODE and DAE Solvers</a></li>
+
+<li class="toctree-l3"><a class="reference internal" href="../../manual/tao.html">TAO: Optimization Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/regressor.html">PetscRegressor: Regression Solvers</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../manual/dm.html">DM: Interfacing Between Solvers and Models/Discretizations</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/dmbase.html">DM Basics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/section.html">PetscSection: Connecting Grids to Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/dmplex.html">DMPlex: Unstructured Grids</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/dmstag.html">DMSTAG: Staggered, Structured Grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/dmnetwork.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/dt.html">PetscDT: Discretization Technology in PETSc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/fe.html">PetscFE: Finite Element Infrastructure in PETSc</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../manual/additional.html">Additional Information</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/fortran.html">PETSc for Fortran Users</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/versionchecking.html">Checking the PETSc version</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/matlab.html">Using MATLAB with PETSc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/profiling.html">Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/performance.html">Hints for Performance Tuning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/streams.html">STREAMS: Example Study</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/blas-lapack.html">The Use of BLAS and LAPACK in PETSc and external libraries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/other.html">Other PETSc Features</a></li>
+
+<li class="toctree-l3"><a class="reference internal" href="../../manual/advanced.html">Advanced Features of Matrices and Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../manual/tests.html">Running PETSc Tests</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">C/Fortran API</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../Vector.html">Vectors and Index Sets</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Vec/index.html">Vector Operations (Vec)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../IS/index.html">Index sets (IS)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../Matrix.html">Matrices and Matrix Operations</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Mat/index.html">Matrix Operations (Mat)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../MatGraphOperations/index.html">Matrix colorings (MatColoring), orderings (MatOrdering), partitionings (MatPartitioning), and coarsening (MatCoarsen)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../MatFD/index.html">Finite difference computation of Jacobians (MatFD)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../DataLayout.html">Data Layout and Communication</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../PetscSF/index.html">Star Forest Communication (PetscSF)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../PetscSection/index.html">Section Data Layout (PetscSection)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AO/index.html">Application Orderings (AO)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../DataManagement.html">Data Management between Vec and Mat, and Distributed Mesh Data Structures</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-10"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../DM/index.html">Data Management (DM)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMDA/index.html">Structured Grids (DMDA)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMStag/index.html">Staggered, Structured Grids (DMSTAG)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMPlex/index.html">Unstructured Grids and Cell Complexes (DMPLEX)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMNetwork/index.html">Graphs and Networks (DMNETWORK)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMForest/index.html">A Forest of Trees and Structured Adaptive Refinement (DMFOREST)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMPatch/index.html">Sequences of parallel mesh patches (DMPATCH)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMSwarm/index.html">Particle Discretizations (DMSWARM)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMMOAB/index.html">MOAB Mesh Representation (DMMOAB)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMLabel/index.html">Selecting Parts of Meshes (DMLabel)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMPRODUCT/index.html">Tensor products of meshes (DMRODUCT)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DMComposite/index.html">DMComposite</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../Discretization.html">Discretization and Function Spaces</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-11"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../DT/index.html">Discretization Technology and Quadrature (DT)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../SPACE/index.html">Function Spaces (PetscSpace)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../DUALSPACE/index.html">Dual Spaces (PetscDualSpace)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../FE/index.html">Finite Elements (PetscFE)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../FV/index.html">Finite Volumes (PetscFV)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../PF/index.html">Defining your own mathematical functions (PF)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../LANDAU/index.html">Landau Collision Operator</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../LinearSolvers.html">Linear Solvers and Preconditioners</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-12"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../KSP/index.html">Linear Solvers and Krylov Methods (KSP)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../PC/index.html">Preconditioners (PC)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../NonlinearSolvers.html">Nonlinear Solvers</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-13"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../SNES/index.html">Nonlinear Solvers (SNES)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../SNESFAS/index.html">Full Approximation Scheme (FAS) nonlinear multigrid</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../Timestepping.html">Forward and Adjoint Timestepping</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-14"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../TS/index.html">Time Stepping ODE and DAE Solvers (TS)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Sensitivity/index.html">Sensitivity Analysis for ODE and DAE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Characteristic/index.html">Semi-Lagrangian Solves using the Method of Characteristics</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current active has-children"><a class="reference internal" href="../Optimization.html">Optimization</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-15"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l3 current active"><a class="current reference internal" href="#">Optimization Solvers (Tao)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../TaoLineSearch/index.html">Optimization Line Search (TaoLineSearch)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../MachineLearning.html">Machine Learning</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-16"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../PetscRegressor/index.html">Regression Analysis and Classification (PetscRegressor)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../Visualization.html">Graphics and Visualization</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-17"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Draw/index.html">Graphics (Draw)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Viewer/index.html">Viewing Objects (Viewer)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../System.html">System Routines, Profiling, Data Structures</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-18"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Sys/index.html">PETSc Options, IO, and System Utilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../PetscH/index.html">Hash Tables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Log/index.html">Profiling and Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Device/index.html">Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Matlab/index.html">Matlab</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Bag/index.html">Bag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../BM/index.html">Benchmarks (BM)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../changes/index.html">Changes for each release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../singleindex.html">Single Index of all PETSc Manual Pages</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../changes/index.html">Changes for each release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../singleindex.html">Single Index of all PETSc Manual Pages</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../overview/previous_release_docs.html">Documentation for previous PETSc releases</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-19"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.23/docs"> 3.23</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.22/docs"> 3.22</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.21/docs"> 3.21</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.20/docs"> 3.20</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.19/docs"> 3.19</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.18/docs"> 3.18</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.17/docs"> 3.17</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.16/docs"> 3.16</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.15/docs"> 3.15</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.14/docs"> 3.14</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.13/docs"> 3.13</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.12/docs"> 3.12</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.11/docs"> 3.11</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.10/docs"> 3.10</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.9/docs"> 3.9</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.8/docs"> 3.8</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.7/docs"> 3.7</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.6/docs"> 3.6</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.5/docs"> 3.5</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.4/docs"> 3.4</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.3/docs"> 3.3</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../overview/index.html" class="nav-link">Overview</a></li>
+    
+    
+    <li class="breadcrumb-item"><i class="fa-solid fa-ellipsis"></i></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../Optimization.html" class="nav-link">Optimization</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Optimization...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="optimization-solvers-tao">
+<h1>Optimization Solvers (Tao)<a class="headerlink" href="#optimization-solvers-tao" title="Link to this heading">#</a></h1>
+<p>The Toolkit for Advance Optimization <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Tao/Tao.html">Tao</a></span></code>, provides a large suite of optimization solvers for unconstrained and constrained problems. Users guide chapter: <a class="reference internal" href="../../manual/tao.html#ch-tao"><span class="std std-ref">TAO: Optimization Solvers</span></a>.</p>
+<section id="beginner-basic-usage">
+<h2>Beginner - Basic usage<a class="headerlink" href="#beginner-basic-usage" title="Link to this heading">#</a></h2>
+<table class="hlist"><tr><td><ul class="simple">
+<li><p><a class="reference internal" href="TAOADMM.html"><span class="std std-doc">TAOADMM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOALMM.html"><span class="std std-doc">TAOALMM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOASFLS.html"><span class="std std-doc">TAOASFLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOASILS.html"><span class="std std-doc">TAOASILS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBLMVM.html"><span class="std std-doc">TAOBLMVM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBMRM.html"><span class="std std-doc">TAOBMRM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNCG.html"><span class="std std-doc">TAOBNCG</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNK.html"><span class="std std-doc">TAOBNK</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNLS.html"><span class="std std-doc">TAOBNLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNTL.html"><span class="std std-doc">TAOBNTL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNTR.html"><span class="std std-doc">TAOBNTR</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNKLS.html"><span class="std std-doc">TAOBQNKLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNKTL.html"><span class="std std-doc">TAOBQNKTL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNKTR.html"><span class="std std-doc">TAOBQNKTR</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNLS.html"><span class="std std-doc">TAOBQNLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQPIP.html"><span class="std std-doc">TAOBQPIP</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBRGN.html"><span class="std std-doc">TAOBRGN</span></a></p></li>
+<li><p><a class="reference internal" href="TAOCG.html"><span class="std std-doc">TAOCG</span></a></p></li>
+<li><p><a class="reference internal" href="TAOGPCG.html"><span class="std std-doc">TAOGPCG</span></a></p></li>
+<li><p><a class="reference internal" href="TAOIPM.html"><span class="std std-doc">TAOIPM</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TAOLCL.html"><span class="std std-doc">TAOLCL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOLMVM.html"><span class="std std-doc">TAOLMVM</span></a></p></li>
+<li><p><a class="reference internal" href="TAONLS.html"><span class="std std-doc">TAONLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAONM.html"><span class="std std-doc">TAONM</span></a></p></li>
+<li><p><a class="reference internal" href="TAONTL.html"><span class="std std-doc">TAONTL</span></a></p></li>
+<li><p><a class="reference internal" href="TAONTR.html"><span class="std std-doc">TAONTR</span></a></p></li>
+<li><p><a class="reference internal" href="TAOOWLQN.html"><span class="std std-doc">TAOOWLQN</span></a></p></li>
+<li><p><a class="reference internal" href="TAOPDIPM.html"><span class="std std-doc">TAOPDIPM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOPOUNDERS.html"><span class="std std-doc">TAOPOUNDERS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSSFLS.html"><span class="std std-doc">TAOSSFLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSSILS.html"><span class="std std-doc">TAOSSILS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOTRON.html"><span class="std std-doc">TAOTRON</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizerWeight.html"><span class="std std-doc">TaoBRGNSetRegularizerWeight</span></a></p></li>
+<li><p><a class="reference internal" href="TaoConvergedReason.html"><span class="std std-doc">TaoConvergedReason</span></a></p></li>
+<li><p><a class="reference internal" href="TaoCreate.html"><span class="std std-doc">TaoCreate</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDestroy.html"><span class="std std-doc">TaoDestroy</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetGradient.html"><span class="std std-doc">TaoGetGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetGradientNorm.html"><span class="std std-doc">TaoGetGradientNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetHessian.html"><span class="std std-doc">TaoGetHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetInequalityBounds.html"><span class="std std-doc">TaoGetInequalityBounds</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoGetObjective.html"><span class="std std-doc">TaoGetObjective</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetObjectiveAndGradient.html"><span class="std std-doc">TaoGetObjectiveAndGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetVariableBounds.html"><span class="std std-doc">TaoGetVariableBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLineSearchConvergedReason.html"><span class="std std-doc">TaoLineSearchConvergedReason</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLineSearchType.html"><span class="std std-doc">TaoLineSearchType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetFromOptions.html"><span class="std std-doc">TaoSetFromOptions</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetGradient.html"><span class="std std-doc">TaoSetGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetGradientNorm.html"><span class="std std-doc">TaoSetGradientNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetHessian.html"><span class="std std-doc">TaoSetHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetInequalityBounds.html"><span class="std std-doc">TaoSetInequalityBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetObjective.html"><span class="std std-doc">TaoSetObjective</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetObjectiveAndGradient.html"><span class="std std-doc">TaoSetObjectiveAndGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetResidualRoutine.html"><span class="std std-doc">TaoSetResidualRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetSolution.html"><span class="std std-doc">TaoSetSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetTolerances.html"><span class="std std-doc">TaoSetTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetVariableBounds.html"><span class="std std-doc">TaoSetVariableBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetVariableBoundsRoutine.html"><span class="std std-doc">TaoSetVariableBoundsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSolve.html"><span class="std std-doc">TaoSolve</span></a></p></li>
+<li><p><a class="reference internal" href="TaoType.html"><span class="std std-doc">TaoType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoView.html"><span class="std std-doc">TaoView</span></a></p></li>
+</ul>
+</td></tr></table>
+</section>
+<section id="intermediate-setting-options-for-algorithms-and-data-structures">
+<h2>Intermediate - Setting options for algorithms and data structures<a class="headerlink" href="#intermediate-setting-options-for-algorithms-and-data-structures" title="Link to this heading">#</a></h2>
+<table class="hlist"><tr><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoADMMGetDualVector.html"><span class="std std-doc">TaoADMMGetDualVector</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetRegularizerType.html"><span class="std std-doc">TaoADMMGetRegularizerType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetUpdateType.html"><span class="std std-doc">TaoADMMGetUpdateType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerType.html"><span class="std std-doc">TaoADMMSetRegularizerType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetUpdateType.html"><span class="std std-doc">TaoADMMSetUpdateType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetApplicationContext.html"><span class="std std-doc">TaoGetApplicationContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetConstraintTolerances.html"><span class="std std-doc">TaoGetConstraintTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetConvergedReason.html"><span class="std std-doc">TaoGetConvergedReason</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetCurrentFunctionEvaluations.html"><span class="std std-doc">TaoGetCurrentFunctionEvaluations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetCurrentTrustRegionRadius.html"><span class="std std-doc">TaoGetCurrentTrustRegionRadius</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetEqualityConstraintsRoutine.html"><span class="std std-doc">TaoGetEqualityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetFunctionLowerBound.html"><span class="std std-doc">TaoGetFunctionLowerBound</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetInequalityConstraintsRoutine.html"><span class="std std-doc">TaoGetInequalityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetInitialTrustRegionRadius.html"><span class="std std-doc">TaoGetInitialTrustRegionRadius</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetIterationNumber.html"><span class="std std-doc">TaoGetIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetJacobianEqualityRoutine.html"><span class="std std-doc">TaoGetJacobianEqualityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetJacobianInequalityRoutine.html"><span class="std std-doc">TaoGetJacobianInequalityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetKSP.html"><span class="std std-doc">TaoGetKSP</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetLineSearch.html"><span class="std std-doc">TaoGetLineSearch</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetLinearSolveIterations.html"><span class="std std-doc">TaoGetLinearSolveIterations</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoGetMaximumFunctionEvaluations.html"><span class="std std-doc">TaoGetMaximumFunctionEvaluations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetMaximumIterations.html"><span class="std std-doc">TaoGetMaximumIterations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetRecycleHistory.html"><span class="std std-doc">TaoGetRecycleHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetResidualNorm.html"><span class="std std-doc">TaoGetResidualNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetSolution.html"><span class="std std-doc">TaoGetSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetSolutionStatus.html"><span class="std std-doc">TaoGetSolutionStatus</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetTolerances.html"><span class="std std-doc">TaoGetTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetTotalIterationNumber.html"><span class="std std-doc">TaoGetTotalIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetType.html"><span class="std std-doc">TaoGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLMVMRecycle.html"><span class="std std-doc">TaoLMVMRecycle</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLineSearch.html"><span class="std std-doc">TaoLineSearch</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDrawCtxCreate.html"><span class="std std-doc">TaoMonitorDrawCtxCreate</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDrawCtxDestroy.html"><span class="std std-doc">TaoMonitorDrawCtxDestroy</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorSet.html"><span class="std std-doc">TaoMonitorSet</span></a></p></li>
+<li><p><a class="reference internal" href="TaoPythonGetType.html"><span class="std std-doc">TaoPythonGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoPythonSetType.html"><span class="std std-doc">TaoPythonSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetApplicationContext.html"><span class="std std-doc">TaoSetApplicationContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConstraintTolerances.html"><span class="std std-doc">TaoSetConstraintTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConstraintsRoutine.html"><span class="std std-doc">TaoSetConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConvergedReason.html"><span class="std std-doc">TaoSetConvergedReason</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoSetConvergenceHistory.html"><span class="std std-doc">TaoSetConvergenceHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetEqualityConstraintsRoutine.html"><span class="std std-doc">TaoSetEqualityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetFunctionLowerBound.html"><span class="std std-doc">TaoSetFunctionLowerBound</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetInequalityConstraintsRoutine.html"><span class="std std-doc">TaoSetInequalityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetInitialTrustRegionRadius.html"><span class="std std-doc">TaoSetInitialTrustRegionRadius</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianDesignRoutine.html"><span class="std std-doc">TaoSetJacobianDesignRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianEqualityRoutine.html"><span class="std std-doc">TaoSetJacobianEqualityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianInequalityRoutine.html"><span class="std std-doc">TaoSetJacobianInequalityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianResidualRoutine.html"><span class="std std-doc">TaoSetJacobianResidualRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianRoutine.html"><span class="std std-doc">TaoSetJacobianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianStateRoutine.html"><span class="std std-doc">TaoSetJacobianStateRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetMaximumFunctionEvaluations.html"><span class="std std-doc">TaoSetMaximumFunctionEvaluations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetMaximumIterations.html"><span class="std std-doc">TaoSetMaximumIterations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetRecycleHistory.html"><span class="std std-doc">TaoSetRecycleHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetResidualWeights.html"><span class="std std-doc">TaoSetResidualWeights</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetStateDesignIS.html"><span class="std std-doc">TaoSetStateDesignIS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetType.html"><span class="std std-doc">TaoSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSubsetType.html"><span class="std std-doc">TaoSubsetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoViewFromOptions.html"><span class="std std-doc">TaoViewFromOptions</span></a></p></li>
+</ul>
+</td></tr></table>
+</section>
+<section id="advanced-setting-more-advanced-options-and-customization">
+<h2>Advanced - Setting more advanced options and customization<a class="headerlink" href="#advanced-setting-more-advanced-options-and-customization" title="Link to this heading">#</a></h2>
+<table class="hlist"><tr><td><ul class="simple">
+<li><p><a class="reference internal" href="ADMM_UPDATE_ADAPTIVE_RELAXED.html"><span class="std std-doc">ADMM_UPDATE_ADAPTIVE_RELAXED</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSHELL.html"><span class="std std-doc">TAOSHELL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSNES.html"><span class="std std-doc">TAOSNES</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_REGULARIZER_SOFT_THRESH.html"><span class="std std-doc">TAO_ADMM_REGULARIZER_SOFT_THRESH</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_REGULARIZER_USER.html"><span class="std std-doc">TAO_ADMM_REGULARIZER_USER</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_UPDATE_ADAPTIVE.html"><span class="std std-doc">TAO_ADMM_UPDATE_ADAPTIVE</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_UPDATE_BASIC.html"><span class="std std-doc">TAO_ADMM_UPDATE_BASIC</span></a></p></li>
+<li><p><a class="reference internal" href="Tao.html"><span class="std std-doc">Tao</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetMisfitSubsolver.html"><span class="std std-doc">TaoADMMGetMisfitSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetRegularizationSubsolver.html"><span class="std std-doc">TaoADMMGetRegularizationSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetRegularizerCoefficient.html"><span class="std std-doc">TaoADMMGetRegularizerCoefficient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetSpectralPenalty.html"><span class="std std-doc">TaoADMMGetSpectralPenalty</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMRegularizerType.html"><span class="std std-doc">TaoADMMRegularizerType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetConstraintVectorRHS.html"><span class="std std-doc">TaoADMMSetConstraintVectorRHS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMinimumSpectralPenalty.html"><span class="std std-doc">TaoADMMSetMinimumSpectralPenalty</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitConstraintJacobian.html"><span class="std std-doc">TaoADMMSetMisfitConstraintJacobian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitHessianChangeStatus.html"><span class="std std-doc">TaoADMMSetMisfitHessianChangeStatus</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitHessianRoutine.html"><span class="std std-doc">TaoADMMSetMisfitHessianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitObjectiveAndGradientRoutine.html"><span class="std std-doc">TaoADMMSetMisfitObjectiveAndGradientRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegHessianChangeStatus.html"><span class="std std-doc">TaoADMMSetRegHessianChangeStatus</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerCoefficient.html"><span class="std std-doc">TaoADMMSetRegularizerCoefficient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerConstraintJacobian.html"><span class="std std-doc">TaoADMMSetRegularizerConstraintJacobian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerHessianRoutine.html"><span class="std std-doc">TaoADMMSetRegularizerHessianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerObjectiveAndGradientRoutine.html"><span class="std std-doc">TaoADMMSetRegularizerObjectiveAndGradientRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetSpectralPenalty.html"><span class="std std-doc">TaoADMMSetSpectralPenalty</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMUpdateType.html"><span class="std std-doc">TaoADMMUpdateType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetDualIS.html"><span class="std std-doc">TaoALMMGetDualIS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetMultipliers.html"><span class="std std-doc">TaoALMMGetMultipliers</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoALMMGetPrimalIS.html"><span class="std std-doc">TaoALMMGetPrimalIS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetSubsolver.html"><span class="std std-doc">TaoALMMGetSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetType.html"><span class="std std-doc">TaoALMMGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMSetMultipliers.html"><span class="std std-doc">TaoALMMSetMultipliers</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMSetSubsolver.html"><span class="std std-doc">TaoALMMSetSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMSetType.html"><span class="std std-doc">TaoALMMSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMType.html"><span class="std std-doc">TaoALMMType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoAppendOptionsPrefix.html"><span class="std std-doc">TaoAppendOptionsPrefix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBNCGGetType.html"><span class="std std-doc">TaoBNCGGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBNCGSetType.html"><span class="std std-doc">TaoBNCGSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBNCGType.html"><span class="std std-doc">TaoBNCGType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNGetRegularizationType.html"><span class="std std-doc">TaoBRGNGetRegularizationType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNGetSubsolver.html"><span class="std std-doc">TaoBRGNGetSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNRegularizationType.html"><span class="std std-doc">TaoBRGNRegularizationType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetDictionaryMatrix.html"><span class="std std-doc">TaoBRGNSetDictionaryMatrix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetL1SmoothEpsilon.html"><span class="std std-doc">TaoBRGNSetL1SmoothEpsilon</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizationType.html"><span class="std std-doc">TaoBRGNSetRegularizationType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizerHessianRoutine.html"><span class="std std-doc">TaoBRGNSetRegularizerHessianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizerObjectiveAndGradientRoutine.html"><span class="std std-doc">TaoBRGNSetRegularizerObjectiveAndGradientRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeDualVariables.html"><span class="std std-doc">TaoComputeDualVariables</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeResidual.html"><span class="std std-doc">TaoComputeResidual</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultComputeGradient.html"><span class="std std-doc">TaoDefaultComputeGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultComputeHessian.html"><span class="std std-doc">TaoDefaultComputeHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultComputeHessianColor.html"><span class="std std-doc">TaoDefaultComputeHessianColor</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetADMMParentTao.html"><span class="std std-doc">TaoGetADMMParentTao</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetConvergenceHistory.html"><span class="std std-doc">TaoGetConvergenceHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetDualVariables.html"><span class="std std-doc">TaoGetDualVariables</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetLMVMMatrix.html"><span class="std std-doc">TaoGetLMVMMatrix</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoGetOptionsPrefix.html"><span class="std std-doc">TaoGetOptionsPrefix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGradientNorm.html"><span class="std std-doc">TaoGradientNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoKSPSetUseEW.html"><span class="std std-doc">TaoKSPSetUseEW</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLMVMGetH0.html"><span class="std std-doc">TaoLMVMGetH0</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLMVMGetH0KSP.html"><span class="std std-doc">TaoLMVMGetH0KSP</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLMVMSetH0.html"><span class="std std-doc">TaoLMVMSetH0</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorCancel.html"><span class="std std-doc">TaoMonitorCancel</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorConstraintNorm.html"><span class="std std-doc">TaoMonitorConstraintNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDefault.html"><span class="std std-doc">TaoMonitorDefault</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDefaultShort.html"><span class="std std-doc">TaoMonitorDefaultShort</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorGlobalization.html"><span class="std std-doc">TaoMonitorGlobalization</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorGradient.html"><span class="std std-doc">TaoMonitorGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorGradientDraw.html"><span class="std std-doc">TaoMonitorGradientDraw</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorResidual.html"><span class="std std-doc">TaoMonitorResidual</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorSolution.html"><span class="std std-doc">TaoMonitorSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorSolutionDraw.html"><span class="std std-doc">TaoMonitorSolutionDraw</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorStep.html"><span class="std std-doc">TaoMonitorStep</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorStepDraw.html"><span class="std std-doc">TaoMonitorStepDraw</span></a></p></li>
+<li><p><a class="reference internal" href="TaoRegister.html"><span class="std std-doc">TaoRegister</span></a></p></li>
+<li><p><a class="reference internal" href="TaoRegisterDestroy.html"><span class="std std-doc">TaoRegisterDestroy</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConvergenceTest.html"><span class="std std-doc">TaoSetConvergenceTest</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetLMVMMatrix.html"><span class="std std-doc">TaoSetLMVMMatrix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetOptionsPrefix.html"><span class="std std-doc">TaoSetOptionsPrefix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetUp.html"><span class="std std-doc">TaoSetUp</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetUpdate.html"><span class="std std-doc">TaoSetUpdate</span></a></p></li>
+<li><p><a class="reference internal" href="TaoShellGetContext.html"><span class="std std-doc">TaoShellGetContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoShellSetContext.html"><span class="std std-doc">TaoShellSetContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoShellSetSolve.html"><span class="std std-doc">TaoShellSetSolve</span></a></p></li>
+</ul>
+</td></tr></table>
+</section>
+<section id="developer-interfaces-rarely-needed-by-applications-programmers">
+<h2>Developer - Interfaces rarely needed by applications programmers<a class="headerlink" href="#developer-interfaces-rarely-needed-by-applications-programmers" title="Link to this heading">#</a></h2>
+<table class="hlist"><tr><td><ul class="simple">
+<li><p><a class="reference internal" href="MatCreateSubMatrixFree.html"><span class="std std-doc">MatCreateSubMatrixFree</span></a></p></li>
+<li><p><a class="reference internal" href="MatDFischer.html"><span class="std std-doc">MatDFischer</span></a></p></li>
+<li><p><a class="reference internal" href="MatDSFischer.html"><span class="std std-doc">MatDSFischer</span></a></p></li>
+<li><p><a class="reference internal" href="TaoAddLineSearchCounts.html"><span class="std std-doc">TaoAddLineSearchCounts</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNGetDampingVector.html"><span class="std std-doc">TaoBRGNGetDampingVector</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBoundSolution.html"><span class="std std-doc">TaoBoundSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBoundStep.html"><span class="std std-doc">TaoBoundStep</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeConstraints.html"><span class="std std-doc">TaoComputeConstraints</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeEqualityConstraints.html"><span class="std std-doc">TaoComputeEqualityConstraints</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeGradient.html"><span class="std std-doc">TaoComputeGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeHessian.html"><span class="std std-doc">TaoComputeHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeInequalityConstraints.html"><span class="std std-doc">TaoComputeInequalityConstraints</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobian.html"><span class="std std-doc">TaoComputeJacobian</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoComputeJacobianDesign.html"><span class="std std-doc">TaoComputeJacobianDesign</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobianEquality.html"><span class="std std-doc">TaoComputeJacobianEquality</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobianInequality.html"><span class="std std-doc">TaoComputeJacobianInequality</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobianState.html"><span class="std std-doc">TaoComputeJacobianState</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeObjective.html"><span class="std std-doc">TaoComputeObjective</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeObjectiveAndGradient.html"><span class="std std-doc">TaoComputeObjectiveAndGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeResidualJacobian.html"><span class="std std-doc">TaoComputeResidualJacobian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeVariableBounds.html"><span class="std std-doc">TaoComputeVariableBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultConvergenceTest.html"><span class="std std-doc">TaoDefaultConvergenceTest</span></a></p></li>
+<li><p><a class="reference internal" href="TaoEstimateActiveBounds.html"><span class="std std-doc">TaoEstimateActiveBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoFinalizePackage.html"><span class="std std-doc">TaoFinalizePackage</span></a></p></li>
+<li><p><a class="reference internal" href="TaoInitializePackage.html"><span class="std std-doc">TaoInitializePackage</span></a></p></li>
+<li><p><a class="reference internal" href="TaoIsGradientDefined.html"><span class="std std-doc">TaoIsGradientDefined</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoIsObjectiveAndGradientDefined.html"><span class="std std-doc">TaoIsObjectiveAndGradientDefined</span></a></p></li>
+<li><p><a class="reference internal" href="TaoIsObjectiveDefined.html"><span class="std std-doc">TaoIsObjectiveDefined</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMatGetSubMat.html"><span class="std std-doc">TaoMatGetSubMat</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitor.html"><span class="std std-doc">TaoMonitor</span></a></p></li>
+<li><p><a class="reference internal" href="TaoParametersInitialize.html"><span class="std std-doc">TaoParametersInitialize</span></a></p></li>
+<li><p><a class="reference internal" href="TaoRegisterAll.html"><span class="std std-doc">TaoRegisterAll</span></a></p></li>
+<li><p><a class="reference internal" href="TaoResetStatistics.html"><span class="std std-doc">TaoResetStatistics</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetIterationNumber.html"><span class="std std-doc">TaoSetIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetTotalIterationNumber.html"><span class="std std-doc">TaoSetTotalIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSoftThreshold.html"><span class="std std-doc">TaoSoftThreshold</span></a></p></li>
+<li><p><a class="reference internal" href="TaoVecGetSubVec.html"><span class="std std-doc">TaoVecGetSubVec</span></a></p></li>
+<li><p><a class="reference internal" href="VecFischer.html"><span class="std std-doc">VecFischer</span></a></p></li>
+<li><p><a class="reference internal" href="VecSFischer.html"><span class="std std-doc">VecSFischer</span></a></p></li>
+</ul>
+</td></tr></table>
+</section>
+<section id="single-list-of-manual-pages">
+<h2>Single list of manual pages<a class="headerlink" href="#single-list-of-manual-pages" title="Link to this heading">#</a></h2>
+<table class="hlist"><tr><td><ul class="simple">
+<li><p><a class="reference internal" href="ADMM_UPDATE_ADAPTIVE_RELAXED.html"><span class="std std-doc">ADMM_UPDATE_ADAPTIVE_RELAXED</span></a></p></li>
+<li><p><a class="reference internal" href="MatCreateSubMatrixFree.html"><span class="std std-doc">MatCreateSubMatrixFree</span></a></p></li>
+<li><p><a class="reference internal" href="MatDFischer.html"><span class="std std-doc">MatDFischer</span></a></p></li>
+<li><p><a class="reference internal" href="MatDSFischer.html"><span class="std std-doc">MatDSFischer</span></a></p></li>
+<li><p><a class="reference internal" href="TAOADMM.html"><span class="std std-doc">TAOADMM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOALMM.html"><span class="std std-doc">TAOALMM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOASFLS.html"><span class="std std-doc">TAOASFLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOASILS.html"><span class="std std-doc">TAOASILS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBLMVM.html"><span class="std std-doc">TAOBLMVM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBMRM.html"><span class="std std-doc">TAOBMRM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNCG.html"><span class="std std-doc">TAOBNCG</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNK.html"><span class="std std-doc">TAOBNK</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNLS.html"><span class="std std-doc">TAOBNLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNTL.html"><span class="std std-doc">TAOBNTL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBNTR.html"><span class="std std-doc">TAOBNTR</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNKLS.html"><span class="std std-doc">TAOBQNKLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNKTL.html"><span class="std std-doc">TAOBQNKTL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNKTR.html"><span class="std std-doc">TAOBQNKTR</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQNLS.html"><span class="std std-doc">TAOBQNLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBQPIP.html"><span class="std std-doc">TAOBQPIP</span></a></p></li>
+<li><p><a class="reference internal" href="TAOBRGN.html"><span class="std std-doc">TAOBRGN</span></a></p></li>
+<li><p><a class="reference internal" href="TAOCG.html"><span class="std std-doc">TAOCG</span></a></p></li>
+<li><p><a class="reference internal" href="TAOGPCG.html"><span class="std std-doc">TAOGPCG</span></a></p></li>
+<li><p><a class="reference internal" href="TAOIPM.html"><span class="std std-doc">TAOIPM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOLCL.html"><span class="std std-doc">TAOLCL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOLMVM.html"><span class="std std-doc">TAOLMVM</span></a></p></li>
+<li><p><a class="reference internal" href="TAONLS.html"><span class="std std-doc">TAONLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAONM.html"><span class="std std-doc">TAONM</span></a></p></li>
+<li><p><a class="reference internal" href="TAONTL.html"><span class="std std-doc">TAONTL</span></a></p></li>
+<li><p><a class="reference internal" href="TAONTR.html"><span class="std std-doc">TAONTR</span></a></p></li>
+<li><p><a class="reference internal" href="TAOOWLQN.html"><span class="std std-doc">TAOOWLQN</span></a></p></li>
+<li><p><a class="reference internal" href="TAOPDIPM.html"><span class="std std-doc">TAOPDIPM</span></a></p></li>
+<li><p><a class="reference internal" href="TAOPOUNDERS.html"><span class="std std-doc">TAOPOUNDERS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSHELL.html"><span class="std std-doc">TAOSHELL</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSNES.html"><span class="std std-doc">TAOSNES</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSSFLS.html"><span class="std std-doc">TAOSSFLS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOSSILS.html"><span class="std std-doc">TAOSSILS</span></a></p></li>
+<li><p><a class="reference internal" href="TAOTRON.html"><span class="std std-doc">TAOTRON</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_REGULARIZER_SOFT_THRESH.html"><span class="std std-doc">TAO_ADMM_REGULARIZER_SOFT_THRESH</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_REGULARIZER_USER.html"><span class="std std-doc">TAO_ADMM_REGULARIZER_USER</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_UPDATE_ADAPTIVE.html"><span class="std std-doc">TAO_ADMM_UPDATE_ADAPTIVE</span></a></p></li>
+<li><p><a class="reference internal" href="TAO_ADMM_UPDATE_BASIC.html"><span class="std std-doc">TAO_ADMM_UPDATE_BASIC</span></a></p></li>
+<li><p><a class="reference internal" href="Tao.html"><span class="std std-doc">Tao</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetDualVector.html"><span class="std std-doc">TaoADMMGetDualVector</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetMisfitSubsolver.html"><span class="std std-doc">TaoADMMGetMisfitSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetRegularizationSubsolver.html"><span class="std std-doc">TaoADMMGetRegularizationSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetRegularizerCoefficient.html"><span class="std std-doc">TaoADMMGetRegularizerCoefficient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetRegularizerType.html"><span class="std std-doc">TaoADMMGetRegularizerType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetSpectralPenalty.html"><span class="std std-doc">TaoADMMGetSpectralPenalty</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMGetUpdateType.html"><span class="std std-doc">TaoADMMGetUpdateType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMRegularizerType.html"><span class="std std-doc">TaoADMMRegularizerType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetConstraintVectorRHS.html"><span class="std std-doc">TaoADMMSetConstraintVectorRHS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMinimumSpectralPenalty.html"><span class="std std-doc">TaoADMMSetMinimumSpectralPenalty</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitConstraintJacobian.html"><span class="std std-doc">TaoADMMSetMisfitConstraintJacobian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitHessianChangeStatus.html"><span class="std std-doc">TaoADMMSetMisfitHessianChangeStatus</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitHessianRoutine.html"><span class="std std-doc">TaoADMMSetMisfitHessianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetMisfitObjectiveAndGradientRoutine.html"><span class="std std-doc">TaoADMMSetMisfitObjectiveAndGradientRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegHessianChangeStatus.html"><span class="std std-doc">TaoADMMSetRegHessianChangeStatus</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerCoefficient.html"><span class="std std-doc">TaoADMMSetRegularizerCoefficient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerConstraintJacobian.html"><span class="std std-doc">TaoADMMSetRegularizerConstraintJacobian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerHessianRoutine.html"><span class="std std-doc">TaoADMMSetRegularizerHessianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerObjectiveAndGradientRoutine.html"><span class="std std-doc">TaoADMMSetRegularizerObjectiveAndGradientRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetRegularizerType.html"><span class="std std-doc">TaoADMMSetRegularizerType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetSpectralPenalty.html"><span class="std std-doc">TaoADMMSetSpectralPenalty</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMSetUpdateType.html"><span class="std std-doc">TaoADMMSetUpdateType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoADMMUpdateType.html"><span class="std std-doc">TaoADMMUpdateType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetDualIS.html"><span class="std std-doc">TaoALMMGetDualIS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetMultipliers.html"><span class="std std-doc">TaoALMMGetMultipliers</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetPrimalIS.html"><span class="std std-doc">TaoALMMGetPrimalIS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetSubsolver.html"><span class="std std-doc">TaoALMMGetSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMGetType.html"><span class="std std-doc">TaoALMMGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMSetMultipliers.html"><span class="std std-doc">TaoALMMSetMultipliers</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMSetSubsolver.html"><span class="std std-doc">TaoALMMSetSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMSetType.html"><span class="std std-doc">TaoALMMSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoALMMType.html"><span class="std std-doc">TaoALMMType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoAddLineSearchCounts.html"><span class="std std-doc">TaoAddLineSearchCounts</span></a></p></li>
+<li><p><a class="reference internal" href="TaoAppendOptionsPrefix.html"><span class="std std-doc">TaoAppendOptionsPrefix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBNCGGetType.html"><span class="std std-doc">TaoBNCGGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBNCGSetType.html"><span class="std std-doc">TaoBNCGSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBNCGType.html"><span class="std std-doc">TaoBNCGType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNGetDampingVector.html"><span class="std std-doc">TaoBRGNGetDampingVector</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoBRGNGetRegularizationType.html"><span class="std std-doc">TaoBRGNGetRegularizationType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNGetSubsolver.html"><span class="std std-doc">TaoBRGNGetSubsolver</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNRegularizationType.html"><span class="std std-doc">TaoBRGNRegularizationType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetDictionaryMatrix.html"><span class="std std-doc">TaoBRGNSetDictionaryMatrix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetL1SmoothEpsilon.html"><span class="std std-doc">TaoBRGNSetL1SmoothEpsilon</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizationType.html"><span class="std std-doc">TaoBRGNSetRegularizationType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizerHessianRoutine.html"><span class="std std-doc">TaoBRGNSetRegularizerHessianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizerObjectiveAndGradientRoutine.html"><span class="std std-doc">TaoBRGNSetRegularizerObjectiveAndGradientRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBRGNSetRegularizerWeight.html"><span class="std std-doc">TaoBRGNSetRegularizerWeight</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBoundSolution.html"><span class="std std-doc">TaoBoundSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoBoundStep.html"><span class="std std-doc">TaoBoundStep</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeConstraints.html"><span class="std std-doc">TaoComputeConstraints</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeDualVariables.html"><span class="std std-doc">TaoComputeDualVariables</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeEqualityConstraints.html"><span class="std std-doc">TaoComputeEqualityConstraints</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeGradient.html"><span class="std std-doc">TaoComputeGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeHessian.html"><span class="std std-doc">TaoComputeHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeInequalityConstraints.html"><span class="std std-doc">TaoComputeInequalityConstraints</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobian.html"><span class="std std-doc">TaoComputeJacobian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobianDesign.html"><span class="std std-doc">TaoComputeJacobianDesign</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobianEquality.html"><span class="std std-doc">TaoComputeJacobianEquality</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobianInequality.html"><span class="std std-doc">TaoComputeJacobianInequality</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeJacobianState.html"><span class="std std-doc">TaoComputeJacobianState</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeObjective.html"><span class="std std-doc">TaoComputeObjective</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeObjectiveAndGradient.html"><span class="std std-doc">TaoComputeObjectiveAndGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeResidual.html"><span class="std std-doc">TaoComputeResidual</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeResidualJacobian.html"><span class="std std-doc">TaoComputeResidualJacobian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoComputeVariableBounds.html"><span class="std std-doc">TaoComputeVariableBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoConvergedReason.html"><span class="std std-doc">TaoConvergedReason</span></a></p></li>
+<li><p><a class="reference internal" href="TaoCreate.html"><span class="std std-doc">TaoCreate</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultComputeGradient.html"><span class="std std-doc">TaoDefaultComputeGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultComputeHessian.html"><span class="std std-doc">TaoDefaultComputeHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultComputeHessianColor.html"><span class="std std-doc">TaoDefaultComputeHessianColor</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDefaultConvergenceTest.html"><span class="std std-doc">TaoDefaultConvergenceTest</span></a></p></li>
+<li><p><a class="reference internal" href="TaoDestroy.html"><span class="std std-doc">TaoDestroy</span></a></p></li>
+<li><p><a class="reference internal" href="TaoEstimateActiveBounds.html"><span class="std std-doc">TaoEstimateActiveBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoFinalizePackage.html"><span class="std std-doc">TaoFinalizePackage</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetADMMParentTao.html"><span class="std std-doc">TaoGetADMMParentTao</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetApplicationContext.html"><span class="std std-doc">TaoGetApplicationContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetConstraintTolerances.html"><span class="std std-doc">TaoGetConstraintTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetConvergedReason.html"><span class="std std-doc">TaoGetConvergedReason</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetConvergenceHistory.html"><span class="std std-doc">TaoGetConvergenceHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetCurrentFunctionEvaluations.html"><span class="std std-doc">TaoGetCurrentFunctionEvaluations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetCurrentTrustRegionRadius.html"><span class="std std-doc">TaoGetCurrentTrustRegionRadius</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetDualVariables.html"><span class="std std-doc">TaoGetDualVariables</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetEqualityConstraintsRoutine.html"><span class="std std-doc">TaoGetEqualityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetFunctionLowerBound.html"><span class="std std-doc">TaoGetFunctionLowerBound</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetGradient.html"><span class="std std-doc">TaoGetGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetGradientNorm.html"><span class="std std-doc">TaoGetGradientNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetHessian.html"><span class="std std-doc">TaoGetHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetInequalityBounds.html"><span class="std std-doc">TaoGetInequalityBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetInequalityConstraintsRoutine.html"><span class="std std-doc">TaoGetInequalityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetInitialTrustRegionRadius.html"><span class="std std-doc">TaoGetInitialTrustRegionRadius</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetIterationNumber.html"><span class="std std-doc">TaoGetIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetJacobianEqualityRoutine.html"><span class="std std-doc">TaoGetJacobianEqualityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetJacobianInequalityRoutine.html"><span class="std std-doc">TaoGetJacobianInequalityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetKSP.html"><span class="std std-doc">TaoGetKSP</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetLMVMMatrix.html"><span class="std std-doc">TaoGetLMVMMatrix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetLineSearch.html"><span class="std std-doc">TaoGetLineSearch</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetLinearSolveIterations.html"><span class="std std-doc">TaoGetLinearSolveIterations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetMaximumFunctionEvaluations.html"><span class="std std-doc">TaoGetMaximumFunctionEvaluations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetMaximumIterations.html"><span class="std std-doc">TaoGetMaximumIterations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetObjective.html"><span class="std std-doc">TaoGetObjective</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetObjectiveAndGradient.html"><span class="std std-doc">TaoGetObjectiveAndGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetOptionsPrefix.html"><span class="std std-doc">TaoGetOptionsPrefix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetRecycleHistory.html"><span class="std std-doc">TaoGetRecycleHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetResidualNorm.html"><span class="std std-doc">TaoGetResidualNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetSolution.html"><span class="std std-doc">TaoGetSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetSolutionStatus.html"><span class="std std-doc">TaoGetSolutionStatus</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetTolerances.html"><span class="std std-doc">TaoGetTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetTotalIterationNumber.html"><span class="std std-doc">TaoGetTotalIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetType.html"><span class="std std-doc">TaoGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGetVariableBounds.html"><span class="std std-doc">TaoGetVariableBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoGradientNorm.html"><span class="std std-doc">TaoGradientNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoInitializePackage.html"><span class="std std-doc">TaoInitializePackage</span></a></p></li>
+<li><p><a class="reference internal" href="TaoIsGradientDefined.html"><span class="std std-doc">TaoIsGradientDefined</span></a></p></li>
+<li><p><a class="reference internal" href="TaoIsObjectiveAndGradientDefined.html"><span class="std std-doc">TaoIsObjectiveAndGradientDefined</span></a></p></li>
+<li><p><a class="reference internal" href="TaoIsObjectiveDefined.html"><span class="std std-doc">TaoIsObjectiveDefined</span></a></p></li>
+<li><p><a class="reference internal" href="TaoKSPSetUseEW.html"><span class="std std-doc">TaoKSPSetUseEW</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLMVMGetH0.html"><span class="std std-doc">TaoLMVMGetH0</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLMVMGetH0KSP.html"><span class="std std-doc">TaoLMVMGetH0KSP</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLMVMRecycle.html"><span class="std std-doc">TaoLMVMRecycle</span></a></p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p><a class="reference internal" href="TaoLMVMSetH0.html"><span class="std std-doc">TaoLMVMSetH0</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLineSearch.html"><span class="std std-doc">TaoLineSearch</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLineSearchConvergedReason.html"><span class="std std-doc">TaoLineSearchConvergedReason</span></a></p></li>
+<li><p><a class="reference internal" href="TaoLineSearchType.html"><span class="std std-doc">TaoLineSearchType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMatGetSubMat.html"><span class="std std-doc">TaoMatGetSubMat</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitor.html"><span class="std std-doc">TaoMonitor</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorCancel.html"><span class="std std-doc">TaoMonitorCancel</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorConstraintNorm.html"><span class="std std-doc">TaoMonitorConstraintNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDefault.html"><span class="std std-doc">TaoMonitorDefault</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDefaultShort.html"><span class="std std-doc">TaoMonitorDefaultShort</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDrawCtxCreate.html"><span class="std std-doc">TaoMonitorDrawCtxCreate</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorDrawCtxDestroy.html"><span class="std std-doc">TaoMonitorDrawCtxDestroy</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorGlobalization.html"><span class="std std-doc">TaoMonitorGlobalization</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorGradient.html"><span class="std std-doc">TaoMonitorGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorGradientDraw.html"><span class="std std-doc">TaoMonitorGradientDraw</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorResidual.html"><span class="std std-doc">TaoMonitorResidual</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorSet.html"><span class="std std-doc">TaoMonitorSet</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorSolution.html"><span class="std std-doc">TaoMonitorSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorSolutionDraw.html"><span class="std std-doc">TaoMonitorSolutionDraw</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorStep.html"><span class="std std-doc">TaoMonitorStep</span></a></p></li>
+<li><p><a class="reference internal" href="TaoMonitorStepDraw.html"><span class="std std-doc">TaoMonitorStepDraw</span></a></p></li>
+<li><p><a class="reference internal" href="TaoParametersInitialize.html"><span class="std std-doc">TaoParametersInitialize</span></a></p></li>
+<li><p><a class="reference internal" href="TaoPythonGetType.html"><span class="std std-doc">TaoPythonGetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoPythonSetType.html"><span class="std std-doc">TaoPythonSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoRegister.html"><span class="std std-doc">TaoRegister</span></a></p></li>
+<li><p><a class="reference internal" href="TaoRegisterAll.html"><span class="std std-doc">TaoRegisterAll</span></a></p></li>
+<li><p><a class="reference internal" href="TaoRegisterDestroy.html"><span class="std std-doc">TaoRegisterDestroy</span></a></p></li>
+<li><p><a class="reference internal" href="TaoResetStatistics.html"><span class="std std-doc">TaoResetStatistics</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetApplicationContext.html"><span class="std std-doc">TaoSetApplicationContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConstraintTolerances.html"><span class="std std-doc">TaoSetConstraintTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConstraintsRoutine.html"><span class="std std-doc">TaoSetConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConvergedReason.html"><span class="std std-doc">TaoSetConvergedReason</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConvergenceHistory.html"><span class="std std-doc">TaoSetConvergenceHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetConvergenceTest.html"><span class="std std-doc">TaoSetConvergenceTest</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetEqualityConstraintsRoutine.html"><span class="std std-doc">TaoSetEqualityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetFromOptions.html"><span class="std std-doc">TaoSetFromOptions</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetFunctionLowerBound.html"><span class="std std-doc">TaoSetFunctionLowerBound</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetGradient.html"><span class="std std-doc">TaoSetGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetGradientNorm.html"><span class="std std-doc">TaoSetGradientNorm</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetHessian.html"><span class="std std-doc">TaoSetHessian</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetInequalityBounds.html"><span class="std std-doc">TaoSetInequalityBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetInequalityConstraintsRoutine.html"><span class="std std-doc">TaoSetInequalityConstraintsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetInitialTrustRegionRadius.html"><span class="std std-doc">TaoSetInitialTrustRegionRadius</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetIterationNumber.html"><span class="std std-doc">TaoSetIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianDesignRoutine.html"><span class="std std-doc">TaoSetJacobianDesignRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianEqualityRoutine.html"><span class="std std-doc">TaoSetJacobianEqualityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianInequalityRoutine.html"><span class="std std-doc">TaoSetJacobianInequalityRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianResidualRoutine.html"><span class="std std-doc">TaoSetJacobianResidualRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianRoutine.html"><span class="std std-doc">TaoSetJacobianRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetJacobianStateRoutine.html"><span class="std std-doc">TaoSetJacobianStateRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetLMVMMatrix.html"><span class="std std-doc">TaoSetLMVMMatrix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetMaximumFunctionEvaluations.html"><span class="std std-doc">TaoSetMaximumFunctionEvaluations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetMaximumIterations.html"><span class="std std-doc">TaoSetMaximumIterations</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetObjective.html"><span class="std std-doc">TaoSetObjective</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetObjectiveAndGradient.html"><span class="std std-doc">TaoSetObjectiveAndGradient</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetOptionsPrefix.html"><span class="std std-doc">TaoSetOptionsPrefix</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetRecycleHistory.html"><span class="std std-doc">TaoSetRecycleHistory</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetResidualRoutine.html"><span class="std std-doc">TaoSetResidualRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetResidualWeights.html"><span class="std std-doc">TaoSetResidualWeights</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetSolution.html"><span class="std std-doc">TaoSetSolution</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetStateDesignIS.html"><span class="std std-doc">TaoSetStateDesignIS</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetTolerances.html"><span class="std std-doc">TaoSetTolerances</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetTotalIterationNumber.html"><span class="std std-doc">TaoSetTotalIterationNumber</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetType.html"><span class="std std-doc">TaoSetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetUp.html"><span class="std std-doc">TaoSetUp</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetUpdate.html"><span class="std std-doc">TaoSetUpdate</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetVariableBounds.html"><span class="std std-doc">TaoSetVariableBounds</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSetVariableBoundsRoutine.html"><span class="std std-doc">TaoSetVariableBoundsRoutine</span></a></p></li>
+<li><p><a class="reference internal" href="TaoShellGetContext.html"><span class="std std-doc">TaoShellGetContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoShellSetContext.html"><span class="std std-doc">TaoShellSetContext</span></a></p></li>
+<li><p><a class="reference internal" href="TaoShellSetSolve.html"><span class="std std-doc">TaoShellSetSolve</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSoftThreshold.html"><span class="std std-doc">TaoSoftThreshold</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSolve.html"><span class="std std-doc">TaoSolve</span></a></p></li>
+<li><p><a class="reference internal" href="TaoSubsetType.html"><span class="std std-doc">TaoSubsetType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoType.html"><span class="std std-doc">TaoType</span></a></p></li>
+<li><p><a class="reference internal" href="TaoVecGetSubVec.html"><span class="std std-doc">TaoVecGetSubVec</span></a></p></li>
+<li><p><a class="reference internal" href="TaoView.html"><span class="std std-doc">TaoView</span></a></p></li>
+<li><p><a class="reference internal" href="TaoViewFromOptions.html"><span class="std std-doc">TaoViewFromOptions</span></a></p></li>
+<li><p><a class="reference internal" href="VecFischer.html"><span class="std std-doc">VecFischer</span></a></p></li>
+<li><p><a class="reference internal" href="VecSFischer.html"><span class="std std-doc">VecSFischer</span></a></p></li>
+</ul>
+</td></tr></table>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../Optimization.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Optimization</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../TaoLineSearch/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Optimization Line Search (TaoLineSearch)</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

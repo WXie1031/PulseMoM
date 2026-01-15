@@ -1,0 +1,268 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/snes/linesearch/impls/secant/linesearchsecant.c">Actual source code: linesearchsecant.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:06+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/linesearchimpl.h.html">&lt;petsc/private/linesearchimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscsnes.h.html">&lt;petscsnes.h&gt;</A>
+
+<a name="line4">  4: </a><strong><font color="#4169E1"><a name="SNESLineSearchApply_Secant"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESLineSearchApply_Secant(<a href="../../../../../manualpages/SNES/SNESLineSearch.html">SNESLineSearch</a> linesearch)</font></strong>
+<a name="line5">  5: </a>{
+<a name="line6">  6: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>        changed_y, changed_w;
+<a name="line7">  7: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>              X;
+<a name="line8">  8: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>              F;
+<a name="line9">  9: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>              Y;
+<a name="line10"> 10: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>              W;
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/SNES/SNES.html">SNES</a>             snes;
+<a name="line12"> 12: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>        gnorm;
+<a name="line13"> 13: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>        ynorm;
+<a name="line14"> 14: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>        xnorm;
+<a name="line15"> 15: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>        minlambda, maxlambda, atol, ltol;
+<a name="line16"> 16: </a>  <a href="../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>      monitor;
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>        lambda, lambda_old, lambda_mid, lambda_update, delLambda;
+<a name="line18"> 18: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>        fnrm, fnrm_old, fnrm_mid;
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>        delFnrm, delFnrm_old, del2Fnrm;
+<a name="line20"> 20: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         i, max_it;
+<a name="line21"> 21: </a>  <a href="../../../../../manualpages/SNES/SNESObjectiveFn.html">SNESObjectiveFn</a> *objective;
+
+<a name="line23"> 23: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchGetVecs.html">SNESLineSearchGetVecs</a>(linesearch, &amp;X, &amp;F, &amp;Y, &amp;W, NULL));
+<a name="line25"> 25: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchGetNorms.html">SNESLineSearchGetNorms</a>(linesearch, &amp;xnorm, &amp;gnorm, &amp;ynorm));
+<a name="line26"> 26: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchGetLambda.html">SNESLineSearchGetLambda</a>(linesearch, &amp;lambda));
+<a name="line27"> 27: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchGetSNES.html">SNESLineSearchGetSNES</a>(linesearch, &amp;snes));
+<a name="line28"> 28: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchSetReason.html">SNESLineSearchSetReason</a>(linesearch, <a href="../../../../../manualpages/SNES/SNESLineSearchReason.html">SNES_LINESEARCH_SUCCEEDED</a>));
+<a name="line29"> 29: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchGetTolerances.html">SNESLineSearchGetTolerances</a>(linesearch, &amp;minlambda, &amp;maxlambda, NULL, &amp;atol, &amp;ltol, &amp;max_it));
+<a name="line30"> 30: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchGetDefaultMonitor.html">SNESLineSearchGetDefaultMonitor</a>(linesearch, &amp;monitor));
+
+<a name="line32"> 32: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESGetObjective.html">SNESGetObjective</a>(snes, &amp;objective, NULL));
+
+<a name="line34"> 34: </a>  <font color="#B22222">/* precheck */</font>
+<a name="line35"> 35: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchPreCheck.html">SNESLineSearchPreCheck</a>(linesearch, X, Y, &amp;changed_y));
+<a name="line36"> 36: </a>  lambda_old = 0.0;
+<a name="line37"> 37: </a>  <font color="#4169E1">if</font> (!objective) {
+<a name="line38"> 38: </a>    fnrm_old = gnorm * gnorm;
+<a name="line39"> 39: </a>  } <font color="#4169E1">else</font> {
+<a name="line40"> 40: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESComputeObjective.html">SNESComputeObjective</a>(snes, X, &amp;fnrm_old));
+<a name="line41"> 41: </a>  }
+<a name="line42"> 42: </a>  lambda_mid = 0.5 * (lambda + lambda_old);
+
+<a name="line44"> 44: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; max_it; i++) {
+<a name="line45"> 45: </a>    <font color="#B22222">/* check whether new lambda is NaN or Inf - if so, iteratively shrink towards lambda_old */</font>
+<a name="line46"> 46: </a>    <font color="#4169E1">while</font> (<a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>) {
+<a name="line47"> 47: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecWAXPY.html">VecWAXPY</a>(W, -lambda_mid, Y, X));
+<a name="line48"> 48: </a>      <font color="#4169E1">if</font> (linesearch-&gt;ops-&gt;viproject) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;viproject)(snes, W));
+<a name="line49"> 49: </a>      <font color="#4169E1">if</font> (!objective) {
+<a name="line50"> 50: </a>        <font color="#B22222">/* compute the norm at the midpoint */</font>
+<a name="line51"> 51: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;snesfunc)(snes, W, F));
+<a name="line52"> 52: </a>        <font color="#4169E1">if</font> (linesearch-&gt;ops-&gt;vinorm) {
+<a name="line53"> 53: </a>          fnrm_mid = gnorm;
+<a name="line54"> 54: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;vinorm)(snes, F, W, &amp;fnrm_mid));
+<a name="line55"> 55: </a>        } <font color="#4169E1">else</font> {
+<a name="line56"> 56: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(F, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;fnrm_mid));
+<a name="line57"> 57: </a>        }
+
+<a name="line59"> 59: </a>        <font color="#B22222">/* compute the norm at the new endpoint */</font>
+<a name="line60"> 60: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecWAXPY.html">VecWAXPY</a>(W, -lambda, Y, X));
+<a name="line61"> 61: </a>        <font color="#4169E1">if</font> (linesearch-&gt;ops-&gt;viproject) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;viproject)(snes, W));
+<a name="line62"> 62: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;snesfunc)(snes, W, F));
+<a name="line63"> 63: </a>        <font color="#4169E1">if</font> (linesearch-&gt;ops-&gt;vinorm) {
+<a name="line64"> 64: </a>          fnrm = gnorm;
+<a name="line65"> 65: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;vinorm)(snes, F, W, &amp;fnrm));
+<a name="line66"> 66: </a>        } <font color="#4169E1">else</font> {
+<a name="line67"> 67: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(F, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;fnrm));
+<a name="line68"> 68: </a>        }
+<a name="line69"> 69: </a>        fnrm_mid = fnrm_mid * fnrm_mid;
+<a name="line70"> 70: </a>        fnrm     = fnrm * fnrm;
+<a name="line71"> 71: </a>      } <font color="#4169E1">else</font> {
+<a name="line72"> 72: </a>        <font color="#B22222">/* compute the objective at the midpoint */</font>
+<a name="line73"> 73: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESComputeObjective.html">SNESComputeObjective</a>(snes, W, &amp;fnrm_mid));
+
+<a name="line75"> 75: </a>        <font color="#B22222">/* compute the objective at the new endpoint */</font>
+<a name="line76"> 76: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecWAXPY.html">VecWAXPY</a>(W, -lambda, Y, X));
+<a name="line77"> 77: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESComputeObjective.html">SNESComputeObjective</a>(snes, W, &amp;fnrm));
+<a name="line78"> 78: </a>      }
+
+<a name="line80"> 80: </a>      <font color="#B22222">/* if new endpoint is viable, exit */</font>
+<a name="line81"> 81: </a>      <font color="#4169E1">if</font> (!PetscIsInfOrNanReal(fnrm)) <font color="#4169E1">break</font>;
+<a name="line82"> 82: </a>      <font color="#4169E1">if</font> (monitor) {
+<a name="line83"> 83: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line84"> 84: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: objective function at lambda = %g is Inf or Nan, cutting lambda\n"</font>, (double)lambda));
+<a name="line85"> 85: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line86"> 86: </a>      }
+
+<a name="line88"> 88: </a>      <font color="#B22222">/* if smallest allowable lambda gives NaN or Inf, exit line search */</font>
+<a name="line89"> 89: </a>      <font color="#4169E1">if</font> (lambda &lt;= minlambda) {
+<a name="line90"> 90: </a>        <font color="#4169E1">if</font> (monitor) {
+<a name="line91"> 91: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line92"> 92: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: objective function at lambda = %g &lt;= lambda_min = %g is Inf or Nan, can not further cut lambda\n"</font>, (double)lambda, (double)lambda));
+<a name="line93"> 93: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line94"> 94: </a>        }
+<a name="line95"> 95: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchSetReason.html">SNESLineSearchSetReason</a>(linesearch, <a href="../../../../../manualpages/SNES/SNESLineSearchReason.html">SNES_LINESEARCH_FAILED_REDUCT</a>));
+<a name="line96"> 96: </a>        <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line97"> 97: </a>      }
+
+<a name="line99"> 99: </a>      <font color="#B22222">/* forbid the search from ever going back to the "failed" length that generates Nan or Inf */</font>
+<a name="line100">100: </a>      maxlambda = .95 * lambda;
+
+<a name="line102">102: </a>      <font color="#B22222">/* shrink lambda towards the previous one which was viable */</font>
+<a name="line103">103: </a>      lambda     = .5 * (lambda + lambda_old);
+<a name="line104">104: </a>      lambda_mid = .5 * (lambda + lambda_old);
+<a name="line105">105: </a>    }
+
+<a name="line107">107: </a>    <font color="#B22222">/* monitoring output */</font>
+<a name="line108">108: </a>    <font color="#4169E1">if</font> (monitor) {
+<a name="line109">109: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line110">110: </a>      <font color="#4169E1">if</font> (!objective) {
+<a name="line111">111: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: lambdas = [%g, %g, %g], fnorms = [%g, %g, %g]\n"</font>, (double)lambda, (double)lambda_mid, (double)lambda_old, (double)PetscSqrtReal(fnrm), (double)PetscSqrtReal(fnrm_mid), (double)PetscSqrtReal(fnrm_old)));
+<a name="line112">112: </a>      } <font color="#4169E1">else</font> {
+<a name="line113">113: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: lambdas = [%g, %g, %g], obj = [%g, %g, %g]\n"</font>, (double)lambda, (double)lambda_mid, (double)lambda_old, (double)fnrm, (double)fnrm_mid, (double)fnrm_old));
+<a name="line114">114: </a>      }
+<a name="line115">115: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line116">116: </a>    }
+
+<a name="line118">118: </a>    <font color="#B22222">/* determine change of lambda */</font>
+<a name="line119">119: </a>    delLambda = lambda - lambda_old;
+
+<a name="line121">121: </a>    <font color="#B22222">/* check change of lambda tolerance */</font>
+<a name="line122">122: </a>    <font color="#4169E1">if</font> (<a href="../../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(delLambda) &lt; ltol) {
+<a name="line123">123: </a>      <font color="#4169E1">if</font> (monitor) {
+<a name="line124">124: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line125">125: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: abs(delLambda) = %g &lt; ltol = %g\n"</font>, (double)<a href="../../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(delLambda), (double)ltol));
+<a name="line126">126: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line127">127: </a>      }
+<a name="line128">128: </a>      <font color="#4169E1">break</font>;
+<a name="line129">129: </a>    }
+
+<a name="line131">131: </a>    <font color="#B22222">/* compute f'() at the end points using second order one sided differencing */</font>
+<a name="line132">132: </a>    delFnrm     = (3. * fnrm - 4. * fnrm_mid + 1. * fnrm_old) / delLambda;
+<a name="line133">133: </a>    delFnrm_old = (-3. * fnrm_old + 4. * fnrm_mid - 1. * fnrm) / delLambda;
+
+<a name="line135">135: </a>    <font color="#B22222">/* compute f''() at the midpoint using centered differencing */</font>
+<a name="line136">136: </a>    del2Fnrm = (delFnrm - delFnrm_old) / delLambda;
+
+<a name="line138">138: </a>    <font color="#B22222">/* check absolute tolerance */</font>
+<a name="line139">139: </a>    <font color="#4169E1">if</font> (<a href="../../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(delFnrm) &lt;= atol) {
+<a name="line140">140: </a>      <font color="#4169E1">if</font> (monitor) {
+<a name="line141">141: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line142">142: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: abs(delFnrm) = %g &lt;= atol = %g\n"</font>, (double)<a href="../../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(delFnrm), (double)atol));
+<a name="line143">143: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line144">144: </a>      }
+<a name="line145">145: </a>      <font color="#4169E1">break</font>;
+<a name="line146">146: </a>    }
+
+<a name="line148">148: </a>    <font color="#B22222">/* compute the secant (Newton) update -- always go downhill */</font>
+<a name="line149">149: </a>    <font color="#4169E1">if</font> (del2Fnrm &gt; 0.) lambda_update = lambda - delFnrm / del2Fnrm;
+<a name="line150">150: </a>    <font color="#4169E1">else</font> <font color="#4169E1">if</font> (del2Fnrm &lt; 0.) lambda_update = lambda + delFnrm / del2Fnrm;
+<a name="line151">151: </a>    <font color="#4169E1">else</font> {
+<a name="line152">152: </a>      <font color="#4169E1">if</font> (monitor) {
+<a name="line153">153: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line154">154: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: del2Fnrm = 0\n"</font>));
+<a name="line155">155: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line156">156: </a>      }
+<a name="line157">157: </a>      <font color="#4169E1">break</font>;
+<a name="line158">158: </a>    }
+
+<a name="line160">160: </a>    <font color="#B22222">/* prevent secant method from stepping out of bounds */</font>
+<a name="line161">161: </a>    <font color="#4169E1">if</font> (lambda_update &lt; minlambda) lambda_update = 0.5 * (lambda + lambda_old);
+<a name="line162">162: </a>    <font color="#4169E1">if</font> (lambda_update &gt; maxlambda) {
+<a name="line163">163: </a>      lambda_update = maxlambda;
+<a name="line164">164: </a>      <font color="#4169E1">break</font>;
+<a name="line165">165: </a>    }
+
+<a name="line167">167: </a>    <font color="#B22222">/* if lambda is NaN or Inf, do not accept update but exit with previous lambda */</font>
+<a name="line168">168: </a>    <font color="#4169E1">if</font> (PetscIsInfOrNanReal(lambda_update)) {
+<a name="line169">169: </a>      <font color="#4169E1">if</font> (monitor) {
+<a name="line170">170: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line171">171: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: lambda_update is NaN or Inf\n"</font>));
+<a name="line172">172: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line173">173: </a>      }
+<a name="line174">174: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchSetReason.html">SNESLineSearchSetReason</a>(linesearch, <a href="../../../../../manualpages/SNES/SNESLineSearchReason.html">SNES_LINESEARCH_FAILED_NANORINF</a>));
+<a name="line175">175: </a>      <font color="#4169E1">break</font>;
+<a name="line176">176: </a>    }
+
+<a name="line178">178: </a>    <font color="#B22222">/* update the endpoints and the midpoint of the bracketed secant region */</font>
+<a name="line179">179: </a>    lambda_old = lambda;
+<a name="line180">180: </a>    lambda     = lambda_update;
+<a name="line181">181: </a>    fnrm_old   = fnrm;
+<a name="line182">182: </a>    lambda_mid = 0.5 * (lambda + lambda_old);
+
+<a name="line184">184: </a>    <font color="#4169E1">if</font> ((i == max_it - 1) &amp;&amp; monitor) {
+<a name="line185">185: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line186">186: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search: reached maximum number of iterations!\n"</font>));
+<a name="line187">187: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line188">188: </a>    }
+<a name="line189">189: </a>  }
+
+<a name="line191">191: </a>  <font color="#B22222">/* construct the solution */</font>
+<a name="line192">192: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecWAXPY.html">VecWAXPY</a>(W, -lambda, Y, X));
+<a name="line193">193: </a>  <font color="#4169E1">if</font> (linesearch-&gt;ops-&gt;viproject) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;viproject)(snes, W));
+
+<a name="line195">195: </a>  <font color="#B22222">/* postcheck */</font>
+<a name="line196">196: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchSetLambda.html">SNESLineSearchSetLambda</a>(linesearch, lambda));
+<a name="line197">197: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchPostCheck.html">SNESLineSearchPostCheck</a>(linesearch, X, Y, W, &amp;changed_y, &amp;changed_w));
+<a name="line198">198: </a>  <font color="#4169E1">if</font> (changed_y) {
+<a name="line199">199: </a>    <font color="#4169E1">if</font> (!changed_w) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecWAXPY.html">VecWAXPY</a>(W, -lambda, Y, X));
+<a name="line200">200: </a>    <font color="#4169E1">if</font> (linesearch-&gt;ops-&gt;viproject) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;viproject)(snes, W));
+<a name="line201">201: </a>  }
+<a name="line202">202: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(W, X));
+<a name="line203">203: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*linesearch-&gt;ops-&gt;snesfunc)(snes, X, F));
+
+<a name="line205">205: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchComputeNorms.html">SNESLineSearchComputeNorms</a>(linesearch));
+
+<a name="line207">207: </a>  <font color="#4169E1">if</font> (monitor) {
+<a name="line208">208: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/SNES/SNESLineSearchGetNorms.html">SNESLineSearchGetNorms</a>(linesearch, NULL, &amp;gnorm, NULL));
+<a name="line209">209: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIAddTab.html">PetscViewerASCIIAddTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line210">210: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(monitor, <font color="#666666">"    Line search terminated: lambda = %g, fnorm = %g\n"</font>, (double)lambda, (double)gnorm));
+<a name="line211">211: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Viewer/PetscViewerASCIISubtractTab.html">PetscViewerASCIISubtractTab</a>(monitor, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)linesearch)-&gt;tablevel));
+<a name="line212">212: </a>  }
+<a name="line213">213: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line214">214: </a>}
+
+<a name="line216">216: </a><font color="#B22222">/*MC</font>
+<a name="line217">217: </a><font color="#B22222">   <a href="../../../../../manualpages/SNES/SNESLINESEARCHSECANT.html">SNESLINESEARCHSECANT</a> - Secant search in the L2 norm of the function or the objective function.</font>
+
+<a name="line219">219: </a><font color="#B22222">   Attempts to solve $ \min_{\lambda} f(x_k + \lambda Y_k) $ using the secant method with the initial bracketing of $ \lambda $ between [0,damping].</font>
+<a name="line220">220: </a><font color="#B22222">   $f(x_k + \lambda Y_k)$ is either the squared L2-norm of the function $||F(x_k + \lambda Y_k)||_2^2$,</font>
+<a name="line221">221: </a><font color="#B22222">   or the objective function $G(x_k + \lambda Y_k)$ if it is provided with `<a href="../../../../../manualpages/SNES/SNESSetObjective.html">SNESSetObjective</a>()`</font>
+<a name="line222">222: </a><font color="#B22222">   Differences of $f()$ are used to approximate the first and second derivative of $f()$ with respect to</font>
+<a name="line223">223: </a><font color="#B22222">   $\lambda$, $f'()$ and $f''()$.</font>
+
+<a name="line225">225: </a><font color="#B22222">   When an objective function is provided $f(w)$ is the objective function otherwise $f(w) = ||F(w)||^2$.</font>
+<a name="line226">226: </a><font color="#B22222">   $x$ is the current step and $y$ is the search direction.</font>
+
+<a name="line228">228: </a><font color="#B22222">   Options Database Keys:</font>
+<a name="line229">229: </a><font color="#B22222">+  -snes_linesearch_max_it &lt;1&gt;         - maximum number of iterations within the line search</font>
+<a name="line230">230: </a><font color="#B22222">.  -snes_linesearch_damping &lt;1.0&gt;      - initial `lambda` on entry to the line search</font>
+<a name="line231">231: </a><font color="#B22222">.  -snes_linesearch_minlambda &lt;1e\-12&gt; - minimum allowable `lambda`</font>
+<a name="line232">232: </a><font color="#B22222">.  -snes_linesearch_maxlambda &lt;1.0&gt;    - maximum `lambda` (scaling of solution update) allowed</font>
+<a name="line233">233: </a><font color="#B22222">.  -snes_linesearch_atol &lt;1e\-15&gt;      - absolute tolerance for the secant method $ f'() &lt; atol $</font>
+<a name="line234">234: </a><font color="#B22222">-  -snes_linesearch_ltol &lt;1e\-8&gt;       - minimum absolute change in `lambda` allowed</font>
+
+<a name="line236">236: </a><font color="#B22222">   Level: advanced</font>
+
+<a name="line238">238: </a><font color="#B22222">.seealso: [](ch_snes), `<a href="../../../../../manualpages/SNES/SNESLINESEARCHBT.html">SNESLINESEARCHBT</a>`, `<a href="../../../../../manualpages/SNES/SNESLINESEARCHCP.html">SNESLINESEARCHCP</a>`, `<a href="../../../../../manualpages/SNES/SNESLineSearch.html">SNESLineSearch</a>`, `<a href="../../../../../manualpages/SNES/SNESLineSearchType.html">SNESLineSearchType</a>`, `<a href="../../../../../manualpages/SNES/SNESLineSearchCreate.html">SNESLineSearchCreate</a>()`, `<a href="../../../../../manualpages/SNES/SNESLineSearchSetType.html">SNESLineSearchSetType</a>()`</font>
+<a name="line239">239: </a><font color="#B22222">M*/</font>
+<a name="line240">240: </a><strong><font color="#4169E1"><a name="SNESLineSearchCreate_Secant"></a>PETSC_EXTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESLineSearchCreate_Secant(<a href="../../../../../manualpages/SNES/SNESLineSearch.html">SNESLineSearch</a> linesearch)</font></strong>
+<a name="line241">241: </a>{
+<a name="line242">242: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line243">243: </a>  linesearch-&gt;ops-&gt;apply          = SNESLineSearchApply_Secant;
+<a name="line244">244: </a>  linesearch-&gt;ops-&gt;destroy        = NULL;
+<a name="line245">245: </a>  linesearch-&gt;ops-&gt;setfromoptions = NULL;
+<a name="line246">246: </a>  linesearch-&gt;ops-&gt;reset          = NULL;
+<a name="line247">247: </a>  linesearch-&gt;ops-&gt;view           = NULL;
+<a name="line248">248: </a>  linesearch-&gt;ops-&gt;setup          = NULL;
+
+<a name="line250">250: </a>  linesearch-&gt;max_it = 1;
+<a name="line251">251: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line252">252: </a>}
+</pre>
+</body>
+
+</html>
+

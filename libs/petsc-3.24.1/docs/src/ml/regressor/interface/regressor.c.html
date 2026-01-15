@@ -1,0 +1,596 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ml/regressor/interface/regressor.c">Actual source code: regressor.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:22+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/regressorimpl.h.html">&lt;petsc/private/regressorimpl.h&gt;</A>
+
+<a name="line3">  3: </a><a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>         PetscRegressorRegisterAllCalled = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line4">  4: </a><a href="../../../../manualpages/Sys/PetscFunctionList.html">PetscFunctionList</a> PetscRegressorList              = NULL;
+
+<a name="line6">  6: </a><a href="../../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> PETSCREGRESSOR_CLASSID;
+
+<a name="line8">  8: </a><font color="#B22222">/* Logging support */</font>
+<a name="line9">  9: </a><a href="../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> PetscRegressor_SetUp, PetscRegressor_Fit, PetscRegressor_Predict;
+
+<a name="line11"> 11: </a><font color="#B22222">/*@C</font>
+<a name="line12"> 12: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorRegister.html">PetscRegressorRegister</a> - Adds a method to the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` package.</font>
+
+<a name="line14"> 14: </a><font color="#B22222">  Not collective</font>
+
+<a name="line16"> 16: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line17"> 17: </a><font color="#B22222">+ sname    - name of a new user-defined regressor</font>
+<a name="line18"> 18: </a><font color="#B22222">- function - routine to create method context</font>
+
+<a name="line20"> 20: </a><font color="#B22222">  Notes:</font>
+<a name="line21"> 21: </a><font color="#B22222">  `<a href="../../../../manualpages/PetscRegressor/PetscRegressorRegister.html">PetscRegressorRegister</a>()` may be called multiple times to add several user-defined regressors.</font>
+
+<a name="line23"> 23: </a><font color="#B22222">  Example Usage:</font>
+<a name="line24"> 24: </a><font color="#B22222">.vb</font>
+<a name="line25"> 25: </a><font color="#B22222">   <a href="../../../../manualpages/PetscRegressor/PetscRegressorRegister.html">PetscRegressorRegister</a>("my_regressor",MyRegressorCreate);</font>
+<a name="line26"> 26: </a><font color="#B22222">.ve</font>
+
+<a name="line28"> 28: </a><font color="#B22222">  Then, your regressor can be chosen with the procedural interface via</font>
+<a name="line29"> 29: </a><font color="#B22222">.vb</font>
+<a name="line30"> 30: </a><font color="#B22222">     <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>(regressor,"my_regressor")</font>
+<a name="line31"> 31: </a><font color="#B22222">.ve</font>
+<a name="line32"> 32: </a><font color="#B22222">  or at runtime via the option</font>
+<a name="line33"> 33: </a><font color="#B22222">.vb</font>
+<a name="line34"> 34: </a><font color="#B22222">    -regressor_type my_regressor</font>
+<a name="line35"> 35: </a><font color="#B22222">.ve</font>
+
+<a name="line37"> 37: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line39"> 39: </a><font color="#B22222">.seealso: `PetscRegressorRegisterAll()`</font>
+<a name="line40"> 40: </a><font color="#B22222">@*/</font>
+<a name="line41"> 41: </a><strong><font color="#4169E1"><a name="PetscRegressorRegister"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorRegister.html">PetscRegressorRegister</a>(const char sname[], <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*function)(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>))</font></strong>
+<a name="line42"> 42: </a>{
+<a name="line43"> 43: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line44"> 44: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorInitializePackage.html">PetscRegressorInitializePackage</a>());
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFunctionListAdd.html">PetscFunctionListAdd</a>(&amp;PetscRegressorList, sname, function));
+<a name="line46"> 46: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line47"> 47: </a>}
+
+<a name="line49"> 49: </a><font color="#B22222">/*@</font>
+<a name="line50"> 50: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a> - Creates a `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` object.</font>
+
+<a name="line52"> 52: </a><font color="#B22222">  Collective</font>
+
+<a name="line54"> 54: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line55"> 55: </a><font color="#B22222">. comm - the MPI communicator that will share the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` object</font>
+
+<a name="line57"> 57: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line58"> 58: </a><font color="#B22222">. newregressor - the new `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` object</font>
+
+<a name="line60"> 60: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line62"> 62: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorPredict.html">PetscRegressorPredict</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`</font>
+<a name="line63"> 63: </a><font color="#B22222">@*/</font>
+<a name="line64"> 64: </a><strong><font color="#4169E1"><a name="PetscRegressorCreate"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> *newregressor)</font></strong>
+<a name="line65"> 65: </a>{
+<a name="line66"> 66: </a>  <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor;
+
+<a name="line68"> 68: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line69"> 69: </a>  PetscAssertPointer(newregressor, 2);
+<a name="line70"> 70: </a>  *newregressor = NULL;
+<a name="line71"> 71: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorInitializePackage.html">PetscRegressorInitializePackage</a>());
+
+<a name="line73"> 73: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscHeaderCreate.html">PetscHeaderCreate</a>(regressor, PETSCREGRESSOR_CLASSID, <font color="#666666">"<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>"</font>, <font color="#666666">"Regressor"</font>, <font color="#666666">"<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>"</font>, comm, <a href="../../../../manualpages/PetscRegressor/PetscRegressorDestroy.html">PetscRegressorDestroy</a>, <a href="../../../../manualpages/PetscRegressor/PetscRegressorView.html">PetscRegressorView</a>));
+
+<a name="line75"> 75: </a>  regressor-&gt;setupcalled = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line76"> 76: </a>  regressor-&gt;fitcalled   = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line77"> 77: </a>  regressor-&gt;data        = NULL;
+<a name="line78"> 78: </a>  regressor-&gt;training    = NULL;
+<a name="line79"> 79: </a>  regressor-&gt;target      = NULL;
+<a name="line80"> 80: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterSetDefault.html">PetscObjectParameterSetDefault</a>(regressor, regularizer_weight, 1.0); <font color="#B22222">// Default to regularizer weight of 1.0, usually the default in SciKit-learn</font>
+
+<a name="line82"> 82: </a>  *newregressor = regressor;
+<a name="line83"> 83: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line84"> 84: </a>}
+
+<a name="line86"> 86: </a><font color="#B22222">/*@</font>
+<a name="line87"> 87: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorView.html">PetscRegressorView</a> - Prints information about the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` object</font>
+
+<a name="line89"> 89: </a><font color="#B22222">  Collective</font>
+
+<a name="line91"> 91: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line92"> 92: </a><font color="#B22222">+ regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+<a name="line93"> 93: </a><font color="#B22222">- viewer    - a `<a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>` context</font>
+
+<a name="line95"> 95: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line96"> 96: </a><font color="#B22222">. -regressor_view - Calls `<a href="../../../../manualpages/PetscRegressor/PetscRegressorView.html">PetscRegressorView</a>()` at the end of `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`</font>
+
+<a name="line98"> 98: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line100">100: </a><font color="#B22222">  Notes:</font>
+<a name="line101">101: </a><font color="#B22222">  The available visualization contexts include</font>
+<a name="line102">102: </a><font color="#B22222">+     `<a href="../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>` - standard output (default)</font>
+<a name="line103">103: </a><font color="#B22222">-     `<a href="../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>` - synchronized standard</font>
+<a name="line104">104: </a><font color="#B22222">  output where only the first processor opens</font>
+<a name="line105">105: </a><font color="#B22222">  the file.  All other processors send their</font>
+<a name="line106">106: </a><font color="#B22222">  data to the first processor to print.</font>
+
+<a name="line108">108: </a><font color="#B22222">.seealso: [](ch_regressor), `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`, `<a href="../../../../manualpages/Viewer/PetscViewerASCIIOpen.html">PetscViewerASCIIOpen</a>()`</font>
+<a name="line109">109: </a><font color="#B22222">@*/</font>
+<a name="line110">110: </a><strong><font color="#4169E1"><a name="PetscRegressorView"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorView.html">PetscRegressorView</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, <a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer)</font></strong>
+<a name="line111">111: </a>{
+<a name="line112">112: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>          isascii, isstring;
+<a name="line113">113: </a>  <a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a> type;
+
+<a name="line115">115: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line117">117: </a>  <font color="#4169E1">if</font> (!viewer) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIGetStdout.html">PetscViewerASCIIGetStdout</a>(((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor)-&gt;comm, &amp;viewer));
+<a name="line119">119: </a>  PetscCheckSameComm(regressor, 1, viewer, 2);
+
+<a name="line121">121: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)viewer, <a href="../../../../manualpages/Viewer/PETSCVIEWERASCII.html">PETSCVIEWERASCII</a>, &amp;isascii));
+<a name="line122">122: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)viewer, <a href="../../../../manualpages/Viewer/PETSCVIEWERSTRING.html">PETSCVIEWERSTRING</a>, &amp;isstring));
+<a name="line123">123: </a>  <font color="#4169E1">if</font> (isascii) {
+<a name="line124">124: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectPrintClassNamePrefixType.html">PetscObjectPrintClassNamePrefixType</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor, viewer));
+
+<a name="line126">126: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPushTab.html">PetscViewerASCIIPushTab</a>(viewer));
+<a name="line127">127: </a>    <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(regressor, view, viewer);
+<a name="line128">128: </a>    <font color="#4169E1">if</font> (regressor-&gt;tao) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Tao/TaoView.html">TaoView</a>(regressor-&gt;tao, viewer));
+<a name="line129">129: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPopTab.html">PetscViewerASCIIPopTab</a>(viewer));
+<a name="line130">130: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (isstring) {
+<a name="line131">131: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorGetType.html">PetscRegressorGetType</a>(regressor, &amp;type));
+<a name="line132">132: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerStringSPrintf.html">PetscViewerStringSPrintf</a>(viewer, <font color="#666666">" <a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a>: %-7.7s"</font>, type));
+<a name="line133">133: </a>  }
+<a name="line134">134: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line135">135: </a>}
+
+<a name="line137">137: </a><font color="#B22222">/*@</font>
+<a name="line138">138: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorViewFromOptions.html">PetscRegressorViewFromOptions</a> - View a `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` object based on values in the options database</font>
+
+<a name="line140">140: </a><font color="#B22222">  Collective</font>
+
+<a name="line142">142: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line143">143: </a><font color="#B22222">+ A    - the  `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+<a name="line144">144: </a><font color="#B22222">. obj  - Optional object that provides the prefix for the options database</font>
+<a name="line145">145: </a><font color="#B22222">- name - command line option</font>
+
+<a name="line147">147: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line149">149: </a><font color="#B22222">.seealso: [](ch_regressor), `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorView.html">PetscRegressorView</a>`, `<a href="../../../../manualpages/Sys/PetscObjectViewFromOptions.html">PetscObjectViewFromOptions</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`</font>
+<a name="line150">150: </a><font color="#B22222">@*/</font>
+<a name="line151">151: </a><strong><font color="#4169E1"><a name="PetscRegressorViewFromOptions"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorViewFromOptions.html">PetscRegressorViewFromOptions</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> A, <a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> obj, const char name[])</font></strong>
+<a name="line152">152: </a>{
+<a name="line153">153: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line155">155: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectViewFromOptions.html">PetscObjectViewFromOptions</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, obj, name));
+<a name="line156">156: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line157">157: </a>}
+
+<a name="line159">159: </a><font color="#B22222">/*@</font>
+<a name="line160">160: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetFromOptions.html">PetscRegressorSetFromOptions</a> - Sets `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` options from the options database.</font>
+
+<a name="line162">162: </a><font color="#B22222">  Collective</font>
+
+<a name="line164">164: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line165">165: </a><font color="#B22222">. regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+
+<a name="line167">167: </a><font color="#B22222">  Options Database Keys:</font>
+<a name="line168">168: </a><font color="#B22222">. -regressor_type &lt;type&gt; - the particular type of regressor to be used; see `<a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a>` for complete list</font>
+
+<a name="line170">170: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line172">172: </a><font color="#B22222">  Note:</font>
+<a name="line173">173: </a><font color="#B22222">  This routine must be called before `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>()` (or `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`, which calls</font>
+<a name="line174">174: </a><font color="#B22222">  the former) if the user is to be allowed to set the regressor type.</font>
+
+<a name="line176">176: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`</font>
+<a name="line177">177: </a><font color="#B22222">@*/</font>
+<a name="line178">178: </a><strong><font color="#4169E1"><a name="PetscRegressorSetFromOptions"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetFromOptions.html">PetscRegressorSetFromOptions</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor)</font></strong>
+<a name="line179">179: </a>{
+<a name="line180">180: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>          flg;
+<a name="line181">181: </a>  <a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a> default_type = <a href="../../../../manualpages/PetscRegressor/PETSCREGRESSORLINEAR.html">PETSCREGRESSORLINEAR</a>;
+<a name="line182">182: </a>  char               type[256];
+
+<a name="line184">184: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line186">186: </a>  <font color="#4169E1">if</font> (((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor)-&gt;type_name) default_type = ((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor)-&gt;type_name;
+<a name="line187">187: </a>  <a href="../../../../manualpages/Sys/PetscObjectOptionsBegin.html">PetscObjectOptionsBegin</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor);
+<a name="line188">188: </a>  <font color="#B22222">/* Check for type from options */</font>
+<a name="line189">189: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsFList.html">PetscOptionsFList</a>(<font color="#666666">"-regressor_type"</font>, <font color="#666666">"<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> type"</font>, <font color="#666666">"<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>"</font>, PetscRegressorList, default_type, type, 256, &amp;flg));
+<a name="line190">190: </a>  <font color="#4169E1">if</font> (flg) {
+<a name="line191">191: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>(regressor, type));
+<a name="line192">192: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (!((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor)-&gt;type_name) {
+<a name="line193">193: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>(regressor, default_type));
+<a name="line194">194: </a>  }
+<a name="line195">195: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-regressor_regularizer_weight"</font>, <font color="#666666">"Weight for the regularizer"</font>, <font color="#666666">"<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetRegularizerWeight.html">PetscRegressorSetRegularizerWeight</a>"</font>, regressor-&gt;regularizer_weight, &amp;regressor-&gt;regularizer_weight, &amp;flg));
+<a name="line196">196: </a>  <font color="#4169E1">if</font> (flg) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetRegularizerWeight.html">PetscRegressorSetRegularizerWeight</a>(regressor, regressor-&gt;regularizer_weight));
+<a name="line197">197: </a>  <font color="#B22222">// The above is a little superfluous, because we have already set regressor->regularizer_weight above, but we also need to set the flag indicating that the user has set the weight!</font>
+<a name="line198">198: </a>  <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(regressor, setfromoptions, PetscOptionsObject);
+<a name="line199">199: </a>  <a href="../../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+<a name="line200">200: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line201">201: </a>}
+
+<a name="line203">203: </a><font color="#B22222">/*@</font>
+<a name="line204">204: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a> - Sets up the internal data structures for the later use of a regressor.</font>
+
+<a name="line206">206: </a><font color="#B22222">  Collective</font>
+
+<a name="line208">208: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line209">209: </a><font color="#B22222">. regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+
+<a name="line211">211: </a><font color="#B22222">  Notes:</font>
+<a name="line212">212: </a><font color="#B22222">  For basic use of the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` solvers the user need not to explicitly call</font>
+<a name="line213">213: </a><font color="#B22222">  `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>()`, since these actions will automatically occur during</font>
+<a name="line214">214: </a><font color="#B22222">  the call to `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`.  However, if one wishes to control this</font>
+<a name="line215">215: </a><font color="#B22222">  phase separately, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>()` should be called after `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`,</font>
+<a name="line216">216: </a><font color="#B22222">  `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>()`, and optional routines of the form `PetscRegressorSetXXX()`,</font>
+<a name="line217">217: </a><font color="#B22222">  but before `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`.</font>
+
+<a name="line219">219: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line221">221: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorDestroy.html">PetscRegressorDestroy</a>()`</font>
+<a name="line222">222: </a><font color="#B22222">@*/</font>
+<a name="line223">223: </a><strong><font color="#4169E1"><a name="PetscRegressorSetUp"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor)</font></strong>
+<a name="line224">224: </a>{
+<a name="line225">225: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line227">227: </a>  <font color="#4169E1">if</font> (regressor-&gt;setupcalled) <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line228">228: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PetscRegressor_SetUp, regressor, 0, 0, 0));
+<a name="line229">229: </a>  <font color="#B22222">//TODO is there some mat vec etc that must be set, like TaoSolution?</font>
+<a name="line230">230: </a>  <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(regressor, setup);
+<a name="line231">231: </a>  regressor-&gt;setupcalled = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line232">232: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PetscRegressor_SetUp, regressor, 0, 0, 0));
+<a name="line233">233: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line234">234: </a>}
+
+<a name="line236">236: </a><font color="#B22222">/* NOTE: I've decided to make this take X and y, like the Scikit-learn Fit routines do.</font>
+<a name="line237">237: </a><font color="#B22222"> * Am I overlooking some reason that X should be set in a separate function call, a la <a href="../../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>()?. */</font>
+<a name="line238">238: </a><font color="#B22222">/*@</font>
+<a name="line239">239: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a> - Fit, or train, a regressor from a training dataset</font>
+
+<a name="line241">241: </a><font color="#B22222">  Collective</font>
+
+<a name="line243">243: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line244">244: </a><font color="#B22222">+ regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+<a name="line245">245: </a><font color="#B22222">. X         - matrix of training data (of dimension [number of samples] x [number of features])</font>
+<a name="line246">246: </a><font color="#B22222">- y         - vector of target values from the training dataset</font>
+
+<a name="line248">248: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line250">250: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorDestroy.html">PetscRegressorDestroy</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorPredict.html">PetscRegressorPredict</a>()`</font>
+<a name="line251">251: </a><font color="#B22222">@*/</font>
+<a name="line252">252: </a><strong><font color="#4169E1"><a name="PetscRegressorFit"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> X, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line253">253: </a>{
+<a name="line254">254: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+
+<a name="line259">259: </a>  <font color="#4169E1">if</font> (X) {
+<a name="line260">260: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)X));
+<a name="line261">261: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;regressor-&gt;training));
+<a name="line262">262: </a>    regressor-&gt;training = X;
+<a name="line263">263: </a>  }
+<a name="line264">264: </a>  <font color="#4169E1">if</font> (y) {
+<a name="line265">265: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)y));
+<a name="line266">266: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;regressor-&gt;target));
+<a name="line267">267: </a>    regressor-&gt;target = y;
+<a name="line268">268: </a>  }
+<a name="line269">269: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>(regressor));
+
+<a name="line271">271: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PetscRegressor_Fit, regressor, X, y, 0));
+<a name="line272">272: </a>  <a href="../../../../manualpages/Sys/PetscUseTypeMethod.html">PetscUseTypeMethod</a>(regressor, fit);
+<a name="line273">273: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PetscRegressor_Fit, regressor, X, y, 0));
+<a name="line274">274: </a>  <font color="#B22222">//TODO print convergence data</font>
+<a name="line275">275: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorViewFromOptions.html">PetscRegressorViewFromOptions</a>(regressor, NULL, <font color="#666666">"-regressor_view"</font>));
+<a name="line276">276: </a>  regressor-&gt;fitcalled = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line277">277: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line278">278: </a>}
+
+<a name="line280">280: </a><font color="#B22222">/*@</font>
+<a name="line281">281: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorPredict.html">PetscRegressorPredict</a> - Compute predictions (that is, perform inference) using a fitted regression model.</font>
+
+<a name="line283">283: </a><font color="#B22222">  Collective</font>
+
+<a name="line285">285: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line286">286: </a><font color="#B22222">+ regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context (for which `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()` must have been called)</font>
+<a name="line287">287: </a><font color="#B22222">- X         - data matrix of unlabeled observations</font>
+
+<a name="line289">289: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line290">290: </a><font color="#B22222">. y - vector of predicted labels</font>
+
+<a name="line292">292: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line294">294: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorDestroy.html">PetscRegressorDestroy</a>()`</font>
+<a name="line295">295: </a><font color="#B22222">@*/</font>
+<a name="line296">296: </a><strong><font color="#4169E1"><a name="PetscRegressorPredict"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorPredict.html">PetscRegressorPredict</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> X, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line297">297: </a>{
+<a name="line298">298: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line302">302: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(regressor-&gt;fitcalled == <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, ((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor)-&gt;comm, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>() must be called before <a href="../../../../manualpages/PetscRegressor/PetscRegressorPredict.html">PetscRegressorPredict</a>()"</font>);
+<a name="line303">303: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PetscRegressor_Predict, regressor, X, y, 0));
+<a name="line304">304: </a>  <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(regressor, predict, X, y);
+<a name="line305">305: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PetscRegressor_Predict, regressor, X, y, 0));
+<a name="line306">306: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line307">307: </a>}
+
+<a name="line309">309: </a><font color="#B22222">/*@</font>
+<a name="line310">310: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorReset.html">PetscRegressorReset</a> - Resets a `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context by removing any allocated `<a href="../../../../manualpages/Vec/Vec.html">Vec</a>` and `<a href="../../../../manualpages/Mat/Mat.html">Mat</a>`. Any options set in the object remain.</font>
+
+<a name="line312">312: </a><font color="#B22222">  Collective</font>
+
+<a name="line314">314: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line315">315: </a><font color="#B22222">. regressor - context obtained from `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`</font>
+
+<a name="line317">317: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line319">319: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorFit.html">PetscRegressorFit</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorPredict.html">PetscRegressorPredict</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorDestroy.html">PetscRegressorDestroy</a>()`</font>
+<a name="line320">320: </a><font color="#B22222">@*/</font>
+<a name="line321">321: </a><strong><font color="#4169E1"><a name="PetscRegressorReset"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorReset.html">PetscRegressorReset</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor)</font></strong>
+<a name="line322">322: </a>{
+<a name="line323">323: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line325">325: </a>  <font color="#4169E1">if</font> (regressor-&gt;ops-&gt;reset) <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(regressor, reset);
+<a name="line326">326: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;regressor-&gt;training));
+<a name="line327">327: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;regressor-&gt;target));
+<a name="line328">328: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Tao/TaoDestroy.html">TaoDestroy</a>(&amp;regressor-&gt;tao));
+<a name="line329">329: </a>  regressor-&gt;setupcalled = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line330">330: </a>  regressor-&gt;fitcalled   = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line331">331: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line332">332: </a>}
+
+<a name="line334">334: </a><font color="#B22222">/*@C</font>
+<a name="line335">335: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorDestroy.html">PetscRegressorDestroy</a> - Destroys the regressor context that was created with `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`.</font>
+
+<a name="line337">337: </a><font color="#B22222">  Collective</font>
+
+<a name="line339">339: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line340">340: </a><font color="#B22222">. regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+
+<a name="line342">342: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line344">344: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorCreate.html">PetscRegressorCreate</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetUp.html">PetscRegressorSetUp</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorReset.html">PetscRegressorReset</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`</font>
+<a name="line345">345: </a><font color="#B22222">@*/</font>
+<a name="line346">346: </a><strong><font color="#4169E1"><a name="PetscRegressorDestroy"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorDestroy.html">PetscRegressorDestroy</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> *regressor)</font></strong>
+<a name="line347">347: </a>{
+<a name="line348">348: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line349">349: </a>  <font color="#4169E1">if</font> (!*regressor) <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line351">351: </a>  <font color="#4169E1">if</font> (--((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*regressor)-&gt;refct &gt; 0) {
+<a name="line352">352: </a>    *regressor = NULL;
+<a name="line353">353: </a>    <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line354">354: </a>  }
+
+<a name="line356">356: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressorReset.html">PetscRegressorReset</a>(*regressor));
+<a name="line357">357: </a>  <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(*regressor, destroy);
+
+<a name="line359">359: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscHeaderDestroy.html">PetscHeaderDestroy</a>(regressor));
+<a name="line360">360: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line361">361: </a>}
+
+<a name="line363">363: </a><font color="#B22222">/*@C</font>
+<a name="line364">364: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a> - Sets the type for the regressor.</font>
+
+<a name="line366">366: </a><font color="#B22222">  Collective</font>
+
+<a name="line368">368: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line369">369: </a><font color="#B22222">+ regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+<a name="line370">370: </a><font color="#B22222">- type      - a known regression method</font>
+
+<a name="line372">372: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line373">373: </a><font color="#B22222">. -regressor_type &lt;type&gt; - Sets the type of regressor; use -help for a list of available types</font>
+
+<a name="line375">375: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line377">377: </a><font color="#B22222">  Notes:</font>
+<a name="line378">378: </a><font color="#B22222">  See "include/petscregressor.h" for available methods (for instance)</font>
+<a name="line379">379: </a><font color="#B22222">.    `<a href="../../../../manualpages/PetscRegressor/PETSCREGRESSORLINEAR.html">PETSCREGRESSORLINEAR</a>` - Regression model that is linear in its coefficients; supports ordinary least squares as well as regularized variants</font>
+
+<a name="line381">381: </a><font color="#B22222">  Normally, it is best to use the `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetFromOptions.html">PetscRegressorSetFromOptions</a>()` command and then</font>
+<a name="line382">382: </a><font color="#B22222">  set the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` type from the options database rather than by using</font>
+<a name="line383">383: </a><font color="#B22222">  this routine, as this provides maximum flexibility.</font>
+<a name="line384">384: </a><font color="#B22222">  The `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>()` routine is provided for those situations where it</font>
+<a name="line385">385: </a><font color="#B22222">  is necessary to set the nonlinear solver independently of the command</font>
+<a name="line386">386: </a><font color="#B22222">  line or options database.</font>
+
+<a name="line388">388: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a>`</font>
+<a name="line389">389: </a><font color="#B22222">@*/</font>
+<a name="line390">390: </a><strong><font color="#4169E1"><a name="PetscRegressorSetType"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, <a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a> type)</font></strong>
+<a name="line391">391: </a>{
+<a name="line392">392: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*r)(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>);
+<a name="line393">393: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> match;
+
+<a name="line395">395: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line397">397: </a>  PetscAssertPointer(type, 2);
+
+<a name="line399">399: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor, type, &amp;match));
+<a name="line400">400: </a>  <font color="#4169E1">if</font> (match) <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+
+<a name="line402">402: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFunctionListFind.html">PetscFunctionListFind</a>(PetscRegressorList, type, &amp;r));
+<a name="line403">403: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(r, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_UNKNOWN_TYPE</a>, <font color="#666666">"Unable to find requested <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> type %s"</font>, type);
+
+<a name="line405">405: </a>  <font color="#B22222">/* Destroy the existing solver information */</font>
+<a name="line406">406: </a>  <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(regressor, destroy);
+<a name="line407">407: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Tao/TaoDestroy.html">TaoDestroy</a>(&amp;regressor-&gt;tao));
+<a name="line408">408: </a>  regressor-&gt;ops-&gt;setup          = NULL;
+<a name="line409">409: </a>  regressor-&gt;ops-&gt;setfromoptions = NULL;
+<a name="line410">410: </a>  regressor-&gt;ops-&gt;settraining    = NULL;
+<a name="line411">411: </a>  regressor-&gt;ops-&gt;fit            = NULL;
+<a name="line412">412: </a>  regressor-&gt;ops-&gt;predict        = NULL;
+<a name="line413">413: </a>  regressor-&gt;ops-&gt;destroy        = NULL;
+<a name="line414">414: </a>  regressor-&gt;ops-&gt;reset          = NULL;
+<a name="line415">415: </a>  regressor-&gt;ops-&gt;view           = NULL;
+
+<a name="line417">417: </a>  <font color="#B22222">/* Call the PetscRegressorCreate_XXX routine for this particular regressor */</font>
+<a name="line418">418: </a>  regressor-&gt;setupcalled = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line419">419: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*r)(regressor));
+<a name="line420">420: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscObjectChangeTypeName((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor, type));
+<a name="line421">421: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line422">422: </a>}
+
+<a name="line424">424: </a><font color="#B22222">/*@</font>
+<a name="line425">425: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorGetType.html">PetscRegressorGetType</a> - Gets the current `<a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a>` being used in the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` object</font>
+
+<a name="line427">427: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line429">429: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line430">430: </a><font color="#B22222">. regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` solver context</font>
+
+<a name="line432">432: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line433">433: </a><font color="#B22222">. type - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a>`</font>
+
+<a name="line435">435: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line437">437: </a><font color="#B22222">.seealso: [](ch_regressor), `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a>`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>()`</font>
+<a name="line438">438: </a><font color="#B22222">@*/</font>
+<a name="line439">439: </a><strong><font color="#4169E1"><a name="PetscRegressorGetType"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorGetType.html">PetscRegressorGetType</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, <a href="../../../../manualpages/PetscRegressor/PetscRegressorType.html">PetscRegressorType</a> *type)</font></strong>
+<a name="line440">440: </a>{
+<a name="line441">441: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line443">443: </a>  PetscAssertPointer(type, 2);
+<a name="line444">444: </a>  *type = ((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor)-&gt;type_name;
+<a name="line445">445: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line446">446: </a>}
+
+<a name="line448">448: </a><font color="#B22222">/*@</font>
+<a name="line449">449: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetRegularizerWeight.html">PetscRegressorSetRegularizerWeight</a> - Sets the weight to be used for the regularizer for a `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+
+<a name="line451">451: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line453">453: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line454">454: </a><font color="#B22222">+ regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+<a name="line455">455: </a><font color="#B22222">- weight    - the regularizer weight</font>
+
+<a name="line457">457: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line458">458: </a><font color="#B22222">. regressor_regularizer_weight &lt;weight&gt; - sets the regularizer's weight</font>
+
+<a name="line460">460: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line462">462: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetType.html">PetscRegressorSetType</a>`</font>
+<a name="line463">463: </a><font color="#B22222">@*/</font>
+<a name="line464">464: </a><strong><font color="#4169E1"><a name="PetscRegressorSetRegularizerWeight"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetRegularizerWeight.html">PetscRegressorSetRegularizerWeight</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> weight)</font></strong>
+<a name="line465">465: </a>{
+<a name="line466">466: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line469">469: </a>  regressor-&gt;regularizer_weight = weight;
+<a name="line470">470: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line471">471: </a>}
+
+<a name="line473">473: </a><font color="#B22222">/*@</font>
+<a name="line474">474: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorGetTao.html">PetscRegressorGetTao</a> - Returns the `<a href="../../../../manualpages/Tao/Tao.html">Tao</a>` context for a `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` object.</font>
+
+<a name="line476">476: </a><font color="#B22222">  Not Collective, but if the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` is parallel, then the `<a href="../../../../manualpages/Tao/Tao.html">Tao</a>` object is parallel</font>
+
+<a name="line478">478: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line479">479: </a><font color="#B22222">. regressor - the regressor context</font>
+
+<a name="line481">481: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line482">482: </a><font color="#B22222">. tao - the `<a href="../../../../manualpages/Tao/Tao.html">Tao</a>` context</font>
+
+<a name="line484">484: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line486">486: </a><font color="#B22222">  Notes:</font>
+<a name="line487">487: </a><font color="#B22222">  The `<a href="../../../../manualpages/Tao/Tao.html">Tao</a>` object will be created if it does not yet exist.</font>
+
+<a name="line489">489: </a><font color="#B22222">  The user can directly manipulate the `<a href="../../../../manualpages/Tao/Tao.html">Tao</a>` context to set various</font>
+<a name="line490">490: </a><font color="#B22222">  options, etc.  Likewise, the user can then extract and manipulate the</font>
+<a name="line491">491: </a><font color="#B22222">  child contexts such as `<a href="../../../../manualpages/KSP/KSP.html">KSP</a>` or `<a href="../../../../manualpages/Tao/TaoLineSearch.html">TaoLineSearch</a>`as well.</font>
+
+<a name="line493">493: </a><font color="#B22222">  Depending on the type of the regressor and the options that are set, the regressor may use not use a `<a href="../../../../manualpages/Tao/Tao.html">Tao</a>` object.</font>
+
+<a name="line495">495: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/PetscRegressor/PetscRegressorLinearGetKSP.html">PetscRegressorLinearGetKSP</a>()`</font>
+<a name="line496">496: </a><font color="#B22222">@*/</font>
+<a name="line497">497: </a><strong><font color="#4169E1"><a name="PetscRegressorGetTao"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorGetTao.html">PetscRegressorGetTao</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, <a href="../../../../manualpages/Tao/Tao.html">Tao</a> *tao)</font></strong>
+<a name="line498">498: </a>{
+<a name="line499">499: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line501">501: </a>  PetscAssertPointer(tao, 2);
+<a name="line502">502: </a>  <font color="#B22222">// Analogous to how <a href="../../../../manualpages/SNES/SNESGetKSP.html">SNESGetKSP</a>() operates, this routine should create the <a href="../../../../manualpages/Tao/Tao.html">Tao</a> if it doesn't exist.</font>
+<a name="line503">503: </a>  <font color="#4169E1">if</font> (!regressor-&gt;tao) {
+<a name="line504">504: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Tao/TaoCreate.html">TaoCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor), &amp;regressor-&gt;tao));
+<a name="line505">505: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectIncrementTabLevel.html">PetscObjectIncrementTabLevel</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor-&gt;tao, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor, 1));
+<a name="line506">506: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetOptions.html">PetscObjectSetOptions</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor-&gt;tao, ((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor)-&gt;options));
+<a name="line507">507: </a>  }
+<a name="line508">508: </a>  *tao = regressor-&gt;tao;
+<a name="line509">509: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line510">510: </a>}
+
+<a name="line512">512: </a><font color="#B22222">/*@</font>
+<a name="line513">513: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetOptionsPrefix.html">PetscRegressorSetOptionsPrefix</a> - Sets the prefix used for searching for all</font>
+<a name="line514">514: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> options in the database.</font>
+
+<a name="line516">516: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line518">518: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line519">519: </a><font color="#B22222">+ regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+<a name="line520">520: </a><font color="#B22222">- p         - the prefix string to prepend to all <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> option requests</font>
+
+<a name="line522">522: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line524">524: </a><font color="#B22222">  Notes:</font>
+<a name="line525">525: </a><font color="#B22222">  A hyphen (-) must NOT be given at the beginning of the prefix name.</font>
+<a name="line526">526: </a><font color="#B22222">  The first character of all runtime options is AUTOMATICALLY the hyphen.</font>
+
+<a name="line528">528: </a><font color="#B22222">  For example, to distinguish between the runtime options for two</font>
+<a name="line529">529: </a><font color="#B22222">  different <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> solvers, one could call</font>
+<a name="line530">530: </a><font color="#B22222">.vb</font>
+<a name="line531">531: </a><font color="#B22222">      <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetOptionsPrefix.html">PetscRegressorSetOptionsPrefix</a>(regressor1,"sys1_")</font>
+<a name="line532">532: </a><font color="#B22222">      <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetOptionsPrefix.html">PetscRegressorSetOptionsPrefix</a>(regressor2,"sys2_")</font>
+<a name="line533">533: </a><font color="#B22222">.ve</font>
+
+<a name="line535">535: </a><font color="#B22222">  This would enable use of different options for each system, such as</font>
+<a name="line536">536: </a><font color="#B22222">.vb</font>
+<a name="line537">537: </a><font color="#B22222">      -sys1_regressor_method linear -sys1_regressor_regularizer_weight 1.2</font>
+<a name="line538">538: </a><font color="#B22222">      -sys2_regressor_method linear -sys2_regressor_regularizer_weight 1.1</font>
+<a name="line539">539: </a><font color="#B22222">.ve</font>
+
+<a name="line541">541: </a><font color="#B22222">.seealso: [](ch_regressor), `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetFromOptions.html">PetscRegressorSetFromOptions</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorAppendOptionsPrefix.html">PetscRegressorAppendOptionsPrefix</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorGetOptionsPrefix.html">PetscRegressorGetOptionsPrefix</a>()`</font>
+<a name="line542">542: </a><font color="#B22222">@*/</font>
+<a name="line543">543: </a><strong><font color="#4169E1"><a name="PetscRegressorSetOptionsPrefix"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorSetOptionsPrefix.html">PetscRegressorSetOptionsPrefix</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, const char p[])</font></strong>
+<a name="line544">544: </a>{
+<a name="line545">545: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line547">547: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetOptionsPrefix.html">PetscObjectSetOptionsPrefix</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor, p));
+<a name="line548">548: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line549">549: </a>}
+
+<a name="line551">551: </a><font color="#B22222">/*@</font>
+<a name="line552">552: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorAppendOptionsPrefix.html">PetscRegressorAppendOptionsPrefix</a> - Appends to the prefix used for searching for all <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> options in the database.</font>
+
+<a name="line554">554: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line556">556: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line557">557: </a><font color="#B22222">+ regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` solver context</font>
+<a name="line558">558: </a><font color="#B22222">- p         - the prefix string to prepend to all `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` option requests</font>
+
+<a name="line560">560: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line562">562: </a><font color="#B22222">  Note:</font>
+<a name="line563">563: </a><font color="#B22222">  A hyphen (-) must NOT be given at the beginning of the prefix name.</font>
+<a name="line564">564: </a><font color="#B22222">  The first character of all runtime options is automatically the hyphen.</font>
+
+<a name="line566">566: </a><font color="#B22222">.seealso: [](ch_regressor), `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetFromOptions.html">PetscRegressorSetFromOptions</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetOptionsPrefix.html">PetscRegressorSetOptionsPrefix</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorGetOptionsPrefix.html">PetscRegressorGetOptionsPrefix</a>()`</font>
+<a name="line567">567: </a><font color="#B22222">@*/</font>
+<a name="line568">568: </a><strong><font color="#4169E1"><a name="PetscRegressorAppendOptionsPrefix"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorAppendOptionsPrefix.html">PetscRegressorAppendOptionsPrefix</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, const char p[])</font></strong>
+<a name="line569">569: </a>{
+<a name="line570">570: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line572">572: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectAppendOptionsPrefix.html">PetscObjectAppendOptionsPrefix</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor, p));
+<a name="line573">573: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line574">574: </a>}
+
+<a name="line576">576: </a><font color="#B22222">/*@</font>
+<a name="line577">577: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressorGetOptionsPrefix.html">PetscRegressorGetOptionsPrefix</a> - Gets the prefix used for searching for all</font>
+<a name="line578">578: </a><font color="#B22222">  <a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> options in the database</font>
+
+<a name="line580">580: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line582">582: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line583">583: </a><font color="#B22222">. regressor - the `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>` context</font>
+
+<a name="line585">585: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line586">586: </a><font color="#B22222">. p - pointer to the prefix string used is returned</font>
+
+<a name="line588">588: </a><font color="#B22222">  Fortran Notes:</font>
+<a name="line589">589: </a><font color="#B22222">  Pass in a string 'prefix' of sufficient length to hold the prefix.</font>
+
+<a name="line591">591: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line593">593: </a><font color="#B22222">.seealso: [](ch_regressor), `<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a>`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetFromOptions.html">PetscRegressorSetFromOptions</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorSetOptionsPrefix.html">PetscRegressorSetOptionsPrefix</a>()`, `<a href="../../../../manualpages/PetscRegressor/PetscRegressorAppendOptionsPrefix.html">PetscRegressorAppendOptionsPrefix</a>()`</font>
+<a name="line594">594: </a><font color="#B22222">@*/</font>
+<a name="line595">595: </a><strong><font color="#4169E1"><a name="PetscRegressorGetOptionsPrefix"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/PetscRegressor/PetscRegressorGetOptionsPrefix.html">PetscRegressorGetOptionsPrefix</a>(<a href="../../../../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a> regressor, const char *p[])</font></strong>
+<a name="line596">596: </a>{
+<a name="line597">597: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line599">599: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectGetOptionsPrefix.html">PetscObjectGetOptionsPrefix</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)regressor, p));
+<a name="line600">600: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line601">601: </a>}
+</pre>
+</body>
+
+</html>
+

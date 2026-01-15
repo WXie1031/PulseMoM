@@ -1,0 +1,88 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/tests/ex186.c">Actual source code: ex186.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:02+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../include/petscmat.h.html">&lt;petscmat.h&gt;</A>
+
+<a name="line3">  3: </a>static char help[] = <font color="#666666">"Example of MatMat ops with MatDense in PETSc.\n"</font>;
+
+<a name="line5">  5: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **args)</font></strong>
+<a name="line6">  6: </a>{
+<a name="line7">  7: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>         A, P, PtAP, RARt, ABC, Pt;
+<a name="line8">  8: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    n = 4, m = 2; <font color="#B22222">// Example dimensions</font>
+<a name="line9">  9: </a>  <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> size;
+
+<a name="line11"> 11: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;args, NULL, help));
+<a name="line12"> 12: </a>  <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_size.html#MPI_Comm_size">MPI_Comm_size</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;size));
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(size == 1, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_WRONG_MPI_SIZE</a>, <font color="#666666">"This example is for sequential runs only."</font>);
+
+<a name="line15"> 15: </a>  <font color="#B22222">// Create dense matrix P (n x m)</font>
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateSeqDense.html">MatCreateSeqDense</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, n, m, NULL, &amp;P));
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> P_values[] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    rows[]     = {0, 1, 2, 3};
+<a name="line19"> 19: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    cols[]     = {0, 1};
+<a name="line20"> 20: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(P, n, rows, m, cols, P_values, <a href="../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line21"> 21: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(P, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line22"> 22: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(P, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatTranspose.html">MatTranspose</a>(P, <a href="../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, &amp;Pt));
+
+<a name="line25"> 25: </a>  <font color="#B22222">// Create dense matrix A (n x n)</font>
+<a name="line26"> 26: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateSeqDense.html">MatCreateSeqDense</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, n, n, NULL, &amp;A));
+<a name="line27"> 27: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetBlockSize.html">MatSetBlockSize</a>(A, n)); <font color="#B22222">// Set block size for A</font>
+<a name="line28"> 28: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> A_values[] = {4.0, 1.0, 2.0, 0.0, 1.0, 3.0, 0.0, 1.0, 2.0, 0.0, 5.0, 2.0, 0.0, 1.0, 2.0, 6.0};
+<a name="line29"> 29: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    indices[]  = {0, 1, 2, 3};
+<a name="line30"> 30: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(A, n, indices, n, indices, A_values, <a href="../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line31"> 31: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(A, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line32"> 32: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(A, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line34"> 34: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatPtAP.html">MatPtAP</a>(A, P, <a href="../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, <a href="../../../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a>, &amp;PtAP));
+<a name="line35"> 35: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatRARt.html">MatRARt</a>(A, Pt, <a href="../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, <a href="../../../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a>, &amp;RARt));
+<a name="line36"> 36: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMatMatMult.html">MatMatMatMult</a>(Pt, A, P, <a href="../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, <a href="../../../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a>, &amp;ABC));
+
+<a name="line38"> 38: </a>  <font color="#B22222">// View matrices</font>
+<a name="line39"> 39: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Matrix P:\n"</font>));
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatView.html">MatView</a>(P, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));
+
+<a name="line42"> 42: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Matrix A:\n"</font>));
+<a name="line43"> 43: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatView.html">MatView</a>(A, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));
+
+<a name="line45"> 45: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Matrix PtAP:\n"</font>));
+<a name="line46"> 46: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatView.html">MatView</a>(PtAP, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));
+
+<a name="line48"> 48: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Matrix RARt:\n"</font>));
+<a name="line49"> 49: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatView.html">MatView</a>(RARt, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));
+
+<a name="line51"> 51: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Matrix ABC:\n"</font>));
+<a name="line52"> 52: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatView.html">MatView</a>(ABC, <a href="../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));
+
+<a name="line54"> 54: </a>  <font color="#B22222">// Clean up</font>
+<a name="line55"> 55: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;P));
+<a name="line56"> 56: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;Pt));
+<a name="line57"> 57: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+<a name="line58"> 58: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;PtAP));
+<a name="line59"> 59: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;RARt));
+<a name="line60"> 60: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;ABC));
+
+<a name="line62"> 62: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line63"> 63: </a>  <font color="#4169E1">return</font> 0;
+<a name="line64"> 64: </a>}
+
+<a name="line66"> 66: </a><font color="#B22222">/*TEST</font>
+
+<a name="line68"> 68: </a><font color="#B22222">  test:</font>
+<a name="line69"> 69: </a><font color="#B22222">    diff_args: -j</font>
+<a name="line70"> 70: </a><font color="#B22222">    suffix: 1</font>
+
+<a name="line72"> 72: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

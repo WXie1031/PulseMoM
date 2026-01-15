@@ -1,0 +1,1155 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ts/tests/ex30.c">Actual source code: ex30.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Grid based Landau collision operator with PIC interface with OpenMP setup. (one species per grid)\n"</font>;
+
+<a name="line3">  3: </a><font color="#B22222">/*</font>
+<a name="line4">  4: </a><font color="#B22222">   Support 2.5V with axisymmetric coordinates</font>
+<a name="line5">  5: </a><font color="#B22222">     - r,z coordinates</font>
+<a name="line6">  6: </a><font color="#B22222">     - Domain and species data input by Landau operator</font>
+<a name="line7">  7: </a><font color="#B22222">     - "radius" for each grid, normalized with electron thermal velocity</font>
+<a name="line8">  8: </a><font color="#B22222">     - Domain: (0,radius) x (-radius,radius), thus first coordinate x[0] is perpendicular velocity and 2pi*x[0] term is added for axisymmetric</font>
+<a name="line9">  9: </a><font color="#B22222">   Supports full 3V</font>
+
+<a name="line11"> 11: </a><font color="#B22222"> */</font>
+
+<a name="line13"> 13: </a>#include <A href="../../../include/petscdmplex.h.html">&lt;petscdmplex.h&gt;</A>
+<a name="line14"> 14: </a>#include <A href="../../../include/petscds.h.html">&lt;petscds.h&gt;</A>
+<a name="line15"> 15: </a>#include <A href="../../../include/petscdmswarm.h.html">&lt;petscdmswarm.h&gt;</A>
+<a name="line16"> 16: </a>#include <A href="../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+<a name="line17"> 17: </a>#include <A href="../../../include/petsc/private/petscimpl.h.html">&lt;petsc/private/petscimpl.h&gt;</A>
+<a name="line18"> 18: </a><font color="#A020F0">#if defined(PETSC_HAVE_OPENMP) &amp;&amp; defined(PETSC_HAVE_THREADSAFETY)</font>
+<a name="line19"> 19: </a><font color="#A020F0">  #include &lt;omp.h&gt;</font>
+<a name="line20"> 20: </a><font color="#A020F0">#endif</font>
+<a name="line21"> 21: </a>#include <A href="../../../include/petsclandau.h.html">&lt;petsclandau.h&gt;</A>
+<a name="line22"> 22: </a>#include <A href="../../../include/petscdmcomposite.h.html">&lt;petscdmcomposite.h&gt;</A>
+
+<a name="line24"> 24: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line25"> 25: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a> MpTrans;
+<a name="line26"> 26: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a> Mp;
+<a name="line27"> 27: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a> ff;
+<a name="line28"> 28: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a> uu;
+<a name="line29"> 29: </a>} MatShellCtx;
+
+<a name="line31"> 31: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line32"> 32: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   v_target;
+<a name="line33"> 33: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   g_target;
+<a name="line34"> 34: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   global_vertex_id_0;
+<a name="line35"> 35: </a>  <a href="../../../manualpages/DM/DM.html">DM</a>        *globSwarmArray;
+<a name="line36"> 36: </a>  LandauCtx *ctx;
+<a name="line37"> 37: </a>  <a href="../../../manualpages/DM/DM.html">DM</a>        *grid_dm;
+<a name="line38"> 38: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>       *g_Mass;
+<a name="line39"> 39: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>       *globMpArray;
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>       *globXArray;
+<a name="line41"> 41: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>  print;
+<a name="line42"> 42: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>  print_entropy;
+<a name="line43"> 43: </a>} PrintCtx;
+
+<a name="line45"> 45: </a><strong><font color="#4169E1"><a name="MatMultMtM_SeqAIJ"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMultMtM_SeqAIJ(<a href="../../../manualpages/Mat/Mat.html">Mat</a> MtM, <a href="../../../manualpages/Vec/Vec.html">Vec</a> xx, <a href="../../../manualpages/Vec/Vec.html">Vec</a> yy)</font></strong>
+<a name="line46"> 46: </a>{
+<a name="line47"> 47: </a>  MatShellCtx *matshellctx;
+
+<a name="line49"> 49: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line50"> 50: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(MtM, &amp;matshellctx));
+<a name="line51"> 51: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(matshellctx, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"No context"</font>);
+<a name="line52"> 52: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>(matshellctx-&gt;Mp, xx, matshellctx-&gt;ff));
+<a name="line53"> 53: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>(matshellctx-&gt;MpTrans, matshellctx-&gt;ff, yy));
+<a name="line54"> 54: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line55"> 55: </a>}
+
+<a name="line57"> 57: </a><strong><font color="#4169E1"><a name="MatMultAddMtM_SeqAIJ"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMultAddMtM_SeqAIJ(<a href="../../../manualpages/Mat/Mat.html">Mat</a> MtM, <a href="../../../manualpages/Vec/Vec.html">Vec</a> xx, <a href="../../../manualpages/Vec/Vec.html">Vec</a> yy, <a href="../../../manualpages/Vec/Vec.html">Vec</a> zz)</font></strong>
+<a name="line58"> 58: </a>{
+<a name="line59"> 59: </a>  MatShellCtx *matshellctx;
+
+<a name="line61"> 61: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line62"> 62: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(MtM, &amp;matshellctx));
+<a name="line63"> 63: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(matshellctx, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"No context"</font>);
+<a name="line64"> 64: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>(matshellctx-&gt;Mp, xx, matshellctx-&gt;ff));
+<a name="line65"> 65: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMultAdd.html">MatMultAdd</a>(matshellctx-&gt;MpTrans, matshellctx-&gt;ff, yy, zz));
+<a name="line66"> 66: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line67"> 67: </a>}
+
+<a name="line69"> 69: </a><strong><font color="#4169E1"><a name="createSwarm"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> createSwarm(const <a href="../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, <a href="../../../manualpages/DM/DM.html">DM</a> *sw)</font></strong>
+<a name="line70"> 70: </a>{
+<a name="line71"> 71: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Nc = 1;
+
+<a name="line73"> 73: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line74"> 74: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMCreate.html">DMCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, sw));
+<a name="line75"> 75: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetType.html">DMSetType</a>(*sw, <a href="../../../manualpages/DMSwarm/DMSWARM.html">DMSWARM</a>));
+<a name="line76"> 76: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetDimension.html">DMSetDimension</a>(*sw, dim));
+<a name="line77"> 77: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmSetType.html">DMSwarmSetType</a>(*sw, <a href="../../../manualpages/DMSwarm/DMSwarmType.html">DMSWARM_PIC</a>));
+<a name="line78"> 78: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmSetCellDM.html">DMSwarmSetCellDM</a>(*sw, dm));
+<a name="line79"> 79: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRegisterPetscDatatypeField.html">DMSwarmRegisterPetscDatatypeField</a>(*sw, <font color="#666666">"w_q"</font>, Nc, PETSC_REAL));
+<a name="line80"> 80: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmFinalizeFieldRegister.html">DMSwarmFinalizeFieldRegister</a>(*sw));
+<a name="line81"> 81: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetFromOptions.html">DMSetFromOptions</a>(*sw));
+<a name="line82"> 82: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*sw, <font color="#666666">"Particle Grid"</font>));
+<a name="line83"> 83: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line84"> 84: </a>}
+
+<a name="line86"> 86: </a><strong><font color="#4169E1"><a name="makeSwarm"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> makeSwarm(<a href="../../../manualpages/DM/DM.html">DM</a> sw, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Np, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> xx[], const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> yy[], const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> zz[])</font></strong>
+<a name="line87"> 87: </a>{
+<a name="line88"> 88: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *coords;
+<a name="line89"> 89: </a>  <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line90"> 90: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs, p, zero = 0;
+
+<a name="line92"> 92: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line93"> 93: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmSetLocalSizes.html">DMSwarmSetLocalSizes</a>(sw, Np, zero));
+<a name="line94"> 94: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line95"> 95: </a>  <font color="#4169E1">for</font> (p = 0; p &lt; Np; p++) {
+<a name="line96"> 96: </a>    coords[p * dim + 0] = xx[p];
+<a name="line97"> 97: </a>    coords[p * dim + 1] = yy[p];
+<a name="line98"> 98: </a>    <font color="#4169E1">if</font> (dim == 3) coords[p * dim + 2] = zz[p];
+<a name="line99"> 99: </a>  }
+<a name="line100">100: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line101">101: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmVectorDefineField.html">DMSwarmVectorDefineField</a>(sw, <font color="#666666">"w_q"</font>));
+<a name="line102">102: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line103">103: </a>}
+
+<a name="line105">105: </a><strong><font color="#4169E1"><a name="createMp"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> createMp(const <a href="../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../manualpages/DM/DM.html">DM</a> sw, <a href="../../../manualpages/Mat/Mat.html">Mat</a> *Mp_out)</font></strong>
+<a name="line106">106: </a>{
+<a name="line107">107: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> removePoints = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line108">108: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>       M_p;
+
+<a name="line110">110: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line111">111: </a>  <font color="#B22222">// migrate after coords are set</font>
+<a name="line112">112: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmMigrate.html">DMSwarmMigrate</a>(sw, removePoints));
+<a name="line113">113: </a>  <font color="#B22222">//</font>
+<a name="line114">114: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)sw, <font color="#666666">"Particle Grid"</font>));
+
+<a name="line116">116: </a>  <font color="#B22222">/* <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  N,*count,nmin=10000,nmax=0,ntot=0; */</font>
+<a name="line117">117: </a>  <font color="#B22222">/* // count */</font>
+<a name="line118">118: </a>  <font color="#B22222">/* <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmCreatePointPerCellCount.html">DMSwarmCreatePointPerCellCount</a>(sw, &amp;N, &amp;count)); */</font>
+<a name="line119">119: </a>  <font color="#B22222">/* for (int i=0, n; i&lt; N ; i++) { */</font>
+<a name="line120">120: </a>  <font color="#B22222">/*   if ((n=count[i]) &gt; nmax) nmax = n; */</font>
+<a name="line121">121: </a>  <font color="#B22222">/*   if (n &lt; nmin) nmin = n; */</font>
+<a name="line122">122: </a>  <font color="#B22222">/*   <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(dm, " %d) %d particles\n", i, n)); */</font>
+<a name="line123">123: </a>  <font color="#B22222">/*   ntot += n; */</font>
+<a name="line124">124: </a>  <font color="#B22222">/* } */</font>
+<a name="line125">125: </a>  <font color="#B22222">/* <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(count)); */</font>
+<a name="line126">126: </a>  <font color="#B22222">/* <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(dm, " %" PetscInt_FMT " max particle / cell, and %" PetscInt_FMT " min, ratio = %g,  %" PetscInt_FMT " total\n", nmax, nmin, (double)nmax/(double)nmin,ntot)); */</font>
+
+<a name="line128">128: </a>  <font color="#B22222">/* This gives M f = \int_\Omega \phi f, which looks like a rhs for a PDE */</font>
+<a name="line129">129: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMCreateMassMatrix.html">DMCreateMassMatrix</a>(sw, dm, &amp;M_p));
+<a name="line130">130: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(sw, NULL, <font color="#666666">"-ex30_sw_view"</font>));
+<a name="line131">131: </a>  <font color="#B22222">// output</font>
+<a name="line132">132: </a>  *Mp_out = M_p;
+<a name="line133">133: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line134">134: </a>}
+
+<a name="line136">136: </a><strong><font color="#4169E1"><a name="particlesToGrid"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> particlesToGrid(const <a href="../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../manualpages/DM/DM.html">DM</a> sw, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> a_tid, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> a_wp[], <a href="../../../manualpages/Vec/Vec.html">Vec</a> rho, <a href="../../../manualpages/Mat/Mat.html">Mat</a> M_p)</font></strong>
+<a name="line137">137: </a>{
+<a name="line138">138: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *wq;
+<a name="line139">139: </a>  <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line140">140: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>           ff;
+<a name="line141">141: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs, p, Np;
+
+<a name="line143">143: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line144">144: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wq));
+<a name="line145">145: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetLocalSize.html">DMSwarmGetLocalSize</a>(sw, &amp;Np));
+<a name="line146">146: </a>  <font color="#4169E1">for</font> (p = 0; p &lt; Np; p++) wq[p] = a_wp[p];
+<a name="line147">147: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wq));
+<a name="line148">148: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)rho, <font color="#666666">"rho"</font>));
+<a name="line149">149: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmCreateGlobalVectorFromField.html">DMSwarmCreateGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;ff));
+<a name="line150">150: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ff, <font color="#666666">"weights"</font>));
+<a name="line151">151: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMultTranspose.html">MatMultTranspose</a>(M_p, ff, rho));
+<a name="line152">152: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmDestroyGlobalVectorFromField.html">DMSwarmDestroyGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;ff));
+<a name="line153">153: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line154">154: </a>}
+
+<a name="line156">156: </a><font color="#B22222">//</font>
+<a name="line157">157: </a><font color="#B22222">// add grid to arg 'sw.w_q'</font>
+<a name="line158">158: </a><font color="#B22222">//</font>
+<a name="line159">159: </a><strong><font color="#4169E1"><a name="gridToParticles"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> gridToParticles(const <a href="../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../manualpages/DM/DM.html">DM</a> sw, const <a href="../../../manualpages/Vec/Vec.html">Vec</a> rhs, <a href="../../../manualpages/Vec/Vec.html">Vec</a> work_ferhs, <a href="../../../manualpages/Mat/Mat.html">Mat</a> M_p, <a href="../../../manualpages/Mat/Mat.html">Mat</a> Mass)</font></strong>
+<a name="line160">160: </a>{
+<a name="line161">161: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>    is_lsqr;
+<a name="line162">162: </a>  <a href="../../../manualpages/KSP/KSP.html">KSP</a>          ksp;
+<a name="line163">163: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>          PM_p = NULL, MtM, D = NULL;
+<a name="line164">164: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>          ff;
+<a name="line165">165: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>     N, M, nzl;
+<a name="line166">166: </a>  MatShellCtx *matshellctx = NULL;
+<a name="line167">167: </a>  <a href="../../../manualpages/PC/PC.html">PC</a>           pc;
+
+<a name="line169">169: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line170">170: </a>  <font color="#B22222">// 1) apply M in, for Moore-Penrose with mass: Mp (Mp' Mp)^-1 M</font>
+<a name="line171">171: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>(Mass, rhs, work_ferhs));
+<a name="line172">172: </a>  <font color="#B22222">// 2) pseudo-inverse, first part: (Mp' Mp)^-1</font>
+<a name="line173">173: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, &amp;ksp));
+<a name="line174">174: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetType.html">KSPSetType</a>(ksp, <a href="../../../manualpages/KSP/KSPCG.html">KSPCG</a>));
+<a name="line175">175: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>(ksp, &amp;pc));
+<a name="line176">176: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/PC/PCSetType.html">PCSetType</a>(pc, <a href="../../../manualpages/PC/PCJACOBI.html">PCJACOBI</a>));
+<a name="line177">177: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetOptionsPrefix.html">KSPSetOptionsPrefix</a>(ksp, <font color="#666666">"ftop_"</font>));
+<a name="line178">178: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetFromOptions.html">KSPSetFromOptions</a>(ksp));
+<a name="line179">179: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp, <a href="../../../manualpages/KSP/KSPLSQR.html">KSPLSQR</a>, &amp;is_lsqr));
+<a name="line180">180: </a>  <font color="#4169E1">if</font> (!is_lsqr) {
+<a name="line181">181: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetLocalSize.html">MatGetLocalSize</a>(M_p, &amp;M, &amp;N));
+<a name="line182">182: </a>    <font color="#4169E1">if</font> (N &gt; M) {
+<a name="line183">183: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(ksp, <font color="#666666">" M (%"</font> PetscInt_FMT <font color="#666666">") &lt; M (%"</font> PetscInt_FMT <font color="#666666">") more vertices than particles: revert to lsqr\n"</font>, M, N));
+<a name="line184">184: </a>      is_lsqr = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line185">185: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetType.html">KSPSetType</a>(ksp, <a href="../../../manualpages/KSP/KSPLSQR.html">KSPLSQR</a>));
+<a name="line186">186: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/PC/PCSetType.html">PCSetType</a>(pc, <a href="../../../manualpages/PC/PCNONE.html">PCNONE</a>)); <font color="#B22222">// should not happen, but could solve stable (Mp^T Mp), move projection Mp before solve</font>
+<a name="line187">187: </a>    } <font color="#4169E1">else</font> {
+<a name="line188">188: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;matshellctx));
+<a name="line189">189: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateVecs.html">MatCreateVecs</a>(M_p, &amp;matshellctx-&gt;uu, &amp;matshellctx-&gt;ff));
+<a name="line190">190: </a>      <font color="#4169E1">if</font> (0) {
+<a name="line191">191: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatTransposeMatMult.html">MatTransposeMatMult</a>(M_p, M_p, <a href="../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, 4, &amp;MtM));
+<a name="line192">192: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, MtM, MtM));
+<a name="line193">193: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(M_p, <font color="#666666">"createMtM <a href="../../../manualpages/KSP/KSP.html">KSP</a> with explicit Mp'Mp\n"</font>));
+<a name="line194">194: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(MtM, NULL, <font color="#666666">"-ftop2_MtM_mat_view"</font>));
+<a name="line195">195: </a>      } <font color="#4169E1">else</font> {
+<a name="line196">196: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateShell.html">MatCreateShell</a>(<a href="../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), N, N, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, matshellctx, &amp;MtM));
+<a name="line197">197: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatTranspose.html">MatTranspose</a>(M_p, <a href="../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, &amp;matshellctx-&gt;MpTrans));
+<a name="line198">198: </a>        matshellctx-&gt;Mp = M_p;
+<a name="line199">199: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(MtM, MATOP_MULT, (<a href="../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatMultMtM_SeqAIJ));
+<a name="line200">200: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(MtM, MATOP_MULT_ADD, (<a href="../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatMultAddMtM_SeqAIJ));
+<a name="line201">201: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateSeqAIJ.html">MatCreateSeqAIJ</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, N, N, 1, NULL, &amp;D));
+<a name="line202">202: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(matshellctx-&gt;MpTrans, NULL, <font color="#666666">"-ftop2_MpT_mat_view"</font>));
+<a name="line203">203: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; N; i++) {
+<a name="line204">204: </a>          const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *vals;
+<a name="line205">205: </a>          const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *cols;
+<a name="line206">206: </a>          <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>        dot = 0;
+<a name="line207">207: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetRow.html">MatGetRow</a>(matshellctx-&gt;MpTrans, i, &amp;nzl, &amp;cols, &amp;vals));
+<a name="line208">208: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = 0; ii &lt; nzl; ii++) dot += <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(vals[ii]);
+<a name="line209">209: </a>          <font color="#4169E1">if</font> (dot &lt; <a href="../../../manualpages/Sys/PETSC_MACHINE_EPSILON.html">PETSC_MACHINE_EPSILON</a>) {
+<a name="line210">210: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(ksp, <font color="#666666">"empty row in pseudo-inverse %d\n"</font>, (int)i));
+<a name="line211">211: </a>            is_lsqr = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>; <font color="#B22222">// empty rows</font>
+<a name="line212">212: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetType.html">KSPSetType</a>(ksp, <a href="../../../manualpages/KSP/KSPLSQR.html">KSPLSQR</a>));
+<a name="line213">213: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/PC/PCSetType.html">PCSetType</a>(pc, <a href="../../../manualpages/PC/PCNONE.html">PCNONE</a>)); <font color="#B22222">// should not happen, but could solve stable (Mp Mp^T), move projection Mp before solve</font>
+<a name="line214">214: </a>            <font color="#B22222">// clean up</font>
+<a name="line215">215: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;matshellctx-&gt;MpTrans));
+<a name="line216">216: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;matshellctx-&gt;ff));
+<a name="line217">217: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;matshellctx-&gt;uu));
+<a name="line218">218: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;D));
+<a name="line219">219: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;MtM));
+<a name="line220">220: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(matshellctx));
+<a name="line221">221: </a>            D = NULL;
+<a name="line222">222: </a>            <font color="#4169E1">break</font>;
+<a name="line223">223: </a>          }
+<a name="line224">224: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetValue.html">MatSetValue</a>(D, i, i, dot, <a href="../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line225">225: </a>        }
+<a name="line226">226: </a>        <font color="#4169E1">if</font> (D) {
+<a name="line227">227: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(D, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line228">228: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(D, <a href="../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line229">229: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(M_p, <font color="#666666">"createMtMKSP Have %"</font> PetscInt_FMT <font color="#666666">" eqs, nzl = %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, N, nzl));
+<a name="line230">230: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, MtM, D));
+<a name="line231">231: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(D, NULL, <font color="#666666">"-ftop2_D_mat_view"</font>));
+<a name="line232">232: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(M_p, NULL, <font color="#666666">"-ftop2_Mp_mat_view"</font>));
+<a name="line233">233: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(matshellctx-&gt;MpTrans, NULL, <font color="#666666">"-ftop2_MpTranspose_mat_view"</font>));
+<a name="line234">234: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(MtM, NULL, <font color="#666666">"-ftop2_MtM_mat_view"</font>));
+<a name="line235">235: </a>        }
+<a name="line236">236: </a>      }
+<a name="line237">237: </a>    }
+<a name="line238">238: </a>  }
+<a name="line239">239: </a>  <font color="#4169E1">if</font> (is_lsqr) {
+<a name="line240">240: </a>    <a href="../../../manualpages/PC/PC.html">PC</a>        pc2;
+<a name="line241">241: </a>    <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> is_bjac;
+<a name="line242">242: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>(ksp, &amp;pc2));
+<a name="line243">243: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc2, <a href="../../../manualpages/PC/PCBJACOBI.html">PCBJACOBI</a>, &amp;is_bjac));
+<a name="line244">244: </a>    <font color="#4169E1">if</font> (is_bjac) {
+<a name="line245">245: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmCreateMassMatrixSquare.html">DMSwarmCreateMassMatrixSquare</a>(sw, dm, &amp;PM_p));
+<a name="line246">246: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, M_p, PM_p));
+<a name="line247">247: </a>    } <font color="#4169E1">else</font> {
+<a name="line248">248: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, M_p, M_p));
+<a name="line249">249: </a>    }
+<a name="line250">250: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(M_p, NULL, <font color="#666666">"-ftop2_Mp_mat_view"</font>));
+<a name="line251">251: </a>  }
+<a name="line252">252: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmCreateGlobalVectorFromField.html">DMSwarmCreateGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;ff)); <font color="#B22222">// this grabs access</font>
+<a name="line253">253: </a>  <font color="#4169E1">if</font> (!is_lsqr) {
+<a name="line254">254: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(ksp, work_ferhs, matshellctx-&gt;uu));
+<a name="line255">255: </a>    <font color="#B22222">// 3) with Moore-Penrose apply Mp: M_p (Mp' Mp)^-1 M</font>
+<a name="line256">256: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>(M_p, matshellctx-&gt;uu, ff));
+<a name="line257">257: </a>    <font color="#4169E1">if</font> (D) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;D));
+<a name="line258">258: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;MtM));
+<a name="line259">259: </a>    <font color="#4169E1">if</font> (matshellctx-&gt;MpTrans) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;matshellctx-&gt;MpTrans));
+<a name="line260">260: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;matshellctx-&gt;ff));
+<a name="line261">261: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;matshellctx-&gt;uu));
+<a name="line262">262: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(matshellctx));
+<a name="line263">263: </a>  } <font color="#4169E1">else</font> {
+<a name="line264">264: </a>    <font color="#B22222">// finally with LSQR apply M_p^\dagger</font>
+<a name="line265">265: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSolveTranspose.html">KSPSolveTranspose</a>(ksp, work_ferhs, ff));
+<a name="line266">266: </a>  }
+<a name="line267">267: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(&amp;ksp));
+<a name="line268">268: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;PM_p));
+<a name="line269">269: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmDestroyGlobalVectorFromField.html">DMSwarmDestroyGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;ff));
+<a name="line270">270: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line271">271: </a>}
+
+<a name="line273">273: </a><strong><font color="#228B22">#define EX30_MAX_NUM_THRDS 12</font></strong>
+<a name="line274">274: </a><strong><font color="#228B22">#define EX30_MAX_BATCH_SZ  1024</font></strong>
+<a name="line275">275: </a><font color="#B22222">//</font>
+<a name="line276">276: </a><font color="#B22222">// add grid to arg 'globSwarmArray[].w_q'</font>
+<a name="line277">277: </a><font color="#B22222">//</font>
+<a name="line278">278: </a><strong><font color="#4169E1"><a name="gridToParticles_private"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> gridToParticles_private(<a href="../../../manualpages/DM/DM.html">DM</a> grid_dm[], <a href="../../../manualpages/DM/DM.html">DM</a> globSwarmArray[], const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_target, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> numthreads, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> num_vertices, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> global_vertex_id, <a href="../../../manualpages/Mat/Mat.html">Mat</a> globMpArray[], <a href="../../../manualpages/Mat/Mat.html">Mat</a> g_Mass[], <a href="../../../manualpages/Vec/Vec.html">Vec</a> t_fhat[][EX30_MAX_NUM_THRDS], <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> moments[], <a href="../../../manualpages/Vec/Vec.html">Vec</a> globXArray[], LandauCtx *ctx)</font></strong>
+<a name="line279">279: </a>{
+<a name="line280">280: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr = (<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>)0; <font color="#B22222">// used for inside thread loops</font>
+
+<a name="line282">282: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line283">283: </a>  <font color="#B22222">// map back to particles</font>
+<a name="line284">284: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id_0 = 0; v_id_0 &lt; ctx-&gt;batch_sz; v_id_0 += numthreads) {
+<a name="line285">285: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(grid_dm[0], <font color="#666666">"g2p: global batch %"</font> PetscInt_FMT <font color="#666666">" of %"</font> PetscInt_FMT <font color="#666666">", Landau batch %"</font> PetscInt_FMT <font color="#666666">" of %"</font> PetscInt_FMT <font color="#666666">": map back to particles\n"</font>, global_vertex_id + 1, num_vertices, v_id_0 + 1, ctx-&gt;batch_sz));
+<a name="line286">286: </a>    <font color="#B22222">//<a href="../../../manualpages/Sys/PetscPragmaOMP.html">PetscPragmaOMP</a>(parallel for)</font>
+<a name="line287">287: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line288">288: </a>      const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id + v_id;
+<a name="line289">289: </a>      <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line290">290: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line291">291: </a>          <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr_t;
+<a name="line292">292: </a>          ierr_t = <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(grid_dm[0], <font color="#666666">"gridToParticles: global batch %"</font> PetscInt_FMT <font color="#666666">", local batch b=%"</font> PetscInt_FMT <font color="#666666">", grid g=%"</font> PetscInt_FMT <font color="#666666">", index(b,g) %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, global_vertex_id, v_id, grid, LAND_PACK_IDX(v_id, grid));
+<a name="line293">293: </a>          ierr_t = gridToParticles(grid_dm[grid], globSwarmArray[LAND_PACK_IDX(v_id, grid)], globXArray[LAND_PACK_IDX(v_id, grid)], t_fhat[grid][tid], globMpArray[LAND_PACK_IDX(v_id, grid)], g_Mass[grid]);
+<a name="line294">294: </a>          <font color="#4169E1">if</font> (ierr_t) ierr = ierr_t;
+<a name="line295">295: </a>        }
+<a name="line296">296: </a>      }
+<a name="line297">297: </a>    }
+<a name="line298">298: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!ierr, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Error in OMP loop. ierr = %d"</font>, (int)ierr);
+<a name="line299">299: </a>    <font color="#B22222">/* Get moments */</font>
+<a name="line300">300: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(grid_dm[0], <font color="#666666">"Cleanup batches %"</font> PetscInt_FMT <font color="#666666">" to %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id_0, v_id_0 + numthreads));
+<a name="line301">301: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line302">302: </a>      const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id + v_id;
+<a name="line303">303: </a>      <font color="#4169E1">if</font> (glb_v_id == v_target) {
+<a name="line304">304: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line305">305: </a>          <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line306">306: </a>          <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *wp, *coords;
+<a name="line307">307: </a>          <a href="../../../manualpages/DM/DM.html">DM</a>            sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line308">308: </a>          <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      npoints, bs = 1;
+<a name="line309">309: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp)); <font color="#B22222">// take data out here</font>
+<a name="line310">310: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line311">311: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetLocalSize.html">DMSwarmGetLocalSize</a>(sw, &amp;npoints));
+<a name="line312">312: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0; p &lt; npoints; p++) {
+<a name="line313">313: </a>            <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> v2 = 0, fact = (dim == 2) ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * coords[p * dim + 0] : 1, w = fact * wp[p] * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]];
+<a name="line314">314: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; dim; ++i) v2 += <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(coords[p * dim + i]);
+<a name="line315">315: </a>            moments[0] += w;
+<a name="line316">316: </a>            moments[1] += w * ctx-&gt;v_0 * coords[p * dim + 1]; <font color="#B22222">// z-momentum</font>
+<a name="line317">317: </a>            moments[2] += w * 0.5 * ctx-&gt;v_0 * ctx-&gt;v_0 * v2;
+<a name="line318">318: </a>          }
+<a name="line319">319: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line320">320: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line321">321: </a>        }
+<a name="line322">322: </a>        const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> N_inv = 1 / moments[0];
+<a name="line323">323: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(grid_dm[0], <font color="#666666">"gridToParticles_private [%"</font> PetscInt_FMT <font color="#666666">"], n = %g\n"</font>, v_id, (double)moments[0]));
+<a name="line324">324: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line325">325: </a>          <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line326">326: </a>          <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *wp, *coords;
+<a name="line327">327: </a>          <a href="../../../manualpages/DM/DM.html">DM</a>            sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line328">328: </a>          <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      npoints, bs = 1;
+<a name="line329">329: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp)); <font color="#B22222">// take data out here</font>
+<a name="line330">330: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line331">331: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetLocalSize.html">DMSwarmGetLocalSize</a>(sw, &amp;npoints));
+<a name="line332">332: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0; p &lt; npoints; p++) {
+<a name="line333">333: </a>            const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> fact = dim == 2 ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * coords[p * dim + 0] : 1, w = fact * wp[p] * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]], ww = w * N_inv;
+<a name="line334">334: </a>            <font color="#4169E1">if</font> (w &gt; <a href="../../../manualpages/Sys/PETSC_REAL_MIN.html">PETSC_REAL_MIN</a>) {
+<a name="line335">335: </a>              moments[3] -= ww * PetscLogReal(ww);
+<a name="line336">336: </a>              <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ww &lt; 1 - <a href="../../../manualpages/Sys/PETSC_MACHINE_EPSILON.html">PETSC_MACHINE_EPSILON</a>, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"ww (%g) &gt; 1"</font>, (double)ww);
+<a name="line337">337: </a>            } <font color="#4169E1">else</font> moments[4] -= w; <font color="#B22222">// keep track of density that is lost</font>
+<a name="line338">338: </a>          }
+<a name="line339">339: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line340">340: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line341">341: </a>        }
+<a name="line342">342: </a>      }
+<a name="line343">343: </a>    } <font color="#B22222">// thread batch</font>
+<a name="line344">344: </a>  } <font color="#B22222">// batch</font>
+<a name="line345">345: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line346">346: </a>}
+
+<a name="line348">348: </a><strong><font color="#4169E1"><a name="maxwellian"></a>static void maxwellian(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> x[], <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> kt_m, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> n, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> shift, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *u)</font></strong>
+<a name="line349">349: </a>{
+<a name="line350">350: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  i;
+<a name="line351">351: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> v2 = 0, theta = 2.0 * kt_m; <font color="#B22222">/* theta = 2kT/mc^2 */</font>
+
+<a name="line353">353: </a>  <font color="#4169E1">if</font> (shift != 0.) {
+<a name="line354">354: </a>    v2 = 0;
+<a name="line355">355: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; dim - 1; ++i) v2 += x[i] * x[i];
+<a name="line356">356: </a>    v2 += (x[dim - 1] - shift) * (x[dim - 1] - shift);
+<a name="line357">357: </a>    <font color="#B22222">/* evaluate the shifted Maxwellian */</font>
+<a name="line358">358: </a>    u[0] += n * PetscPowReal(<a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * theta, -1.5) * (PetscExpReal(-v2 / theta));
+<a name="line359">359: </a>  } <font color="#4169E1">else</font> {
+<a name="line360">360: </a>    <font color="#B22222">/* compute the exponents, v^2 */</font>
+<a name="line361">361: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; dim; ++i) v2 += x[i] * x[i];
+<a name="line362">362: </a>    <font color="#B22222">/* evaluate the Maxwellian */</font>
+<a name="line363">363: </a>    u[0] += n * PetscPowReal(<a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * theta, -1.5) * (PetscExpReal(-v2 / theta));
+<a name="line364">364: </a>  }
+<a name="line365">365: </a>}
+
+<a name="line367">367: </a><strong><font color="#4169E1"><a name="PostStep"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PostStep(<a href="../../../manualpages/TS/TS.html">TS</a> ts)</font></strong>
+<a name="line368">368: </a>{
+<a name="line369">369: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   n, dim, nDMs, v_id;
+<a name="line370">370: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>  t;
+<a name="line371">371: </a>  LandauCtx *ctx;
+<a name="line372">372: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>        X;
+<a name="line373">373: </a>  PrintCtx  *printCtx;
+<a name="line374">374: </a>  <a href="../../../manualpages/DM/DM.html">DM</a>         pack;
+<a name="line375">375: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>  moments[5], e_grid[LANDAU_MAX_GRIDS];
+
+<a name="line377">377: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line378">378: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSGetApplicationContext.html">TSGetApplicationContext</a>(ts, &amp;printCtx));
+<a name="line379">379: </a>  <font color="#4169E1">if</font> (!printCtx-&gt;print &amp;&amp; !printCtx-&gt;print_entropy) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line380">380: </a>  ctx = printCtx-&gt;ctx;
+<a name="line381">381: </a>  <font color="#4169E1">if</font> (printCtx-&gt;v_target &lt; printCtx-&gt;global_vertex_id_0 || printCtx-&gt;v_target &gt;= printCtx-&gt;global_vertex_id_0 + ctx-&gt;batch_sz) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line382">382: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; 5; i++) moments[i] = 0;
+<a name="line383">383: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; LANDAU_MAX_GRIDS; i++) e_grid[i] = 0;
+<a name="line384">384: </a>  v_id = printCtx-&gt;v_target % ctx-&gt;batch_sz;
+<a name="line385">385: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSGetDM.html">TSGetDM</a>(ts, &amp;pack));
+<a name="line386">386: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetDimension.html">DMGetDimension</a>(pack, &amp;dim));
+<a name="line387">387: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeGetNumberDM.html">DMCompositeGetNumberDM</a>(pack, &amp;nDMs)); <font color="#B22222">// number of vertices * number of grids</font>
+<a name="line388">388: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSGetSolution.html">TSGetSolution</a>(ts, &amp;X));
+<a name="line389">389: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSGetStepNumber.html">TSGetStepNumber</a>(ts, &amp;n));
+<a name="line390">390: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSGetTime.html">TSGetTime</a>(ts, &amp;t));
+<a name="line391">391: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeGetAccessArray.html">DMCompositeGetAccessArray</a>(pack, X, nDMs, NULL, printCtx-&gt;globXArray));
+<a name="line392">392: </a>  <font color="#4169E1">if</font> (printCtx-&gt;print_entropy &amp;&amp; printCtx-&gt;v_target &gt;= 0 &amp;&amp; 0) {
+<a name="line393">393: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line394">394: </a>      <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line395">395: </a>      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *wp, *coords;
+<a name="line396">396: </a>      <a href="../../../manualpages/DM/DM.html">DM</a>            sw = printCtx-&gt;globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line397">397: </a>      <a href="../../../manualpages/Vec/Vec.html">Vec</a>           work, subX = printCtx-&gt;globXArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line398">398: </a>      <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs, NN;
+<a name="line399">399: </a>      <font color="#B22222">// C-G moments</font>
+<a name="line400">400: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(subX, &amp;work));
+<a name="line401">401: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(gridToParticles(printCtx-&gt;grid_dm[grid], sw, subX, work, printCtx-&gt;globMpArray[LAND_PACK_IDX(v_id, grid)], printCtx-&gt;g_Mass[grid]));
+<a name="line402">402: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;work));
+<a name="line403">403: </a>      <font color="#B22222">// moments</font>
+<a name="line404">404: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line405">405: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetLocalSize.html">DMSwarmGetLocalSize</a>(sw, &amp;NN));
+<a name="line406">406: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line407">407: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pp = 0; pp &lt; NN; pp++) {
+<a name="line408">408: </a>        <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> v2 = 0, fact = (dim == 2) ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * coords[pp * dim + 0] : 1, w = fact * wp[pp] * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]];
+<a name="line409">409: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; dim; ++i) v2 += <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(coords[pp * dim + i]);
+<a name="line410">410: </a>        moments[0] += w;
+<a name="line411">411: </a>        moments[1] += w * ctx-&gt;v_0 * coords[pp * dim + 1]; <font color="#B22222">// z-momentum</font>
+<a name="line412">412: </a>        moments[2] += w * 0.5 * ctx-&gt;v_0 * ctx-&gt;v_0 * v2;
+<a name="line413">413: </a>        e_grid[grid] += w * 0.5 * ctx-&gt;v_0 * ctx-&gt;v_0 * v2;
+<a name="line414">414: </a>      }
+<a name="line415">415: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line416">416: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line417">417: </a>    }
+<a name="line418">418: </a>    <font color="#B22222">// entropy</font>
+<a name="line419">419: </a>    const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> N_inv = 1 / moments[0];
+<a name="line420">420: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line421">421: </a>      <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line422">422: </a>      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *wp, *coords;
+<a name="line423">423: </a>      <a href="../../../manualpages/DM/DM.html">DM</a>            sw = printCtx-&gt;globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line424">424: </a>      <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs, NN;
+<a name="line425">425: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line426">426: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetLocalSize.html">DMSwarmGetLocalSize</a>(sw, &amp;NN));
+<a name="line427">427: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line428">428: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pp = 0; pp &lt; NN; pp++) {
+<a name="line429">429: </a>        <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> fact = (dim == 2) ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * coords[pp * dim + 0] : 1, w = fact * wp[pp] * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]], ww = w * N_inv;
+<a name="line430">430: </a>        <font color="#4169E1">if</font> (w &gt; <a href="../../../manualpages/Sys/PETSC_REAL_MIN.html">PETSC_REAL_MIN</a>) {
+<a name="line431">431: </a>          moments[3] -= ww * PetscLogReal(ww);
+<a name="line432">432: </a>        } <font color="#4169E1">else</font> moments[4] -= w;
+<a name="line433">433: </a>      }
+<a name="line434">434: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line435">435: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line436">436: </a>    }
+<a name="line437">437: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(X, <font color="#666666">"%4d) time %e, Landau particle moments: 0: %18.12e 1: %19.12e 2: %18.12e entropy: %e loss %e. energy = %e + %e + %e\n"</font>, (int)n, (double)t, (double)moments[0], (double)moments[1], (double)moments[2], (double)moments[3], (double)(moments[4] / moments[0]), (double)e_grid[0], (double)e_grid[1], (double)e_grid[2]));
+<a name="line438">438: </a>  }
+<a name="line439">439: </a>  <font color="#4169E1">if</font> (printCtx-&gt;print &amp;&amp; printCtx-&gt;g_target &gt;= 0) {
+<a name="line440">440: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>         grid   = printCtx-&gt;g_target, id;
+<a name="line441">441: </a>    static <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> last_t = -100000, period = .5;
+<a name="line442">442: </a>    <font color="#4169E1">if</font> (last_t == -100000) last_t = -period + t;
+<a name="line443">443: </a>    <font color="#4169E1">if</font> (t &gt;= last_t + period) {
+<a name="line444">444: </a>      last_t = t;
+<a name="line445">445: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetOutputSequenceNumber.html">DMGetOutputSequenceNumber</a>(ctx-&gt;plex[grid], &amp;id, NULL));
+<a name="line446">446: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetOutputSequenceNumber.html">DMSetOutputSequenceNumber</a>(ctx-&gt;plex[grid], id + 1, t));
+<a name="line447">447: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecViewFromOptions.html">VecViewFromOptions</a>(printCtx-&gt;globXArray[LAND_PACK_IDX(v_id % ctx-&gt;batch_sz, grid)], NULL, <font color="#666666">"-ex30_vec_view"</font>));
+<a name="line448">448: </a>      <font color="#4169E1">if</font> (ctx-&gt;num_grids &gt; grid + 1) {
+<a name="line449">449: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetOutputSequenceNumber.html">DMSetOutputSequenceNumber</a>(ctx-&gt;plex[grid + 1], id + 1, t));
+<a name="line450">450: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecViewFromOptions.html">VecViewFromOptions</a>(printCtx-&gt;globXArray[LAND_PACK_IDX(v_id % ctx-&gt;batch_sz, grid + 1)], NULL, <font color="#666666">"-ex30_vec_view2"</font>));
+<a name="line451">451: </a>      }
+<a name="line452">452: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(X, <font color="#666666">"%4d) time %e View\n"</font>, (int)n, (double)t));
+<a name="line453">453: </a>    }
+<a name="line454">454: </a>  }
+<a name="line455">455: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeRestoreAccessArray.html">DMCompositeRestoreAccessArray</a>(pack, X, nDMs, NULL, printCtx-&gt;globXArray));
+<a name="line456">456: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line457">457: </a>}
+
+<a name="line459">459: </a><strong><font color="#4169E1"><a name="go"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> go(<a href="../../../manualpages/TS/TS.html">TS</a> ts, <a href="../../../manualpages/Vec/Vec.html">Vec</a> X, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> num_vertices, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> a_Np, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_target, const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> g_target, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> shift, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> use_uniform_particle_grid)</font></strong>
+<a name="line460">460: </a>{
+<a name="line461">461: </a>  <a href="../../../manualpages/DM/DM.html">DM</a>             pack, *globSwarmArray, grid_dm[LANDAU_MAX_GRIDS];
+<a name="line462">462: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>           *globMpArray, g_Mass[LANDAU_MAX_GRIDS];
+<a name="line463">463: </a>  <a href="../../../manualpages/KSP/KSP.html">KSP</a>            t_ksp[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS];
+<a name="line464">464: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>            t_fhat[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS];
+<a name="line465">465: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       nDMs;
+<a name="line466">466: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr = (<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>)0; <font color="#B22222">// used for inside thread loops</font>
+<a name="line467">467: </a><font color="#A020F0">#if defined(PETSC_HAVE_OPENMP) &amp;&amp; defined(PETSC_HAVE_THREADSAFETY)</font>
+<a name="line468">468: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> numthreads = PetscNumOMPThreads;
+<a name="line469">469: </a><font color="#A020F0">#else</font>
+<a name="line470">470: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> numthreads = 1;
+<a name="line471">471: </a><font color="#A020F0">#endif</font>
+<a name="line472">472: </a>  LandauCtx *ctx;
+<a name="line473">473: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>       *globXArray;
+<a name="line474">474: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>  moments_0[5], moments_1a[5], moments_1b[5], dt_init;
+<a name="line475">475: </a>  PrintCtx  *printCtx;
+
+<a name="line477">477: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line478">478: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(numthreads &lt;= EX30_MAX_NUM_THRDS, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Too many threads %"</font> PetscInt_FMT <font color="#666666">" &gt; %d"</font>, numthreads, EX30_MAX_NUM_THRDS);
+<a name="line479">479: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(numthreads &gt; 0, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Number threads %"</font> PetscInt_FMT <font color="#666666">" &gt; %d"</font>, numthreads, EX30_MAX_NUM_THRDS);
+<a name="line480">480: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSGetDM.html">TSGetDM</a>(ts, &amp;pack));
+<a name="line481">481: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetApplicationContext.html">DMGetApplicationContext</a>(pack, &amp;ctx));
+<a name="line482">482: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ctx-&gt;batch_sz % numthreads == 0, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"batch size (-dm_landau_batch_size) %"</font> PetscInt_FMT <font color="#666666">"  mod #threads %"</font> PetscInt_FMT <font color="#666666">" must equal zero"</font>, ctx-&gt;batch_sz, numthreads);
+<a name="line483">483: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeGetNumberDM.html">DMCompositeGetNumberDM</a>(pack, &amp;nDMs)); <font color="#B22222">// number of vertices * number of grids</font>
+<a name="line484">484: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"Have %"</font> PetscInt_FMT <font color="#666666">" total grids, with %"</font> PetscInt_FMT <font color="#666666">" Landau local batched and %"</font> PetscInt_FMT <font color="#666666">" global items (vertices) %d DMs\n"</font>, ctx-&gt;num_grids, ctx-&gt;batch_sz, num_vertices, (int)nDMs));
+<a name="line485">485: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(<font color="#4169E1">sizeof</font>(*globXArray) * nDMs, &amp;globXArray));
+<a name="line486">486: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(<font color="#4169E1">sizeof</font>(*globMpArray) * nDMs, &amp;globMpArray));
+<a name="line487">487: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(<font color="#4169E1">sizeof</font>(*globSwarmArray) * nDMs, &amp;globSwarmArray));
+<a name="line488">488: </a>  <font color="#B22222">// print ctx</font>
+<a name="line489">489: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;printCtx));
+<a name="line490">490: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetApplicationContext.html">TSSetApplicationContext</a>(ts, printCtx));
+<a name="line491">491: </a>  printCtx-&gt;v_target       = v_target;
+<a name="line492">492: </a>  printCtx-&gt;g_target       = g_target;
+<a name="line493">493: </a>  printCtx-&gt;ctx            = ctx;
+<a name="line494">494: </a>  printCtx-&gt;globSwarmArray = globSwarmArray;
+<a name="line495">495: </a>  printCtx-&gt;grid_dm        = grid_dm;
+<a name="line496">496: </a>  printCtx-&gt;globMpArray    = globMpArray;
+<a name="line497">497: </a>  printCtx-&gt;g_Mass         = g_Mass;
+<a name="line498">498: </a>  printCtx-&gt;globXArray     = globXArray;
+<a name="line499">499: </a>  printCtx-&gt;print_entropy  = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line500">500: </a>  <a href="../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">""</font>, <font color="#666666">"Print Options"</font>, <font color="#666666">"<a href="../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>"</font>);
+<a name="line501">501: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-print_entropy"</font>, <font color="#666666">"Print entropy and moments at each time step"</font>, <font color="#666666">"ex30.c"</font>, printCtx-&gt;print_entropy, &amp;printCtx-&gt;print_entropy, NULL));
+<a name="line502">502: </a>  <a href="../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+<a name="line503">503: </a>  <font color="#B22222">// view</font>
+<a name="line504">504: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(ctx-&gt;plex[g_target], NULL, <font color="#666666">"-ex30_dm_view"</font>));
+<a name="line505">505: </a>  <font color="#4169E1">if</font> (ctx-&gt;num_grids &gt; g_target + 1) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(ctx-&gt;plex[g_target + 1], NULL, <font color="#666666">"-ex30_dm_view2"</font>));
+<a name="line506">506: </a>  <font color="#B22222">// create mesh mass matrices</font>
+<a name="line507">507: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecZeroEntries.html">VecZeroEntries</a>(X));
+<a name="line508">508: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeGetAccessArray.html">DMCompositeGetAccessArray</a>(pack, X, nDMs, NULL, globXArray)); <font color="#B22222">// just to duplicate</font>
+<a name="line509">509: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {               <font color="#B22222">// add same particels for all grids</font>
+<a name="line510">510: </a>    <a href="../../../manualpages/Vec/Vec.html">Vec</a>          subX = globXArray[LAND_PACK_IDX(0, grid)];
+<a name="line511">511: </a>    <a href="../../../manualpages/DM/DM.html">DM</a>           dm   = ctx-&gt;plex[grid];
+<a name="line512">512: </a>    <a href="../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> s;
+<a name="line513">513: </a>    grid_dm[grid] = dm;
+<a name="line514">514: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMCreateMassMatrix.html">DMCreateMassMatrix</a>(dm, dm, &amp;g_Mass[grid]));
+<a name="line515">515: </a>    <font color="#B22222">//</font>
+<a name="line516">516: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;s));
+<a name="line517">517: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMPlex/DMPlexCreateClosureIndex.html">DMPlexCreateClosureIndex</a>(dm, s));
+<a name="line518">518: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line519">519: </a>      <a href="../../../manualpages/PC/PC.html">PC</a> pc;
+<a name="line520">520: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(subX, &amp;t_fhat[grid][tid]));
+<a name="line521">521: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, &amp;t_ksp[grid][tid]));
+<a name="line522">522: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetType.html">KSPSetType</a>(t_ksp[grid][tid], <a href="../../../manualpages/KSP/KSPCG.html">KSPCG</a>));
+<a name="line523">523: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>(t_ksp[grid][tid], &amp;pc));
+<a name="line524">524: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/PC/PCSetType.html">PCSetType</a>(pc, <a href="../../../manualpages/PC/PCJACOBI.html">PCJACOBI</a>));
+<a name="line525">525: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetOptionsPrefix.html">KSPSetOptionsPrefix</a>(t_ksp[grid][tid], <font color="#666666">"ptof_"</font>));
+<a name="line526">526: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(t_ksp[grid][tid], g_Mass[grid], g_Mass[grid]));
+<a name="line527">527: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPSetFromOptions.html">KSPSetFromOptions</a>(t_ksp[grid][tid]));
+<a name="line528">528: </a>    }
+<a name="line529">529: </a>  }
+<a name="line530">530: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeRestoreAccessArray.html">DMCompositeRestoreAccessArray</a>(pack, X, nDMs, NULL, globXArray));
+<a name="line531">531: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSGetTimeStep.html">TSGetTimeStep</a>(ts, &amp;dt_init)); <font color="#B22222">// we could have an adaptive time stepper</font>
+<a name="line532">532: </a>  <font color="#B22222">// loop over all vertices in chucks that are batched for <a href="../../../manualpages/TS/TSSolve.html">TSSolve</a></font>
+<a name="line533">533: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; 5; i++) moments_0[i] = moments_1a[i] = moments_1b[i] = 0;
+<a name="line534">534: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> global_vertex_id_0 = 0; global_vertex_id_0 &lt; num_vertices; global_vertex_id_0 += ctx-&gt;batch_sz, shift /= 2) { <font color="#B22222">// outer vertex loop</font>
+<a name="line535">535: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetTime.html">TSSetTime</a>(ts, 0));
+<a name="line536">536: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetStepNumber.html">TSSetStepNumber</a>(ts, 0));
+<a name="line537">537: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetTimeStep.html">TSSetTimeStep</a>(ts, dt_init));
+<a name="line538">538: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeGetAccessArray.html">DMCompositeGetAccessArray</a>(pack, X, nDMs, NULL, globXArray));
+<a name="line539">539: </a>    printCtx-&gt;global_vertex_id_0 = global_vertex_id_0;
+<a name="line540">540: </a>    <font color="#4169E1">if</font> (v_target &gt;= global_vertex_id_0 &amp;&amp; v_target &lt; global_vertex_id_0 + ctx-&gt;batch_sz) {
+<a name="line541">541: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)globXArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target)], <font color="#666666">"rho"</font>));
+<a name="line542">542: </a>      printCtx-&gt;print = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line543">543: </a>    } <font color="#4169E1">else</font> printCtx-&gt;print = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line544">544: </a>    <font color="#B22222">// create fake particles in batches with threads</font>
+<a name="line545">545: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id_0 = 0; v_id_0 &lt; ctx-&gt;batch_sz; v_id_0 += numthreads) {
+<a name="line546">546: </a>      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *xx_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS], *yy_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS], *zz_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS], *wp_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS] <font color="#B22222">/* , radiuses[80000] */</font>;
+<a name="line547">547: </a>      <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   Np_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS];
+<a name="line548">548: </a>      <font color="#B22222">// make particles</font>
+<a name="line549">549: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line550">550: </a>        const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line551">551: </a>        <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {                                                     <font color="#B22222">// the ragged edge (in last batch)</font>
+<a name="line552">552: </a>          <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Npp0 = a_Np + (glb_v_id % (a_Np / 10 + 1)), nTargetP[LANDAU_MAX_GRIDS]; <font color="#B22222">// n of particels in each dim with load imbalance</font>
+<a name="line553">553: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {                         <font color="#B22222">// add same particels for all grids</font>
+<a name="line554">554: </a>            <font color="#B22222">// for (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> sp = ctx->species_offset[grid], i0 = 0; sp < ctx->species_offset[grid + 1]; sp++, i0++) {</font>
+<a name="line555">555: </a>            const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> kT_m  = ctx-&gt;k * ctx-&gt;thermal_temps[ctx-&gt;species_offset[grid]] / ctx-&gt;masses[ctx-&gt;species_offset[grid]] / (ctx-&gt;v_0 * ctx-&gt;v_0);                      <font color="#B22222">/* theta = 2kT/mc^2 per species */</font>
+<a name="line556">556: </a>            <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>       lo[3] = {-ctx-&gt;radius[grid], -ctx-&gt;radius[grid], -ctx-&gt;radius[grid]}, hi[3] = {ctx-&gt;radius[grid], ctx-&gt;radius[grid], ctx-&gt;radius[grid]}, hp[3], vole; <font color="#B22222">// would be nice to get box from <a href="../../../manualpages/DM/DM.html">DM</a></font>
+<a name="line557">557: </a>            <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>        Npi = Npp0, Npj = 2 * Npp0, Npk = 1;
+<a name="line558">558: </a>            <a href="../../../manualpages/Sys/PetscRandom.html">PetscRandom</a>     rand;
+<a name="line559">559: </a>            <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>       sigma = ctx-&gt;thermal_speed[grid] / ctx-&gt;thermal_speed[0], p2_shift = grid == 0 ? shift : -shift; <font color="#B22222">// symmetric shift of e vs ions</font>
+<a name="line560">560: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomCreate.html">PetscRandomCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, &amp;rand));
+<a name="line561">561: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomSetInterval.html">PetscRandomSetInterval</a>(rand, 0., 1.));
+<a name="line562">562: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomSetFromOptions.html">PetscRandomSetFromOptions</a>(rand));
+<a name="line563">563: </a>            <font color="#4169E1">if</font> (dim == 2) lo[0] = 0; <font color="#B22222">// Landau coordinate (r,z)</font>
+<a name="line564">564: </a>            <font color="#4169E1">else</font> Npi = Npj = Npk = Npp0;
+<a name="line565">565: </a>            <font color="#B22222">// User: use glb_v_id to index into your data</font>
+<a name="line566">566: </a>            const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> NNreal = Npi * Npj * Npk, NN = NNreal + (dim == 2 ? 3 : 6); <font color="#B22222">// make room for bounding box</font>
+<a name="line567">567: </a>            Np_t[grid][tid] = NN;
+<a name="line568">568: </a>            <font color="#4169E1">if</font> (glb_v_id == v_target) nTargetP[grid] = NN;
+<a name="line569">569: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc4.html">PetscMalloc4</a>(NN, &amp;xx_t[grid][tid], NN, &amp;yy_t[grid][tid], NN, &amp;wp_t[grid][tid], dim == 2 ? 1 : NN, &amp;zz_t[grid][tid]));
+<a name="line570">570: </a>            hp[0] = (hi[0] - lo[0]) / Npi;
+<a name="line571">571: </a>            hp[1] = (hi[1] - lo[1]) / Npj;
+<a name="line572">572: </a>            hp[2] = (hi[2] - lo[2]) / Npk;
+<a name="line573">573: </a>            <font color="#4169E1">if</font> (dim == 2) hp[2] = 1;
+<a name="line574">574: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">" lo = %14.7e, hi = %14.7e; hp = %14.7e, %14.7e; kT_m = %g; \n"</font>, (double)lo[1], (double)hi[1], (double)hp[0], (double)hp[1], (double)kT_m)); <font color="#B22222">// temp</font>
+<a name="line575">575: </a>            vole = hp[0] * hp[1] * hp[2] * ctx-&gt;n[grid];                                                                                                                           <font color="#B22222">// fix for multi-species</font>
+<a name="line576">576: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"Vertex %"</font> PetscInt_FMT <font color="#666666">", grid %"</font> PetscInt_FMT <font color="#666666">" with %"</font> PetscInt_FMT <font color="#666666">" particles (diagnostic target = %"</font> PetscInt_FMT <font color="#666666">")\n"</font>, glb_v_id, grid, NN, v_target));
+<a name="line577">577: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pj = 0, pp = 0; pj &lt; Npj; pj++) {
+<a name="line578">578: </a>              <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pk = 0; pk &lt; Npk; pk++) {
+<a name="line579">579: </a>                <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pi = 0; pi &lt; Npi; pi++, pp++) {
+<a name="line580">580: </a>                  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> p_shift   = p2_shift;
+<a name="line581">581: </a>                  wp_t[grid][tid][pp] = 0;
+<a name="line582">582: </a>                  <font color="#4169E1">if</font> (use_uniform_particle_grid) {
+<a name="line583">583: </a>                    xx_t[grid][tid][pp] = lo[0] + hp[0] / 2.0 + pi * hp[0];
+<a name="line584">584: </a>                    yy_t[grid][tid][pp] = lo[1] + hp[1] / 2.0 + pj * hp[1];
+<a name="line585">585: </a>                    <font color="#4169E1">if</font> (dim == 3) zz_t[grid][tid][pp] = lo[2] + hp[2] / 2.0 + pk * hp[2];
+<a name="line586">586: </a>                    <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> x[] = {xx_t[grid][tid][pp], yy_t[grid][tid][pp], dim == 2 ? 0 : zz_t[grid][tid][pp]};
+<a name="line587">587: </a>                    p_shift *= ctx-&gt;thermal_speed[grid] / ctx-&gt;v_0;
+<a name="line588">588: </a>                    <font color="#4169E1">if</font> (ctx-&gt;sphere &amp;&amp; PetscSqrtReal(<a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(xx_t[grid][tid][pp]) + <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(yy_t[grid][tid][pp])) &gt; 0.92 * hi[0]) {
+<a name="line589">589: </a>                      wp_t[grid][tid][pp] = 0;
+<a name="line590">590: </a>                    } <font color="#4169E1">else</font> {
+<a name="line591">591: </a>                      maxwellian(dim, x, kT_m, vole, p_shift, &amp;wp_t[grid][tid][pp]);
+<a name="line592">592: </a>                      <font color="#4169E1">if</font> (ctx-&gt;num_grids == 1 &amp;&amp; shift != 0) {                          <font color="#B22222">// bi-maxwellian, electron plasma</font>
+<a name="line593">593: </a>                        maxwellian(dim, x, kT_m, vole, -p_shift, &amp;wp_t[grid][tid][pp]); <font color="#B22222">// symmetric shift of electron plasma</font>
+<a name="line594">594: </a>                      }
+<a name="line595">595: </a>                    }
+<a name="line596">596: </a>                  } <font color="#4169E1">else</font> {
+<a name="line597">597: </a>                    <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> u1, u2;
+<a name="line598">598: </a>                    <font color="#4169E1">do</font> {
+<a name="line599">599: </a>                      <font color="#4169E1">do</font> {
+<a name="line600">600: </a>                        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomGetValueReal.html">PetscRandomGetValueReal</a>(rand, &amp;u1));
+<a name="line601">601: </a>                      } <font color="#4169E1">while</font> (u1 == 0);
+<a name="line602">602: </a>                      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomGetValueReal.html">PetscRandomGetValueReal</a>(rand, &amp;u2));
+<a name="line603">603: </a>                      <font color="#B22222">//compute z0 and z1</font>
+<a name="line604">604: </a>                      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> mag       = sigma * PetscSqrtReal(-2.0 * PetscLogReal(u1)); <font color="#B22222">// is this the same scale grid Maxwellian? t_therm = sigma</font>
+<a name="line605">605: </a>                      xx_t[grid][tid][pp] = mag * PetscCosReal(2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * u2);
+<a name="line606">606: </a>                      yy_t[grid][tid][pp] = mag * PetscSinReal(2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * u2);
+<a name="line607">607: </a>                      <font color="#4169E1">if</font> (dim == 2 &amp;&amp; xx_t[grid][tid][pp] &lt; lo[0]) xx_t[grid][tid][pp] = -xx_t[grid][tid][pp];
+<a name="line608">608: </a>                      <font color="#4169E1">if</font> (dim == 3) zz_t[grid][tid][pp] = lo[2] + hp[2] / 2.0 + pk * hp[2];
+<a name="line609">609: </a>                      <font color="#4169E1">if</font> (!ctx-&gt;sphere) {
+<a name="line610">610: </a>                        <font color="#4169E1">if</font> (dim == 2 &amp;&amp; xx_t[grid][tid][pp] &lt; 0) xx_t[grid][tid][pp] = -xx_t[grid][tid][pp]; <font color="#B22222">// ???</font>
+<a name="line611">611: </a>                        <font color="#4169E1">else</font> <font color="#4169E1">if</font> (dim == 3) {
+<a name="line612">612: </a>                          <font color="#4169E1">while</font> (zz_t[grid][tid][pp] &gt;= hi[2] || zz_t[grid][tid][pp] &lt;= lo[2]) zz_t[grid][tid][pp] *= .9;
+<a name="line613">613: </a>                        }
+<a name="line614">614: </a>                        <font color="#4169E1">while</font> (xx_t[grid][tid][pp] &gt;= hi[0] || xx_t[grid][tid][pp] &lt;= lo[0]) xx_t[grid][tid][pp] *= .9;
+<a name="line615">615: </a>                        <font color="#4169E1">while</font> (yy_t[grid][tid][pp] &gt;= hi[1] || yy_t[grid][tid][pp] &lt;= lo[1]) yy_t[grid][tid][pp] *= .9;
+<a name="line616">616: </a>                      } <font color="#4169E1">else</font> { <font color="#B22222">// 2D</font>
+<a name="line617">617: </a>                        <font color="#B22222">//if (glb_v_id == v_target && pp < 80000) radiuses[pp] = PetscSqrtReal(PetscSqr(xx_t[grid][tid][pp]) + PetscSqr(yy_t[grid][tid][pp]));</font>
+<a name="line618">618: </a>                        <font color="#4169E1">while</font> (PetscSqrtReal(<a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(xx_t[grid][tid][pp]) + <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(yy_t[grid][tid][pp])) &gt; 0.92 * hi[0]) { <font color="#B22222">// safety factor for facets of sphere</font>
+<a name="line619">619: </a>                          xx_t[grid][tid][pp] *= .9;
+<a name="line620">620: </a>                          yy_t[grid][tid][pp] *= .9;
+<a name="line621">621: </a>                        }
+<a name="line622">622: </a>                      }
+<a name="line623">623: </a>                      <font color="#4169E1">if</font> (ctx-&gt;num_grids == 1 &amp;&amp; pp % 2 == 0) p_shift = 0; <font color="#B22222">// one species, split bi-max</font>
+<a name="line624">624: </a>                      p_shift *= ctx-&gt;thermal_speed[grid] / ctx-&gt;v_0;
+<a name="line625">625: </a>                      <font color="#4169E1">if</font> (dim == 3) zz_t[grid][tid][pp] += p_shift;
+<a name="line626">626: </a>                      <font color="#4169E1">else</font> yy_t[grid][tid][pp] += p_shift;
+<a name="line627">627: </a>                      wp_t[grid][tid][pp] += ctx-&gt;n[grid] / NNreal * PetscSqrtReal(ctx-&gt;masses[ctx-&gt;species_offset[grid]] / ctx-&gt;masses[0]);
+<a name="line628">628: </a>                      <font color="#4169E1">if</font> (p_shift &lt;= 0) <font color="#4169E1">break</font>; <font color="#B22222">// add bi-max for electron plasma only</font>
+<a name="line629">629: </a>                      p_shift = -p_shift;
+<a name="line630">630: </a>                    } <font color="#4169E1">while</font> (ctx-&gt;num_grids == 1); <font color="#B22222">// add bi-max for electron plasma only</font>
+<a name="line631">631: </a>                  }
+<a name="line632">632: </a>                  {
+<a name="line633">633: </a>                    <font color="#4169E1">if</font> (glb_v_id == v_target) {
+<a name="line634">634: </a>                      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> x[] = {xx_t[grid][tid][pp], yy_t[grid][tid][pp], dim == 2 ? 0 : zz_t[grid][tid][pp]};
+<a name="line635">635: </a>                      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> v2 = 0, fact = dim == 2 ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * x[0] : 1, w = fact * wp_t[grid][tid][pp] * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]];
+<a name="line636">636: </a>                      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; dim; ++i) v2 += <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(x[i]);
+<a name="line637">637: </a>                      moments_0[0] += w;                   <font color="#B22222">// not thread safe</font>
+<a name="line638">638: </a>                      moments_0[1] += w * ctx-&gt;v_0 * x[1]; <font color="#B22222">// z-momentum</font>
+<a name="line639">639: </a>                      moments_0[2] += w * 0.5 * ctx-&gt;v_0 * ctx-&gt;v_0 * v2;
+<a name="line640">640: </a>                    }
+<a name="line641">641: </a>                  }
+<a name="line642">642: </a>                }
+<a name="line643">643: </a>              }
+<a name="line644">644: </a>            }
+<a name="line645">645: </a>            <font color="#4169E1">if</font> (dim == 2) { <font color="#B22222">// fix bounding box</font>
+<a name="line646">646: </a>              <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pp           = NNreal;
+<a name="line647">647: </a>              wp_t[grid][tid][pp]   = 0;
+<a name="line648">648: </a>              xx_t[grid][tid][pp]   = 1.e-7;
+<a name="line649">649: </a>              yy_t[grid][tid][pp++] = hi[1] - 5.e-7;
+<a name="line650">650: </a>              wp_t[grid][tid][pp]   = 0;
+<a name="line651">651: </a>              xx_t[grid][tid][pp]   = hi[0] - 5.e-7;
+<a name="line652">652: </a>              yy_t[grid][tid][pp++] = 0;
+<a name="line653">653: </a>              wp_t[grid][tid][pp]   = 0;
+<a name="line654">654: </a>              xx_t[grid][tid][pp]   = 1.e-7;
+<a name="line655">655: </a>              yy_t[grid][tid][pp++] = lo[1] + 5.e-7;
+<a name="line656">656: </a>            } <font color="#4169E1">else</font> {
+<a name="line657">657: </a>              const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> p0 = NNreal;
+<a name="line658">658: </a>              <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pj = 0; pj &lt; 6; pj++) xx_t[grid][tid][p0 + pj] = yy_t[grid][tid][p0 + pj] = zz_t[grid][tid][p0 + pj] = wp_t[grid][tid][p0 + pj] = 0;
+<a name="line659">659: </a>              xx_t[grid][tid][p0 + 0] = lo[0];
+<a name="line660">660: </a>              xx_t[grid][tid][p0 + 1] = hi[0];
+<a name="line661">661: </a>              yy_t[grid][tid][p0 + 2] = lo[1];
+<a name="line662">662: </a>              yy_t[grid][tid][p0 + 3] = hi[1];
+<a name="line663">663: </a>              zz_t[grid][tid][p0 + 4] = lo[2];
+<a name="line664">664: </a>              zz_t[grid][tid][p0 + 5] = hi[2];
+<a name="line665">665: </a>            }
+<a name="line666">666: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRandomDestroy.html">PetscRandomDestroy</a>(&amp;rand));
+<a name="line667">667: </a>          }
+<a name="line668">668: </a>          <font color="#B22222">// entropy init, need global n</font>
+<a name="line669">669: </a>          <font color="#4169E1">if</font> (glb_v_id == v_target) {
+<a name="line670">670: </a>            const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> N_inv = 1 / moments_0[0];
+<a name="line671">671: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"Target %"</font> PetscInt_FMT <font color="#666666">" with %"</font> PetscInt_FMT <font color="#666666">" particels\n"</font>, glb_v_id, nTargetP[0]));
+<a name="line672">672: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line673">673: </a>              const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> NN = nTargetP[grid];
+<a name="line674">674: </a>              <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pp = 0; pp &lt; NN; pp++) {
+<a name="line675">675: </a>                const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> fact = dim == 2 ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * xx_t[grid][tid][pp] : 1, w = fact * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]] * wp_t[grid][tid][pp], ww = w * N_inv;
+<a name="line676">676: </a>                <font color="#4169E1">if</font> (w &gt; <a href="../../../manualpages/Sys/PETSC_REAL_MIN.html">PETSC_REAL_MIN</a>) {
+<a name="line677">677: </a>                  moments_0[3] -= ww * PetscLogReal(ww);
+<a name="line678">678: </a>                  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ww &lt; 1 - <a href="../../../manualpages/Sys/PETSC_MACHINE_EPSILON.html">PETSC_MACHINE_EPSILON</a>, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"ww (%g) &gt; 1"</font>, (double)ww);
+<a name="line679">679: </a>                } <font color="#4169E1">else</font> moments_0[4] -= w;
+<a name="line680">680: </a>              }
+<a name="line681">681: </a>            } <font color="#B22222">// grid</font>
+<a name="line682">682: </a>          } <font color="#B22222">// target</font>
+<a name="line683">683: </a>        } <font color="#B22222">// active</font>
+<a name="line684">684: </a>      } <font color="#B22222">// threads</font>
+<a name="line685">685: </a>      <font color="#B22222">/* Create particle swarm */</font>
+<a name="line686">686: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line687">687: </a>        const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line688">688: </a>        <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {                             <font color="#B22222">// the ragged edge of the last batch</font>
+<a name="line689">689: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line690">690: </a>            <a href="../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> section;
+<a name="line691">691: </a>            <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>     Nf;
+<a name="line692">692: </a>            <a href="../../../manualpages/DM/DM.html">DM</a>           dm = grid_dm[grid];
+<a name="line693">693: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;section));
+<a name="line694">694: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/PetscSection/PetscSectionGetNumFields.html">PetscSectionGetNumFields</a>(section, &amp;Nf));
+<a name="line695">695: </a>            <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(Nf == 1, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Only one species per grid supported -- todo"</font>);
+<a name="line696">696: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(dm, NULL, <font color="#666666">"-dm_view"</font>));
+<a name="line697">697: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"call createSwarm [%"</font> PetscInt_FMT <font color="#666666">".%"</font> PetscInt_FMT <font color="#666666">"] local block index %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id, grid, LAND_PACK_IDX(v_id, grid)));
+<a name="line698">698: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(createSwarm(dm, dim, &amp;globSwarmArray[LAND_PACK_IDX(v_id, grid)]));
+<a name="line699">699: </a>          }
+<a name="line700">700: </a>        } <font color="#B22222">// active</font>
+<a name="line701">701: </a>      } <font color="#B22222">// threads</font>
+<a name="line702">702: </a>      <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ierr != 9999, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Only support one species per grid"</font>);
+<a name="line703">703: </a>      <font color="#B22222">// make globMpArray</font>
+<a name="line704">704: </a>      <a href="../../../manualpages/Sys/PetscPragmaOMP.html">PetscPragmaOMP</a>(parallel <font color="#4169E1">for</font>)
+<a name="line705">705: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line706">706: </a>        const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line707">707: </a>        <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line708">708: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line709">709: </a>            <font color="#B22222">// for (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> sp = ctx->species_offset[grid], i0 = 0; sp < ctx->species_offset[grid + 1]; sp++, i0++) -- loop over species for Nf > 1 -- TODO</font>
+<a name="line710">710: </a>            <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr_t;
+<a name="line711">711: </a>            <a href="../../../manualpages/DM/DM.html">DM</a>             sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line712">712: </a>            ierr_t            = <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"makeSwarm %"</font> PetscInt_FMT <font color="#666666">".%"</font> PetscInt_FMT <font color="#666666">") for block %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id, grid, LAND_PACK_IDX(v_id, grid));
+<a name="line713">713: </a>            ierr_t            = makeSwarm(sw, dim, Np_t[grid][tid], xx_t[grid][tid], yy_t[grid][tid], zz_t[grid][tid]);
+<a name="line714">714: </a>            <font color="#4169E1">if</font> (ierr_t) ierr = ierr_t;
+<a name="line715">715: </a>          }
+<a name="line716">716: </a>        }
+<a name="line717">717: </a>      }
+<a name="line718">718: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line719">719: </a>        const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line720">720: </a>        <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line721">721: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line722">722: </a>            <a href="../../../manualpages/DM/DM.html">DM</a> dm = grid_dm[grid];
+<a name="line723">723: </a>            <a href="../../../manualpages/DM/DM.html">DM</a> sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line724">724: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"createMp %"</font> PetscInt_FMT <font color="#666666">".%"</font> PetscInt_FMT <font color="#666666">") for block %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id, grid, LAND_PACK_IDX(v_id, grid)));
+<a name="line725">725: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(createMp(dm, sw, &amp;globMpArray[LAND_PACK_IDX(v_id, grid)]));
+<a name="line726">726: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(globMpArray[LAND_PACK_IDX(v_id, grid)], NULL, <font color="#666666">"-mp_mat_view"</font>));
+<a name="line727">727: </a>          }
+<a name="line728">728: </a>        }
+<a name="line729">729: </a>      }
+<a name="line730">730: </a>      <font color="#B22222">// p --> g: set X</font>
+<a name="line731">731: </a>      <font color="#B22222">// <a href="../../../manualpages/Sys/PetscPragmaOMP.html">PetscPragmaOMP</a>(parallel for)</font>
+<a name="line732">732: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line733">733: </a>        const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line734">734: </a>        <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line735">735: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line736">736: </a>            <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr_t;
+<a name="line737">737: </a>            <a href="../../../manualpages/DM/DM.html">DM</a>             dm   = grid_dm[grid];
+<a name="line738">738: </a>            <a href="../../../manualpages/DM/DM.html">DM</a>             sw   = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line739">739: </a>            <a href="../../../manualpages/Vec/Vec.html">Vec</a>            subX = globXArray[LAND_PACK_IDX(v_id, grid)], work = t_fhat[grid][tid];
+<a name="line740">740: </a>            ierr_t = <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"particlesToGrid %"</font> PetscInt_FMT <font color="#666666">".%"</font> PetscInt_FMT <font color="#666666">") for block %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id, grid, LAND_PACK_IDX(v_id, grid));
+<a name="line741">741: </a>            ierr_t = particlesToGrid(dm, sw, tid, dim, wp_t[grid][tid], subX, globMpArray[LAND_PACK_IDX(v_id, grid)]);
+<a name="line742">742: </a>            <font color="#4169E1">if</font> (ierr_t) ierr = ierr_t;
+<a name="line743">743: </a>            <font color="#B22222">// u = M^_1 f_w</font>
+<a name="line744">744: </a>            ierr_t = <a href="../../../manualpages/Vec/VecCopy.html">VecCopy</a>(subX, work);
+<a name="line745">745: </a>            ierr_t = <a href="../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(t_ksp[grid][tid], work, subX);
+<a name="line746">746: </a>            <font color="#4169E1">if</font> (ierr_t) ierr = ierr_t;
+<a name="line747">747: </a>          }
+<a name="line748">748: </a>        }
+<a name="line749">749: </a>      }
+<a name="line750">750: </a>      <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!ierr, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Error in OMP loop. ierr = %d"</font>, (int)ierr);
+<a name="line751">751: </a>      <font color="#B22222">/* Cleanup */</font>
+<a name="line752">752: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line753">753: </a>        const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line754">754: </a>        <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line755">755: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line756">756: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree4.html">PetscFree4</a>(xx_t[grid][tid], yy_t[grid][tid], wp_t[grid][tid], zz_t[grid][tid]));
+<a name="line757">757: </a>          }
+<a name="line758">758: </a>        } <font color="#B22222">// active</font>
+<a name="line759">759: </a>      } <font color="#B22222">// threads</font>
+<a name="line760">760: </a>    } <font color="#B22222">// (fake) particle loop</font>
+<a name="line761">761: </a>    <font color="#B22222">// standard view of initial conditions</font>
+<a name="line762">762: </a>    <font color="#4169E1">if</font> (v_target &gt;= global_vertex_id_0 &amp;&amp; v_target &lt; global_vertex_id_0 + ctx-&gt;batch_sz) {
+<a name="line763">763: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetOutputSequenceNumber.html">DMSetOutputSequenceNumber</a>(ctx-&gt;plex[g_target], 0, 0.0));
+<a name="line764">764: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecViewFromOptions.html">VecViewFromOptions</a>(globXArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target)], NULL, <font color="#666666">"-ex30_vec_view"</font>));
+<a name="line765">765: </a>      <font color="#4169E1">if</font> (ctx-&gt;num_grids &gt; g_target + 1) {
+<a name="line766">766: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetOutputSequenceNumber.html">DMSetOutputSequenceNumber</a>(ctx-&gt;plex[g_target + 1], 0, 0.0));
+<a name="line767">767: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecViewFromOptions.html">VecViewFromOptions</a>(globXArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target + 1)], NULL, <font color="#666666">"-ex30_vec_view2"</font>));
+<a name="line768">768: </a>      }
+<a name="line769">769: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(globMpArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target)], NULL, <font color="#666666">"-ex30_mass_mat_view"</font>));
+<a name="line770">770: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(globSwarmArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target)], NULL, <font color="#666666">"-ex30_sw_view"</font>));
+<a name="line771">771: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmViewXDMF.html">DMSwarmViewXDMF</a>(globSwarmArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target)], <font color="#666666">"initial_swarm.xmf"</font>)); <font color="#B22222">// writes a file by default!!!</font>
+<a name="line772">772: </a>    }
+<a name="line773">773: </a>    <font color="#B22222">// coarse graining moments_1a, bring f back from grid before advance</font>
+<a name="line774">774: </a>    <font color="#4169E1">if</font> (v_target &gt;= global_vertex_id_0 &amp;&amp; v_target &lt; global_vertex_id_0 + ctx-&gt;batch_sz &amp;&amp; printCtx-&gt;print_entropy) {
+<a name="line775">775: </a>      const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_target % ctx-&gt;batch_sz;
+<a name="line776">776: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line777">777: </a>        <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line778">778: </a>        <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *wp, *coords;
+<a name="line779">779: </a>        <a href="../../../manualpages/DM/DM.html">DM</a>            sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line780">780: </a>        <a href="../../../manualpages/Vec/Vec.html">Vec</a>           work, subX = globXArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line781">781: </a>        <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs, NN;
+<a name="line782">782: </a>        <font color="#B22222">// C-G moments</font>
+<a name="line783">783: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(subX, &amp;work));
+<a name="line784">784: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(gridToParticles(grid_dm[grid], sw, subX, work, globMpArray[LAND_PACK_IDX(v_id, grid)], g_Mass[grid]));
+<a name="line785">785: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;work));
+<a name="line786">786: </a>        <font color="#B22222">// moments</font>
+<a name="line787">787: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line788">788: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetLocalSize.html">DMSwarmGetLocalSize</a>(sw, &amp;NN));
+<a name="line789">789: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line790">790: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pp = 0; pp &lt; NN; pp++) {
+<a name="line791">791: </a>          <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> v2 = 0, fact = (dim == 2) ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * coords[pp * dim + 0] : 1, w = fact * wp[pp] * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]];
+<a name="line792">792: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; dim; ++i) v2 += <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(coords[pp * dim + i]);
+<a name="line793">793: </a>          moments_1a[0] += w;
+<a name="line794">794: </a>          moments_1a[1] += w * ctx-&gt;v_0 * coords[pp * dim + 1]; <font color="#B22222">// z-momentum</font>
+<a name="line795">795: </a>          moments_1a[2] += w * 0.5 * ctx-&gt;v_0 * ctx-&gt;v_0 * v2;
+<a name="line796">796: </a>        }
+<a name="line797">797: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line798">798: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line799">799: </a>      }
+<a name="line800">800: </a>      <font color="#B22222">// entropy</font>
+<a name="line801">801: </a>      const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> N_inv = 1 / moments_1a[0];
+<a name="line802">802: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"Entropy batch %"</font> PetscInt_FMT <font color="#666666">" of %"</font> PetscInt_FMT <font color="#666666">", n = %g\n"</font>, v_target, num_vertices, (double)(1 / N_inv)));
+<a name="line803">803: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line804">804: </a>        <a href="../../../manualpages/Sys/PetscDataType.html">PetscDataType</a> dtype;
+<a name="line805">805: </a>        <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *wp, *coords;
+<a name="line806">806: </a>        <a href="../../../manualpages/DM/DM.html">DM</a>            sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line807">807: </a>        <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs, NN;
+<a name="line808">808: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetLocalSize.html">DMSwarmGetLocalSize</a>(sw, &amp;NN));
+<a name="line809">809: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line810">810: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmGetField.html">DMSwarmGetField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line811">811: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pp = 0; pp &lt; NN; pp++) {
+<a name="line812">812: </a>          <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> fact = (dim == 2) ? 2.0 * <a href="../../../manualpages/Sys/PETSC_PI.html">PETSC_PI</a> * coords[pp * dim + 0] : 1, w = fact * wp[pp] * ctx-&gt;n_0 * ctx-&gt;masses[ctx-&gt;species_offset[grid]], ww = w * N_inv;
+<a name="line813">813: </a>          <font color="#4169E1">if</font> (w &gt; <a href="../../../manualpages/Sys/PETSC_REAL_MIN.html">PETSC_REAL_MIN</a>) {
+<a name="line814">814: </a>            moments_1a[3] -= ww * PetscLogReal(ww);
+<a name="line815">815: </a>            <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ww &lt; 1 - <a href="../../../manualpages/Sys/PETSC_MACHINE_EPSILON.html">PETSC_MACHINE_EPSILON</a>, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"ww (%g) &gt; 1"</font>, (double)ww);
+<a name="line816">816: </a>          } <font color="#4169E1">else</font> moments_1a[4] -= w;
+<a name="line817">817: </a>        }
+<a name="line818">818: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"w_q"</font>, &amp;bs, &amp;dtype, (void **)&amp;wp));
+<a name="line819">819: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmRestoreField.html">DMSwarmRestoreField</a>(sw, <font color="#666666">"DMSwarmPIC_coor"</font>, &amp;bs, &amp;dtype, (void **)&amp;coords));
+<a name="line820">820: </a>      }
+<a name="line821">821: </a>    }
+<a name="line822">822: </a>    <font color="#B22222">// restore vector</font>
+<a name="line823">823: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeRestoreAccessArray.html">DMCompositeRestoreAccessArray</a>(pack, X, nDMs, NULL, globXArray));
+<a name="line824">824: </a>    <font color="#B22222">// view initial grid</font>
+<a name="line825">825: </a>    <font color="#4169E1">if</font> (v_target &gt;= global_vertex_id_0 &amp;&amp; v_target &lt; global_vertex_id_0 + ctx-&gt;batch_sz) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/LANDAU/DMPlexLandauPrintNorms.html">DMPlexLandauPrintNorms</a>(X, 0));
+<a name="line826">826: </a>    <font color="#B22222">// advance</font>
+<a name="line827">827: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetSolution.html">TSSetSolution</a>(ts, X));
+<a name="line828">828: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"Advance vertex %"</font> PetscInt_FMT <font color="#666666">" to %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, global_vertex_id_0, global_vertex_id_0 + ctx-&gt;batch_sz));
+<a name="line829">829: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetPostStep.html">TSSetPostStep</a>(ts, PostStep));
+<a name="line830">830: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PostStep(ts));
+<a name="line831">831: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSolve.html">TSSolve</a>(ts, X));
+<a name="line832">832: </a>    <font color="#B22222">// view</font>
+<a name="line833">833: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeGetAccessArray.html">DMCompositeGetAccessArray</a>(pack, X, nDMs, NULL, globXArray));
+<a name="line834">834: </a>    <font color="#4169E1">if</font> (v_target &gt;= global_vertex_id_0 &amp;&amp; v_target &lt; global_vertex_id_0 + ctx-&gt;batch_sz) {
+<a name="line835">835: </a>      <font color="#B22222">/* Visualize original particle field */</font>
+<a name="line836">836: </a>      <a href="../../../manualpages/DM/DM.html">DM</a>  sw = globSwarmArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target)];
+<a name="line837">837: </a>      <a href="../../../manualpages/Vec/Vec.html">Vec</a> f;
+<a name="line838">838: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetOutputSequenceNumber.html">DMSetOutputSequenceNumber</a>(sw, 0, 0.0));
+<a name="line839">839: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(grid_dm[g_target], NULL, <font color="#666666">"-weights_dm_view"</font>));
+<a name="line840">840: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(sw, NULL, <font color="#666666">"-weights_sw_view"</font>));
+<a name="line841">841: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmCreateGlobalVectorFromField.html">DMSwarmCreateGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;f));
+<a name="line842">842: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)f, <font color="#666666">"weights"</font>));
+<a name="line843">843: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecViewFromOptions.html">VecViewFromOptions</a>(f, NULL, <font color="#666666">"-weights_vec_view"</font>));
+<a name="line844">844: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmDestroyGlobalVectorFromField.html">DMSwarmDestroyGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;f));
+<a name="line845">845: </a>      <font color="#B22222">//</font>
+<a name="line846">846: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/LANDAU/DMPlexLandauPrintNorms.html">DMPlexLandauPrintNorms</a>(X, 1));
+<a name="line847">847: </a>    }
+<a name="line848">848: </a>    <font color="#4169E1">if</font> (!use_uniform_particle_grid) { <font color="#B22222">// resample to uniform grid</font>
+<a name="line849">849: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id_0 = 0; v_id_0 &lt; ctx-&gt;batch_sz; v_id_0 += numthreads) {
+<a name="line850">850: </a>        <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *xx_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS], *yy_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS], *zz_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS], *wp_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS];
+<a name="line851">851: </a>        <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   Np_t[LANDAU_MAX_GRIDS][EX30_MAX_NUM_THRDS];
+<a name="line852">852: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line853">853: </a>          const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line854">854: </a>          <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line855">855: </a>            <font color="#B22222">// create uniform grid w/o weights & smaller</font>
+<a name="line856">856: </a>            <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Npp0 = (a_Np + (glb_v_id % (a_Np / 10 + 1))) / 2, Nv; <font color="#B22222">// 1/2 of uniform particle grid size</font>
+<a name="line857">857: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line858">858: </a>              <font color="#B22222">// for (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> sp = ctx->species_offset[grid], i0 = 0; sp < ctx->species_offset[grid + 1]; sp++, i0++)</font>
+<a name="line859">859: </a>              <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> lo[3] = {-ctx-&gt;radius[grid], -ctx-&gt;radius[grid], -ctx-&gt;radius[grid]}, hi[3] = {ctx-&gt;radius[grid], ctx-&gt;radius[grid], ctx-&gt;radius[grid]}, hp[3];
+<a name="line860">860: </a>              <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  Npi = Npp0, Npj = 2 * Npp0, Npk = 1, NN;
+<a name="line861">861: </a>              <font color="#B22222">// delete old particles and particle mass matrix</font>
+<a name="line862">862: </a>              <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(&amp;globSwarmArray[LAND_PACK_IDX(v_id, grid)]));
+<a name="line863">863: </a>              <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;globMpArray[LAND_PACK_IDX(v_id, grid)]));
+<a name="line864">864: </a>              <font color="#B22222">// create fake particles in batches with threads</font>
+<a name="line865">865: </a>              <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatGetLocalSize.html">MatGetLocalSize</a>(g_Mass[grid], &amp;Nv, NULL));
+<a name="line866">866: </a>              <font color="#4169E1">if</font> (dim == 2) lo[0] = 0;
+<a name="line867">867: </a>              <font color="#4169E1">else</font> Npi = Npj = Npk = Npp0;
+<a name="line868">868: </a>              NN = Npi * Npj * Npk + (dim == 2 ? 3 : 6); <font color="#B22222">// make a regular grid of particles Npp x Npp</font>
+<a name="line869">869: </a>              <font color="#4169E1">while</font> (Npi * Npj * Npk &lt; Nv) {             <font color="#B22222">// make stable - no LS</font>
+<a name="line870">870: </a>                Npi++;
+<a name="line871">871: </a>                Npj++;
+<a name="line872">872: </a>                Npk++;
+<a name="line873">873: </a>                NN = Npi * Npj * Npk + (dim == 2 ? 3 : 6);
+<a name="line874">874: </a>              }
+<a name="line875">875: </a>              Np_t[grid][tid] = NN;
+<a name="line876">876: </a>              <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc4.html">PetscMalloc4</a>(NN, &amp;xx_t[grid][tid], NN, &amp;yy_t[grid][tid], NN, &amp;wp_t[grid][tid], dim == 2 ? 1 : NN, &amp;zz_t[grid][tid]));
+<a name="line877">877: </a>              hp[0] = (hi[0] - lo[0]) / Npi;
+<a name="line878">878: </a>              hp[1] = (hi[1] - lo[1]) / Npj;
+<a name="line879">879: </a>              hp[2] = (hi[2] - lo[2]) / Npk;
+<a name="line880">880: </a>              <font color="#4169E1">if</font> (dim == 2) hp[2] = 1;
+<a name="line881">881: </a>              <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"Resampling %d particles, %d vertices\n"</font>, (int)NN, (int)Nv)); <font color="#B22222">// temp</font>
+<a name="line882">882: </a>              <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pj = 0, pp = 0; pj &lt; Npj; pj++) {
+<a name="line883">883: </a>                <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pk = 0; pk &lt; Npk; pk++) {
+<a name="line884">884: </a>                  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pi = 0; pi &lt; Npi; pi++, pp++) {
+<a name="line885">885: </a>                    wp_t[grid][tid][pp] = 0;
+<a name="line886">886: </a>                    xx_t[grid][tid][pp] = lo[0] + hp[0] / 2.0 + pi * hp[0];
+<a name="line887">887: </a>                    yy_t[grid][tid][pp] = lo[1] + hp[1] / 2.0 + pj * hp[1];
+<a name="line888">888: </a>                    <font color="#4169E1">if</font> (dim == 3) zz_t[grid][tid][pp] = lo[2] + hp[2] / 2.0 + pk * hp[2];
+<a name="line889">889: </a>                  }
+<a name="line890">890: </a>                }
+<a name="line891">891: </a>              }
+<a name="line892">892: </a>              <font color="#4169E1">if</font> (dim == 2) { <font color="#B22222">// fix bounding box</font>
+<a name="line893">893: </a>                <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pp           = NN - 3;
+<a name="line894">894: </a>                wp_t[grid][tid][pp]   = 0;
+<a name="line895">895: </a>                xx_t[grid][tid][pp]   = 1.e-7;
+<a name="line896">896: </a>                yy_t[grid][tid][pp++] = hi[1] - 5.e-7;
+<a name="line897">897: </a>                wp_t[grid][tid][pp]   = 0;
+<a name="line898">898: </a>                xx_t[grid][tid][pp]   = hi[0] - 5.e-7;
+<a name="line899">899: </a>                yy_t[grid][tid][pp++] = 0;
+<a name="line900">900: </a>                wp_t[grid][tid][pp]   = 0;
+<a name="line901">901: </a>                xx_t[grid][tid][pp]   = 1.e-7;
+<a name="line902">902: </a>                yy_t[grid][tid][pp++] = lo[1] + 5.e-7;
+<a name="line903">903: </a>              } <font color="#4169E1">else</font> {
+<a name="line904">904: </a>                const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> p0 = NN - 6;
+<a name="line905">905: </a>                <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> pj = 0; pj &lt; 6; pj++) xx_t[grid][tid][p0 + pj] = yy_t[grid][tid][p0 + pj] = zz_t[grid][tid][p0 + pj] = wp_t[grid][tid][p0 + pj] = 0;
+<a name="line906">906: </a>                xx_t[grid][tid][p0 + 0] = lo[0];
+<a name="line907">907: </a>                xx_t[grid][tid][p0 + 1] = hi[0];
+<a name="line908">908: </a>                yy_t[grid][tid][p0 + 2] = lo[1];
+<a name="line909">909: </a>                yy_t[grid][tid][p0 + 3] = hi[1];
+<a name="line910">910: </a>                zz_t[grid][tid][p0 + 4] = lo[2];
+<a name="line911">911: </a>                zz_t[grid][tid][p0 + 5] = hi[2];
+<a name="line912">912: </a>              }
+<a name="line913">913: </a>            }
+<a name="line914">914: </a>          } <font color="#B22222">// active</font>
+<a name="line915">915: </a>        } <font color="#B22222">// threads</font>
+<a name="line916">916: </a>        <font color="#B22222">/* Create particle swarm */</font>
+<a name="line917">917: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line918">918: </a>          const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line919">919: </a>          <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {                             <font color="#B22222">// the ragged edge of the last batch</font>
+<a name="line920">920: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line921">921: </a>              <font color="#B22222">// for (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> sp = ctx->species_offset[grid], i0 = 0; sp < ctx->species_offset[grid + 1]; sp++, i0++) -- loop over species for Nf > 1 -- TODO</font>
+<a name="line922">922: </a>              <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr_t;
+<a name="line923">923: </a>              <a href="../../../manualpages/PetscSection/PetscSection.html">PetscSection</a>   section;
+<a name="line924">924: </a>              <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       Nf;
+<a name="line925">925: </a>              <a href="../../../manualpages/DM/DM.html">DM</a>             dm = grid_dm[grid];
+<a name="line926">926: </a>              ierr_t            = <a href="../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;section);
+<a name="line927">927: </a>              ierr_t            = <a href="../../../manualpages/PetscSection/PetscSectionGetNumFields.html">PetscSectionGetNumFields</a>(section, &amp;Nf);
+<a name="line928">928: </a>              <font color="#4169E1">if</font> (Nf != 1) ierr_t = (<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>)9999;
+<a name="line929">929: </a>              <font color="#4169E1">else</font> {
+<a name="line930">930: </a>                ierr_t = <a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(dm, NULL, <font color="#666666">"-dm_view"</font>);
+<a name="line931">931: </a>                ierr_t = <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"call createSwarm [%"</font> PetscInt_FMT <font color="#666666">".%"</font> PetscInt_FMT <font color="#666666">"] local block index %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id, grid, LAND_PACK_IDX(v_id, grid));
+<a name="line932">932: </a>                ierr_t = createSwarm(dm, dim, &amp;globSwarmArray[LAND_PACK_IDX(v_id, grid)]);
+<a name="line933">933: </a>              }
+<a name="line934">934: </a>              <font color="#4169E1">if</font> (ierr_t) ierr = ierr_t;
+<a name="line935">935: </a>            }
+<a name="line936">936: </a>          } <font color="#B22222">// active</font>
+<a name="line937">937: </a>        } <font color="#B22222">// threads</font>
+<a name="line938">938: </a>        <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ierr != 9999, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Only support one species per grid"</font>);
+<a name="line939">939: </a>        <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!ierr, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Error in OMP loop. ierr = %d"</font>, (int)ierr);
+<a name="line940">940: </a>        <font color="#B22222">// make globMpArray</font>
+<a name="line941">941: </a>        <a href="../../../manualpages/Sys/PetscPragmaOMP.html">PetscPragmaOMP</a>(parallel <font color="#4169E1">for</font>)
+<a name="line942">942: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line943">943: </a>          const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line944">944: </a>          <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line945">945: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line946">946: </a>              <font color="#B22222">// for (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> sp = ctx->species_offset[grid], i0 = 0; sp < ctx->species_offset[grid + 1]; sp++, i0++) -- loop over species for Nf > 1 -- TODO</font>
+<a name="line947">947: </a>              <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr_t;
+<a name="line948">948: </a>              <a href="../../../manualpages/DM/DM.html">DM</a>             sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line949">949: </a>              ierr_t            = <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"makeSwarm %"</font> PetscInt_FMT <font color="#666666">".%"</font> PetscInt_FMT <font color="#666666">") for block %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id, grid, LAND_PACK_IDX(v_id, grid));
+<a name="line950">950: </a>              ierr_t            = makeSwarm(sw, dim, Np_t[grid][tid], xx_t[grid][tid], yy_t[grid][tid], zz_t[grid][tid]);
+<a name="line951">951: </a>              <font color="#4169E1">if</font> (ierr_t) ierr = ierr_t;
+<a name="line952">952: </a>            }
+<a name="line953">953: </a>          } <font color="#B22222">// active</font>
+<a name="line954">954: </a>        } <font color="#B22222">// threads</font>
+<a name="line955">955: </a>        <font color="#B22222">// create particle mass matrices</font>
+<a name="line956">956: </a>        <font color="#B22222">//<a href="../../../manualpages/Sys/PetscPragmaOMP.html">PetscPragmaOMP</a>(parallel for)</font>
+<a name="line957">957: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line958">958: </a>          const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line959">959: </a>          <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line960">960: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line961">961: </a>              <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr_t;
+<a name="line962">962: </a>              <a href="../../../manualpages/DM/DM.html">DM</a>             dm = grid_dm[grid];
+<a name="line963">963: </a>              <a href="../../../manualpages/DM/DM.html">DM</a>             sw = globSwarmArray[LAND_PACK_IDX(v_id, grid)];
+<a name="line964">964: </a>              ierr_t            = <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pack, <font color="#666666">"createMp %"</font> PetscInt_FMT <font color="#666666">".%"</font> PetscInt_FMT <font color="#666666">") for block %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, v_id, grid, LAND_PACK_IDX(v_id, grid));
+<a name="line965">965: </a>              ierr_t            = createMp(dm, sw, &amp;globMpArray[LAND_PACK_IDX(v_id, grid)]);
+<a name="line966">966: </a>              <font color="#4169E1">if</font> (ierr_t) ierr = ierr_t;
+<a name="line967">967: </a>            }
+<a name="line968">968: </a>          } <font color="#B22222">// active</font>
+<a name="line969">969: </a>        } <font color="#B22222">// threads</font>
+<a name="line970">970: </a>        <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!ierr, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Error in OMP loop. ierr = %d"</font>, (int)ierr);
+<a name="line971">971: </a>        <font color="#B22222">/* Cleanup */</font>
+<a name="line972">972: </a>        <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line973">973: </a>          const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line974">974: </a>          <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line975">975: </a>            <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line976">976: </a>              <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree4.html">PetscFree4</a>(xx_t[grid][tid], yy_t[grid][tid], wp_t[grid][tid], zz_t[grid][tid]));
+<a name="line977">977: </a>            }
+<a name="line978">978: </a>          } <font color="#B22222">// active</font>
+<a name="line979">979: </a>        } <font color="#B22222">// threads</font>
+<a name="line980">980: </a>      } <font color="#B22222">// batch</font>
+<a name="line981">981: </a>      <font color="#B22222">// view</font>
+<a name="line982">982: </a>      <font color="#4169E1">if</font> (v_target &gt;= global_vertex_id_0 &amp;&amp; v_target &lt; global_vertex_id_0 + ctx-&gt;batch_sz) {
+<a name="line983">983: </a>        <font color="#B22222">/* Visualize particle field */</font>
+<a name="line984">984: </a>        <a href="../../../manualpages/DM/DM.html">DM</a>  sw = globSwarmArray[LAND_PACK_IDX(v_target % ctx-&gt;batch_sz, g_target)];
+<a name="line985">985: </a>        <a href="../../../manualpages/Vec/Vec.html">Vec</a> f;
+<a name="line986">986: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetOutputSequenceNumber.html">DMSetOutputSequenceNumber</a>(sw, 0, 0.0));
+<a name="line987">987: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(sw, NULL, <font color="#666666">"-resampled_weights_sw_view"</font>));
+<a name="line988">988: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmCreateGlobalVectorFromField.html">DMSwarmCreateGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;f));
+<a name="line989">989: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)f, <font color="#666666">"resampled_weights"</font>));
+<a name="line990">990: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecViewFromOptions.html">VecViewFromOptions</a>(f, NULL, <font color="#666666">"-resampled_weights_vec_view"</font>));
+<a name="line991">991: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmDestroyGlobalVectorFromField.html">DMSwarmDestroyGlobalVectorFromField</a>(sw, <font color="#666666">"w_q"</font>, &amp;f));
+<a name="line992">992: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMSwarm/DMSwarmViewXDMF.html">DMSwarmViewXDMF</a>(sw, <font color="#666666">"resampled.xmf"</font>));
+<a name="line993">993: </a>      }
+<a name="line994">994: </a>    } <font color="#B22222">// !uniform</font>
+<a name="line995">995: </a>    <font color="#B22222">// particles to grid, compute moments and entropy, for target vertex only</font>
+<a name="line996">996: </a>    <font color="#4169E1">if</font> (v_target &gt;= global_vertex_id_0 &amp;&amp; v_target &lt; global_vertex_id_0 + ctx-&gt;batch_sz &amp;&amp; printCtx-&gt;print_entropy) {
+<a name="line997">997: </a>      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> energy_error_rel;
+<a name="line998">998: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(gridToParticles_private(grid_dm, globSwarmArray, dim, v_target, numthreads, num_vertices, global_vertex_id_0, globMpArray, g_Mass, t_fhat, moments_1b, globXArray, ctx));
+<a name="line999">999: </a>      energy_error_rel = <a href="../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(moments_1b[2] - moments_0[2]) / moments_0[2];
+<a name="line1000">1000: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">"Particle Moments:\t number density      momentum (par)     energy             entropy            negative weights  : # OMP threads %g\n"</font>, (double)numthreads));
+<a name="line1001">1001: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">"\tInitial:         %18.12e %19.12e %18.12e %18.12e %g %%\n"</font>, (double)moments_0[0], (double)moments_0[1], (double)moments_0[2], (double)moments_0[3], 100 * (double)(moments_0[4] / moments_0[0])));
+<a name="line1002">1002: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">"\tCoarse-graining: %18.12e %19.12e %18.12e %18.12e %g %%\n"</font>, (double)moments_1a[0], (double)moments_1a[1], (double)moments_1a[2], (double)moments_1a[3], 100 * (double)(moments_1a[4] / moments_0[0])));
+<a name="line1003">1003: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">"\tLandau:          %18.12e %19.12e %18.12e %18.12e %g %%\n"</font>, (double)moments_1b[0], (double)moments_1b[1], (double)moments_1b[2], (double)moments_1b[3], 100 * (double)(moments_1b[4] / moments_0[0])));
+<a name="line1004">1004: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">"Coarse-graining entropy generation = %e ; Landau entropy generation = %e\n"</font>, (double)(moments_1a[3] - moments_0[3]), (double)(moments_1b[3] - moments_0[3])));
+<a name="line1005">1005: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">"(relative) energy conservation: Coarse-graining = %e, Landau = %e (%g %d)\n"</font>, (double)(moments_1a[2] - moments_0[2]) / (double)moments_0[2], (double)energy_error_rel, (double)PetscLog10Real(energy_error_rel), (int)(PetscLog10Real(energy_error_rel) + .5)));
+<a name="line1006">1006: </a>    }
+<a name="line1007">1007: </a>    <font color="#B22222">// restore vector</font>
+<a name="line1008">1008: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMComposite/DMCompositeRestoreAccessArray.html">DMCompositeRestoreAccessArray</a>(pack, X, nDMs, NULL, globXArray));
+<a name="line1009">1009: </a>    <font color="#B22222">// cleanup</font>
+<a name="line1010">1010: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id_0 = 0; v_id_0 &lt; ctx-&gt;batch_sz; v_id_0 += numthreads) {
+<a name="line1011">1011: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line1012">1012: </a>        const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> v_id = v_id_0 + tid, glb_v_id = global_vertex_id_0 + v_id;
+<a name="line1013">1013: </a>        <font color="#4169E1">if</font> (glb_v_id &lt; num_vertices) {
+<a name="line1014">1014: </a>          <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) {
+<a name="line1015">1015: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(&amp;globSwarmArray[LAND_PACK_IDX(v_id, grid)]));
+<a name="line1016">1016: </a>            <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;globMpArray[LAND_PACK_IDX(v_id, grid)]));
+<a name="line1017">1017: </a>          }
+<a name="line1018">1018: </a>        }
+<a name="line1019">1019: </a>      }
+<a name="line1020">1020: </a>    }
+<a name="line1021">1021: </a>  } <font color="#B22222">// user batch, not used</font>
+<a name="line1022">1022: </a>  <font color="#B22222">/* Cleanup */</font>
+<a name="line1023">1023: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(globXArray));
+<a name="line1024">1024: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(globSwarmArray));
+<a name="line1025">1025: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(globMpArray));
+<a name="line1026">1026: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(printCtx));
+<a name="line1027">1027: </a>  <font color="#B22222">// clean up mass matrices</font>
+<a name="line1028">1028: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> grid = 0; grid &lt; ctx-&gt;num_grids; grid++) { <font color="#B22222">// add same particels for all grids</font>
+<a name="line1029">1029: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;g_Mass[grid]));
+<a name="line1030">1030: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> tid = 0; tid &lt; numthreads; tid++) {
+<a name="line1031">1031: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;t_fhat[grid][tid]));
+<a name="line1032">1032: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(&amp;t_ksp[grid][tid]));
+<a name="line1033">1033: </a>    }
+<a name="line1034">1034: </a>  }
+<a name="line1035">1035: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1036">1036: </a>}
+
+<a name="line1038">1038: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line1039">1039: </a>{
+<a name="line1040">1040: </a>  <a href="../../../manualpages/DM/DM.html">DM</a>         pack;
+<a name="line1041">1041: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>        X;
+<a name="line1042">1042: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   dim = 2, num_vertices = 1, Np = 10, v_target = 0, g_target = 0;
+<a name="line1043">1043: </a>  <a href="../../../manualpages/TS/TS.html">TS</a>         ts;
+<a name="line1044">1044: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>        J;
+<a name="line1045">1045: </a>  LandauCtx *ctx;
+<a name="line1046">1046: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>  shift                     = 0;
+<a name="line1047">1047: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>  use_uniform_particle_grid = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line1049">1049: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line1050">1050: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line1051">1051: </a>  <font color="#B22222">// process args</font>
+<a name="line1052">1052: </a>  <a href="../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">""</font>, <font color="#666666">"Collision Options"</font>, <font color="#666666">"<a href="../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>"</font>);
+<a name="line1053">1053: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-dim"</font>, <font color="#666666">"Velocity space dimension"</font>, <font color="#666666">"ex30.c"</font>, dim, &amp;dim, NULL));
+<a name="line1054">1054: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-number_spatial_vertices"</font>, <font color="#666666">"Number of user spatial vertices to be batched for Landau"</font>, <font color="#666666">"ex30.c"</font>, num_vertices, &amp;num_vertices, NULL));
+<a name="line1055">1055: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-number_particles_per_dimension"</font>, <font color="#666666">"Number of particles per grid, with slight modification per spatial vertex, in each dimension of base Cartesian grid"</font>, <font color="#666666">"ex30.c"</font>, Np, &amp;Np, NULL));
+<a name="line1056">1056: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-use_uniform_particle_grid"</font>, <font color="#666666">"Use uniform particle grid"</font>, <font color="#666666">"ex30.c"</font>, use_uniform_particle_grid, &amp;use_uniform_particle_grid, NULL));
+<a name="line1057">1057: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-vertex_view_target"</font>, <font color="#666666">"Global vertex for diagnostics"</font>, <font color="#666666">"ex30.c"</font>, v_target, &amp;v_target, NULL));
+<a name="line1058">1058: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-e_shift"</font>, <font color="#666666">"Bi-Maxwellian shift"</font>, <font color="#666666">"ex30.c"</font>, shift, &amp;shift, NULL));
+<a name="line1059">1059: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(v_target &lt; num_vertices, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Batch to view %"</font> PetscInt_FMT <font color="#666666">" should be &lt; number of vertices %"</font> PetscInt_FMT, v_target, num_vertices);
+<a name="line1060">1060: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-grid_view_target"</font>, <font color="#666666">"Grid to view with diagnostics"</font>, <font color="#666666">"ex30.c"</font>, g_target, &amp;g_target, NULL));
+<a name="line1061">1061: </a>  <a href="../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+<a name="line1062">1062: </a>  <font color="#B22222">/* Create a mesh */</font>
+<a name="line1063">1063: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/LANDAU/DMPlexLandauCreateVelocitySpace.html">DMPlexLandauCreateVelocitySpace</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, dim, <font color="#666666">""</font>, &amp;X, &amp;J, &amp;pack));
+<a name="line1064">1064: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetApplicationContext.html">DMGetApplicationContext</a>(pack, &amp;ctx));
+<a name="line1065">1065: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetUp.html">DMSetUp</a>(pack));
+<a name="line1066">1066: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMSetOutputSequenceNumber.html">DMSetOutputSequenceNumber</a>(pack, 0, 0.0));
+<a name="line1067">1067: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(g_target &lt; ctx-&gt;num_grids, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Grid to view %"</font> PetscInt_FMT <font color="#666666">" should be &lt; number of grids %"</font> PetscInt_FMT, g_target, ctx-&gt;num_grids);
+<a name="line1068">1068: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ctx-&gt;batch_view_idx == v_target % ctx-&gt;batch_sz, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Global view index %"</font> PetscInt_FMT <font color="#666666">" mode batch size %"</font> PetscInt_FMT <font color="#666666">" != ctx-&gt;batch_view_idx %"</font> PetscInt_FMT, v_target, ctx-&gt;batch_sz, ctx-&gt;batch_view_idx);
+<a name="line1069">1069: </a>  <font color="#B22222">// <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!use_uniform_particle_grid || !ctx->sphere, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, "Can not use -use_uniform_particle_grid and -dm_landau_sphere");</font>
+<a name="line1070">1070: </a>  <font color="#B22222">/* Create timestepping solver context */</font>
+<a name="line1071">1071: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSCreate.html">TSCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, &amp;ts));
+<a name="line1072">1072: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetDM.html">TSSetDM</a>(ts, pack));
+<a name="line1073">1073: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetIFunction.html">TSSetIFunction</a>(ts, NULL, <a href="../../../manualpages/LANDAU/DMPlexLandauIFunction.html">DMPlexLandauIFunction</a>, NULL));
+<a name="line1074">1074: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetIJacobian.html">TSSetIJacobian</a>(ts, J, J, <a href="../../../manualpages/LANDAU/DMPlexLandauIJacobian.html">DMPlexLandauIJacobian</a>, NULL));
+<a name="line1075">1075: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetExactFinalTime.html">TSSetExactFinalTime</a>(ts, <a href="../../../manualpages/TS/TSExactFinalTimeOption.html">TS_EXACTFINALTIME_STEPOVER</a>));
+<a name="line1076">1076: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSSetFromOptions.html">TSSetFromOptions</a>(ts));
+<a name="line1077">1077: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)X, <font color="#666666">"X"</font>));
+<a name="line1078">1078: </a>  <font color="#B22222">// do particle advance</font>
+<a name="line1079">1079: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(go(ts, X, num_vertices, Np, dim, v_target, g_target, shift, use_uniform_particle_grid));
+<a name="line1080">1080: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatZeroEntries.html">MatZeroEntries</a>(J)); <font color="#B22222">// need to zero out so as to not reuse it in Landau's logic</font>
+<a name="line1081">1081: </a>  <font color="#B22222">/* clean up */</font>
+<a name="line1082">1082: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/LANDAU/DMPlexLandauDestroyVelocitySpace.html">DMPlexLandauDestroyVelocitySpace</a>(&amp;pack));
+<a name="line1083">1083: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/TS/TSDestroy.html">TSDestroy</a>(&amp;ts));
+<a name="line1084">1084: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;X));
+<a name="line1085">1085: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line1086">1086: </a>  <font color="#4169E1">return</font> 0;
+<a name="line1087">1087: </a>}
+
+<a name="line1089">1089: </a><font color="#B22222">/*TEST</font>
+
+<a name="line1091">1091: </a><font color="#B22222">  build:</font>
+<a name="line1092">1092: </a><font color="#B22222">    requires: !complex</font>
+
+<a name="line1094">1094: </a><font color="#B22222">  testset:</font>
+<a name="line1095">1095: </a><font color="#B22222">    requires: double defined(PETSC_USE_DMLANDAU_2D)</font>
+<a name="line1096">1096: </a><font color="#B22222">    output_file: output/ex30_0.out</font>
+<a name="line1097">1097: </a><font color="#B22222">    args: -dim 2 -petscspace_degree 3 -dm_landau_num_species_grid 1,1,1 -dm_refine 1 -number_particles_per_dimension 20 \</font>
+<a name="line1098">1098: </a><font color="#B22222">          -dm_landau_batch_size 4 -number_spatial_vertices 6 -vertex_view_target 5 -grid_view_target 1 -dm_landau_batch_view_idx 1 \</font>
+<a name="line1099">1099: </a><font color="#B22222">          -dm_landau_n 1.000018,1,1e-6 -dm_landau_thermal_temps 2,1,1 -dm_landau_ion_masses 2,180 -dm_landau_ion_charges 1,18 \</font>
+<a name="line1100">1100: </a><font color="#B22222">          -ftop_ksp_rtol 1e-10 -ftop_ksp_type lsqr -ftop_pc_type bjacobi -ftop_sub_pc_factor_shift_type nonzero -ftop_sub_pc_type lu -ftop_ksp_error_if_not_converged \</font>
+<a name="line1101">1101: </a><font color="#B22222">          -ksp_type gmres -ksp_error_if_not_converged -dm_landau_verbose 4 -print_entropy \</font>
+<a name="line1102">1102: </a><font color="#B22222">          -ptof_ksp_type cg -ptof_pc_type jacobi -ptof_ksp_rtol 1e-12 -ptof_ksp_error_if_not_converged\</font>
+<a name="line1103">1103: </a><font color="#B22222">          -snes_converged_reason -snes_monitor -snes_rtol 1e-12 -snes_stol 1e-12 \</font>
+<a name="line1104">1104: </a><font color="#B22222">          -ts_dt 0.01 -ts_rtol 1e-1 -ts_exact_final_time stepover -ts_max_snes_failures -1 -ts_max_steps 1 -ts_monitor -ts_type beuler</font>
+<a name="line1105">1105: </a><font color="#B22222">    test:</font>
+<a name="line1106">1106: </a><font color="#B22222">      suffix: cpu</font>
+<a name="line1107">1107: </a><font color="#B22222">      args: -dm_landau_device_type cpu -pc_type jacobi</font>
+<a name="line1108">1108: </a><font color="#B22222">    test:</font>
+<a name="line1109">1109: </a><font color="#B22222">      suffix: kokkos</font>
+<a name="line1110">1110: </a><font color="#B22222">      # failed on Sunspot@ALCF with sycl</font>
+<a name="line1111">1111: </a><font color="#B22222">      requires: kokkos_kernels !openmp !sycl</font>
+<a name="line1112">1112: </a><font color="#B22222">      args: -dm_landau_device_type kokkos -dm_mat_type aijkokkos -dm_vec_type kokkos -pc_type bjkokkos -pc_bjkokkos_ksp_type tfqmr -pc_bjkokkos_pc_type jacobi</font>
+
+<a name="line1114">1114: </a><font color="#B22222">  testset:</font>
+<a name="line1115">1115: </a><font color="#B22222">    requires: double !defined(PETSC_USE_DMLANDAU_2D)</font>
+<a name="line1116">1116: </a><font color="#B22222">    output_file: output/ex30_3d.out</font>
+<a name="line1117">1117: </a><font color="#B22222">    args: -dim 3 -petscspace_degree 2 -dm_landau_num_species_grid 1,1 -dm_refine 0 -number_particles_per_dimension 10 -dm_plex_hash_location \</font>
+<a name="line1118">1118: </a><font color="#B22222">          -dm_landau_batch_size 1 -number_spatial_vertices 1 -vertex_view_target 0 -grid_view_target 0 -dm_landau_batch_view_idx 0 \</font>
+<a name="line1119">1119: </a><font color="#B22222">          -dm_landau_n 1.000018,1 -dm_landau_thermal_temps 2,1 -dm_landau_ion_masses 2 -dm_landau_ion_charges 1 \</font>
+<a name="line1120">1120: </a><font color="#B22222">          -ftop_ksp_type cg -ftop_pc_type jacobi -ftop_ksp_rtol 1e-12 -ftop_ksp_error_if_not_converged -ksp_type preonly -pc_type lu -ksp_error_if_not_converged \</font>
+<a name="line1121">1121: </a><font color="#B22222">          -ptof_ksp_type cg -ptof_pc_type jacobi -ptof_ksp_rtol 1e-12 -ptof_ksp_error_if_not_converged \</font>
+<a name="line1122">1122: </a><font color="#B22222">          -snes_converged_reason -snes_monitor -snes_rtol 1e-12 -snes_stol 1e-12 \</font>
+<a name="line1123">1123: </a><font color="#B22222">          -ts_dt 0.1 -ts_exact_final_time stepover -ts_max_snes_failures -1 -ts_max_steps 1 -ts_monitor -ts_type beuler -print_entropy</font>
+<a name="line1124">1124: </a><font color="#B22222">    test:</font>
+<a name="line1125">1125: </a><font color="#B22222">      suffix: cpu_3d</font>
+<a name="line1126">1126: </a><font color="#B22222">      args: -dm_landau_device_type cpu</font>
+<a name="line1127">1127: </a><font color="#B22222">    test:</font>
+<a name="line1128">1128: </a><font color="#B22222">      suffix: kokkos_3d</font>
+<a name="line1129">1129: </a><font color="#B22222">      requires: kokkos_kernels !openmp</font>
+<a name="line1130">1130: </a><font color="#B22222">      args: -dm_landau_device_type kokkos -dm_mat_type aijkokkos -dm_vec_type kokkos -pc_type bjkokkos -pc_bjkokkos_ksp_type tfqmr -pc_bjkokkos_pc_type jacobi</font>
+
+<a name="line1132">1132: </a><font color="#B22222">  test:</font>
+<a name="line1133">1133: </a><font color="#B22222">    suffix: conserve</font>
+<a name="line1134">1134: </a><font color="#B22222">    requires: !complex double defined(PETSC_USE_DMLANDAU_2D) !cuda</font>
+<a name="line1135">1135: </a><font color="#B22222">    args: -dm_landau_batch_size 4 -dm_refine 0 -dm_landau_num_species_grid 1 -dm_landau_thermal_temps 1 -petscspace_degree 3 -snes_converged_reason -ts_type beuler -ts_dt .1 \</font>
+<a name="line1136">1136: </a><font color="#B22222">          -ts_max_steps 1 -ksp_type preonly -ksp_error_if_not_converged -snes_rtol 1e-14 -snes_stol 1e-14 -dm_landau_device_type cpu -number_particles_per_dimension 20 \</font>
+<a name="line1137">1137: </a><font color="#B22222">          -ptof_ksp_type cg -ptof_pc_type jacobi -ptof_ksp_rtol 1e-14 -ptof_ksp_error_if_not_converged -pc_type lu -dm_landau_simplex 1 -use_uniform_particle_grid false -dm_landau_sphere -print_entropy -number_particles_per_dimension 50 -ftop_ksp_type cg -ftop_pc_type jacobi -ftop_ksp_rtol 1e-14</font>
+
+<a name="line1139">1139: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

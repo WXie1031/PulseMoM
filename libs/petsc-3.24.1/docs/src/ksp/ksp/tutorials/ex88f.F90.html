@@ -1,0 +1,126 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/tutorials/ex88f.F90">Actual source code: ex88f.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>!
+<a name="line2">  2: </a>!     Creates a tridiagonal sparse matrix explicitly in Fortran and solves a linear system with it
+<a name="line3">  3: </a>!
+<a name="line4">  4: </a>!     The matrix is provided in triples in a way that supports new nonzero values with the same nonzero structure
+<a name="line5">  5: </a>!
+<a name="line6">  6: </a>program main
+<a name="line7">  7: </a><font color="#A020F0">#include &lt;petsc/finclude/petscksp.h&gt;</font>
+<a name="line8">  8: </a>  use petscksp
+<a name="line9">  9: </a>  implicit none
+
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i, n
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Sys/PetscCount.html">PetscCount</a> nz
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> flg
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, ALLOCATABLE :: a(:)
+<a name="line16"> 16: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, pointer :: b(:)
+
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, ALLOCATABLE :: rows(:)
+<a name="line19"> 19: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, ALLOCATABLE :: cols(:)
+
+<a name="line21"> 21: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a> J
+<a name="line22"> 22: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> rhs, solution
+<a name="line23"> 23: </a>  <a href="../../../../manualpages/KSP/KSP.html">KSP</a> ksp
+
+<a name="line25"> 25: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(ierr))
+
+<a name="line27"> 27: </a>  n = 3
+<a name="line28"> 28: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Sys/PetscOptionsGetInt.html">PetscOptionsGetInt</a>(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-n', n, flg, ierr))
+<a name="line29"> 29: </a>  nz = 3*n - 4
+
+<a name="line31"> 31: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecCreateSeq.html">VecCreateSeq</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, n, rhs, ierr))
+<a name="line32"> 32: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecCreateSeq.html">VecCreateSeq</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, n, solution, ierr))
+<a name="line33"> 33: </a>  ALLOCATE (rows(nz), cols(nz), a(nz))
+
+<a name="line35"> 35: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecGetArray.html">VecGetArray</a>(rhs, b, ierr))
+<a name="line36"> 36: </a>  <font color="#4169E1">do</font> i = 1, n
+<a name="line37"> 37: </a>    b(i) = 1.0
+<a name="line38"> 38: </a>  end <font color="#4169E1">do</font>
+<a name="line39"> 39: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecRestoreArray.html">VecRestoreArray</a>(rhs, b, ierr))
+
+<a name="line41"> 41: </a>  rows(1) = 0; cols(1) = 0
+<a name="line42"> 42: </a>  a(1) = 1.0
+<a name="line43"> 43: </a>  <font color="#4169E1">do</font> i = 2, n - 1
+<a name="line44"> 44: </a>    rows(2 + 3*(i - 2)) = i - 1; cols(2 + 3*(i - 2)) = i - 2
+<a name="line45"> 45: </a>    a(2 + 3*(i - 2)) = -1.0
+<a name="line46"> 46: </a>    rows(2 + 3*(i - 2) + 1) = i - 1; cols(2 + 3*(i - 2) + 1) = i - 1
+<a name="line47"> 47: </a>    a(2 + 3*(i - 2) + 1) = 2.0
+<a name="line48"> 48: </a>    rows(2 + 3*(i - 2) + 2) = i - 1; cols(2 + 3*(i - 2) + 2) = i
+<a name="line49"> 49: </a>    a(2 + 3*(i - 2) + 2) = -1.0
+<a name="line50"> 50: </a>  end <font color="#4169E1">do</font>
+<a name="line51"> 51: </a>  rows(nz) = n - 1; cols(nz) = n - 1
+<a name="line52"> 52: </a>  a(nz) = 1.0
+
+<a name="line54"> 54: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, J, ierr))
+<a name="line55"> 55: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(J, n, n, n, n, ierr))
+<a name="line56"> 56: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(J, <a href="../../../../manualpages/Mat/MATSEQAIJ.html">MATSEQAIJ</a>, ierr))
+<a name="line57"> 57: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatSetPreallocationCOO.html">MatSetPreallocationCOO</a>(J, nz, rows, cols, ierr))
+<a name="line58"> 58: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatSetValuesCOO.html">MatSetValuesCOO</a>(J, a, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, ierr))
+
+<a name="line60"> 60: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, ksp, ierr))
+<a name="line61"> 61: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSetErrorIfNotConverged.html">KSPSetErrorIfNotConverged</a>(ksp, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, ierr))
+<a name="line62"> 62: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSetFromOptions.html">KSPSetFromOptions</a>(ksp, ierr))
+<a name="line63"> 63: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, J, J, ierr))
+
+<a name="line65"> 65: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(ksp, rhs, solution, ierr))
+
+<a name="line67"> 67: </a>!     Keep the same size and nonzero structure of the matrix but change its numerical entries
+<a name="line68"> 68: </a>  <font color="#4169E1">do</font> i = 2, n - 1
+<a name="line69"> 69: </a>    a(2 + 3*(i - 2) + 1) = 4.0
+<a name="line70"> 70: </a>  end <font color="#4169E1">do</font>
+<a name="line71"> 71: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatSetValuesCOO.html">MatSetValuesCOO</a>(J, a, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, ierr))
+
+<a name="line73"> 73: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(ksp, rhs, solution, ierr))
+
+<a name="line75"> 75: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(ksp, ierr))
+<a name="line76"> 76: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(rhs, ierr))
+<a name="line77"> 77: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(solution, ierr))
+<a name="line78"> 78: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(J, ierr))
+
+<a name="line80"> 80: </a>  DEALLOCATE (rows, cols, a)
+
+<a name="line82"> 82: </a>  <a href="../../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>(ierr))
+<a name="line83"> 83: </a>end
+
+<a name="line85"> 85: </a>!<font color="#B22222">/*TEST</font>
+<a name="line86"> 86: </a><font color="#B22222">!</font>
+<a name="line87"> 87: </a><font color="#B22222">!     test:</font>
+<a name="line88"> 88: </a><font color="#B22222">!       requires: defined(PETSC_USE_SINGLE_LIBRARY)</font>
+<a name="line89"> 89: </a><font color="#B22222">!       nsize: 3</font>
+<a name="line90"> 90: </a><font color="#B22222">!       filter: sed 's?ATOL?RTOL?g' | grep -v HERMITIAN | grep -v "shared memory" | grep -v "Mat_0"</font>
+<a name="line91"> 91: </a><font color="#B22222">!       # use the MPI Linear Solver Server</font>
+<a name="line92"> 92: </a><font color="#B22222">!       args: -n 20 -mpi_linear_solver_server -mpi_linear_solver_server_view -mpi_linear_solver_server_use_shared_memory false</font>
+<a name="line93"> 93: </a><font color="#B22222">!       # controls for the use of <a href="../../../../manualpages/PC/PCMPI.html">PCMPI</a> on a particular system</font>
+<a name="line94"> 94: </a><font color="#B22222">!       args: -mpi_linear_solver_server_minimum_count_per_rank 5 -mpi_linear_solver_server_ksp_view</font>
+<a name="line95"> 95: </a><font color="#B22222">!       # the usual options for the linear solver (in this case using the server)</font>
+<a name="line96"> 96: </a><font color="#B22222">!       args: -ksp_monitor -ksp_converged_reason -ksp_view</font>
+<a name="line97"> 97: </a><font color="#B22222">!</font>
+<a name="line98"> 98: </a><font color="#B22222">!     test:</font>
+<a name="line99"> 99: </a><font color="#B22222">!       suffix: 2</font>
+<a name="line100">100: </a><font color="#B22222">!       requires: defined(PETSC_USE_SINGLE_LIBRARY)</font>
+<a name="line101">101: </a><font color="#B22222">!       nsize: 3</font>
+<a name="line102">102: </a><font color="#B22222">!       filter: sed 's?ATOL?RTOL?g' | grep -v HERMITIAN | grep -v "shared memory" | grep -v "Mat_0"</font>
+<a name="line103">103: </a><font color="#B22222">!       # use the MPI Linear Solver Server</font>
+<a name="line104">104: </a><font color="#B22222">!       args: -n 20 -mpi_linear_solver_server -mpi_linear_solver_server_view -mpi_linear_solver_server_use_shared_memory false</font>
+<a name="line105">105: </a><font color="#B22222">!       # controls for the use of <a href="../../../../manualpages/PC/PCMPI.html">PCMPI</a> on a particular system</font>
+<a name="line106">106: </a><font color="#B22222">!       args: -mpi_linear_solver_server_ksp_view</font>
+<a name="line107">107: </a><font color="#B22222">!       # the usual options for the linear solver (in this case using the server)</font>
+<a name="line108">108: </a><font color="#B22222">!       args: -ksp_monitor -ksp_converged_reason -ksp_view</font>
+<a name="line109">109: </a><font color="#B22222">!</font>
+<a name="line110">110: </a><font color="#B22222">!TEST*/</font>
+</pre>
+</body>
+
+</html>
+

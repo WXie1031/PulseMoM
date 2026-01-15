@@ -1,0 +1,702 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/yaml/src/yaml_private.h">Actual source code: yaml_private.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#if defined(__GNUC__) ||  defined(__clang__)</font>
+<a name="line2">  2: </a><font color="#A020F0">#pragma GCC diagnostic ignored </font><font color="#666666">"-Wconversion"</font><font color="#A020F0"></font>
+<a name="line3">  3: </a><font color="#A020F0">#endif</font>
+<a name="line4">  4: </a><font color="#A020F0">#ifndef YAML_PRIVATE_H</font>
+<a name="line5">  5: </a><strong><font color="#228B22">#define YAML_PRIVATE_H</font></strong>
+
+<a name="line7">  7: </a><font color="#A020F0">#include &lt;assert.h&gt;</font>
+<a name="line8">  8: </a><font color="#A020F0">#include &lt;limits.h&gt;</font>
+<a name="line9">  9: </a><font color="#A020F0">#include &lt;stddef.h&gt;</font>
+
+<a name="line11"> 11: </a><font color="#B22222">/*</font>
+<a name="line12"> 12: </a><font color="#B22222"> * Memory management.</font>
+<a name="line13"> 13: </a><font color="#B22222"> */</font>
+
+<a name="line15"> 15: </a><strong><font color="#4169E1">YAML_DECLARE(void *)</font></strong>
+<a name="line16"> 16: </a><strong><font color="#4169E1">yaml_malloc(size_t size)</font></strong>;
+
+<a name="line18"> 18: </a><strong><font color="#4169E1">YAML_DECLARE(void *)</font></strong>
+<a name="line19"> 19: </a><strong><font color="#4169E1">yaml_realloc(void *ptr, size_t size)</font></strong>;
+
+<a name="line21"> 21: </a><strong><font color="#4169E1">YAML_DECLARE(void)</font></strong>
+<a name="line22"> 22: </a><strong><font color="#4169E1">yaml_free(void *ptr)</font></strong>;
+
+<a name="line24"> 24: </a><strong><font color="#4169E1">YAML_DECLARE(yaml_char_t *)</font></strong>
+<a name="line25"> 25: </a><strong><font color="#4169E1">yaml_strdup(const yaml_char_t *)</font></strong>;
+
+<a name="line27"> 27: </a><font color="#B22222">/*</font>
+<a name="line28"> 28: </a><font color="#B22222"> * Reader: Ensure that the buffer contains at least `length` characters.</font>
+<a name="line29"> 29: </a><font color="#B22222"> */</font>
+
+<a name="line31"> 31: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line32"> 32: </a><strong><font color="#4169E1">yaml_parser_update_buffer(yaml_parser_t *parser, size_t length)</font></strong>;
+
+<a name="line34"> 34: </a><font color="#B22222">/*</font>
+<a name="line35"> 35: </a><font color="#B22222"> * Scanner: Ensure that the token stack contains at least one token ready.</font>
+<a name="line36"> 36: </a><font color="#B22222"> */</font>
+
+<a name="line38"> 38: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line39"> 39: </a><strong><font color="#4169E1">yaml_parser_fetch_more_tokens(yaml_parser_t *parser)</font></strong>;
+
+<a name="line41"> 41: </a><font color="#B22222">/*</font>
+<a name="line42"> 42: </a><font color="#B22222"> * The size of the input raw buffer.</font>
+<a name="line43"> 43: </a><font color="#B22222"> */</font>
+
+<a name="line45"> 45: </a><strong><font color="#228B22">#define INPUT_RAW_BUFFER_SIZE   16384</font></strong>
+
+<a name="line47"> 47: </a><font color="#B22222">/*</font>
+<a name="line48"> 48: </a><font color="#B22222"> * The size of the input buffer.</font>
+<a name="line49"> 49: </a><font color="#B22222"> *</font>
+<a name="line50"> 50: </a><font color="#B22222"> * It should be possible to decode the whole raw buffer.</font>
+<a name="line51"> 51: </a><font color="#B22222"> */</font>
+
+<a name="line53"> 53: </a><strong><font color="#228B22">#define INPUT_BUFFER_SIZE       (INPUT_RAW_BUFFER_SIZE*3)</font></strong>
+
+<a name="line55"> 55: </a><font color="#B22222">/*</font>
+<a name="line56"> 56: </a><font color="#B22222"> * The size of the output buffer.</font>
+<a name="line57"> 57: </a><font color="#B22222"> */</font>
+
+<a name="line59"> 59: </a><strong><font color="#228B22">#define OUTPUT_BUFFER_SIZE      16384</font></strong>
+
+<a name="line61"> 61: </a><font color="#B22222">/*</font>
+<a name="line62"> 62: </a><font color="#B22222"> * The size of the output raw buffer.</font>
+<a name="line63"> 63: </a><font color="#B22222"> *</font>
+<a name="line64"> 64: </a><font color="#B22222"> * It should be possible to encode the whole output buffer.</font>
+<a name="line65"> 65: </a><font color="#B22222"> */</font>
+
+<a name="line67"> 67: </a><strong><font color="#228B22">#define OUTPUT_RAW_BUFFER_SIZE  (OUTPUT_BUFFER_SIZE*2+2)</font></strong>
+
+<a name="line69"> 69: </a><font color="#B22222">/*</font>
+<a name="line70"> 70: </a><font color="#B22222"> * The maximum size of a YAML input file.</font>
+<a name="line71"> 71: </a><font color="#B22222"> * This used to be PTRDIFF_MAX, but that's not entirely portable</font>
+<a name="line72"> 72: </a><font color="#B22222"> * because stdint.h isn't available on all platforms.</font>
+<a name="line73"> 73: </a><font color="#B22222"> * It is not entirely clear why this isn't the maximum value</font>
+<a name="line74"> 74: </a><font color="#B22222"> * that can fit into the parser-&gt;offset field.</font>
+<a name="line75"> 75: </a><font color="#B22222"> */</font>
+
+<a name="line77"> 77: </a><strong><font color="#228B22">#define MAX_FILE_SIZE (~(size_t)0 / 2)</font></strong>
+
+
+<a name="line80"> 80: </a><font color="#B22222">/*</font>
+<a name="line81"> 81: </a><font color="#B22222"> * The size of other stacks and queues.</font>
+<a name="line82"> 82: </a><font color="#B22222"> */</font>
+
+<a name="line84"> 84: </a><strong><font color="#228B22">#define INITIAL_STACK_SIZE  16</font></strong>
+<a name="line85"> 85: </a><strong><font color="#228B22">#define INITIAL_QUEUE_SIZE  16</font></strong>
+<a name="line86"> 86: </a><strong><font color="#228B22">#define INITIAL_STRING_SIZE 16</font></strong>
+
+<a name="line88"> 88: </a><font color="#B22222">/*</font>
+<a name="line89"> 89: </a><font color="#B22222"> * Buffer management.</font>
+<a name="line90"> 90: </a><font color="#B22222"> */</font>
+
+<a name="line92"> 92: </a><strong><font color="#228B22">#define BUFFER_INIT(context,buffer,size)                                        \</font></strong>
+<a name="line93"> 93: </a><strong><font color="#228B22">  (((buffer).start = (yaml_char_t *)yaml_malloc(size)) ?                        \</font></strong>
+<a name="line94"> 94: </a><strong><font color="#228B22">        ((buffer).last = (buffer).pointer = (buffer).start,                     \</font></strong>
+<a name="line95"> 95: </a><strong><font color="#228B22">         (buffer).end = (buffer).start+(size),                                  \</font></strong>
+<a name="line96"> 96: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line97"> 97: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line98"> 98: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line100">100: </a><strong><font color="#228B22">#define BUFFER_DEL(context,buffer)                                              \</font></strong>
+<a name="line101">101: </a><strong><font color="#228B22">    (yaml_free((buffer).start),                                                 \</font></strong>
+<a name="line102">102: </a><strong><font color="#228B22">     (buffer).start = (buffer).pointer = (buffer).end = NULL)</font></strong>
+
+<a name="line104">104: </a><font color="#B22222">/*</font>
+<a name="line105">105: </a><font color="#B22222"> * String management.</font>
+<a name="line106">106: </a><font color="#B22222"> */</font>
+
+<a name="line108">108: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line109">109: </a>    yaml_char_t *start;
+<a name="line110">110: </a>    yaml_char_t *end;
+<a name="line111">111: </a>    yaml_char_t *pointer;
+<a name="line112">112: </a>} yaml_string_t;
+
+<a name="line114">114: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line115">115: </a><strong><font color="#4169E1">yaml_string_extend(yaml_char_t **start,</font></strong>
+<a name="line116">116: </a><strong><font color="#4169E1">        yaml_char_t **pointer, yaml_char_t **end)</font></strong>;
+
+<a name="line118">118: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line119">119: </a><strong><font color="#4169E1">yaml_string_join(</font></strong>
+<a name="line120">120: </a><strong><font color="#4169E1">        yaml_char_t **a_start, yaml_char_t **a_pointer, yaml_char_t **a_end,</font></strong>
+<a name="line121">121: </a><strong><font color="#4169E1">        yaml_char_t **b_start, yaml_char_t **b_pointer, yaml_char_t **b_end)</font></strong>;
+
+<a name="line123">123: </a><strong><font color="#228B22">#define NULL_STRING { NULL, NULL, NULL }</font></strong>
+
+<a name="line125">125: </a><strong><font color="#228B22">#define STRING(string,length)   { (string), (string)+(length), (string) }</font></strong>
+
+<a name="line127">127: </a><strong><font color="#228B22">#define STRING_ASSIGN(value,string,length)                                      \</font></strong>
+<a name="line128">128: </a><strong><font color="#228B22">    ((value).start = (string),                                                  \</font></strong>
+<a name="line129">129: </a><strong><font color="#228B22">     (value).end = (string)+(length),                                           \</font></strong>
+<a name="line130">130: </a><strong><font color="#228B22">     (value).pointer = (string))</font></strong>
+
+<a name="line132">132: </a><strong><font color="#228B22">#define STRING_INIT(context,string,size)                                        \</font></strong>
+<a name="line133">133: </a><strong><font color="#228B22">    (((string).start = YAML_MALLOC(size)) ?                                     \</font></strong>
+<a name="line134">134: </a><strong><font color="#228B22">        ((string).pointer = (string).start,                                     \</font></strong>
+<a name="line135">135: </a><strong><font color="#228B22">         (string).end = (string).start+(size),                                  \</font></strong>
+<a name="line136">136: </a><strong><font color="#228B22">         memset((string).start, 0, (size)),                                     \</font></strong>
+<a name="line137">137: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line138">138: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line139">139: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line141">141: </a><strong><font color="#228B22">#define STRING_DEL(context,string)                                              \</font></strong>
+<a name="line142">142: </a><strong><font color="#228B22">    (yaml_free((string).start),                                                 \</font></strong>
+<a name="line143">143: </a><strong><font color="#228B22">     (string).start = (string).pointer = (string).end = NULL)</font></strong>
+
+<a name="line145">145: </a><strong><font color="#228B22">#define STRING_EXTEND(context,string)                                           \</font></strong>
+<a name="line146">146: </a><strong><font color="#228B22">    ((((string).pointer+5 &lt; (string).end)                                       \</font></strong>
+<a name="line147">147: </a><strong><font color="#228B22">        || yaml_string_extend(&amp;(string).start,                                  \</font></strong>
+<a name="line148">148: </a><strong><font color="#228B22">            &amp;(string).pointer, &amp;(string).end)) ?                                \</font></strong>
+<a name="line149">149: </a><strong><font color="#228B22">         1 :                                                                    \</font></strong>
+<a name="line150">150: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line151">151: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line153">153: </a><strong><font color="#228B22">#define CLEAR(context,string)                                                   \</font></strong>
+<a name="line154">154: </a><strong><font color="#228B22">    ((string).pointer = (string).start,                                         \</font></strong>
+<a name="line155">155: </a><strong><font color="#228B22">     memset((string).start, 0, (string).end-(string).start))</font></strong>
+
+<a name="line157">157: </a><strong><font color="#228B22">#define JOIN(context,string_a,string_b)                                         \</font></strong>
+<a name="line158">158: </a><strong><font color="#228B22">    ((yaml_string_join(&amp;(string_a).start, &amp;(string_a).pointer,                  \</font></strong>
+<a name="line159">159: </a><strong><font color="#228B22">                       &amp;(string_a).end, &amp;(string_b).start,                      \</font></strong>
+<a name="line160">160: </a><strong><font color="#228B22">                       &amp;(string_b).pointer, &amp;(string_b).end)) ?                 \</font></strong>
+<a name="line161">161: </a><strong><font color="#228B22">        ((string_b).pointer = (string_b).start,                                 \</font></strong>
+<a name="line162">162: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line163">163: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line164">164: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line166">166: </a><font color="#B22222">/*</font>
+<a name="line167">167: </a><font color="#B22222"> * String check operations.</font>
+<a name="line168">168: </a><font color="#B22222"> */</font>
+
+<a name="line170">170: </a><font color="#B22222">/*</font>
+<a name="line171">171: </a><font color="#B22222"> * Check the octet at the specified position.</font>
+<a name="line172">172: </a><font color="#B22222"> */</font>
+
+<a name="line174">174: </a><strong><font color="#228B22">#define CHECK_AT(string,octet,offset)                   \</font></strong>
+<a name="line175">175: </a><strong><font color="#228B22">    ((string).pointer[offset] == (yaml_char_t)(octet))</font></strong>
+
+<a name="line177">177: </a><font color="#B22222">/*</font>
+<a name="line178">178: </a><font color="#B22222"> * Check the current octet in the buffer.</font>
+<a name="line179">179: </a><font color="#B22222"> */</font>
+
+<a name="line181">181: </a><strong><font color="#228B22">#define CHECK(string,octet) (CHECK_AT((string),(octet),0))</font></strong>
+
+<a name="line183">183: </a><font color="#B22222">/*</font>
+<a name="line184">184: </a><font color="#B22222"> * Check if the character at the specified position is an alphabetical</font>
+<a name="line185">185: </a><font color="#B22222"> * character, a digit, '_', or '-'.</font>
+<a name="line186">186: </a><font color="#B22222"> */</font>
+
+<a name="line188">188: </a><strong><font color="#228B22">#define IS_ALPHA_AT(string,offset)                                              \</font></strong>
+<a name="line189">189: </a><strong><font color="#228B22">     (((string).pointer[offset] &gt;= (yaml_char_t) '0' &amp;&amp;                         \</font></strong>
+<a name="line190">190: </a><strong><font color="#228B22">       (string).pointer[offset] &lt;= (yaml_char_t) '9') ||                        \</font></strong>
+<a name="line191">191: </a><strong><font color="#228B22">      ((string).pointer[offset] &gt;= (yaml_char_t) 'A' &amp;&amp;                         \</font></strong>
+<a name="line192">192: </a><strong><font color="#228B22">       (string).pointer[offset] &lt;= (yaml_char_t) 'Z') ||                        \</font></strong>
+<a name="line193">193: </a><strong><font color="#228B22">      ((string).pointer[offset] &gt;= (yaml_char_t) 'a' &amp;&amp;                         \</font></strong>
+<a name="line194">194: </a><strong><font color="#228B22">       (string).pointer[offset] &lt;= (yaml_char_t) 'z') ||                        \</font></strong>
+<a name="line195">195: </a><strong><font color="#228B22">      (string).pointer[offset] == '_' ||                                        \</font></strong>
+<a name="line196">196: </a><strong><font color="#228B22">      (string).pointer[offset] == '-')</font></strong>
+
+<a name="line198">198: </a><strong><font color="#228B22">#define IS_ALPHA(string)    IS_ALPHA_AT((string),0)</font></strong>
+
+<a name="line200">200: </a><font color="#B22222">/*</font>
+<a name="line201">201: </a><font color="#B22222"> * Check if the character at the specified position is a digit.</font>
+<a name="line202">202: </a><font color="#B22222"> */</font>
+
+<a name="line204">204: </a><strong><font color="#228B22">#define IS_DIGIT_AT(string,offset)                                              \</font></strong>
+<a name="line205">205: </a><strong><font color="#228B22">     (((string).pointer[offset] &gt;= (yaml_char_t) '0' &amp;&amp;                         \</font></strong>
+<a name="line206">206: </a><strong><font color="#228B22">       (string).pointer[offset] &lt;= (yaml_char_t) '9'))</font></strong>
+
+<a name="line208">208: </a><strong><font color="#228B22">#define IS_DIGIT(string)    IS_DIGIT_AT((string),0)</font></strong>
+
+<a name="line210">210: </a><font color="#B22222">/*</font>
+<a name="line211">211: </a><font color="#B22222"> * Get the value of a digit.</font>
+<a name="line212">212: </a><font color="#B22222"> */</font>
+
+<a name="line214">214: </a><strong><font color="#228B22">#define AS_DIGIT_AT(string,offset)                                              \</font></strong>
+<a name="line215">215: </a><strong><font color="#228B22">     ((string).pointer[offset] - (yaml_char_t) '0')</font></strong>
+
+<a name="line217">217: </a><strong><font color="#228B22">#define AS_DIGIT(string)    AS_DIGIT_AT((string),0)</font></strong>
+
+<a name="line219">219: </a><font color="#B22222">/*</font>
+<a name="line220">220: </a><font color="#B22222"> * Check if the character at the specified position is a hex-digit.</font>
+<a name="line221">221: </a><font color="#B22222"> */</font>
+
+<a name="line223">223: </a><strong><font color="#228B22">#define IS_HEX_AT(string,offset)                                                \</font></strong>
+<a name="line224">224: </a><strong><font color="#228B22">     (((string).pointer[offset] &gt;= (yaml_char_t) '0' &amp;&amp;                         \</font></strong>
+<a name="line225">225: </a><strong><font color="#228B22">       (string).pointer[offset] &lt;= (yaml_char_t) '9') ||                        \</font></strong>
+<a name="line226">226: </a><strong><font color="#228B22">      ((string).pointer[offset] &gt;= (yaml_char_t) 'A' &amp;&amp;                         \</font></strong>
+<a name="line227">227: </a><strong><font color="#228B22">       (string).pointer[offset] &lt;= (yaml_char_t) 'F') ||                        \</font></strong>
+<a name="line228">228: </a><strong><font color="#228B22">      ((string).pointer[offset] &gt;= (yaml_char_t) 'a' &amp;&amp;                         \</font></strong>
+<a name="line229">229: </a><strong><font color="#228B22">       (string).pointer[offset] &lt;= (yaml_char_t) 'f'))</font></strong>
+
+<a name="line231">231: </a><strong><font color="#228B22">#define IS_HEX(string)    IS_HEX_AT((string),0)</font></strong>
+
+<a name="line233">233: </a><font color="#B22222">/*</font>
+<a name="line234">234: </a><font color="#B22222"> * Get the value of a hex-digit.</font>
+<a name="line235">235: </a><font color="#B22222"> */</font>
+
+<a name="line237">237: </a><strong><font color="#228B22">#define AS_HEX_AT(string,offset)                                                \</font></strong>
+<a name="line238">238: </a><strong><font color="#228B22">      (((string).pointer[offset] &gt;= (yaml_char_t) 'A' &amp;&amp;                        \</font></strong>
+<a name="line239">239: </a><strong><font color="#228B22">        (string).pointer[offset] &lt;= (yaml_char_t) 'F') ?                        \</font></strong>
+<a name="line240">240: </a><strong><font color="#228B22">       ((string).pointer[offset] - (yaml_char_t) 'A' + 10) :                    \</font></strong>
+<a name="line241">241: </a><strong><font color="#228B22">       ((string).pointer[offset] &gt;= (yaml_char_t) 'a' &amp;&amp;                        \</font></strong>
+<a name="line242">242: </a><strong><font color="#228B22">        (string).pointer[offset] &lt;= (yaml_char_t) 'f') ?                        \</font></strong>
+<a name="line243">243: </a><strong><font color="#228B22">       ((string).pointer[offset] - (yaml_char_t) 'a' + 10) :                    \</font></strong>
+<a name="line244">244: </a><strong><font color="#228B22">       ((string).pointer[offset] - (yaml_char_t) '0'))</font></strong>
+
+<a name="line246">246: </a><strong><font color="#228B22">#define AS_HEX(string)  AS_HEX_AT((string),0)</font></strong>
+
+<a name="line248">248: </a><font color="#B22222">/*</font>
+<a name="line249">249: </a><font color="#B22222"> * Check if the character is ASCII.</font>
+<a name="line250">250: </a><font color="#B22222"> */</font>
+
+<a name="line252">252: </a><strong><font color="#228B22">#define IS_ASCII_AT(string,offset)                                              \</font></strong>
+<a name="line253">253: </a><strong><font color="#228B22">    ((string).pointer[offset] &lt;= (yaml_char_t) '\x7F')</font></strong>
+
+<a name="line255">255: </a><strong><font color="#228B22">#define IS_ASCII(string)    IS_ASCII_AT((string),0)</font></strong>
+
+<a name="line257">257: </a><font color="#B22222">/*</font>
+<a name="line258">258: </a><font color="#B22222"> * Check if the character can be printed unescaped.</font>
+<a name="line259">259: </a><font color="#B22222"> */</font>
+
+<a name="line261">261: </a><strong><font color="#228B22">#define IS_PRINTABLE_AT(string,offset)                                          \</font></strong>
+<a name="line262">262: </a><strong><font color="#228B22">    (((string).pointer[offset] == 0x0A)         </font><font color="#B22222">/* . == #x0A */</font><font color="#228B22">                 \</font></strong>
+<a name="line263">263: </a><strong><font color="#228B22">     || ((string).pointer[offset] &gt;= 0x20       </font><font color="#B22222">/* #x20 &lt;= . &lt;= #x7E */</font><font color="#228B22">         \</font></strong>
+<a name="line264">264: </a><strong><font color="#228B22">         &amp;&amp; (string).pointer[offset] &lt;= 0x7E)                                   \</font></strong>
+<a name="line265">265: </a><strong><font color="#228B22">     || ((string).pointer[offset] == 0xC2       </font><font color="#B22222">/* #0xA0 &lt;= . &lt;= #xD7FF */</font><font color="#228B22">      \</font></strong>
+<a name="line266">266: </a><strong><font color="#228B22">         &amp;&amp; (string).pointer[offset+1] &gt;= 0xA0)                                 \</font></strong>
+<a name="line267">267: </a><strong><font color="#228B22">     || ((string).pointer[offset] &gt; 0xC2                                        \</font></strong>
+<a name="line268">268: </a><strong><font color="#228B22">         &amp;&amp; (string).pointer[offset] &lt; 0xED)                                    \</font></strong>
+<a name="line269">269: </a><strong><font color="#228B22">     || ((string).pointer[offset] == 0xED                                       \</font></strong>
+<a name="line270">270: </a><strong><font color="#228B22">         &amp;&amp; (string).pointer[offset+1] &lt; 0xA0)                                  \</font></strong>
+<a name="line271">271: </a><strong><font color="#228B22">     || ((string).pointer[offset] == 0xEE)                                      \</font></strong>
+<a name="line272">272: </a><strong><font color="#228B22">     || ((string).pointer[offset] == 0xEF      </font><font color="#B22222">/* #xE000 &lt;= . &lt;= #xFFFD */</font><font color="#228B22">      \</font></strong>
+<a name="line273">273: </a><strong><font color="#228B22">         &amp;&amp; !((string).pointer[offset+1] == 0xBB        </font><font color="#B22222">/* &amp;&amp; . != #xFEFF */</font><font color="#228B22">    \</font></strong>
+<a name="line274">274: </a><strong><font color="#228B22">             &amp;&amp; (string).pointer[offset+2] == 0xBF)                             \</font></strong>
+<a name="line275">275: </a><strong><font color="#228B22">         &amp;&amp; !((string).pointer[offset+1] == 0xBF                                \</font></strong>
+<a name="line276">276: </a><strong><font color="#228B22">             &amp;&amp; ((string).pointer[offset+2] == 0xBE                             \</font></strong>
+<a name="line277">277: </a><strong><font color="#228B22">                 || (string).pointer[offset+2] == 0xBF))))</font></strong>
+
+<a name="line279">279: </a><strong><font color="#228B22">#define IS_PRINTABLE(string)    IS_PRINTABLE_AT((string),0)</font></strong>
+
+<a name="line281">281: </a><font color="#B22222">/*</font>
+<a name="line282">282: </a><font color="#B22222"> * Check if the character at the specified position is NUL.</font>
+<a name="line283">283: </a><font color="#B22222"> */</font>
+
+<a name="line285">285: </a><strong><font color="#228B22">#define IS_Z_AT(string,offset)    CHECK_AT((string),'\0',(offset))</font></strong>
+
+<a name="line287">287: </a><strong><font color="#228B22">#define IS_Z(string)    IS_Z_AT((string),0)</font></strong>
+
+<a name="line289">289: </a><font color="#B22222">/*</font>
+<a name="line290">290: </a><font color="#B22222"> * Check if the character at the specified position is BOM.</font>
+<a name="line291">291: </a><font color="#B22222"> */</font>
+
+<a name="line293">293: </a><strong><font color="#228B22">#define IS_BOM_AT(string,offset)                                                \</font></strong>
+<a name="line294">294: </a><strong><font color="#228B22">     (CHECK_AT((string),'\xEF',(offset))                                        \</font></strong>
+<a name="line295">295: </a><strong><font color="#228B22">      &amp;&amp; CHECK_AT((string),'\xBB',(offset)+1)                                   \</font></strong>
+<a name="line296">296: </a><strong><font color="#228B22">      &amp;&amp; CHECK_AT((string),'\xBF',(offset)+2))  </font><font color="#B22222">/* BOM (#xFEFF) */</font><font color="#228B22"></font></strong>
+
+<a name="line298">298: </a><strong><font color="#228B22">#define IS_BOM(string)  IS_BOM_AT(string,0)</font></strong>
+
+<a name="line300">300: </a><font color="#B22222">/*</font>
+<a name="line301">301: </a><font color="#B22222"> * Check if the character at the specified position is space.</font>
+<a name="line302">302: </a><font color="#B22222"> */</font>
+
+<a name="line304">304: </a><strong><font color="#228B22">#define IS_SPACE_AT(string,offset)  CHECK_AT((string),' ',(offset))</font></strong>
+
+<a name="line306">306: </a><strong><font color="#228B22">#define IS_SPACE(string)    IS_SPACE_AT((string),0)</font></strong>
+
+<a name="line308">308: </a><font color="#B22222">/*</font>
+<a name="line309">309: </a><font color="#B22222"> * Check if the character at the specified position is tab.</font>
+<a name="line310">310: </a><font color="#B22222"> */</font>
+
+<a name="line312">312: </a><strong><font color="#228B22">#define IS_TAB_AT(string,offset)    CHECK_AT((string),'\t',(offset))</font></strong>
+
+<a name="line314">314: </a><strong><font color="#228B22">#define IS_TAB(string)  IS_TAB_AT((string),0)</font></strong>
+
+<a name="line316">316: </a><font color="#B22222">/*</font>
+<a name="line317">317: </a><font color="#B22222"> * Check if the character at the specified position is blank (space or tab).</font>
+<a name="line318">318: </a><font color="#B22222"> */</font>
+
+<a name="line320">320: </a><strong><font color="#228B22">#define IS_BLANK_AT(string,offset)                                              \</font></strong>
+<a name="line321">321: </a><strong><font color="#228B22">    (IS_SPACE_AT((string),(offset)) || IS_TAB_AT((string),(offset)))</font></strong>
+
+<a name="line323">323: </a><strong><font color="#228B22">#define IS_BLANK(string)    IS_BLANK_AT((string),0)</font></strong>
+
+<a name="line325">325: </a><font color="#B22222">/*</font>
+<a name="line326">326: </a><font color="#B22222"> * Check if the character at the specified position is a line break.</font>
+<a name="line327">327: </a><font color="#B22222"> */</font>
+
+<a name="line329">329: </a><strong><font color="#228B22">#define IS_BREAK_AT(string,offset)                                              \</font></strong>
+<a name="line330">330: </a><strong><font color="#228B22">    (CHECK_AT((string),'\r',(offset))               </font><font color="#B22222">/* CR (#xD)*/</font><font color="#228B22">               \</font></strong>
+<a name="line331">331: </a><strong><font color="#228B22">     || CHECK_AT((string),'\n',(offset))            </font><font color="#B22222">/* LF (#xA) */</font><font color="#228B22">              \</font></strong>
+<a name="line332">332: </a><strong><font color="#228B22">     || (CHECK_AT((string),'\xC2',(offset))                                     \</font></strong>
+<a name="line333">333: </a><strong><font color="#228B22">         &amp;&amp; CHECK_AT((string),'\x85',(offset)+1))   </font><font color="#B22222">/* NEL (#x85) */</font><font color="#228B22">            \</font></strong>
+<a name="line334">334: </a><strong><font color="#228B22">     || (CHECK_AT((string),'\xE2',(offset))                                     \</font></strong>
+<a name="line335">335: </a><strong><font color="#228B22">         &amp;&amp; CHECK_AT((string),'\x80',(offset)+1)                                \</font></strong>
+<a name="line336">336: </a><strong><font color="#228B22">         &amp;&amp; CHECK_AT((string),'\xA8',(offset)+2))   </font><font color="#B22222">/* LS (#x2028) */</font><font color="#228B22">           \</font></strong>
+<a name="line337">337: </a><strong><font color="#228B22">     || (CHECK_AT((string),'\xE2',(offset))                                     \</font></strong>
+<a name="line338">338: </a><strong><font color="#228B22">         &amp;&amp; CHECK_AT((string),'\x80',(offset)+1)                                \</font></strong>
+<a name="line339">339: </a><strong><font color="#228B22">         &amp;&amp; CHECK_AT((string),'\xA9',(offset)+2)))  </font><font color="#B22222">/* PS (#x2029) */</font><font color="#228B22"></font></strong>
+
+<a name="line341">341: </a><strong><font color="#228B22">#define IS_BREAK(string)    IS_BREAK_AT((string),0)</font></strong>
+
+<a name="line343">343: </a><strong><font color="#228B22">#define IS_CRLF_AT(string,offset)                                               \</font></strong>
+<a name="line344">344: </a><strong><font color="#228B22">     (CHECK_AT((string),'\r',(offset)) &amp;&amp; CHECK_AT((string),'\n',(offset)+1))</font></strong>
+
+<a name="line346">346: </a><strong><font color="#228B22">#define IS_CRLF(string) IS_CRLF_AT((string),0)</font></strong>
+
+<a name="line348">348: </a><font color="#B22222">/*</font>
+<a name="line349">349: </a><font color="#B22222"> * Check if the character is a line break or NUL.</font>
+<a name="line350">350: </a><font color="#B22222"> */</font>
+
+<a name="line352">352: </a><strong><font color="#228B22">#define IS_BREAKZ_AT(string,offset)                                             \</font></strong>
+<a name="line353">353: </a><strong><font color="#228B22">    (IS_BREAK_AT((string),(offset)) || IS_Z_AT((string),(offset)))</font></strong>
+
+<a name="line355">355: </a><strong><font color="#228B22">#define IS_BREAKZ(string)   IS_BREAKZ_AT((string),0)</font></strong>
+
+<a name="line357">357: </a><font color="#B22222">/*</font>
+<a name="line358">358: </a><font color="#B22222"> * Check if the character is a line break, space, or NUL.</font>
+<a name="line359">359: </a><font color="#B22222"> */</font>
+
+<a name="line361">361: </a><strong><font color="#228B22">#define IS_SPACEZ_AT(string,offset)                                             \</font></strong>
+<a name="line362">362: </a><strong><font color="#228B22">    (IS_SPACE_AT((string),(offset)) || IS_BREAKZ_AT((string),(offset)))</font></strong>
+
+<a name="line364">364: </a><strong><font color="#228B22">#define IS_SPACEZ(string)   IS_SPACEZ_AT((string),0)</font></strong>
+
+<a name="line366">366: </a><font color="#B22222">/*</font>
+<a name="line367">367: </a><font color="#B22222"> * Check if the character is a line break, space, tab, or NUL.</font>
+<a name="line368">368: </a><font color="#B22222"> */</font>
+
+<a name="line370">370: </a><strong><font color="#228B22">#define IS_BLANKZ_AT(string,offset)                                             \</font></strong>
+<a name="line371">371: </a><strong><font color="#228B22">    (IS_BLANK_AT((string),(offset)) || IS_BREAKZ_AT((string),(offset)))</font></strong>
+
+<a name="line373">373: </a><strong><font color="#228B22">#define IS_BLANKZ(string)   IS_BLANKZ_AT((string),0)</font></strong>
+
+<a name="line375">375: </a><font color="#B22222">/*</font>
+<a name="line376">376: </a><font color="#B22222"> * Determine the width of the character.</font>
+<a name="line377">377: </a><font color="#B22222"> */</font>
+
+<a name="line379">379: </a><strong><font color="#228B22">#define WIDTH_AT(string,offset)                                                 \</font></strong>
+<a name="line380">380: </a><strong><font color="#228B22">     (((string).pointer[offset] &amp; 0x80) == 0x00 ? 1 :                           \</font></strong>
+<a name="line381">381: </a><strong><font color="#228B22">      ((string).pointer[offset] &amp; 0xE0) == 0xC0 ? 2 :                           \</font></strong>
+<a name="line382">382: </a><strong><font color="#228B22">      ((string).pointer[offset] &amp; 0xF0) == 0xE0 ? 3 :                           \</font></strong>
+<a name="line383">383: </a><strong><font color="#228B22">      ((string).pointer[offset] &amp; 0xF8) == 0xF0 ? 4 : 0)</font></strong>
+
+<a name="line385">385: </a><strong><font color="#228B22">#define WIDTH(string)   WIDTH_AT((string),0)</font></strong>
+
+<a name="line387">387: </a><font color="#B22222">/*</font>
+<a name="line388">388: </a><font color="#B22222"> * Move the string pointer to the next character.</font>
+<a name="line389">389: </a><font color="#B22222"> */</font>
+
+<a name="line391">391: </a><strong><font color="#228B22">#define MOVE(string)    ((string).pointer += WIDTH((string)))</font></strong>
+
+<a name="line393">393: </a><font color="#B22222">/*</font>
+<a name="line394">394: </a><font color="#B22222"> * Copy a character and move the pointers of both strings.</font>
+<a name="line395">395: </a><font color="#B22222"> */</font>
+
+<a name="line397">397: </a><strong><font color="#228B22">#define COPY(string_a,string_b)                                                 \</font></strong>
+<a name="line398">398: </a><strong><font color="#228B22">    ((*(string_b).pointer &amp; 0x80) == 0x00 ?                                     \</font></strong>
+<a name="line399">399: </a><strong><font color="#228B22">     (*((string_a).pointer++) = *((string_b).pointer++)) :                      \</font></strong>
+<a name="line400">400: </a><strong><font color="#228B22">     (*(string_b).pointer &amp; 0xE0) == 0xC0 ?                                     \</font></strong>
+<a name="line401">401: </a><strong><font color="#228B22">     (*((string_a).pointer++) = *((string_b).pointer++),                        \</font></strong>
+<a name="line402">402: </a><strong><font color="#228B22">      *((string_a).pointer++) = *((string_b).pointer++)) :                      \</font></strong>
+<a name="line403">403: </a><strong><font color="#228B22">     (*(string_b).pointer &amp; 0xF0) == 0xE0 ?                                     \</font></strong>
+<a name="line404">404: </a><strong><font color="#228B22">     (*((string_a).pointer++) = *((string_b).pointer++),                        \</font></strong>
+<a name="line405">405: </a><strong><font color="#228B22">      *((string_a).pointer++) = *((string_b).pointer++),                        \</font></strong>
+<a name="line406">406: </a><strong><font color="#228B22">      *((string_a).pointer++) = *((string_b).pointer++)) :                      \</font></strong>
+<a name="line407">407: </a><strong><font color="#228B22">     (*(string_b).pointer &amp; 0xF8) == 0xF0 ?                                     \</font></strong>
+<a name="line408">408: </a><strong><font color="#228B22">     (*((string_a).pointer++) = *((string_b).pointer++),                        \</font></strong>
+<a name="line409">409: </a><strong><font color="#228B22">      *((string_a).pointer++) = *((string_b).pointer++),                        \</font></strong>
+<a name="line410">410: </a><strong><font color="#228B22">      *((string_a).pointer++) = *((string_b).pointer++),                        \</font></strong>
+<a name="line411">411: </a><strong><font color="#228B22">      *((string_a).pointer++) = *((string_b).pointer++)) : 0)</font></strong>
+
+<a name="line413">413: </a><font color="#B22222">/*</font>
+<a name="line414">414: </a><font color="#B22222"> * Stack and queue management.</font>
+<a name="line415">415: </a><font color="#B22222"> */</font>
+
+<a name="line417">417: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line418">418: </a><strong><font color="#4169E1">yaml_stack_extend(void **start, void **top, void **end)</font></strong>;
+
+<a name="line420">420: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line421">421: </a><strong><font color="#4169E1">yaml_queue_extend(void **start, void **head, void **tail, void **end)</font></strong>;
+
+<a name="line423">423: </a><strong><font color="#228B22">#define STACK_INIT(context,stack,type)                                     \</font></strong>
+<a name="line424">424: </a><strong><font color="#228B22">  (((stack).start = (type)yaml_malloc(INITIAL_STACK_SIZE*sizeof(*(stack).start))) ? \</font></strong>
+<a name="line425">425: </a><strong><font color="#228B22">        ((stack).top = (stack).start,                                           \</font></strong>
+<a name="line426">426: </a><strong><font color="#228B22">         (stack).end = (stack).start+INITIAL_STACK_SIZE,                        \</font></strong>
+<a name="line427">427: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line428">428: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line429">429: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line431">431: </a><strong><font color="#228B22">#define STACK_DEL(context,stack)                                                \</font></strong>
+<a name="line432">432: </a><strong><font color="#228B22">    (yaml_free((stack).start),                                                  \</font></strong>
+<a name="line433">433: </a><strong><font color="#228B22">     (stack).start = (stack).top = (stack).end = NULL)</font></strong>
+
+<a name="line435">435: </a><strong><font color="#228B22">#define STACK_EMPTY(context,stack)                                              \</font></strong>
+<a name="line436">436: </a><strong><font color="#228B22">    ((stack).start == (stack).top)</font></strong>
+
+<a name="line438">438: </a><strong><font color="#228B22">#define STACK_LIMIT(context,stack,size)                                         \</font></strong>
+<a name="line439">439: </a><strong><font color="#228B22">    ((stack).top - (stack).start &lt; (size) ?                                     \</font></strong>
+<a name="line440">440: </a><strong><font color="#228B22">        1 :                                                                     \</font></strong>
+<a name="line441">441: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line442">442: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line444">444: </a><strong><font color="#228B22">#define PUSH(context,stack,value)                                               \</font></strong>
+<a name="line445">445: </a><strong><font color="#228B22">    (((stack).top != (stack).end                                                \</font></strong>
+<a name="line446">446: </a><strong><font color="#228B22">      || yaml_stack_extend((void **)&amp;(stack).start,                             \</font></strong>
+<a name="line447">447: </a><strong><font color="#228B22">              (void **)&amp;(stack).top, (void **)&amp;(stack).end)) ?                  \</font></strong>
+<a name="line448">448: </a><strong><font color="#228B22">        (*((stack).top++) = value,                                              \</font></strong>
+<a name="line449">449: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line450">450: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line451">451: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line453">453: </a><strong><font color="#228B22">#define POP(context,stack)                                                      \</font></strong>
+<a name="line454">454: </a><strong><font color="#228B22">    (*(--(stack).top))</font></strong>
+
+<a name="line456">456: </a><strong><font color="#228B22">#define QUEUE_INIT(context,queue,size,type)                                     \</font></strong>
+<a name="line457">457: </a><strong><font color="#228B22">  (((queue).start = (type)yaml_malloc((size)*sizeof(*(queue).start))) ?         \</font></strong>
+<a name="line458">458: </a><strong><font color="#228B22">        ((queue).head = (queue).tail = (queue).start,                           \</font></strong>
+<a name="line459">459: </a><strong><font color="#228B22">         (queue).end = (queue).start+(size),                                    \</font></strong>
+<a name="line460">460: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line461">461: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line462">462: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line464">464: </a><strong><font color="#228B22">#define QUEUE_DEL(context,queue)                                                \</font></strong>
+<a name="line465">465: </a><strong><font color="#228B22">    (yaml_free((queue).start),                                                  \</font></strong>
+<a name="line466">466: </a><strong><font color="#228B22">     (queue).start = (queue).head = (queue).tail = (queue).end = NULL)</font></strong>
+
+<a name="line468">468: </a><strong><font color="#228B22">#define QUEUE_EMPTY(context,queue)                                              \</font></strong>
+<a name="line469">469: </a><strong><font color="#228B22">    ((queue).head == (queue).tail)</font></strong>
+
+<a name="line471">471: </a><strong><font color="#228B22">#define ENQUEUE(context,queue,value)                                            \</font></strong>
+<a name="line472">472: </a><strong><font color="#228B22">    (((queue).tail != (queue).end                                               \</font></strong>
+<a name="line473">473: </a><strong><font color="#228B22">      || yaml_queue_extend((void **)&amp;(queue).start, (void **)&amp;(queue).head,     \</font></strong>
+<a name="line474">474: </a><strong><font color="#228B22">            (void **)&amp;(queue).tail, (void **)&amp;(queue).end)) ?                   \</font></strong>
+<a name="line475">475: </a><strong><font color="#228B22">        (*((queue).tail++) = value,                                             \</font></strong>
+<a name="line476">476: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line477">477: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line478">478: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line480">480: </a><strong><font color="#228B22">#define DEQUEUE(context,queue)                                                  \</font></strong>
+<a name="line481">481: </a><strong><font color="#228B22">    (*((queue).head++))</font></strong>
+
+<a name="line483">483: </a><strong><font color="#228B22">#define QUEUE_INSERT(context,queue,index,value)                                 \</font></strong>
+<a name="line484">484: </a><strong><font color="#228B22">    (((queue).tail != (queue).end                                               \</font></strong>
+<a name="line485">485: </a><strong><font color="#228B22">      || yaml_queue_extend((void **)&amp;(queue).start, (void **)&amp;(queue).head,     \</font></strong>
+<a name="line486">486: </a><strong><font color="#228B22">            (void **)&amp;(queue).tail, (void **)&amp;(queue).end)) ?                   \</font></strong>
+<a name="line487">487: </a><strong><font color="#228B22">        (memmove((queue).head+(index)+1,(queue).head+(index),                   \</font></strong>
+<a name="line488">488: </a><strong><font color="#228B22">            ((queue).tail-(queue).head-(index))*sizeof(*(queue).start)),        \</font></strong>
+<a name="line489">489: </a><strong><font color="#228B22">         *((queue).head+(index)) = value,                                       \</font></strong>
+<a name="line490">490: </a><strong><font color="#228B22">         (queue).tail++,                                                        \</font></strong>
+<a name="line491">491: </a><strong><font color="#228B22">         1) :                                                                   \</font></strong>
+<a name="line492">492: </a><strong><font color="#228B22">        ((context)-&gt;error = YAML_MEMORY_ERROR,                                  \</font></strong>
+<a name="line493">493: </a><strong><font color="#228B22">         0))</font></strong>
+
+<a name="line495">495: </a><font color="#B22222">/*</font>
+<a name="line496">496: </a><font color="#B22222"> * Token initializers.</font>
+<a name="line497">497: </a><font color="#B22222"> */</font>
+
+<a name="line499">499: </a><strong><font color="#228B22">#define TOKEN_INIT(token,token_type,token_start_mark,token_end_mark)            \</font></strong>
+<a name="line500">500: </a><strong><font color="#228B22">    (memset(&amp;(token), 0, sizeof(yaml_token_t)),                                 \</font></strong>
+<a name="line501">501: </a><strong><font color="#228B22">     (token).type = (token_type),                                               \</font></strong>
+<a name="line502">502: </a><strong><font color="#228B22">     (token).start_mark = (token_start_mark),                                   \</font></strong>
+<a name="line503">503: </a><strong><font color="#228B22">     (token).end_mark = (token_end_mark))</font></strong>
+
+<a name="line505">505: </a><strong><font color="#228B22">#define STREAM_START_TOKEN_INIT(token,token_encoding,start_mark,end_mark)       \</font></strong>
+<a name="line506">506: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_STREAM_START_TOKEN,(start_mark),(end_mark)),       \</font></strong>
+<a name="line507">507: </a><strong><font color="#228B22">     (token).data.stream_start.encoding = (token_encoding))</font></strong>
+
+<a name="line509">509: </a><strong><font color="#228B22">#define STREAM_END_TOKEN_INIT(token,start_mark,end_mark)                        \</font></strong>
+<a name="line510">510: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_STREAM_END_TOKEN,(start_mark),(end_mark)))</font></strong>
+
+<a name="line512">512: </a><strong><font color="#228B22">#define ALIAS_TOKEN_INIT(token,token_value,start_mark,end_mark)                 \</font></strong>
+<a name="line513">513: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_ALIAS_TOKEN,(start_mark),(end_mark)),              \</font></strong>
+<a name="line514">514: </a><strong><font color="#228B22">     (token).data.alias.value = (token_value))</font></strong>
+
+<a name="line516">516: </a><strong><font color="#228B22">#define ANCHOR_TOKEN_INIT(token,token_value,start_mark,end_mark)                \</font></strong>
+<a name="line517">517: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_ANCHOR_TOKEN,(start_mark),(end_mark)),             \</font></strong>
+<a name="line518">518: </a><strong><font color="#228B22">     (token).data.anchor.value = (token_value))</font></strong>
+
+<a name="line520">520: </a><strong><font color="#228B22">#define TAG_TOKEN_INIT(token,token_handle,token_suffix,start_mark,end_mark)     \</font></strong>
+<a name="line521">521: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_TAG_TOKEN,(start_mark),(end_mark)),                \</font></strong>
+<a name="line522">522: </a><strong><font color="#228B22">     (token).data.tag.handle = (token_handle),                                  \</font></strong>
+<a name="line523">523: </a><strong><font color="#228B22">     (token).data.tag.suffix = (token_suffix))</font></strong>
+
+<a name="line525">525: </a><strong><font color="#228B22">#define SCALAR_TOKEN_INIT(token,token_value,token_length,token_style,start_mark,end_mark)   \</font></strong>
+<a name="line526">526: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_SCALAR_TOKEN,(start_mark),(end_mark)),             \</font></strong>
+<a name="line527">527: </a><strong><font color="#228B22">     (token).data.scalar.value = (token_value),                                 \</font></strong>
+<a name="line528">528: </a><strong><font color="#228B22">     (token).data.scalar.length = (token_length),                               \</font></strong>
+<a name="line529">529: </a><strong><font color="#228B22">     (token).data.scalar.style = (token_style))</font></strong>
+
+<a name="line531">531: </a><strong><font color="#228B22">#define VERSION_DIRECTIVE_TOKEN_INIT(token,token_major,token_minor,start_mark,end_mark)     \</font></strong>
+<a name="line532">532: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_VERSION_DIRECTIVE_TOKEN,(start_mark),(end_mark)),  \</font></strong>
+<a name="line533">533: </a><strong><font color="#228B22">     (token).data.version_directive.major = (token_major),                      \</font></strong>
+<a name="line534">534: </a><strong><font color="#228B22">     (token).data.version_directive.minor = (token_minor))</font></strong>
+
+<a name="line536">536: </a><strong><font color="#228B22">#define TAG_DIRECTIVE_TOKEN_INIT(token,token_handle,token_prefix,start_mark,end_mark)       \</font></strong>
+<a name="line537">537: </a><strong><font color="#228B22">    (TOKEN_INIT((token),YAML_TAG_DIRECTIVE_TOKEN,(start_mark),(end_mark)),      \</font></strong>
+<a name="line538">538: </a><strong><font color="#228B22">     (token).data.tag_directive.handle = (token_handle),                        \</font></strong>
+<a name="line539">539: </a><strong><font color="#228B22">     (token).data.tag_directive.prefix = (token_prefix))</font></strong>
+
+<a name="line541">541: </a><font color="#B22222">/*</font>
+<a name="line542">542: </a><font color="#B22222"> * Event initializers.</font>
+<a name="line543">543: </a><font color="#B22222"> */</font>
+
+<a name="line545">545: </a><strong><font color="#228B22">#define EVENT_INIT(event,event_type,event_start_mark,event_end_mark)            \</font></strong>
+<a name="line546">546: </a><strong><font color="#228B22">    (memset(&amp;(event), 0, sizeof(yaml_event_t)),                                 \</font></strong>
+<a name="line547">547: </a><strong><font color="#228B22">     (event).type = (event_type),                                               \</font></strong>
+<a name="line548">548: </a><strong><font color="#228B22">     (event).start_mark = (event_start_mark),                                   \</font></strong>
+<a name="line549">549: </a><strong><font color="#228B22">     (event).end_mark = (event_end_mark))</font></strong>
+
+<a name="line551">551: </a><strong><font color="#228B22">#define STREAM_START_EVENT_INIT(event,event_encoding,start_mark,end_mark)       \</font></strong>
+<a name="line552">552: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_STREAM_START_EVENT,(start_mark),(end_mark)),       \</font></strong>
+<a name="line553">553: </a><strong><font color="#228B22">     (event).data.stream_start.encoding = (event_encoding))</font></strong>
+
+<a name="line555">555: </a><strong><font color="#228B22">#define STREAM_END_EVENT_INIT(event,start_mark,end_mark)                        \</font></strong>
+<a name="line556">556: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_STREAM_END_EVENT,(start_mark),(end_mark)))</font></strong>
+
+<a name="line558">558: </a><strong><font color="#228B22">#define DOCUMENT_START_EVENT_INIT(event,event_version_directive,                \</font></strong>
+<a name="line559">559: </a><strong><font color="#228B22">        event_tag_directives_start,event_tag_directives_end,event_implicit,start_mark,end_mark) \</font></strong>
+<a name="line560">560: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_DOCUMENT_START_EVENT,(start_mark),(end_mark)),     \</font></strong>
+<a name="line561">561: </a><strong><font color="#228B22">     (event).data.document_start.version_directive = (event_version_directive), \</font></strong>
+<a name="line562">562: </a><strong><font color="#228B22">     (event).data.document_start.tag_directives.start = (event_tag_directives_start),   \</font></strong>
+<a name="line563">563: </a><strong><font color="#228B22">     (event).data.document_start.tag_directives.end = (event_tag_directives_end),   \</font></strong>
+<a name="line564">564: </a><strong><font color="#228B22">     (event).data.document_start.implicit = (event_implicit))</font></strong>
+
+<a name="line566">566: </a><strong><font color="#228B22">#define DOCUMENT_END_EVENT_INIT(event,event_implicit,start_mark,end_mark)       \</font></strong>
+<a name="line567">567: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_DOCUMENT_END_EVENT,(start_mark),(end_mark)),       \</font></strong>
+<a name="line568">568: </a><strong><font color="#228B22">     (event).data.document_end.implicit = (event_implicit))</font></strong>
+
+<a name="line570">570: </a><strong><font color="#228B22">#define ALIAS_EVENT_INIT(event,event_anchor,start_mark,end_mark)                \</font></strong>
+<a name="line571">571: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_ALIAS_EVENT,(start_mark),(end_mark)),              \</font></strong>
+<a name="line572">572: </a><strong><font color="#228B22">     (event).data.alias.anchor = (event_anchor))</font></strong>
+
+<a name="line574">574: </a><strong><font color="#228B22">#define SCALAR_EVENT_INIT(event,event_anchor,event_tag,event_value,event_length,    \</font></strong>
+<a name="line575">575: </a><strong><font color="#228B22">        event_plain_implicit, event_quoted_implicit,event_style,start_mark,end_mark)    \</font></strong>
+<a name="line576">576: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_SCALAR_EVENT,(start_mark),(end_mark)),             \</font></strong>
+<a name="line577">577: </a><strong><font color="#228B22">     (event).data.scalar.anchor = (event_anchor),                               \</font></strong>
+<a name="line578">578: </a><strong><font color="#228B22">     (event).data.scalar.tag = (event_tag),                                     \</font></strong>
+<a name="line579">579: </a><strong><font color="#228B22">     (event).data.scalar.value = (event_value),                                 \</font></strong>
+<a name="line580">580: </a><strong><font color="#228B22">     (event).data.scalar.length = (event_length),                               \</font></strong>
+<a name="line581">581: </a><strong><font color="#228B22">     (event).data.scalar.plain_implicit = (event_plain_implicit),               \</font></strong>
+<a name="line582">582: </a><strong><font color="#228B22">     (event).data.scalar.quoted_implicit = (event_quoted_implicit),             \</font></strong>
+<a name="line583">583: </a><strong><font color="#228B22">     (event).data.scalar.style = (event_style))</font></strong>
+
+<a name="line585">585: </a><strong><font color="#228B22">#define SEQUENCE_START_EVENT_INIT(event,event_anchor,event_tag,                 \</font></strong>
+<a name="line586">586: </a><strong><font color="#228B22">        event_implicit,event_style,start_mark,end_mark)                         \</font></strong>
+<a name="line587">587: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_SEQUENCE_START_EVENT,(start_mark),(end_mark)),     \</font></strong>
+<a name="line588">588: </a><strong><font color="#228B22">     (event).data.sequence_start.anchor = (event_anchor),                       \</font></strong>
+<a name="line589">589: </a><strong><font color="#228B22">     (event).data.sequence_start.tag = (event_tag),                             \</font></strong>
+<a name="line590">590: </a><strong><font color="#228B22">     (event).data.sequence_start.implicit = (event_implicit),                   \</font></strong>
+<a name="line591">591: </a><strong><font color="#228B22">     (event).data.sequence_start.style = (event_style))</font></strong>
+
+<a name="line593">593: </a><strong><font color="#228B22">#define SEQUENCE_END_EVENT_INIT(event,start_mark,end_mark)                      \</font></strong>
+<a name="line594">594: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_SEQUENCE_END_EVENT,(start_mark),(end_mark)))</font></strong>
+
+<a name="line596">596: </a><strong><font color="#228B22">#define MAPPING_START_EVENT_INIT(event,event_anchor,event_tag,                  \</font></strong>
+<a name="line597">597: </a><strong><font color="#228B22">        event_implicit,event_style,start_mark,end_mark)                         \</font></strong>
+<a name="line598">598: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_MAPPING_START_EVENT,(start_mark),(end_mark)),      \</font></strong>
+<a name="line599">599: </a><strong><font color="#228B22">     (event).data.mapping_start.anchor = (event_anchor),                        \</font></strong>
+<a name="line600">600: </a><strong><font color="#228B22">     (event).data.mapping_start.tag = (event_tag),                              \</font></strong>
+<a name="line601">601: </a><strong><font color="#228B22">     (event).data.mapping_start.implicit = (event_implicit),                    \</font></strong>
+<a name="line602">602: </a><strong><font color="#228B22">     (event).data.mapping_start.style = (event_style))</font></strong>
+
+<a name="line604">604: </a><strong><font color="#228B22">#define MAPPING_END_EVENT_INIT(event,start_mark,end_mark)                       \</font></strong>
+<a name="line605">605: </a><strong><font color="#228B22">    (EVENT_INIT((event),YAML_MAPPING_END_EVENT,(start_mark),(end_mark)))</font></strong>
+
+<a name="line607">607: </a><font color="#B22222">/*</font>
+<a name="line608">608: </a><font color="#B22222"> * Document initializer.</font>
+<a name="line609">609: </a><font color="#B22222"> */</font>
+
+<a name="line611">611: </a><strong><font color="#228B22">#define DOCUMENT_INIT(document,document_nodes_start,document_nodes_end,         \</font></strong>
+<a name="line612">612: </a><strong><font color="#228B22">        document_version_directive,document_tag_directives_start,               \</font></strong>
+<a name="line613">613: </a><strong><font color="#228B22">        document_tag_directives_end,document_start_implicit,                    \</font></strong>
+<a name="line614">614: </a><strong><font color="#228B22">        document_end_implicit,document_start_mark,document_end_mark)            \</font></strong>
+<a name="line615">615: </a><strong><font color="#228B22">    (memset(&amp;(document), 0, sizeof(yaml_document_t)),                           \</font></strong>
+<a name="line616">616: </a><strong><font color="#228B22">     (document).nodes.start = (document_nodes_start),                           \</font></strong>
+<a name="line617">617: </a><strong><font color="#228B22">     (document).nodes.end = (document_nodes_end),                               \</font></strong>
+<a name="line618">618: </a><strong><font color="#228B22">     (document).nodes.top = (document_nodes_start),                             \</font></strong>
+<a name="line619">619: </a><strong><font color="#228B22">     (document).version_directive = (document_version_directive),               \</font></strong>
+<a name="line620">620: </a><strong><font color="#228B22">     (document).tag_directives.start = (document_tag_directives_start),         \</font></strong>
+<a name="line621">621: </a><strong><font color="#228B22">     (document).tag_directives.end = (document_tag_directives_end),             \</font></strong>
+<a name="line622">622: </a><strong><font color="#228B22">     (document).start_implicit = (document_start_implicit),                     \</font></strong>
+<a name="line623">623: </a><strong><font color="#228B22">     (document).end_implicit = (document_end_implicit),                         \</font></strong>
+<a name="line624">624: </a><strong><font color="#228B22">     (document).start_mark = (document_start_mark),                             \</font></strong>
+<a name="line625">625: </a><strong><font color="#228B22">     (document).end_mark = (document_end_mark))</font></strong>
+
+<a name="line627">627: </a><font color="#B22222">/*</font>
+<a name="line628">628: </a><font color="#B22222"> * Node initializers.</font>
+<a name="line629">629: </a><font color="#B22222"> */</font>
+
+<a name="line631">631: </a><strong><font color="#228B22">#define NODE_INIT(node,node_type,node_tag,node_start_mark,node_end_mark)        \</font></strong>
+<a name="line632">632: </a><strong><font color="#228B22">    (memset(&amp;(node), 0, sizeof(yaml_node_t)),                                   \</font></strong>
+<a name="line633">633: </a><strong><font color="#228B22">     (node).type = (node_type),                                                 \</font></strong>
+<a name="line634">634: </a><strong><font color="#228B22">     (node).tag = (node_tag),                                                   \</font></strong>
+<a name="line635">635: </a><strong><font color="#228B22">     (node).start_mark = (node_start_mark),                                     \</font></strong>
+<a name="line636">636: </a><strong><font color="#228B22">     (node).end_mark = (node_end_mark))</font></strong>
+
+<a name="line638">638: </a><strong><font color="#228B22">#define SCALAR_NODE_INIT(node,node_tag,node_value,node_length,                  \</font></strong>
+<a name="line639">639: </a><strong><font color="#228B22">        node_style,start_mark,end_mark)                                         \</font></strong>
+<a name="line640">640: </a><strong><font color="#228B22">    (NODE_INIT((node),YAML_SCALAR_NODE,(node_tag),(start_mark),(end_mark)),     \</font></strong>
+<a name="line641">641: </a><strong><font color="#228B22">     (node).data.scalar.value = (node_value),                                   \</font></strong>
+<a name="line642">642: </a><strong><font color="#228B22">     (node).data.scalar.length = (node_length),                                 \</font></strong>
+<a name="line643">643: </a><strong><font color="#228B22">     (node).data.scalar.style = (node_style))</font></strong>
+
+<a name="line645">645: </a><strong><font color="#228B22">#define SEQUENCE_NODE_INIT(node,node_tag,node_items_start,node_items_end,       \</font></strong>
+<a name="line646">646: </a><strong><font color="#228B22">        node_style,start_mark,end_mark)                                         \</font></strong>
+<a name="line647">647: </a><strong><font color="#228B22">    (NODE_INIT((node),YAML_SEQUENCE_NODE,(node_tag),(start_mark),(end_mark)),   \</font></strong>
+<a name="line648">648: </a><strong><font color="#228B22">     (node).data.sequence.items.start = (node_items_start),                     \</font></strong>
+<a name="line649">649: </a><strong><font color="#228B22">     (node).data.sequence.items.end = (node_items_end),                         \</font></strong>
+<a name="line650">650: </a><strong><font color="#228B22">     (node).data.sequence.items.top = (node_items_start),                       \</font></strong>
+<a name="line651">651: </a><strong><font color="#228B22">     (node).data.sequence.style = (node_style))</font></strong>
+
+<a name="line653">653: </a><strong><font color="#228B22">#define MAPPING_NODE_INIT(node,node_tag,node_pairs_start,node_pairs_end,        \</font></strong>
+<a name="line654">654: </a><strong><font color="#228B22">        node_style,start_mark,end_mark)                                         \</font></strong>
+<a name="line655">655: </a><strong><font color="#228B22">    (NODE_INIT((node),YAML_MAPPING_NODE,(node_tag),(start_mark),(end_mark)),    \</font></strong>
+<a name="line656">656: </a><strong><font color="#228B22">     (node).data.mapping.pairs.start = (node_pairs_start),                      \</font></strong>
+<a name="line657">657: </a><strong><font color="#228B22">     (node).data.mapping.pairs.end = (node_pairs_end),                          \</font></strong>
+<a name="line658">658: </a><strong><font color="#228B22">     (node).data.mapping.pairs.top = (node_pairs_start),                        \</font></strong>
+<a name="line659">659: </a><strong><font color="#228B22">     (node).data.mapping.style = (node_style))</font></strong>
+
+<a name="line661">661: </a><font color="#B22222">/* Strict C compiler warning helpers */</font>
+
+<a name="line663">663: </a><font color="#A020F0">#if defined(__clang__) || defined(__GNUC__)</font>
+<a name="line664">664: </a><font color="#A020F0">#  define HASATTRIBUTE_UNUSED</font>
+<a name="line665">665: </a><font color="#A020F0">#endif</font>
+<a name="line666">666: </a><font color="#A020F0">#ifdef HASATTRIBUTE_UNUSED</font>
+<a name="line667">667: </a><font color="#A020F0">#  define __attribute__unused__             __attribute__((__unused__))</font>
+<a name="line668">668: </a><font color="#A020F0">#else</font>
+<a name="line669">669: </a><font color="#A020F0">#  define __attribute__unused__</font>
+<a name="line670">670: </a><font color="#A020F0">#endif</font>
+
+<a name="line672">672: </a><font color="#B22222">/* Shim arguments are arguments that must be included in your function,</font>
+<a name="line673">673: </a><font color="#B22222"> * but serve no purpose inside.  Silence compiler warnings. */</font>
+<a name="line674">674: </a><strong><font color="#228B22">#define SHIM(a) </font><font color="#B22222">/*@unused@*/</font><font color="#228B22"> a __attribute__unused__</font></strong>
+
+<a name="line676">676: </a><font color="#B22222">/* UNUSED_PARAM() marks a shim argument in the body to silence compiler warnings */</font>
+<a name="line677">677: </a><font color="#A020F0">#ifdef __clang__</font>
+<a name="line678">678: </a><font color="#A020F0">#  define UNUSED_PARAM(a) (void)(a);</font>
+<a name="line679">679: </a><font color="#A020F0">#else</font>
+<a name="line680">680: </a><font color="#A020F0">#  define UNUSED_PARAM(a) </font><font color="#B22222">/*@-noeffect*/</font><font color="#A020F0">if (0) (void)(a)</font><font color="#B22222">/*@=noeffect*/</font><font color="#A020F0">;</font>
+<a name="line681">681: </a><font color="#A020F0">#endif</font>
+
+<a name="line683">683: </a><strong><font color="#228B22">#define YAML_MALLOC_STATIC(type) (type*)yaml_malloc(sizeof(type))</font></strong>
+<a name="line684">684: </a><strong><font color="#228B22">#define YAML_MALLOC(size)        (yaml_char_t *)yaml_malloc(size)</font></strong>
+
+<a name="line686">686: </a><font color="#A020F0">#endif</font><font color="#B22222">/*YAML_PRIVATE_H*/</font><font color="#A020F0"></font>
+</pre>
+</body>
+
+</html>
+

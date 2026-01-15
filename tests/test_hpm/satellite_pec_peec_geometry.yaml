@@ -1,0 +1,51 @@
+# 卫星HPM电磁散射的几何配置
+# Satellite HPM Electromagnetic Scattering Geometry Configuration
+
+# Thomas Guillod - Dartmouth College
+# Mozilla Public License Version 2.0
+
+"domain_def":
+    # 卫星结构域 - PEC材料
+    "satellite":
+        "domain_type": "stl"
+        "file": "weixing_v1.stl"
+        "layer": null
+        "index": 1
+        "invert": false
+        "tolerance": 1.0e-6
+    # 自由空间域
+    "air":
+        "domain_type": "shape"
+        "shape_type": "cube"
+        "invert": false
+        "center": [1.7, 1.7, 0.7]  # 域中心位置
+        "size": [3.4, 3.4, 1.4]     # 域尺寸
+    # 平面波激励边界
+    "excitation_boundary":
+        "domain_type": "shape"
+        "shape_type": "plane"
+        "invert": false
+        "center": [0.2, 1.7, 0.7]  # 入射面位置
+        "normal": [1, 0, 0]         # 法向方向
+        "size": [3.4, 1.4]          # 平面尺寸
+    # 吸收边界条件
+    "absorbing_boundary":
+        "domain_type": "shape"
+        "shape_type": "plane"
+        "invert": false
+        "center": [3.2, 1.7, 0.7]  # 出射面位置
+        "normal": [-1, 0, 0]        # 法向方向
+        "size": [3.4, 1.4]          # 平面尺寸
+
+"geometry_def":
+    # 网格参数 - 10GHz频率，30mm波长
+    "nx": 170  # X方向网格数 (3.4m/0.02m = 170)
+    "ny": 170  # Y方向网格数 (3.4m/0.02m = 170)
+    "nz": 70   # Z方向网格数 (1.4m/0.02m = 70)
+    """ 20mm网格间距，约1.5个波长每网格 """
+
+"tolerance_def":
+    # 几何容差设置
+    "stl": 1.0e-6
+    "shape": 1.0e-6
+    "voxel": 1.0e-6

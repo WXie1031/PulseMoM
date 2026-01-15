@@ -1,0 +1,157 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/tutorials/ex81a.c">Actual source code: ex81a.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc.h.html">&lt;petsc.h&gt;</A>
+
+<a name="line3">  3: </a>static char help[] = <font color="#666666">"Solves a linear system with a MatNest and <a href="../../../../manualpages/PC/PCFIELDSPLIT.html">PCFIELDSPLIT</a> with fields defined from the command line.\n\n"</font>;
+<a name="line4">  4: </a><font color="#B22222">/* similar to ex81.c except the <a href="../../../../manualpages/PC/PCFIELDSPLIT.html">PCFIELDSPLIT</a> fields are defined from the command line with fields instead of hardwired <a href="../../../../manualpages/IS/IS.html">IS</a> from the <a href="../../../../manualpages/Mat/MATNEST.html">MATNEST</a> */</font>
+
+<a name="line6">  6: </a><strong><font color="#228B22">#define Q 5 </font><font color="#B22222">/* everything is hardwired for a 5x5 MatNest for now */</font><font color="#228B22"></font></strong>
+
+<a name="line8">  8: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **args)</font></strong>
+<a name="line9">  9: </a>{
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/KSP/KSP.html">KSP</a>         ksp;
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/PC/PC.html">PC</a>          pc;
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>         array[Q * Q], A, a;
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         b, x, sub;
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>          rows[Q];
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    i, M, N;
+<a name="line16"> 16: </a>  <a href="../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> size;
+<a name="line17"> 17: </a>  <a href="../../../../manualpages/Sys/PetscRandom.html">PetscRandom</a> rctx;
+
+<a name="line19"> 19: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line20"> 20: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;args, NULL, help));
+<a name="line21"> 21: </a>  <a href="../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_size.html#MPI_Comm_size">MPI_Comm_size</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;size));
+<a name="line22"> 22: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscRandomCreate.html">PetscRandomCreate</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;rctx));
+<a name="line23"> 23: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;ksp));
+<a name="line24"> 24: </a>  size = <a href="../../../../manualpages/Sys/PetscMax.html">PetscMax</a>(3, size);
+<a name="line25"> 25: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; Q * Q; ++i) array[i] = NULL;
+<a name="line26"> 26: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; Q; ++i) {
+<a name="line27"> 27: </a>    <font color="#4169E1">if</font> (i == 0) {
+<a name="line28"> 28: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateAIJ.html">MatCreateAIJ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, size, size, 1, NULL, 0, NULL, array + (Q + 1) * i));
+<a name="line29"> 29: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (i == 1 || i == 3) {
+<a name="line30"> 30: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateSBAIJ.html">MatCreateSBAIJ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 2, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, size, size, 1, NULL, 0, NULL, array + (Q + 1) * i));
+<a name="line31"> 31: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (i == 2 || i == 4) {
+<a name="line32"> 32: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateBAIJ.html">MatCreateBAIJ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 2, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, size, size, 1, NULL, 0, NULL, array + (Q + 1) * i));
+<a name="line33"> 33: </a>    }
+<a name="line34"> 34: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(array[(Q + 1) * i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line35"> 35: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(array[(Q + 1) * i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line36"> 36: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShift.html">MatShift</a>(array[(Q + 1) * i], 100 + i + 1));
+<a name="line37"> 37: </a>    <font color="#4169E1">if</font> (i == 3) {
+<a name="line38"> 38: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(array[(Q + 1) * i], <a href="../../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>, &amp;a));
+<a name="line39"> 39: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + (Q + 1) * i));
+<a name="line40"> 40: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateHermitianTranspose.html">MatCreateHermitianTranspose</a>(a, array + (Q + 1) * i));
+<a name="line41"> 41: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;a));
+<a name="line42"> 42: </a>    }
+<a name="line43"> 43: </a>    size *= 2;
+<a name="line44"> 44: </a>  }
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[0], &amp;M, NULL));
+<a name="line46"> 46: </a>  <font color="#4169E1">for</font> (i = 2; i &lt; Q; ++i) {
+<a name="line47"> 47: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[(Q + 1) * i], NULL, &amp;N));
+<a name="line48"> 48: </a>    <font color="#4169E1">if</font> (i != Q - 1) {
+<a name="line49"> 49: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateAIJ.html">MatCreateAIJ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, i == 3 ? N : M, i == 3 ? M : N, 0, NULL, 0, NULL, array + i));
+<a name="line50"> 50: </a>    } <font color="#4169E1">else</font> {
+<a name="line51"> 51: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateDense.html">MatCreateDense</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, M, N, NULL, array + i));
+<a name="line52"> 52: </a>    }
+<a name="line53"> 53: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(array[i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line54"> 54: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(array[i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line55"> 55: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetRandom.html">MatSetRandom</a>(array[i], rctx));
+<a name="line56"> 56: </a>    <font color="#4169E1">if</font> (i == 3) {
+<a name="line57"> 57: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(array[i], <a href="../../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>, &amp;a));
+<a name="line58"> 58: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + i));
+<a name="line59"> 59: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateHermitianTranspose.html">MatCreateHermitianTranspose</a>(a, array + i));
+<a name="line60"> 60: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;a));
+<a name="line61"> 61: </a>    }
+<a name="line62"> 62: </a>  }
+<a name="line63"> 63: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[0], NULL, &amp;N));
+<a name="line64"> 64: </a>  <font color="#4169E1">for</font> (i = 2; i &lt; Q; i += 2) {
+<a name="line65"> 65: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[(Q + 1) * i], &amp;M, NULL));
+<a name="line66"> 66: </a>    <font color="#4169E1">if</font> (i != Q - 1) {
+<a name="line67"> 67: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateAIJ.html">MatCreateAIJ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, M, N, 2, NULL, 2, NULL, array + Q * i));
+<a name="line68"> 68: </a>    } <font color="#4169E1">else</font> {
+<a name="line69"> 69: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateDense.html">MatCreateDense</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, N, M, NULL, array + Q * i));
+<a name="line70"> 70: </a>    }
+<a name="line71"> 71: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(array[Q * i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line72"> 72: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(array[Q * i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line73"> 73: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetRandom.html">MatSetRandom</a>(array[Q * i], rctx));
+<a name="line74"> 74: </a>    <font color="#4169E1">if</font> (i == Q - 1) {
+<a name="line75"> 75: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(array[Q * i], <a href="../../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>, &amp;a));
+<a name="line76"> 76: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + Q * i));
+<a name="line77"> 77: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateHermitianTranspose.html">MatCreateHermitianTranspose</a>(a, array + Q * i));
+<a name="line78"> 78: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;a));
+<a name="line79"> 79: </a>    }
+<a name="line80"> 80: </a>  }
+<a name="line81"> 81: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[(Q + 1) * 3], &amp;M, NULL));
+<a name="line82"> 82: </a>  <font color="#4169E1">for</font> (i = 1; i &lt; 3; ++i) {
+<a name="line83"> 83: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[(Q + 1) * i], NULL, &amp;N));
+<a name="line84"> 84: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateAIJ.html">MatCreateAIJ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, M, N, 2, NULL, 2, NULL, array + Q * 3 + i));
+<a name="line85"> 85: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(array[Q * 3 + i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line86"> 86: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(array[Q * 3 + i], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line87"> 87: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetRandom.html">MatSetRandom</a>(array[Q * 3 + i], rctx));
+<a name="line88"> 88: </a>  }
+<a name="line89"> 89: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[(Q + 1) * 1], NULL, &amp;N));
+<a name="line90"> 90: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(array[(Q + 1) * (Q - 1)], &amp;M, NULL));
+<a name="line91"> 91: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateBAIJ.html">MatCreateBAIJ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 2, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, M, N, 0, NULL, 0, NULL, &amp;a));
+<a name="line92"> 92: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(a, <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line93"> 93: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(a, <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line94"> 94: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateHermitianTranspose.html">MatCreateHermitianTranspose</a>(a, array + Q + Q - 1));
+<a name="line95"> 95: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;a));
+<a name="line96"> 96: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + Q * Q - 1));
+<a name="line97"> 97: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateNest.html">MatCreateNest</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, Q, NULL, Q, NULL, array, &amp;A));
+<a name="line98"> 98: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; Q; ++i) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + (Q + 1) * i));
+<a name="line99"> 99: </a>  <font color="#4169E1">for</font> (i = 2; i &lt; Q; ++i) {
+<a name="line100">100: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + i));
+<a name="line101">101: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + Q * i));
+<a name="line102">102: </a>  }
+<a name="line103">103: </a>  <font color="#4169E1">for</font> (i = 1; i &lt; 3; ++i) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + Q * 3 + i));
+<a name="line104">104: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(array + Q + Q - 1));
+<a name="line105">105: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, A, A));
+<a name="line106">106: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatNestGetISs.html">MatNestGetISs</a>(A, rows, NULL));
+<a name="line107">107: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>(ksp, &amp;pc));
+<a name="line108">108: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCSetType.html">PCSetType</a>(pc, <a href="../../../../manualpages/PC/PCFIELDSPLIT.html">PCFIELDSPLIT</a>));
+<a name="line109">109: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSetFromOptions.html">KSPSetFromOptions</a>(ksp));
+<a name="line110">110: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateVecs.html">MatCreateVecs</a>(A, &amp;b, &amp;x));
+<a name="line111">111: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetRandom.html">VecSetRandom</a>(b, rctx));
+<a name="line112">112: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecGetSubVector.html">VecGetSubVector</a>(b, rows[Q - 1], &amp;sub));
+<a name="line113">113: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSet.html">VecSet</a>(sub, 0.0));
+<a name="line114">114: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecRestoreSubVector.html">VecRestoreSubVector</a>(b, rows[Q - 1], &amp;sub));
+<a name="line115">115: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(ksp, b, x));
+<a name="line116">116: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;b));
+<a name="line117">117: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;x));
+<a name="line118">118: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscRandomDestroy.html">PetscRandomDestroy</a>(&amp;rctx));
+<a name="line119">119: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+<a name="line120">120: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(&amp;ksp));
+<a name="line121">121: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line122">122: </a>  <font color="#4169E1">return</font> 0;
+<a name="line123">123: </a>}
+
+<a name="line125">125: </a><font color="#B22222">/*TEST</font>
+
+<a name="line127">127: </a><font color="#B22222">   test:</font>
+<a name="line128">128: </a><font color="#B22222">      nsize: 3</font>
+<a name="line129">129: </a><font color="#B22222">      suffix: 1</font>
+<a name="line130">130: </a><font color="#B22222">      requires: !complex !single</font>
+<a name="line131">131: </a><font color="#B22222">      filter: sed  -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g" -e "s/iterations [4-5]/iterations 4/g" -e "s/hermitiantranspose/transpose/g"</font>
+<a name="line132">132: </a><font color="#B22222">      args: -pc_fieldsplit_0_fields 0,1 -pc_fieldsplit_1_fields 2,3 -pc_fieldsplit_2_fields 4 -pc_type fieldsplit -ksp_converged_reason -fieldsplit_pc_type jacobi -ksp_view</font>
+
+<a name="line134">134: </a><font color="#B22222">   test:</font>
+<a name="line135">135: </a><font color="#B22222">      suffix: 2</font>
+<a name="line136">136: </a><font color="#B22222">      nsize: 3</font>
+<a name="line137">137: </a><font color="#B22222">      requires: !complex !single</font>
+<a name="line138">138: </a><font color="#B22222">      filter: sed  -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g" -e "s/iterations [4-5]/iterations 4/g" -e "s/hermitiantranspose/transpose/g"</font>
+<a name="line139">139: </a><font color="#B22222">      args: -pc_type fieldsplit -ksp_converged_reason -fieldsplit_pc_type jacobi -ksp_view</font>
+
+<a name="line141">141: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,66 @@
+# Satellite PEEC Solver Makefile
+# For HPM electromagnetic scattering analysis
+
+CC = gcc
+CXX = g++
+CFLAGS = -Wall -Wextra -O3 -std=c99 -fopenmp
+CXXFLAGS = -Wall -Wextra -O3 -std=c++11 -fopenmp
+INCLUDES = -I./src -I./src/core -I./src/solvers -I./src/solvers/peec
+LIBS = -lm -lopenmp
+
+# Source files
+PEEC_SOURCES = src/solvers/peec/peec_solver.c src/solvers/peec/peec_satellite.c
+CORE_SOURCES = src/core/core_geometry.c src/core/core_mesh.c
+TEST_SOURCE = satellite_peec_test.c
+
+# Object files
+PEEC_OBJECTS = $(PEEC_SOURCES:.c=.o)
+CORE_OBJECTS = $(CORE_SOURCES:.c=.o)
+TEST_OBJECT = $(TEST_SOURCE:.c=.o)
+
+# Targets
+TEST_EXECUTABLE = satellite_peec_test
+
+# Default target
+all: $(TEST_EXECUTABLE)
+
+# Build test executable
+$(TEST_EXECUTABLE): $(TEST_OBJECT) $(PEEC_OBJECTS) $(CORE_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Clean build artifacts
+clean:
+	rm -f $(PEEC_OBJECTS) $(CORE_OBJECTS) $(TEST_OBJECT) $(TEST_EXECUTABLE)
+	rm -rf satellite_peec_results/
+
+# Run test
+test: $(TEST_EXECUTABLE)
+	./$(TEST_EXECUTABLE)
+
+# Create results directory
+mkdir_results:
+	mkdir -p satellite_peec_results
+
+# Full test with results directory
+test_full: mkdir_results test
+
+# Debug build
+debug: CFLAGS += -g -DDEBUG
+debug: clean $(TEST_EXECUTABLE)
+
+# Help
+help:
+	@echo "Satellite PEEC Solver Build System"
+	@echo "=================================="
+	@echo "make all       - Build the test executable"
+	@echo "make test      - Run the test program"
+	@echo "make test_full - Create results directory and run test"
+	@echo "make clean     - Clean build artifacts"
+	@echo "make debug     - Build with debug symbols"
+	@echo "make help      - Show this help message"
+
+.PHONY: all clean test mkdir_results test_full debug help

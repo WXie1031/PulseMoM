@@ -1,0 +1,202 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/interface/dmgeommodel.c">Actual source code: dmgeommodel.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../include/petsc/private/dmimpl.h.html">&lt;petsc/private/dmimpl.h&gt;</A>
+
+<a name="line3">  3: </a><a href="../../../manualpages/Sys/PetscFunctionList.html">PetscFunctionList</a> DMGeomModelList              = NULL;
+<a name="line4">  4: </a><a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>         DMGeomModelRegisterAllCalled = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line6">  6: </a><font color="#A020F0">#if defined(PETSC_HAVE_EGADS)</font>
+<a name="line7">  7: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMSnapToGeomModel_EGADS(<a href="../../../manualpages/DM/DM.html">DM</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[])</font></strong>;
+<a name="line8">  8: </a><font color="#A020F0">#endif</font>
+
+<a name="line10"> 10: </a><strong><font color="#4169E1"><a name="DMSnapToGeomModelBall"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMSnapToGeomModelBall(<a href="../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> p, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dE, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> mcoords[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> gcoords[])</font></strong>
+<a name="line11"> 11: </a>{
+<a name="line12"> 12: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> val;
+
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetLabelValue.html">DMGetLabelValue</a>(dm, <font color="#666666">"marker"</font>, p, &amp;val));
+<a name="line16"> 16: </a>  <font color="#4169E1">if</font> (val &gt;= 0) {
+<a name="line17"> 17: </a>    <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> norm = 0.;
+
+<a name="line19"> 19: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; dE; ++d) norm += <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(mcoords[d]));
+<a name="line20"> 20: </a>    norm = PetscSqrtReal(norm);
+<a name="line21"> 21: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; dE; ++d) gcoords[d] = mcoords[d] / norm;
+<a name="line22"> 22: </a>  } <font color="#4169E1">else</font> {
+<a name="line23"> 23: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; dE; ++d) gcoords[d] = mcoords[d];
+<a name="line24"> 24: </a>  }
+<a name="line25"> 25: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line26"> 26: </a>}
+
+<a name="line28"> 28: </a><strong><font color="#4169E1"><a name="DMSnapToGeomModelCylinder"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMSnapToGeomModelCylinder(<a href="../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> p, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dE, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> mcoords[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> gcoords[])</font></strong>
+<a name="line29"> 29: </a>{
+<a name="line30"> 30: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> gmin[3], gmax[3];
+<a name="line31"> 31: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  val;
+
+<a name="line33"> 33: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line34"> 34: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetBoundingBox.html">DMGetBoundingBox</a>(dm, gmin, gmax));
+<a name="line35"> 35: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGetLabelValue.html">DMGetLabelValue</a>(dm, <font color="#666666">"generatrix"</font>, p, &amp;val));
+<a name="line36"> 36: </a>  <font color="#4169E1">if</font> (val &gt;= 0) {
+<a name="line37"> 37: </a>    <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> norm = 0.;
+
+<a name="line39"> 39: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; dE - 1; ++d) norm += <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(mcoords[d]));
+<a name="line40"> 40: </a>    norm = PetscSqrtReal(norm);
+<a name="line41"> 41: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; dE - 1; ++d) gcoords[d] = mcoords[d] * gmax[0] / norm;
+<a name="line42"> 42: </a>    gcoords[dE - 1] = mcoords[dE - 1];
+<a name="line43"> 43: </a>  } <font color="#4169E1">else</font> {
+<a name="line44"> 44: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; dE; ++d) gcoords[d] = mcoords[d];
+<a name="line45"> 45: </a>  }
+<a name="line46"> 46: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line47"> 47: </a>}
+
+<a name="line49"> 49: </a><font color="#B22222">/*@C</font>
+<a name="line50"> 50: </a><font color="#B22222">  <a href="../../../manualpages/DM/DMGeomModelRegisterAll.html">DMGeomModelRegisterAll</a> - Registers all of the geometry model methods in the `<a href="../../../manualpages/DM/DM.html">DM</a>` package.</font>
+
+<a name="line52"> 52: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line54"> 54: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line56"> 56: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/DM/DM.html">DM</a>`, `DMGeomModelRegisterDestroy()`</font>
+<a name="line57"> 57: </a><font color="#B22222">@*/</font>
+<a name="line58"> 58: </a><strong><font color="#4169E1"><a name="DMGeomModelRegisterAll"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/DMGeomModelRegisterAll.html">DMGeomModelRegisterAll</a>(void)</font></strong>
+<a name="line59"> 59: </a>{
+<a name="line60"> 60: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line61"> 61: </a>  <font color="#4169E1">if</font> (DMGeomModelRegisterAllCalled) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line62"> 62: </a>  DMGeomModelRegisterAllCalled = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line63"> 63: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a>(<font color="#666666">"ball"</font>, DMSnapToGeomModelBall));
+<a name="line64"> 64: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a>(<font color="#666666">"cylinder"</font>, DMSnapToGeomModelCylinder));
+<a name="line65"> 65: </a><font color="#A020F0">#if defined(PETSC_HAVE_EGADS)</font>
+<a name="line66"> 66: </a>  <font color="#B22222">// FIXME: Brandon uses DMPlexSnapToGeomModel() here instead</font>
+<a name="line67"> 67: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a>(<font color="#666666">"egads"</font>, DMSnapToGeomModel_EGADS));
+<a name="line68"> 68: </a><font color="#A020F0">#endif</font>
+<a name="line69"> 69: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line70"> 70: </a>}
+
+<a name="line72"> 72: </a><font color="#B22222">/*@C</font>
+<a name="line73"> 73: </a><font color="#B22222">  <a href="../../../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a> -  Adds a geometry model to `<a href="../../../manualpages/DM/DM.html">DM</a>`</font>
+
+<a name="line75"> 75: </a><font color="#B22222">  Not Collective, No Fortran Support</font>
+
+<a name="line77"> 77: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line78"> 78: </a><font color="#B22222">+ sname - name of a new user-defined geometry model</font>
+<a name="line79"> 79: </a><font color="#B22222">- fnc   - geometry model function</font>
+
+<a name="line81"> 81: </a><font color="#B22222">  Example Usage:</font>
+<a name="line82"> 82: </a><font color="#B22222">.vb</font>
+<a name="line83"> 83: </a><font color="#B22222">   <a href="../../../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a>("my_geom_model", MySnapToGeomModel);</font>
+<a name="line84"> 84: </a><font color="#B22222">.ve</font>
+
+<a name="line86"> 86: </a><font color="#B22222">  Then, your generator can be chosen with the procedural interface via</font>
+<a name="line87"> 87: </a><font color="#B22222">.vb</font>
+<a name="line88"> 88: </a><font color="#B22222">  DMSetGeomModel(dm, "my_geom_model",...)</font>
+<a name="line89"> 89: </a><font color="#B22222">.ve</font>
+<a name="line90"> 90: </a><font color="#B22222">  or at runtime via the option</font>
+<a name="line91"> 91: </a><font color="#B22222">.vb</font>
+<a name="line92"> 92: </a><font color="#B22222">  -dm_geom_model my_geom_model</font>
+<a name="line93"> 93: </a><font color="#B22222">.ve</font>
+
+<a name="line95"> 95: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line97"> 97: </a><font color="#B22222">  Note:</font>
+<a name="line98"> 98: </a><font color="#B22222">  `<a href="../../../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a>()` may be called multiple times to add several user-defined generators</font>
+
+<a name="line100">100: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/DM/DM.html">DM</a>`, `<a href="../../../manualpages/DM/DMGeomModelRegisterAll.html">DMGeomModelRegisterAll</a>()`, `DMPlexGeomModel()`, `DMGeomModelRegisterDestroy()`</font>
+<a name="line101">101: </a><font color="#B22222">@*/</font>
+<a name="line102">102: </a><strong><font color="#4169E1"><a name="DMGeomModelRegister"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a>(const char sname[], <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*fnc)(<a href="../../../manualpages/DM/DM.html">DM</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[]))</font></strong>
+<a name="line103">103: </a>{
+<a name="line104">104: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line105">105: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListAdd.html">PetscFunctionListAdd</a>(&amp;DMGeomModelList, sname, fnc));
+<a name="line106">106: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line107">107: </a>}
+
+<a name="line109">109: </a><strong><font color="#4169E1"><a name="DMGeomModelRegisterDestroy"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMGeomModelRegisterDestroy(void)</font></strong>
+<a name="line110">110: </a>{
+<a name="line111">111: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line112">112: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;DMGeomModelList));
+<a name="line113">113: </a>  DMGeomModelRegisterAllCalled = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line114">114: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line115">115: </a>}
+
+<a name="line117">117: </a><font color="#B22222">/*@</font>
+<a name="line118">118: </a><font color="#B22222">  <a href="../../../manualpages/DM/DMSetSnapToGeomModel.html">DMSetSnapToGeomModel</a> - Choose a geometry model for this `<a href="../../../manualpages/DM/DM.html">DM</a>`.</font>
+
+<a name="line120">120: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line122">122: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line123">123: </a><font color="#B22222">+ dm   - The `<a href="../../../manualpages/DM/DM.html">DM</a>` object</font>
+<a name="line124">124: </a><font color="#B22222">- name - A geometry model name, or `NULL` for the default</font>
+
+<a name="line126">126: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line128">128: </a><font color="#B22222">.seealso: [](ch_unstructured), `<a href="../../../manualpages/DM/DM.html">DM</a>`, `<a href="../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>`, `<a href="../../../manualpages/DM/DMRefine.html">DMRefine</a>()`, `<a href="../../../manualpages/DMPlex/DMPlexCreate.html">DMPlexCreate</a>()`, `<a href="../../../manualpages/DM/DMSnapToGeomModel.html">DMSnapToGeomModel</a>()`</font>
+<a name="line129">129: </a><font color="#B22222">@*/</font>
+<a name="line130">130: </a><strong><font color="#4169E1"><a name="DMSetSnapToGeomModel"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/DMSetSnapToGeomModel.html">DMSetSnapToGeomModel</a>(<a href="../../../manualpages/DM/DM.html">DM</a> dm, const char name[])</font></strong>
+<a name="line131">131: </a>{
+<a name="line132">132: </a>  char      geomname[PETSC_MAX_PATH_LEN];
+<a name="line133">133: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> flg;
+
+<a name="line135">135: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line136">136: </a>  <font color="#4169E1">if</font> (!name &amp;&amp; dm-&gt;ops-&gt;snaptogeommodel) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line137">137: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm)-&gt;options, ((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm)-&gt;prefix, <font color="#666666">"-dm_geom_model"</font>, geomname, <font color="#4169E1">sizeof</font>(geomname), &amp;flg));
+<a name="line138">138: </a>  <font color="#4169E1">if</font> (flg) name = geomname;
+<a name="line139">139: </a>  <font color="#4169E1">if</font> (!name) {
+<a name="line140">140: </a>    <a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a> modelObj;
+
+<a name="line142">142: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"EGADS Model"</font>, &amp;modelObj));
+<a name="line143">143: </a>    <font color="#4169E1">if</font> (modelObj) name = <font color="#666666">"egads"</font>;
+<a name="line144">144: </a>    <font color="#4169E1">else</font> {
+<a name="line145">145: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"EGADSlite Model"</font>, &amp;modelObj));
+<a name="line146">146: </a>      <font color="#4169E1">if</font> (modelObj) name = <font color="#666666">"egads"</font>;
+<a name="line147">147: </a>    }
+<a name="line148">148: </a>  }
+<a name="line149">149: </a>  <font color="#4169E1">if</font> (!name) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+
+<a name="line151">151: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListFind.html">PetscFunctionListFind</a>(DMGeomModelList, name, &amp;dm-&gt;ops-&gt;snaptogeommodel));
+<a name="line152">152: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(dm-&gt;ops-&gt;snaptogeommodel, <a href="../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Geometry model %s not registered; you may need to add --download-%s to your ./configure options"</font>, name, name);
+<a name="line153">153: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line154">154: </a>}
+
+<a name="line156">156: </a><font color="#B22222">/*@</font>
+<a name="line157">157: </a><font color="#B22222">  <a href="../../../manualpages/DM/DMSnapToGeomModel.html">DMSnapToGeomModel</a> - Given a coordinate point 'mcoords' on the mesh point 'p', return the closest coordinate point 'gcoords' on the geometry model associated with that point.</font>
+
+<a name="line159">159: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line161">161: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line162">162: </a><font color="#B22222">+ dm      - The `<a href="../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` object</font>
+<a name="line163">163: </a><font color="#B22222">. p       - The mesh point</font>
+<a name="line164">164: </a><font color="#B22222">. dE      - The coordinate dimension</font>
+<a name="line165">165: </a><font color="#B22222">- mcoords - A coordinate point lying on the mesh point</font>
+
+<a name="line167">167: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line168">168: </a><font color="#B22222">. gcoords - The closest coordinate point on the geometry model associated with 'p' to the given point</font>
+
+<a name="line170">170: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line172">172: </a><font color="#B22222">  Note:</font>
+<a name="line173">173: </a><font color="#B22222">  Returns the original coordinates if no geometry model is found.</font>
+
+<a name="line175">175: </a><font color="#B22222">  The coordinate dimension may be different from the coordinate dimension of the `dm`, for example if the transformation is extrusion.</font>
+
+<a name="line177">177: </a><font color="#B22222">.seealso: [](ch_unstructured), `<a href="../../../manualpages/DM/DM.html">DM</a>`, `<a href="../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>`, `<a href="../../../manualpages/DM/DMRefine.html">DMRefine</a>()`, `<a href="../../../manualpages/DMPlex/DMPlexCreate.html">DMPlexCreate</a>()`, `<a href="../../../manualpages/DMPlex/DMPlexSetRefinementUniform.html">DMPlexSetRefinementUniform</a>()`</font>
+<a name="line178">178: </a><font color="#B22222">@*/</font>
+<a name="line179">179: </a><strong><font color="#4169E1"><a name="DMSnapToGeomModel"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/DMSnapToGeomModel.html">DMSnapToGeomModel</a>(<a href="../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> p, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dE, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> mcoords[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> gcoords[])</font></strong>
+<a name="line180">180: </a>{
+<a name="line181">181: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line182">182: </a>  <font color="#4169E1">if</font> (!dm-&gt;ops-&gt;snaptogeommodel)
+<a name="line183">183: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; dE; ++d) gcoords[d] = mcoords[d];
+<a name="line184">184: </a>  <font color="#4169E1">else</font> <a href="../../../manualpages/Sys/PetscUseTypeMethod.html">PetscUseTypeMethod</a>(dm, snaptogeommodel, p, dE, mcoords, gcoords);
+<a name="line185">185: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line186">186: </a>}
+</pre>
+</body>
+
+</html>
+

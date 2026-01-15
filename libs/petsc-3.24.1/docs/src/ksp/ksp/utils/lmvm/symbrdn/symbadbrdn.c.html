@@ -1,0 +1,204 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/utils/lmvm/symbrdn/symbadbrdn.c">Actual source code: symbadbrdn.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#include </font><font color="#666666">"symbrdn.h"</font><font color="#A020F0"> </font><font color="#B22222">/*I "petscksp.h" I*/</font><font color="#A020F0"></font>
+
+<a name="line3">  3: </a><strong><font color="#4169E1"><a name="MatMult_LMVMSymBadBrdn_Recursive"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMult_LMVMSymBadBrdn_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> Y)</font></strong>
+<a name="line4">  4: </a>{
+<a name="line5">  5: </a>  Mat_LMVM    *lmvm = (Mat_LMVM *)B-&gt;data;
+<a name="line6">  6: </a>  Mat_SymBrdn *lsb  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+
+<a name="line8">  8: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line9">  9: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(lsb-&gt;psi_scalar != <a href="../../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"Psi must first be set using <a href="../../../../../../manualpages/KSP/MatLMVMSymBadBroydenSetPsi.html">MatLMVMSymBadBroydenSetPsi</a>()"</font>);
+<a name="line10"> 10: </a>  <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 0.0) {
+<a name="line11"> 11: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DFPKernel_Recursive(B, MATLMVM_MODE_PRIMAL, X, Y));
+<a name="line12"> 12: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 1.0) {
+<a name="line13"> 13: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_Recursive(B, MATLMVM_MODE_PRIMAL, X, Y));
+<a name="line14"> 14: </a>  } <font color="#4169E1">else</font> {
+<a name="line15"> 15: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenKernel_Recursive(B, MATLMVM_MODE_PRIMAL, X, Y, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line16"> 16: </a>  }
+<a name="line17"> 17: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line18"> 18: </a>}
+
+<a name="line20"> 20: </a><strong><font color="#4169E1"><a name="MatSolve_LMVMSymBadBrdn_Recursive"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolve_LMVMSymBadBrdn_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> Y)</font></strong>
+<a name="line21"> 21: </a>{
+<a name="line22"> 22: </a>  Mat_LMVM    *lmvm = (Mat_LMVM *)B-&gt;data;
+<a name="line23"> 23: </a>  Mat_SymBrdn *lsb  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+
+<a name="line25"> 25: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line26"> 26: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(lsb-&gt;psi_scalar != <a href="../../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"Psi must first be set using <a href="../../../../../../manualpages/KSP/MatLMVMSymBadBroydenSetPsi.html">MatLMVMSymBadBroydenSetPsi</a>()"</font>);
+<a name="line27"> 27: </a>  <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 0.0) {
+<a name="line28"> 28: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_Recursive(B, MATLMVM_MODE_DUAL, X, Y));
+<a name="line29"> 29: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 1.0) {
+<a name="line30"> 30: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DFPKernel_Recursive(B, MATLMVM_MODE_DUAL, X, Y));
+<a name="line31"> 31: </a>  } <font color="#4169E1">else</font> {
+<a name="line32"> 32: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenKernel_Recursive(B, MATLMVM_MODE_DUAL, X, Y, <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line33"> 33: </a>  }
+<a name="line34"> 34: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line35"> 35: </a>}
+
+<a name="line37"> 37: </a><strong><font color="#4169E1"><a name="MatMult_LMVMSymBadBrdn_CompactDense"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMult_LMVMSymBadBrdn_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> Y)</font></strong>
+<a name="line38"> 38: </a>{
+<a name="line39"> 39: </a>  Mat_LMVM    *lmvm = (Mat_LMVM *)B-&gt;data;
+<a name="line40"> 40: </a>  Mat_SymBrdn *lsb  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+
+<a name="line42"> 42: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line43"> 43: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(lsb-&gt;psi_scalar != <a href="../../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"Psi must first be set using <a href="../../../../../../manualpages/KSP/MatLMVMSymBadBroydenSetPsi.html">MatLMVMSymBadBroydenSetPsi</a>()"</font>);
+<a name="line44"> 44: </a>  <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 0.0) {
+<a name="line45"> 45: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DFPKernel_CompactDense(B, MATLMVM_MODE_PRIMAL, X, Y));
+<a name="line46"> 46: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 1.0) {
+<a name="line47"> 47: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_CompactDense(B, MATLMVM_MODE_PRIMAL, X, Y));
+<a name="line48"> 48: </a>  } <font color="#4169E1">else</font> {
+<a name="line49"> 49: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenKernel_CompactDense(B, MATLMVM_MODE_PRIMAL, X, Y, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line50"> 50: </a>  }
+<a name="line51"> 51: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line52"> 52: </a>}
+
+<a name="line54"> 54: </a><strong><font color="#4169E1"><a name="MatSolve_LMVMSymBadBrdn_CompactDense"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolve_LMVMSymBadBrdn_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> Y)</font></strong>
+<a name="line55"> 55: </a>{
+<a name="line56"> 56: </a>  Mat_LMVM    *lmvm = (Mat_LMVM *)B-&gt;data;
+<a name="line57"> 57: </a>  Mat_SymBrdn *lsb  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+
+<a name="line59"> 59: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line60"> 60: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(lsb-&gt;psi_scalar != <a href="../../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"Psi must first be set using <a href="../../../../../../manualpages/KSP/MatLMVMSymBadBroydenSetPsi.html">MatLMVMSymBadBroydenSetPsi</a>()"</font>);
+<a name="line61"> 61: </a>  <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 0.0) {
+<a name="line62"> 62: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(BFGSKernel_CompactDense(B, MATLMVM_MODE_DUAL, X, Y));
+<a name="line63"> 63: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (lsb-&gt;psi_scalar == 1.0) {
+<a name="line64"> 64: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DFPKernel_CompactDense(B, MATLMVM_MODE_DUAL, X, Y));
+<a name="line65"> 65: </a>  } <font color="#4169E1">else</font> {
+<a name="line66"> 66: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenKernel_CompactDense(B, MATLMVM_MODE_DUAL, X, Y, <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line67"> 67: </a>  }
+<a name="line68"> 68: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line69"> 69: </a>}
+
+<a name="line71"> 71: </a><strong><font color="#4169E1"><a name="MatLMVMSetMultAlgorithm_SymBadBrdn"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLMVMSetMultAlgorithm_SymBadBrdn(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B)</font></strong>
+<a name="line72"> 72: </a>{
+<a name="line73"> 73: </a>  Mat_LMVM *lmvm = (Mat_LMVM *)B-&gt;data;
+
+<a name="line75"> 75: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line76"> 76: </a>  <font color="#4169E1">switch</font> (lmvm-&gt;mult_alg) {
+<a name="line77"> 77: </a>  <font color="#4169E1">case</font> <a href="../../../../../../manualpages/KSP/MatLMVMMultAlgorithm.html">MAT_LMVM_MULT_RECURSIVE</a>:
+<a name="line78"> 78: </a>    lmvm-&gt;ops-&gt;mult  = MatMult_LMVMSymBadBrdn_Recursive;
+<a name="line79"> 79: </a>    lmvm-&gt;ops-&gt;solve = MatSolve_LMVMSymBadBrdn_Recursive;
+<a name="line80"> 80: </a>    <font color="#4169E1">break</font>;
+<a name="line81"> 81: </a>  <font color="#4169E1">case</font> <a href="../../../../../../manualpages/KSP/MatLMVMMultAlgorithm.html">MAT_LMVM_MULT_DENSE</a>:
+<a name="line82"> 82: </a>  <font color="#4169E1">case</font> <a href="../../../../../../manualpages/KSP/MatLMVMMultAlgorithm.html">MAT_LMVM_MULT_COMPACT_DENSE</a>:
+<a name="line83"> 83: </a>    lmvm-&gt;ops-&gt;mult  = MatMult_LMVMSymBadBrdn_CompactDense;
+<a name="line84"> 84: </a>    lmvm-&gt;ops-&gt;solve = MatSolve_LMVMSymBadBrdn_CompactDense;
+<a name="line85"> 85: </a>    <font color="#4169E1">break</font>;
+<a name="line86"> 86: </a>  }
+<a name="line87"> 87: </a>  lmvm-&gt;ops-&gt;multht  = lmvm-&gt;ops-&gt;mult;
+<a name="line88"> 88: </a>  lmvm-&gt;ops-&gt;solveht = lmvm-&gt;ops-&gt;solve;
+<a name="line89"> 89: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line90"> 90: </a>}
+
+<a name="line92"> 92: </a><strong><font color="#4169E1"><a name="MatSetFromOptions_LMVMSymBadBrdn"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSetFromOptions_LMVMSymBadBrdn(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, PetscOptionItems PetscOptionsObject)</font></strong>
+<a name="line93"> 93: </a>{
+<a name="line94"> 94: </a>  Mat_LMVM                  *lmvm = (Mat_LMVM *)B-&gt;data;
+<a name="line95"> 95: </a>  Mat_SymBrdn               *lsb  = (Mat_SymBrdn *)lmvm-&gt;ctx;
+<a name="line96"> 96: </a>  <a href="../../../../../../manualpages/KSP/MatLMVMSymBroydenScaleType.html">MatLMVMSymBroydenScaleType</a> stype;
+
+<a name="line98"> 98: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line99"> 99: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSetFromOptions_LMVM(B, PetscOptionsObject));
+<a name="line100">100: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadBegin.html">PetscOptionsHeadBegin</a>(PetscOptionsObject, <font color="#666666">"Restricted/Symmetric Bad Broyden method for approximating SPD Jacobian actions (MATLMVMSYMBADBROYDEN)"</font>);
+<a name="line101">101: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-mat_lmvm_psi"</font>, <font color="#666666">"convex ratio between DFP and BFGS components of the update"</font>, <font color="#666666">""</font>, lsb-&gt;psi_scalar, &amp;lsb-&gt;psi_scalar, NULL));
+<a name="line102">102: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(lsb-&gt;psi_scalar &gt;= 0.0 &amp;&amp; lsb-&gt;psi_scalar &lt;= 1.0, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"convex ratio for the update formula cannot be outside the range of [0, 1]"</font>);
+<a name="line103">103: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenRescaleSetFromOptions(B, lsb-&gt;rescale, PetscOptionsObject));
+<a name="line104">104: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadEnd.html">PetscOptionsHeadEnd</a>();
+<a name="line105">105: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenRescaleGetType(lsb-&gt;rescale, &amp;stype));
+<a name="line106">106: </a>  <font color="#4169E1">if</font> (stype == <a href="../../../../../../manualpages/KSP/MatLMVMSymBroydenScaleType.html">MAT_LMVM_SYMBROYDEN_SCALE_DIAGONAL</a>) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SymBroydenRescaleSetDiagonalMode(lsb-&gt;rescale, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line107">107: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line108">108: </a>}
+
+<a name="line110">110: </a><strong><font color="#4169E1"><a name="MatCreate_LMVMSymBadBrdn"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreate_LMVMSymBadBrdn(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B)</font></strong>
+<a name="line111">111: </a>{
+<a name="line112">112: </a>  Mat_LMVM    *lmvm;
+<a name="line113">113: </a>  Mat_SymBrdn *lsb;
+
+<a name="line115">115: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line116">116: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatCreate_LMVMSymBrdn(B));
+<a name="line117">117: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscObjectChangeTypeName((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B, MATLMVMSYMBADBROYDEN));
+<a name="line118">118: </a>  B-&gt;ops-&gt;setfromoptions = MatSetFromOptions_LMVMSymBadBrdn;
+
+<a name="line120">120: </a>  lmvm                        = (Mat_LMVM *)B-&gt;data;
+<a name="line121">121: </a>  lmvm-&gt;ops-&gt;setmultalgorithm = MatLMVMSetMultAlgorithm_SymBadBrdn;
+
+<a name="line123">123: </a>  lsb                   = (Mat_SymBrdn *)lmvm-&gt;ctx;
+<a name="line124">124: </a>  lsb-&gt;psi_scalar       = 0.875;
+<a name="line125">125: </a>  lsb-&gt;phi_scalar       = <a href="../../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>;
+<a name="line126">126: </a>  lsb-&gt;rescale-&gt;forward = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line127">127: </a>  lsb-&gt;rescale-&gt;theta   = 1.0 - lsb-&gt;psi_scalar;
+
+<a name="line129">129: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatLMVMSetMultAlgorithm_SymBadBrdn(B));
+<a name="line130">130: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line131">131: </a>}
+
+<a name="line133">133: </a><font color="#B22222">/*@</font>
+<a name="line134">134: </a><font color="#B22222">  <a href="../../../../../../manualpages/KSP/MatCreateLMVMSymBadBroyden.html">MatCreateLMVMSymBadBroyden</a> - Creates a limited-memory Symmetric "Bad" Broyden-type matrix used</font>
+<a name="line135">135: </a><font color="#B22222">  for approximating Jacobians.</font>
+
+<a name="line137">137: </a><font color="#B22222">  Collective</font>
+
+<a name="line139">139: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line140">140: </a><font color="#B22222">+ comm - MPI communicator</font>
+<a name="line141">141: </a><font color="#B22222">. n    - number of local rows for storage vectors</font>
+<a name="line142">142: </a><font color="#B22222">- N    - global size of the storage vectors</font>
+
+<a name="line144">144: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line145">145: </a><font color="#B22222">. B - the matrix</font>
+
+<a name="line147">147: </a><font color="#B22222">  Options Database Keys:</font>
+<a name="line148">148: </a><font color="#B22222">+ -mat_lmvm_hist_size         - the number of history vectors to keep</font>
+<a name="line149">149: </a><font color="#B22222">. -mat_lmvm_psi               - convex ratio between BFGS and DFP components of the update</font>
+<a name="line150">150: </a><font color="#B22222">. -mat_lmvm_scale_type        - type of scaling applied to J0 (none, scalar, diagonal)</font>
+<a name="line151">151: </a><font color="#B22222">. -mat_lmvm_mult_algorithm    - the algorithm to use for multiplication (recursive, dense, compact_dense)</font>
+<a name="line152">152: </a><font color="#B22222">. -mat_lmvm_cache_J0_products - whether products between the base Jacobian J0 and history vectors should be cached or recomputed</font>
+<a name="line153">153: </a><font color="#B22222">. -mat_lmvm_eps               - (developer) numerical zero tolerance for testing when an update should be skipped</font>
+<a name="line154">154: </a><font color="#B22222">. -mat_lmvm_debug             - (developer) perform internal debugging checks</font>
+<a name="line155">155: </a><font color="#B22222">. -mat_lmvm_theta             - (developer) convex ratio between BFGS and DFP components of the diagonal J0 scaling</font>
+<a name="line156">156: </a><font color="#B22222">. -mat_lmvm_rho               - (developer) update limiter for the J0 scaling</font>
+<a name="line157">157: </a><font color="#B22222">. -mat_lmvm_alpha             - (developer) coefficient factor for the quadratic subproblem in J0 scaling</font>
+<a name="line158">158: </a><font color="#B22222">. -mat_lmvm_beta              - (developer) exponential factor for the diagonal J0 scaling</font>
+<a name="line159">159: </a><font color="#B22222">- -mat_lmvm_sigma_hist        - (developer) number of past updates to use in J0 scaling</font>
+
+<a name="line161">161: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line163">163: </a><font color="#B22222">  Notes:</font>
+<a name="line164">164: </a><font color="#B22222">  L-SymBadBrdn is a convex combination of L-DFP and L-BFGS such that $B^{-1} = (1 - \psi)*B_{\text{DFP}}^{-1} +</font>
+<a name="line165">165: </a><font color="#B22222">  \psi*B_{\text{BFGS}}^{-1}$. The combination factor $\psi$ is restricted to the range $[0, 1]$, where the L-SymBadBrdn matrix</font>
+<a name="line166">166: </a><font color="#B22222">  is guaranteed to be symmetric positive-definite. Note that this combination is on the inverses and not on the</font>
+<a name="line167">167: </a><font color="#B22222">  forwards. For forward convex combinations, use the L-SymBrdn matrix (`MATLMVMSYMBROYDEN`).</font>
+
+<a name="line169">169: </a><font color="#B22222">  To use the L-SymBrdn matrix with other vector types, the matrix must be created using `<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>()` and</font>
+<a name="line170">170: </a><font color="#B22222">  `<a href="../../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>()`, followed by `<a href="../../../../../../manualpages/KSP/MatLMVMAllocate.html">MatLMVMAllocate</a>()`.  This ensures that the internal storage and work vectors are</font>
+<a name="line171">171: </a><font color="#B22222">  duplicated from the correct type of vector.</font>
+
+<a name="line173">173: </a><font color="#B22222">  It is recommended that one use the `<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>()`, `<a href="../../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>()` and/or `<a href="../../../../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>()` paradigm instead of this</font>
+<a name="line174">174: </a><font color="#B22222">  routine directly.</font>
+
+<a name="line176">176: </a><font color="#B22222">.seealso: [](ch_ksp), [LMVM Matrices](sec_matlmvm), `<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>()`, `<a href="../../../../../../manualpages/KSP/MATLMVM.html">MATLMVM</a>`, `MATLMVMSYMBROYDEN`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMDFP.html">MatCreateLMVMDFP</a>()`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMSR1.html">MatCreateLMVMSR1</a>()`,</font>
+<a name="line177">177: </a><font color="#B22222">          `<a href="../../../../../../manualpages/KSP/MatCreateLMVMBFGS.html">MatCreateLMVMBFGS</a>()`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMBroyden.html">MatCreateLMVMBroyden</a>()`, `<a href="../../../../../../manualpages/KSP/MatCreateLMVMBadBroyden.html">MatCreateLMVMBadBroyden</a>()`</font>
+<a name="line178">178: </a><font color="#B22222">@*/</font>
+<a name="line179">179: </a><strong><font color="#4169E1"><a name="MatCreateLMVMSymBadBroyden"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../../manualpages/KSP/MatCreateLMVMSymBadBroyden.html">MatCreateLMVMSymBadBroyden</a>(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> N, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> *B)</font></strong>
+<a name="line180">180: </a>{
+<a name="line181">181: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line182">182: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPInitializePackage.html">KSPInitializePackage</a>());
+<a name="line183">183: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(comm, B));
+<a name="line184">184: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(*B, n, n, N, N));
+<a name="line185">185: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(*B, MATLMVMSYMBADBROYDEN));
+<a name="line186">186: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetUp.html">MatSetUp</a>(*B));
+<a name="line187">187: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line188">188: </a>}
+</pre>
+</body>
+
+</html>
+

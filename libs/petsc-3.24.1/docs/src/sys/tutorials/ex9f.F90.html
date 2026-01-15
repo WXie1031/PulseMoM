@@ -1,0 +1,133 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tutorials/ex9f.F90">Actual source code: ex9f.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:12+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>!
+<a name="line2">  2: </a>!   Example of using <a href="../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a> in Fortran
+<a name="line3">  3: </a>program ex9f
+<a name="line4">  4: </a><font color="#A020F0">#include </font><font color="#666666">"petsc/finclude/petscsys.h"</font><font color="#A020F0"></font>
+<a name="line5">  5: </a>  use petscsys
+<a name="line6">  6: </a>  implicit none
+
+<a name="line8">  8: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>, Parameter                       :: PReal = 1.0
+<a name="line9">  9: </a>  Integer, Parameter                         :: Pr = Selected_Real_Kind(Precision(PReal))
+<a name="line10"> 10: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, Parameter                        :: PInt = 1
+<a name="line11"> 11: </a>  Integer, Parameter                         :: Pi = kind(PInt)
+
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>                            :: ierr
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>                                 :: flg
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>                                  :: nopt = 3_Pi
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>                                 :: bvalue, bdefault = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>, dimension(:), pointer            :: barray
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscEnum.html">PetscEnum</a>                                 :: evalue, edefault = 2
+<a name="line19"> 19: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>                                  :: ivalue, idefault = 2_Pi
+<a name="line20"> 20: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, dimension(:), pointer             :: iarray
+<a name="line21"> 21: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>                                 :: rvalue, rdefault = 1.23_Pr
+<a name="line22"> 22: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>, dimension(:), pointer            :: rarray
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>                               :: svalue, sdefault = -4.56_Pr
+<a name="line24"> 24: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, dimension(:), pointer          :: sarray
+<a name="line25"> 25: </a>  character(len=256)                        :: IOBuffer
+<a name="line26"> 26: </a>  character(len=256)                        :: stvalue, stdefault
+<a name="line27"> 27: </a>  character(len=256)                        :: list(6)
+
+<a name="line29"> 29: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(ierr))
+<a name="line30"> 30: </a>  list(1) = 'a123   '
+<a name="line31"> 31: </a>  list(2) = 'b456   '
+<a name="line32"> 32: </a>  list(3) = 'c789   '
+<a name="line33"> 33: </a>  list(4) = 'list   '
+<a name="line34"> 34: </a>  list(5) = 'prefix_'
+<a name="line35"> 35: </a>  list(6) = ''
+<a name="line36"> 36: </a>  stdefault = 'oulala oulala'
+
+<a name="line38"> 38: </a>  Allocate (iarray(nopt), source=-1_Pi)
+<a name="line39"> 39: </a>  Allocate (rarray(nopt), source=-99.0_pr)
+<a name="line40"> 40: </a>  Allocate (barray(nopt), source=<a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>)
+<a name="line41"> 41: </a>  Allocate (sarray(nopt))
+<a name="line42"> 42: </a>  sarray = 123.456_Pr
+
+<a name="line44"> 44: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 'prefix_', 'Setting options for my application', 'Section 1', ierr))
+<a name="line45"> 45: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>('-bool', 'Get an application bool', 'Man page', bdefault, bvalue, flg, ierr))
+<a name="line46"> 46: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line47"> 47: </a>    write (IOBuffer, '("The bool value was set to ",L1,"\n")') bvalue
+<a name="line48"> 48: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, IOBuffer, ierr))
+<a name="line49"> 49: </a>  end <font color="#4169E1">if</font>
+<a name="line50"> 50: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsBoolArray.html">PetscOptionsBoolArray</a>('-boolarray', 'Get an application bool array', 'Man page', barray, nopt, flg, ierr))
+<a name="line51"> 51: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line52"> 52: </a>    write (IOBuffer, '("The bool array was set to ",*(L1," "))') barray
+<a name="line53"> 53: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, trim(IOBuffer)<font color="#B22222">//"\n", ierr))</font>
+<a name="line54"> 54: </a>  end <font color="#4169E1">if</font>
+<a name="line55"> 55: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsEnum.html">PetscOptionsEnum</a>('-enum', 'Get an application enum', 'Man page', list, edefault, evalue, flg, ierr))
+<a name="line56"> 56: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line57"> 57: </a>    write (IOBuffer, '("The bool value was set to ",A,"\n")') trim(list(evalue + 1))
+<a name="line58"> 58: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, IOBuffer, ierr))
+<a name="line59"> 59: </a>  end <font color="#4169E1">if</font>
+<a name="line60"> 60: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>('-int', 'Get an application int', 'Man page', idefault, ivalue, flg, ierr))
+<a name="line61"> 61: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line62"> 62: </a>    write (IOBuffer, '("The integer value was set to ",I8,"\n")') ivalue
+<a name="line63"> 63: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, IOBuffer, ierr))
+<a name="line64"> 64: </a>  end <font color="#4169E1">if</font>
+<a name="line65"> 65: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsIntArray.html">PetscOptionsIntArray</a>('-intarray', 'Get an application int array', 'Man page', iarray, nopt, flg, ierr))
+<a name="line66"> 66: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line67"> 67: </a>    write (IOBuffer, '("The integer array was set to ",*(I8," "))') iarray
+<a name="line68"> 68: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, trim(IOBuffer)<font color="#B22222">//"\n", ierr))</font>
+<a name="line69"> 69: </a>  end <font color="#4169E1">if</font>
+<a name="line70"> 70: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>('-real', 'Get an application real', 'Man page', rdefault, rvalue, flg, ierr))
+<a name="line71"> 71: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line72"> 72: </a>    write (IOBuffer, '("The real value was set to ",ES12.5,"\n")') rvalue
+<a name="line73"> 73: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, IOBuffer, ierr))
+<a name="line74"> 74: </a>  end <font color="#4169E1">if</font>
+<a name="line75"> 75: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsRealArray.html">PetscOptionsRealArray</a>('-realarray', 'Get an application real array', 'Man page', rarray, nopt, flg, ierr))
+<a name="line76"> 76: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line77"> 77: </a>    write (IOBuffer, '("The real array was set to ",*(ES12.5," "))') rarray
+<a name="line78"> 78: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, trim(IOBuffer)<font color="#B22222">//"\n", ierr))</font>
+<a name="line79"> 79: </a>  end <font color="#4169E1">if</font>
+<a name="line80"> 80: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsScalar.html">PetscOptionsScalar</a>('-scalar', 'Get an application scalar', 'Man page', sdefault, svalue, flg, ierr))
+<a name="line81"> 81: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line82"> 82: </a>    write (IOBuffer, '("The scalar value was set to ",ES12.5,"\n")') svalue
+<a name="line83"> 83: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, IOBuffer, ierr))
+<a name="line84"> 84: </a>  end <font color="#4169E1">if</font>
+<a name="line85"> 85: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsScalarArray.html">PetscOptionsScalarArray</a>('-scalararray', 'Get an application scalar array', 'Man page', sarray, nopt, flg, ierr))
+<a name="line86"> 86: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line87"> 87: </a>    write (IOBuffer, '("The scalar array was set to ",*(ES12.5," "))') sarray
+<a name="line88"> 88: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, trim(IOBuffer)<font color="#B22222">//"\n", ierr))</font>
+<a name="line89"> 89: </a>  end <font color="#4169E1">if</font>
+<a name="line90"> 90: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsString.html">PetscOptionsString</a>('-string', 'Get an application string', 'Man page', stdefault, stvalue, flg, ierr))
+<a name="line91"> 91: </a>  <font color="#4169E1">if</font> (flg) then
+<a name="line92"> 92: </a>    write (IOBuffer, '("The string value was set to ",A,"\n")') trim(stvalue)
+<a name="line93"> 93: </a>    <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, IOBuffer, ierr))
+<a name="line94"> 94: </a>  end <font color="#4169E1">if</font>
+<a name="line95"> 95: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>(ierr))
+
+<a name="line97"> 97: </a>  deallocate (iarray)
+<a name="line98"> 98: </a>  deallocate (rarray)
+<a name="line99"> 99: </a>  deallocate (barray)
+<a name="line100">100: </a>  deallocate (sarray)
+<a name="line101">101: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>(ierr))
+<a name="line102">102: </a>end program ex9f
+
+<a name="line104">104: </a>!
+<a name="line105">105: </a>!<font color="#B22222">/*TEST</font>
+<a name="line106">106: </a><font color="#B22222">!</font>
+<a name="line107">107: </a><font color="#B22222">!   build:</font>
+<a name="line108">108: </a><font color="#B22222">!      requires: defined(PETSC_USING_F2003) defined(PETSC_USING_F90FREEFORM) !complex</font>
+<a name="line109">109: </a><font color="#B22222">!</font>
+<a name="line110">110: </a><font color="#B22222">!   test:</font>
+<a name="line111">111: </a><font color="#B22222">!      output_file: output/empty.out</font>
+<a name="line112">112: </a><font color="#B22222">!</font>
+<a name="line113">113: </a><font color="#B22222">!   test:</font>
+<a name="line114">114: </a><font color="#B22222">!      suffix: 2</font>
+<a name="line115">115: </a><font color="#B22222">!      args: -prefix_int 22 -prefix_intarray 2-5 -prefix_real 2.34 -prefix_realarray -3,-4,5.5 -prefix_scalar 7.89 -prefix_scalararray 1.,2.,3. -prefix_bool no -prefix_boolarray 1,no,true -prefix_string This_is_a_test_of_the_emergency_alert_system</font>
+<a name="line116">116: </a><font color="#B22222">!</font>
+<a name="line117">117: </a><font color="#B22222">!TEST*/</font>
+</pre>
+</body>
+
+</html>
+

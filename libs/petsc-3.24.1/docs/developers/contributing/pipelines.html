@@ -1,0 +1,770 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>GitLab CI Pipelines &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'developers/contributing/pipelines';</script>
+    <link rel="icon" href="../../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Merge request management" href="../mrmanagement.html" />
+    <link rel="prev" title="Submitting a Merge Request" href="submittingmr.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../communication.html">PETSc Developers Communication Channels</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Contributing to PETSc</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="developingmr.html">Developing a Merge Request</a></li>
+<li class="toctree-l2"><a class="reference internal" href="submittingmr.html">Submitting a Merge Request</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">GitLab CI Pipelines</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../mrmanagement.html">Merge request management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mrfork.html">Checkout fork merge request branch</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../development.html">PETSc Development Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../style.html">PETSc Style and Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../buildsystem.html">BuildSystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">PETSc Testing System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../documentation.html">Developing PETSc Documentation</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../design.html">The Design of PETSc</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../kernel.html">The PETSc Kernel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../objects.html">Basic Object Design and Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../callbacks.html">How the Solvers Handle User Provided Callbacks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../matrices.html">The Various Matrix Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../articles.html">Articles about PETSc Design</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../meetings-developers.html">Meeting organization practices</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Developers</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Contributing to PETSc</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">GitLab CI Pipelines</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="gitlab-ci-pipelines">
+<span id="pipelines"></span><h1>GitLab CI Pipelines<a class="headerlink" href="#gitlab-ci-pipelines" title="Link to this heading">#</a></h1>
+<p>PETSc uses <a class="reference external" href="https://docs.gitlab.com/ee/ci/pipelines/">GitLab Pipelines</a> for testing during continuous integration.</p>
+<p>Do not overdo requesting testing; it is a limited resource, so if you
+realize a currently running pipeline is no longer needed, cancel it.</p>
+<p>The pipeline status for a merge request (MR) is displayed near the top of the MR page and in the pipelines tab.</p>
+<p>(The figures below are high resolution, so zoom in if needed)</p>
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="../../_images/pipeline-from-MR.png"><img alt="../../_images/pipeline-from-MR.png" src="../../_images/pipeline-from-MR.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 35 </span><span class="caption-text">Pipeline status for a merge request (MR)</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>To un-pause the pipeline, click the “play” button (or start a new one with “Run Pipeline” if necessary).</p>
+<figure class="align-center" id="id2">
+<a class="reference internal image-reference" href="../../_images/run-paused-pipeline.png"><img alt="../../_images/run-paused-pipeline.png" src="../../_images/run-paused-pipeline.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 36 </span><span class="caption-text">Un-pausing a pipeline.</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>A pipeline consists of “Stages” each with multiple “Jobs”. Every job is one configuration on one machine.</p>
+<figure class="align-center" id="id3">
+<a class="reference internal image-reference" href="../../_images/show-failure.png"><img alt="../../_images/show-failure.png" src="../../_images/show-failure.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 37 </span><span class="caption-text">Examining a failed pipeline stage.</span><a class="headerlink" href="#id3" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>You can see the failed jobs by clicking on the X.</p>
+<figure class="align-center" id="id4">
+<a class="reference internal image-reference" href="../../_images/find-exact-bad-job.png"><img alt="../../_images/find-exact-bad-job.png" src="../../_images/find-exact-bad-job.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 38 </span><span class="caption-text">Locating the exact failed job in a pipeline stage.</span><a class="headerlink" href="#id4" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>A job is a run of the <a class="reference internal" href="../testing.html#test-harness"><span class="std std-ref">PETSc test harness</span></a> and consists of many “examples”.
+Each test is a run of an example with a particular set of command line options</p>
+<p>A failure in running the job’s tests will have <code class="docutils notranslate"><span class="pre">FAILED</span></code> and a list of the failed tests</p>
+<figure class="align-center" id="id5">
+<a class="reference internal image-reference" href="../../_images/failed-examples.png"><img alt="../../_images/failed-examples.png" src="../../_images/failed-examples.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 39 </span><span class="caption-text">Failed examples in a pipeline job.</span><a class="headerlink" href="#id5" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>Search for <code class="docutils notranslate"><span class="pre">not</span> <span class="pre">ok</span></code> in the jobs output to find the exact failure</p>
+<figure class="align-center" id="id6">
+<a class="reference internal image-reference" href="../../_images/unfreed-memory.png"><img alt="../../_images/unfreed-memory.png" src="../../_images/unfreed-memory.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 40 </span><span class="caption-text">A test that failed because of unfreed memory.</span><a class="headerlink" href="#id6" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>After you have fixed a problem that appeared in a particular (set of) job(s) you may want to test your fix only on those jobs. To do this use</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./lib/petsc/bin/maint/runjobs.py<span class="w"> </span><span class="o">[</span>job_1<span class="w"> </span>job_2<span class="w"> </span>...<span class="w"> </span>job_N<span class="o">]</span>
+</pre></div>
+</div>
+<p>where <code class="docutils notranslate"><span class="pre">job_1</span></code> is, for example, <code class="docutils notranslate"><span class="pre">linux-intel</span></code>. The script will then prompt you to push the branch of the MR, once pushed the listed jobs will automatically be run
+without you needing to access the GitLab website to un-pause the pipeline.</p>
+<section id="examples-of-pipeline-failures">
+<span id="more-test-failures"></span><h2>Examples of pipeline failures<a class="headerlink" href="#examples-of-pipeline-failures" title="Link to this heading">#</a></h2>
+<p>If your source code is not properly formatted you will see an error from <code class="docutils notranslate"><span class="pre">make</span> <span class="pre">checkbadSource</span></code>. Always run <code class="docutils notranslate"><span class="pre">make</span> <span class="pre">checkbadSource</span></code> on your machine
+before submitting a pipeline.</p>
+<figure class="align-center" id="id7">
+<a class="reference internal image-reference" href="../../_images/badsource.png"><img alt="../../_images/badsource.png" src="../../_images/badsource.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 41 </span><span class="caption-text"><code class="docutils notranslate"><span class="pre">checkbadSource</span></code> failure.</span><a class="headerlink" href="#id7" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<figure class="align-center" id="id8">
+<a class="reference internal image-reference" href="../../_images/another-failure.png"><img alt="../../_images/another-failure.png" src="../../_images/another-failure.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 42 </span><span class="caption-text">A test failing with a PETSc error.</span><a class="headerlink" href="#id8" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<figure class="align-center" id="id9">
+<a class="reference internal image-reference" href="../../_images/error-compiling-source.png"><img alt="../../_images/error-compiling-source.png" src="../../_images/error-compiling-source.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 43 </span><span class="caption-text">Error in compiling the source code.</span><a class="headerlink" href="#id9" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>You can download the <code class="docutils notranslate"><span class="pre">configure.log</span></code> file to find the problem using the “Browse” button and following the paths to the configure file.</p>
+<figure class="align-center" id="id10">
+<a class="reference internal image-reference" href="../../_images/pipeline-configure.png"><img alt="../../_images/pipeline-configure.png" src="../../_images/pipeline-configure.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 44 </span><span class="caption-text">Error in running configure.</span><a class="headerlink" href="#id10" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<figure class="align-center" id="id11">
+<a class="reference internal image-reference" href="../../_images/pipeline-configure-browse.png"><img alt="../../_images/pipeline-configure-browse.png" src="../../_images/pipeline-configure-browse.png" style="width: 90%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 45 </span><span class="caption-text">Downloading <code class="docutils notranslate"><span class="pre">configure.log</span></code> from a failed pipeline job.</span><a class="headerlink" href="#id11" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>The “Retry” button at the top of a previous pipeline or job does <strong>not</strong> use any
+new changes to the branch you have pushed since that pipeline was started - it retries the
+same Git commit that was previously tried. The job “Retry” should only be used this way
+when you suspect the testing system has some intermittent error unrelated to your branch.</p>
+<p>Please report all “odd” errors in the testing that don’t seem related
+to your branch in the PETSc Discord channel <code class="docutils notranslate"><span class="pre">testing-ci-forum</span></code>.</p>
+<p>Check the forum’s threads to see if the error is listed and add it there, with a link to your MR (e.g. <code class="docutils notranslate"><span class="pre">!1234</span></code>). Otherwise, create a new thread.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="submittingmr.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Submitting a Merge Request</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../mrmanagement.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Merge request management</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples-of-pipeline-failures">Examples of pipeline failures</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/developers/contributing/pipelines.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../../_sources/developers/contributing/pipelines.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

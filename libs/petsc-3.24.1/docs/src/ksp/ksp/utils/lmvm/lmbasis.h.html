@@ -1,0 +1,66 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/utils/lmvm/lmbasis.h">Actual source code: lmbasis.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscmat.h.html">&lt;petscmat.h&gt;</A>
+
+<a name="line4">  4: </a>PETSC_INTERN <a href="../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> LMBASIS_GEMM;
+<a name="line5">  5: </a>PETSC_INTERN <a href="../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> LMBASIS_GEMV;
+<a name="line6">  6: </a>PETSC_INTERN <a href="../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> LMBASIS_GEMVH;
+
+<a name="line8">  8: </a><font color="#4169E1">typedef struct _n_VecLink *VecLink;</font>
+
+<a name="line10"> 10: </a><font color="#4169E1"><a name="_n_VecLink"></a>struct _n_VecLink </font>{
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>     vec;
+<a name="line12"> 12: </a>  VecLink next;
+<a name="line13"> 13: </a>};
+
+<a name="line15"> 15: </a><font color="#B22222">// Limited Memory Basis</font>
+<a name="line16"> 16: </a><font color="#4169E1">typedef struct _n_LMBasis *LMBasis;</font>
+<a name="line17"> 17: </a><font color="#4169E1"><a name="_n_LMBasis"></a>struct _n_LMBasis </font>{
+<a name="line18"> 18: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         m;                   <font color="#B22222">// Number of vectors in the limited memory window</font>
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         k;                   <font color="#B22222">// Index of the history-order next vector to be inserted</font>
+<a name="line20"> 20: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>              vecs;                <font color="#B22222">// Dense matrix backing storage of vectors</font>
+<a name="line21"> 21: </a>  <a href="../../../../../manualpages/Sys/PetscObjectId.html">PetscObjectId</a>    operator_id;         <font color="#B22222">// If these vecs include the output of an operator (like B0 * S), the id of the operator</font>
+<a name="line22"> 22: </a>  <a href="../../../../../manualpages/Sys/PetscObjectState.html">PetscObjectState</a> operator_state;      <font color="#B22222">// The state of the operator when vectors in S were computed, to determine when basis vectors are stale because B0 has changed</font>
+<a name="line23"> 23: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>              cached_product;      <font color="#B22222">// Some methods will cache v <- S^T g during MatLMVMUpdate(B, x, g) for use in MatSolve(B, g, p), this is that v</font>
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscObjectId.html">PetscObjectId</a>    cached_vec_id;       <font color="#B22222">// The id of g, to help determine when an input vector is g that was used to compute v</font>
+<a name="line25"> 25: </a>  <a href="../../../../../manualpages/Sys/PetscObjectState.html">PetscObjectState</a> cached_vec_state;    <font color="#B22222">// The state of g when v was computed, to determine when v is stale because g has changed</font>
+<a name="line26"> 26: </a>  VecLink          work_vecs_available; <font color="#B22222">// work vectors the layout of column vectors of S</font>
+<a name="line27"> 27: </a>  VecLink          work_vecs_in_use;
+<a name="line28"> 28: </a>  VecLink          work_rows_available; <font color="#B22222">// work vectors the layout of row vectors of S</font>
+<a name="line29"> 29: </a>  VecLink          work_rows_in_use;
+<a name="line30"> 30: </a>};
+
+<a name="line32"> 32: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisCreate(<a href="../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, LMBasis *)</font></strong>;
+<a name="line33"> 33: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisDestroy(LMBasis *)</font></strong>;
+<a name="line34"> 34: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisReset(LMBasis)</font></strong>;
+<a name="line35"> 35: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGetNextVec(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line36"> 36: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisRestoreNextVec(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line37"> 37: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisSetNextVec(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line38"> 38: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGetVecRead(LMBasis, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line39"> 39: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisRestoreVecRead(LMBasis, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line40"> 40: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisCopy(LMBasis, LMBasis)</font></strong>;
+<a name="line41"> 41: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisCreateRow(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line42"> 42: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGetWorkRow(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line43"> 43: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisRestoreWorkRow(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line44"> 44: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGetWorkVec(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line45"> 45: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisRestoreWorkVec(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *)</font></strong>;
+<a name="line46"> 46: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGetRange(LMBasis, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *)</font></strong>;
+<a name="line47"> 47: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGEMV(LMBasis, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line48"> 48: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGEMVH(LMBasis, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line49"> 49: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisGEMMH(LMBasis, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, LMBasis, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>)</font></strong>;
+<a name="line50"> 50: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LMBasisSetCachedProduct(LMBasis, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+</pre>
+</body>
+
+</html>
+

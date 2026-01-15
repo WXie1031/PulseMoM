@@ -1,0 +1,38 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/aij/seq/ftn-kernels/fmultadd.F90">Actual source code: fmultadd.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>!
+<a name="line2">  2: </a>!
+<a name="line3">  3: </a>!    Fortran kernel <font color="#4169E1">for</font> sparse matrix-vector product in the AIJ format
+<a name="line4">  4: </a>!
+<a name="line5">  5: </a><font color="#A020F0">#include &lt;petsc/finclude/petscsys.h&gt;</font>
+<a name="line6">  6: </a>!
+<a name="line7">  7: </a><strong><font color="#4169E1"><a name="FortranMultAddAIJ"></a>pure subroutine FortranMultAddAIJ(n, x, ii, jj, a, y, z)</font></strong>
+<a name="line8">  8: </a>  use, intrinsic :: ISO_C_binding
+<a name="line9">  9: </a>  implicit none(type, external)
+<a name="line10"> 10: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, intent(in) :: x(0:*), a(0:*), y(*)
+<a name="line11"> 11: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, intent(inout) :: z(*)
+<a name="line12"> 12: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, intent(in) :: n, ii(*), jj(0:*)
+
+<a name="line14"> 14: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> :: i, jstart, jend
+
+<a name="line16"> 16: </a>  jend = ii(1)
+<a name="line17"> 17: </a>  <font color="#4169E1">do</font> i = 1, n
+<a name="line18"> 18: </a>    jstart = jend
+<a name="line19"> 19: </a>    jend = ii(i + 1)
+<a name="line20"> 20: </a>    z(i) = y(i) + sum(a(jstart:jend - 1)*x(jj(jstart:jend - 1)))
+<a name="line21"> 21: </a>  end <font color="#4169E1">do</font>
+<a name="line22"> 22: </a>end subroutine FortranMultAddAIJ
+</pre>
+</body>
+
+</html>
+

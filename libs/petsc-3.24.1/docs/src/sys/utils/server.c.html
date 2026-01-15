@@ -1,0 +1,424 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/utils/server.c">Actual source code: server.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:12+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#B22222">/*</font>
+<a name="line2">  2: </a><font color="#B22222">    Code for allocating Unix shared memory on MPI rank 0 and later accessing it from other MPI processes</font>
+<a name="line3">  3: </a><font color="#B22222">*/</font>
+<a name="line4">  4: </a>#include <A href="../../../include/petsc/private/petscimpl.h.html">&lt;petsc/private/petscimpl.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+
+<a name="line7">  7: </a><a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> PCMPIServerActive    = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>; <font color="#B22222">// PETSc is running in server mode</font>
+<a name="line8">  8: </a><a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> PCMPIServerInSolve   = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>; <font color="#B22222">// A parallel server solve is occurring</font>
+<a name="line9">  9: </a><a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> PCMPIServerUseShmget = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;  <font color="#B22222">// Use Unix shared memory for distributing objects</font>
+
+<a name="line11"> 11: </a><font color="#A020F0">#if defined(PETSC_HAVE_SHMGET)</font>
+<a name="line12"> 12: </a><font color="#A020F0">  #include &lt;sys/shm.h&gt;</font>
+<a name="line13"> 13: </a><font color="#A020F0">  #include &lt;sys/mman.h&gt;</font>
+<a name="line14"> 14: </a><font color="#A020F0">  #include &lt;errno.h&gt;</font>
+
+<a name="line16"> 16: </a><font color="#4169E1">typedef struct _PetscShmgetAllocation *PetscShmgetAllocation;</font>
+<a name="line17"> 17: </a><font color="#4169E1"><a name="_PetscShmgetAllocation"></a>struct _PetscShmgetAllocation </font>{
+<a name="line18"> 18: </a>  void                 *addr; <font color="#B22222">// address on this process; points to same physical address on all processes</font>
+<a name="line19"> 19: </a>  int                   shmkey, shmid;
+<a name="line20"> 20: </a>  size_t                sz;
+<a name="line21"> 21: </a>  PetscShmgetAllocation next;
+<a name="line22"> 22: </a>};
+<a name="line23"> 23: </a>static PetscShmgetAllocation allocations = NULL;
+
+<a name="line25"> 25: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line26"> 26: </a>  size_t shmkey[3];
+<a name="line27"> 27: </a>  size_t sz[3];
+<a name="line28"> 28: </a>} BcastInfo;
+
+<a name="line30"> 30: </a><font color="#A020F0">#endif</font>
+
+<a name="line32"> 32: </a><font color="#B22222">/*@C</font>
+<a name="line33"> 33: </a><font color="#B22222">  <a href="../../../manualpages/Sys/PetscShmgetAddressesFinalize.html">PetscShmgetAddressesFinalize</a> - frees any shared memory that was allocated by `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()` but</font>
+<a name="line34"> 34: </a><font color="#B22222">  not deallocated with `<a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>()`</font>
+
+<a name="line36"> 36: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line38"> 38: </a><font color="#B22222">  Notes:</font>
+<a name="line39"> 39: </a><font color="#B22222">  This prevents any shared memory allocated, but not deallocated, from remaining on the system and preventing</font>
+<a name="line40"> 40: </a><font color="#B22222">  its future use.</font>
+
+<a name="line42"> 42: </a><font color="#B22222">  If the program crashes outstanding shared memory allocations may remain.</font>
+
+<a name="line44"> 44: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetUnmapAddresses.html">PetscShmgetUnmapAddresses</a>()`</font>
+<a name="line45"> 45: </a><font color="#B22222">@*/</font>
+<a name="line46"> 46: </a><strong><font color="#4169E1"><a name="PetscShmgetAddressesFinalize"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Sys/PetscShmgetAddressesFinalize.html">PetscShmgetAddressesFinalize</a>(void)</font></strong>
+<a name="line47"> 47: </a>{
+<a name="line48"> 48: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line49"> 49: </a><font color="#A020F0">#if defined(PETSC_HAVE_SHMGET)</font>
+<a name="line50"> 50: </a>  PetscShmgetAllocation next = allocations, previous = NULL;
+
+<a name="line52"> 52: </a>  <font color="#4169E1">while</font> (next) {
+<a name="line53"> 53: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!shmctl(next-&gt;shmid, IPC_RMID, NULL), <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SYS</a>, <font color="#666666">"Unable to free shared memory key %d shmid %d %s, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, next-&gt;shmkey, next-&gt;shmid, strerror(errno));
+<a name="line54"> 54: </a>    previous = next;
+<a name="line55"> 55: </a>    next     = next-&gt;next;
+<a name="line56"> 56: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(previous));
+<a name="line57"> 57: </a>  }
+<a name="line58"> 58: </a><font color="#A020F0">#endif</font>
+<a name="line59"> 59: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line60"> 60: </a>}
+
+<a name="line62"> 62: </a><font color="#B22222">/* takes a void so can work bsan safe with <a href="../../../manualpages/Sys/PetscObjectContainerCompose.html">PetscObjectContainerCompose</a>() */</font>
+<a name="line63"> 63: </a><strong><font color="#4169E1"><a name="PCMPIServerAddressesDestroy"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCMPIServerAddressesDestroy(void **ctx)</font></strong>
+<a name="line64"> 64: </a>{
+<a name="line65"> 65: </a>  PCMPIServerAddresses *addresses = (PCMPIServerAddresses *)*ctx;
+
+<a name="line67"> 67: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line68"> 68: </a><font color="#A020F0">#if defined(PETSC_HAVE_SHMGET)</font>
+<a name="line69"> 69: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscShmgetUnmapAddresses.html">PetscShmgetUnmapAddresses</a>(addresses-&gt;n, addresses-&gt;addr));
+<a name="line70"> 70: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(addresses));
+<a name="line71"> 71: </a><font color="#A020F0">#else</font>
+<a name="line72"> 72: </a>  (void)addresses;
+<a name="line73"> 73: </a><font color="#A020F0">#endif</font>
+<a name="line74"> 74: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line75"> 75: </a>}
+
+<a name="line77"> 77: </a><font color="#B22222">/*@C</font>
+<a name="line78"> 78: </a><font color="#B22222">  <a href="../../../manualpages/Sys/PetscShmgetMapAddresses.html">PetscShmgetMapAddresses</a> - given shared address on the first MPI process determines the</font>
+<a name="line79"> 79: </a><font color="#B22222">  addresses on the other MPI processes that map to the same physical memory</font>
+
+<a name="line81"> 81: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line82"> 82: </a><font color="#B22222">+ comm       - the `<a href="../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>` to scatter the address</font>
+<a name="line83"> 83: </a><font color="#B22222">. n          - the number of addresses, each obtained on MPI process zero by `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()`</font>
+<a name="line84"> 84: </a><font color="#B22222">- baseaddres - the addresses on the first MPI process, ignored on all but first process</font>
+
+<a name="line86"> 86: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line87"> 87: </a><font color="#B22222">. addres - the addresses on each MPI process, the array of void * must already be allocated</font>
+
+<a name="line89"> 89: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line91"> 91: </a><font color="#B22222">  Note:</font>
+<a name="line92"> 92: </a><font color="#B22222">  This routine does nothing if `PETSC_HAVE_SHMGET` is not defined</font>
+
+<a name="line94"> 94: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetUnmapAddresses.html">PetscShmgetUnmapAddresses</a>()`</font>
+<a name="line95"> 95: </a><font color="#B22222">@*/</font>
+<a name="line96"> 96: </a><strong><font color="#4169E1"><a name="PetscShmgetMapAddresses"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Sys/PetscShmgetMapAddresses.html">PetscShmgetMapAddresses</a>(<a href="../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, const void **baseaddres, void **addres)</font></strong>
+<a name="line97"> 97: </a>{
+<a name="line98"> 98: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line99"> 99: </a><font color="#A020F0">#if defined(PETSC_HAVE_SHMGET)</font>
+<a name="line100">100: </a>  <font color="#4169E1">if</font> (PetscGlobalRank == 0) {
+<a name="line101">101: </a>    BcastInfo bcastinfo = {
+<a name="line102">102: </a>      {0, 0, 0},
+<a name="line103">103: </a>      {0, 0, 0}
+<a name="line104">104: </a>    };
+<a name="line105">105: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; n; i++) {
+<a name="line106">106: </a>      PetscShmgetAllocation allocation = allocations;
+
+<a name="line108">108: </a>      <font color="#4169E1">while</font> (allocation) {
+<a name="line109">109: </a>        <font color="#4169E1">if</font> (allocation-&gt;addr == baseaddres[i]) {
+<a name="line110">110: </a>          bcastinfo.shmkey[i] = allocation-&gt;shmkey;
+<a name="line111">111: </a>          bcastinfo.sz[i]     = allocation-&gt;sz;
+<a name="line112">112: </a>          addres[i]           = (void *)baseaddres[i];
+<a name="line113">113: </a>          <font color="#4169E1">break</font>;
+<a name="line114">114: </a>        }
+<a name="line115">115: </a>        allocation = allocation-&gt;next;
+<a name="line116">116: </a>      }
+<a name="line117">117: </a>      <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(allocation, comm, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Unable to locate <a href="../../../manualpages/PC/PCMPI.html">PCMPI</a> allocated shared address %p, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, baseaddres[i]);
+<a name="line118">118: </a>    }
+<a name="line119">119: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(NULL, <font color="#666666">"Mapping <a href="../../../manualpages/PC/PCMPI.html">PCMPI</a> Server array %p\n"</font>, addres[0]));
+<a name="line120">120: </a>    <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Bcast.html#MPI_Bcast">MPI_Bcast</a>(&amp;bcastinfo, 6, MPIU_SIZE_T, 0, comm));
+<a name="line121">121: </a>  } <font color="#4169E1">else</font> {
+<a name="line122">122: </a>    BcastInfo bcastinfo = {
+<a name="line123">123: </a>      {0, 0, 0},
+<a name="line124">124: </a>      {0, 0, 0}
+<a name="line125">125: </a>    };
+<a name="line126">126: </a>    int    shmkey = 0;
+<a name="line127">127: </a>    size_t sz     = 0;
+
+<a name="line129">129: </a>    <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Bcast.html#MPI_Bcast">MPI_Bcast</a>(&amp;bcastinfo, 6, MPIU_SIZE_T, 0, comm));
+<a name="line130">130: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; n; i++) {
+<a name="line131">131: </a>      PetscShmgetAllocation next = allocations, previous = NULL;
+
+<a name="line133">133: </a>      shmkey = (int)bcastinfo.shmkey[i];
+<a name="line134">134: </a>      sz     = bcastinfo.sz[i];
+<a name="line135">135: </a>      <font color="#4169E1">while</font> (next) {
+<a name="line136">136: </a>        <font color="#4169E1">if</font> (next-&gt;shmkey == shmkey) addres[i] = next-&gt;addr;
+<a name="line137">137: </a>        previous = next;
+<a name="line138">138: </a>        next     = next-&gt;next;
+<a name="line139">139: </a>      }
+<a name="line140">140: </a>      <font color="#4169E1">if</font> (!next) {
+<a name="line141">141: </a>        PetscShmgetAllocation allocation;
+<a name="line142">142: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscCalloc.html">PetscCalloc</a>(<font color="#4169E1">sizeof</font>(<font color="#4169E1">struct _PetscShmgetAllocation</font>), &amp;allocation));
+<a name="line143">143: </a>        allocation-&gt;shmkey = shmkey;
+<a name="line144">144: </a>        allocation-&gt;sz     = sz;
+<a name="line145">145: </a>        allocation-&gt;shmid  = shmget(allocation-&gt;shmkey, allocation-&gt;sz, 0666);
+<a name="line146">146: </a>        <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(allocation-&gt;shmid != -1, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SYS</a>, <font color="#666666">"Unable to map <a href="../../../manualpages/PC/PCMPI.html">PCMPI</a> shared memory key %d of size %d, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, allocation-&gt;shmkey, (int)allocation-&gt;sz);
+<a name="line147">147: </a>        allocation-&gt;addr = shmat(allocation-&gt;shmid, NULL, 0);
+<a name="line148">148: </a>        <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(allocation-&gt;addr, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SYS</a>, <font color="#666666">"Unable to map <a href="../../../manualpages/PC/PCMPI.html">PCMPI</a> shared memory key %d, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, allocation-&gt;shmkey);
+<a name="line149">149: </a>        addres[i] = allocation-&gt;addr;
+<a name="line150">150: </a>        <font color="#4169E1">if</font> (previous) previous-&gt;next = allocation;
+<a name="line151">151: </a>        <font color="#4169E1">else</font> allocations = allocation;
+<a name="line152">152: </a>      }
+<a name="line153">153: </a>    }
+<a name="line154">154: </a>  }
+<a name="line155">155: </a><font color="#A020F0">#endif</font>
+<a name="line156">156: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line157">157: </a>}
+
+<a name="line159">159: </a><font color="#B22222">/*@C</font>
+<a name="line160">160: </a><font color="#B22222">  <a href="../../../manualpages/Sys/PetscShmgetUnmapAddresses.html">PetscShmgetUnmapAddresses</a> - given shared addresses on a MPI process unlink it</font>
+
+<a name="line162">162: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line163">163: </a><font color="#B22222">+ n      - the number of addresses, each obtained on MPI process zero by `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()`</font>
+<a name="line164">164: </a><font color="#B22222">- addres - the addresses</font>
+
+<a name="line166">166: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line168">168: </a><font color="#B22222">  Note:</font>
+<a name="line169">169: </a><font color="#B22222">  This routine does nothing if `PETSC_HAVE_SHMGET` is not defined</font>
+
+<a name="line171">171: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetMapAddresses.html">PetscShmgetMapAddresses</a>()`</font>
+<a name="line172">172: </a><font color="#B22222">@*/</font>
+<a name="line173">173: </a><strong><font color="#4169E1"><a name="PetscShmgetUnmapAddresses"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Sys/PetscShmgetUnmapAddresses.html">PetscShmgetUnmapAddresses</a>(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, void **addres)</font></strong> <a href="../../../manualpages/Sys/PeNS.html">PeNS</a>
+<a name="line174">174: </a>{
+<a name="line175">175: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line176">176: </a><font color="#A020F0">#if defined(PETSC_HAVE_SHMGET)</font>
+<a name="line177">177: </a>  <font color="#4169E1">if</font> (PetscGlobalRank &gt; 0) {
+<a name="line178">178: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; n; i++) {
+<a name="line179">179: </a>      PetscShmgetAllocation next = allocations, previous = NULL;
+<a name="line180">180: </a>      <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>             found = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line182">182: </a>      <font color="#4169E1">while</font> (next) {
+<a name="line183">183: </a>        <font color="#4169E1">if</font> (next-&gt;addr == addres[i]) {
+<a name="line184">184: </a>          <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!shmdt(next-&gt;addr), <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SYS</a>, <font color="#666666">"Unable to shmdt() location %s, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, strerror(errno));
+<a name="line185">185: </a>          <font color="#4169E1">if</font> (previous) previous-&gt;next = next-&gt;next;
+<a name="line186">186: </a>          <font color="#4169E1">else</font> allocations = next-&gt;next;
+<a name="line187">187: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(next));
+<a name="line188">188: </a>          found = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line189">189: </a>          <font color="#4169E1">break</font>;
+<a name="line190">190: </a>        }
+<a name="line191">191: </a>        previous = next;
+<a name="line192">192: </a>        next     = next-&gt;next;
+<a name="line193">193: </a>      }
+<a name="line194">194: </a>      <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(found, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Unable to find address %p to unmap, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, addres[i]);
+<a name="line195">195: </a>    }
+<a name="line196">196: </a>  }
+<a name="line197">197: </a><font color="#A020F0">#endif</font>
+<a name="line198">198: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line199">199: </a>}
+
+<a name="line201">201: </a><font color="#B22222">/*@C</font>
+<a name="line202">202: </a><font color="#B22222">  <a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a> - allocates shared memory accessible by all MPI processes in the server</font>
+
+<a name="line204">204: </a><font color="#B22222">  Not Collective, only called on the first MPI process</font>
+
+<a name="line206">206: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line207">207: </a><font color="#B22222">+ sz  - the number of elements in the array</font>
+<a name="line208">208: </a><font color="#B22222">- asz - the size of an entry in the array, for example `sizeof(<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>)`</font>
+
+<a name="line210">210: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line211">211: </a><font color="#B22222">. addr - the address of the array</font>
+
+<a name="line213">213: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line215">215: </a><font color="#B22222">  Notes:</font>
+<a name="line216">216: </a><font color="#B22222">  Uses `<a href="../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>()` if `PETSC_HAVE_SHMGET` is not defined or the MPI linear solver server is not running</font>
+
+<a name="line218">218: </a><font color="#B22222">  Sometimes when a program crashes, shared memory IDs may remain, making it impossible to rerun the program.</font>
+<a name="line219">219: </a><font color="#B22222">  Use</font>
+<a name="line220">220: </a><font color="#B22222">.vb</font>
+<a name="line221">221: </a><font color="#B22222">  $PETSC_DIR/lib/petsc/bin/petscfreesharedmemory</font>
+<a name="line222">222: </a><font color="#B22222">.ve to free that memory. The Linux command `ipcrm --all` or macOS command `for i in $(ipcs -m | tail -$(expr $(ipcs -m | wc -l) - 3) | tr -s ' ' | cut -d" " -f3); do ipcrm -M $i; done`</font>
+<a name="line223">223: </a><font color="#B22222">  will also free the memory.</font>
+
+<a name="line225">225: </a><font color="#B22222">  Use the Unix command `ipcs -m` to see what memory IDs are currently allocated and `ipcrm -m ID` to remove a memory ID</font>
+
+<a name="line227">227: </a><font color="#B22222">  Under Apple macOS the following file must be copied to /Library/LaunchDaemons/sharedmemory.plist (ensure this file is owned by root and not the user)</font>
+<a name="line228">228: </a><font color="#B22222">  and the machine rebooted before using shared memory</font>
+<a name="line229">229: </a><font color="#B22222">.vb</font>
+<a name="line230">230: </a><font color="#B22222">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</font>
+<a name="line231">231: </a><font color="#B22222">&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;</font>
+<a name="line232">232: </a><font color="#B22222">&lt;plist version="1.0"&gt;</font>
+<a name="line233">233: </a><font color="#B22222">&lt;dict&gt;</font>
+<a name="line234">234: </a><font color="#B22222"> &lt;key&gt;Label&lt;/key&gt;</font>
+<a name="line235">235: </a><font color="#B22222"> &lt;string&gt;shmemsetup&lt;/string&gt;</font>
+<a name="line236">236: </a><font color="#B22222"> &lt;key&gt;UserName&lt;/key&gt;</font>
+<a name="line237">237: </a><font color="#B22222"> &lt;string&gt;root&lt;/string&gt;</font>
+<a name="line238">238: </a><font color="#B22222"> &lt;key&gt;GroupName&lt;/key&gt;</font>
+<a name="line239">239: </a><font color="#B22222"> &lt;string&gt;wheel&lt;/string&gt;</font>
+<a name="line240">240: </a><font color="#B22222"> &lt;key&gt;ProgramArguments&lt;/key&gt;</font>
+<a name="line241">241: </a><font color="#B22222"> &lt;array&gt;</font>
+<a name="line242">242: </a><font color="#B22222"> &lt;string&gt;/usr/sbin/sysctl&lt;/string&gt;</font>
+<a name="line243">243: </a><font color="#B22222"> &lt;string&gt;-w&lt;/string&gt;</font>
+<a name="line244">244: </a><font color="#B22222"> &lt;string&gt;kern.sysv.shmmax=4194304000&lt;/string&gt;</font>
+<a name="line245">245: </a><font color="#B22222"> &lt;string&gt;kern.sysv.shmmni=2064&lt;/string&gt;</font>
+<a name="line246">246: </a><font color="#B22222"> &lt;string&gt;kern.sysv.shmseg=2064&lt;/string&gt;</font>
+<a name="line247">247: </a><font color="#B22222"> &lt;string&gt;kern.sysv.shmall=131072000&lt;/string&gt;</font>
+<a name="line248">248: </a><font color="#B22222">  &lt;/array&gt;</font>
+<a name="line249">249: </a><font color="#B22222"> &lt;key&gt;KeepAlive&lt;/key&gt;</font>
+<a name="line250">250: </a><font color="#B22222"> &lt;false/&gt;</font>
+<a name="line251">251: </a><font color="#B22222"> &lt;key&gt;RunAtLoad&lt;/key&gt;</font>
+<a name="line252">252: </a><font color="#B22222"> &lt;true/&gt;</font>
+<a name="line253">253: </a><font color="#B22222">&lt;/dict&gt;</font>
+<a name="line254">254: </a><font color="#B22222">&lt;/plist&gt;</font>
+<a name="line255">255: </a><font color="#B22222">.ve</font>
+
+<a name="line257">257: </a><font color="#B22222">  Use the command</font>
+<a name="line258">258: </a><font color="#B22222">.vb</font>
+<a name="line259">259: </a><font color="#B22222">  /usr/sbin/sysctl -a | grep shm</font>
+<a name="line260">260: </a><font color="#B22222">.ve</font>
+<a name="line261">261: </a><font color="#B22222">  to confirm that the shared memory limits you have requested are available.</font>
+
+<a name="line263">263: </a><font color="#B22222">  Fortran Note:</font>
+<a name="line264">264: </a><font color="#B22222">  The calling sequence is `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>[Scalar,Int](<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> start, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> len, Petsc[Scalar,Int], pointer :: d1(:), ierr)`</font>
+
+<a name="line266">266: </a><font color="#B22222">  Developer Note:</font>
+<a name="line267">267: </a><font color="#B22222">  More specifically this uses `<a href="../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>()` if `!PCMPIServerUseShmget` || `!PCMPIServerActive` || `PCMPIServerInSolve`</font>
+<a name="line268">268: </a><font color="#B22222">  where `PCMPIServerInSolve` indicates that the solve is nested inside a MPI linear solver server solve and hence should</font>
+<a name="line269">269: </a><font color="#B22222">  not allocate the vector and matrix memory in shared memory.</font>
+
+<a name="line271">271: </a><font color="#B22222">.seealso: [](sec_pcmpi), `<a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()`, `<a href="../../../manualpages/PC/PCMPI.html">PCMPI</a>`, `<a href="../../../manualpages/KSP/KSPCheckPCMPI.html">KSPCheckPCMPI</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>()`</font>
+<a name="line272">272: </a><font color="#B22222">@*/</font>
+<a name="line273">273: </a><strong><font color="#4169E1"><a name="PetscShmgetAllocateArray"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>(size_t sz, size_t asz, void *addr[])</font></strong>
+<a name="line274">274: </a>{
+<a name="line275">275: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line276">276: </a>  <font color="#4169E1">if</font> (!PCMPIServerUseShmget || !PCMPIServerActive || PCMPIServerInSolve) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(sz * asz, addr));
+<a name="line277">277: </a><font color="#A020F0">#if defined(PETSC_HAVE_SHMGET)</font>
+<a name="line278">278: </a>  <font color="#4169E1">else</font> {
+<a name="line279">279: </a>    PetscShmgetAllocation allocation;
+<a name="line280">280: </a>    static int            shmkeys = 10;
+
+<a name="line282">282: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscCalloc.html">PetscCalloc</a>(<font color="#4169E1">sizeof</font>(<font color="#4169E1">struct _PetscShmgetAllocation</font>), &amp;allocation));
+<a name="line283">283: </a>    allocation-&gt;shmkey = shmkeys++;
+<a name="line284">284: </a>    allocation-&gt;sz     = sz * asz;
+<a name="line285">285: </a>    allocation-&gt;shmid  = shmget(allocation-&gt;shmkey, allocation-&gt;sz, 0666 | IPC_CREAT);
+<a name="line286">286: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(allocation-&gt;shmid != -1, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"Unable to schmget() of size %d with key %d %s see <a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()"</font>, (int)allocation-&gt;sz, allocation-&gt;shmkey, strerror(errno));
+<a name="line287">287: </a>    allocation-&gt;addr = shmat(allocation-&gt;shmid, NULL, 0);
+<a name="line288">288: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(allocation-&gt;addr, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"Unable to shmat() of shmid %d %s"</font>, allocation-&gt;shmid, strerror(errno));
+<a name="line289">289: </a><font color="#A020F0">  #if PETSC_SIZEOF_VOID_P == 8</font>
+<a name="line290">290: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>((uint64_t)allocation-&gt;addr != 0xffffffffffffffff, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"shmat() of shmid %d returned 0xffffffffffffffff %s, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, allocation-&gt;shmid, strerror(errno));
+<a name="line291">291: </a><font color="#A020F0">  #endif</font>
+
+<a name="line293">293: </a>    <font color="#4169E1">if</font> (!allocations) allocations = allocation;
+<a name="line294">294: </a>    <font color="#4169E1">else</font> {
+<a name="line295">295: </a>      PetscShmgetAllocation next = allocations;
+<a name="line296">296: </a>      <font color="#4169E1">while</font> (next-&gt;next) next = next-&gt;next;
+<a name="line297">297: </a>      next-&gt;next = allocation;
+<a name="line298">298: </a>    }
+<a name="line299">299: </a>    *addr = allocation-&gt;addr;
+<a name="line300">300: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(NULL, <font color="#666666">"Allocating <a href="../../../manualpages/PC/PCMPI.html">PCMPI</a> Server array %p shmkey %d shmid %d size %d\n"</font>, *addr, allocation-&gt;shmkey, allocation-&gt;shmid, (int)allocation-&gt;sz));
+<a name="line301">301: </a>  }
+<a name="line302">302: </a><font color="#A020F0">#endif</font>
+<a name="line303">303: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line304">304: </a>}
+
+<a name="line306">306: </a><font color="#B22222">/*@C</font>
+<a name="line307">307: </a><font color="#B22222">  <a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a> - deallocates shared memory accessible by all MPI processes in the server</font>
+
+<a name="line309">309: </a><font color="#B22222">  Not Collective, only called on the first MPI process</font>
+
+<a name="line311">311: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line312">312: </a><font color="#B22222">. addr - the address of array</font>
+
+<a name="line314">314: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line316">316: </a><font color="#B22222">  Note:</font>
+<a name="line317">317: </a><font color="#B22222">  Uses `<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>()` if `PETSC_HAVE_SHMGET` is not defined or the MPI linear solver server is not running</font>
+
+<a name="line319">319: </a><font color="#B22222">  Fortran Note:</font>
+<a name="line320">320: </a><font color="#B22222">  The calling sequence is `<a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>[Scalar,Int](Petsc[Scalar,Int], pointer :: d1(:), ierr)`</font>
+
+<a name="line322">322: </a><font color="#B22222">.seealso: [](sec_pcmpi), `<a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()`, `<a href="../../../manualpages/PC/PCMPI.html">PCMPI</a>`, `<a href="../../../manualpages/KSP/KSPCheckPCMPI.html">KSPCheckPCMPI</a>()`, `<a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>()`</font>
+<a name="line323">323: </a><font color="#B22222">@*/</font>
+<a name="line324">324: </a><strong><font color="#4169E1"><a name="PetscShmgetDeallocateArray"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>(void *addr[])</font></strong>
+<a name="line325">325: </a>{
+<a name="line326">326: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line327">327: </a>  <font color="#4169E1">if</font> (!*addr) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line328">328: </a>  <font color="#4169E1">if</font> (!PCMPIServerUseShmget || !PCMPIServerActive || PCMPIServerInSolve) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(*addr));
+<a name="line329">329: </a><font color="#A020F0">#if defined(PETSC_HAVE_SHMGET)</font>
+<a name="line330">330: </a>  <font color="#4169E1">else</font> {
+<a name="line331">331: </a>    PetscShmgetAllocation next = allocations, previous = NULL;
+
+<a name="line333">333: </a>    <font color="#4169E1">while</font> (next) {
+<a name="line334">334: </a>      <font color="#4169E1">if</font> (next-&gt;addr == *addr) {
+<a name="line335">335: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(NULL, <font color="#666666">"Deallocating <a href="../../../manualpages/PC/PCMPI.html">PCMPI</a> Server array %p shmkey %d shmid %d size %d\n"</font>, *addr, next-&gt;shmkey, next-&gt;shmid, (int)next-&gt;sz));
+<a name="line336">336: </a>        <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!shmdt(next-&gt;addr), <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SYS</a>, <font color="#666666">"Unable to shmdt() location %s, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, strerror(errno));
+<a name="line337">337: </a>        <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!shmctl(next-&gt;shmid, IPC_RMID, NULL), <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SYS</a>, <font color="#666666">"Unable to free shared memory addr %p key %d shmid %d %s, see <a href="../../../manualpages/PC/PCMPIServerBegin.html">PCMPIServerBegin</a>()"</font>, *addr, next-&gt;shmkey, next-&gt;shmid, strerror(errno));
+<a name="line338">338: </a>        *addr = NULL;
+<a name="line339">339: </a>        <font color="#4169E1">if</font> (previous) previous-&gt;next = next-&gt;next;
+<a name="line340">340: </a>        <font color="#4169E1">else</font> allocations = next-&gt;next;
+<a name="line341">341: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(next));
+<a name="line342">342: </a>        <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line343">343: </a>      }
+<a name="line344">344: </a>      previous = next;
+<a name="line345">345: </a>      next     = next-&gt;next;
+<a name="line346">346: </a>    }
+<a name="line347">347: </a>    <a href="../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Unable to locate <a href="../../../manualpages/PC/PCMPI.html">PCMPI</a> allocated shared memory address %p"</font>, *addr);
+<a name="line348">348: </a>  }
+<a name="line349">349: </a><font color="#A020F0">#endif</font>
+<a name="line350">350: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line351">351: </a>}
+
+<a name="line353">353: </a><font color="#A020F0">#if defined(PETSC_USE_FORTRAN_BINDINGS)</font>
+<a name="line354">354: </a>#include <A href="../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+
+<a name="line356">356: </a><font color="#A020F0">  #if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line357">357: </a><strong><font color="#228B22">    #define petscshmgetallocatearrayscalar_   PETSCSHMGETALLOCATEARRAYSCALAR</font></strong>
+<a name="line358">358: </a><strong><font color="#228B22">    #define petscshmgetdeallocatearrayscalar_ PETSCSHMGETDEALLOCATEARRAYSCALAR</font></strong>
+<a name="line359">359: </a><strong><font color="#228B22">    #define petscshmgetallocatearrayint_      PETSCSHMGETALLOCATEARRAYINT</font></strong>
+<a name="line360">360: </a><strong><font color="#228B22">    #define petscshmgetdeallocatearrayint_    PETSCSHMGETDEALLOCATEARRAYINT</font></strong>
+<a name="line361">361: </a><font color="#A020F0">  #elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line362">362: </a><strong><font color="#228B22">    #define petscshmgetallocatearrayscalar_   petscshmgetallocatearrayscalar</font></strong>
+<a name="line363">363: </a><strong><font color="#228B22">    #define petscshmgetdeallocatearrayscalar_ petscshmgetdeallocatearrayscalar</font></strong>
+<a name="line364">364: </a><strong><font color="#228B22">    #define petscshmgetallocatearrayint_      petscshmgetallocatearrayint</font></strong>
+<a name="line365">365: </a><strong><font color="#228B22">    #define petscshmgetdeallocatearrayint_    petscshmgetdeallocatearrayint</font></strong>
+<a name="line366">366: </a><font color="#A020F0">  #endif</font>
+
+<a name="line368">368: </a><strong><font color="#4169E1"><a name="petscshmgetallocatearrayscalar_"></a>PETSC_EXTERN void petscshmgetallocatearrayscalar_(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *start, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *len, F90Array1d *a, <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line369">369: </a>{
+<a name="line370">370: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line372">372: </a>  *ierr = <a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>(*len, <font color="#4169E1">sizeof</font>(<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>), (void **)&amp;aa);
+<a name="line373">373: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line374">374: </a>  *ierr = F90Array1dCreate(aa, <a href="../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, *start, *len, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line375">375: </a>}
+
+<a name="line377">377: </a><strong><font color="#4169E1"><a name="petscshmgetdeallocatearrayscalar_"></a>PETSC_EXTERN void petscshmgetdeallocatearrayscalar_(F90Array1d *a, <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line378">378: </a>{
+<a name="line379">379: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line381">381: </a>  *ierr = F90Array1dAccess(a, <a href="../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;aa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line382">382: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line383">383: </a>  *ierr = <a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>((void **)&amp;aa);
+<a name="line384">384: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line385">385: </a>  *ierr = F90Array1dDestroy(a, <a href="../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line386">386: </a>}
+
+<a name="line388">388: </a><strong><font color="#4169E1"><a name="petscshmgetallocatearrayint_"></a>PETSC_EXTERN void petscshmgetallocatearrayint_(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *start, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *len, F90Array1d *a, <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line389">389: </a>{
+<a name="line390">390: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *aa;
+
+<a name="line392">392: </a>  *ierr = <a href="../../../manualpages/Sys/PetscShmgetAllocateArray.html">PetscShmgetAllocateArray</a>(*len, <font color="#4169E1">sizeof</font>(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>), (void **)&amp;aa);
+<a name="line393">393: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line394">394: </a>  *ierr = F90Array1dCreate(aa, <a href="../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, *start, *len, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line395">395: </a>}
+
+<a name="line397">397: </a><strong><font color="#4169E1"><a name="petscshmgetdeallocatearrayint_"></a>PETSC_EXTERN void petscshmgetdeallocatearrayint_(F90Array1d *a, <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line398">398: </a>{
+<a name="line399">399: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *aa;
+
+<a name="line401">401: </a>  *ierr = F90Array1dAccess(a, <a href="../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, (void **)&amp;aa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line402">402: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line403">403: </a>  *ierr = <a href="../../../manualpages/Sys/PetscShmgetDeallocateArray.html">PetscShmgetDeallocateArray</a>((void **)&amp;aa);
+<a name="line404">404: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line405">405: </a>  *ierr = F90Array1dDestroy(a, <a href="../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line406">406: </a>}
+
+<a name="line408">408: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+

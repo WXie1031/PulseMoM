@@ -1,0 +1,416 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/tests/bench_spmv.c">Actual source code: bench_spmv.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:04+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Driver for benchmarking SpMV."</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../include/petscmat.h.html">&lt;petscmat.h&gt;</A>
+<a name="line4">  4: </a><font color="#A020F0">#include </font><font color="#666666">"cJSON.h"</font><font color="#A020F0"></font>
+<a name="line5">  5: </a><font color="#A020F0">#include </font><font color="#666666">"mmloader.h"</font><font color="#A020F0"></font>
+
+<a name="line7">  7: </a><strong><font color="#4169E1"><a name="read_file"></a>char *read_file(const char *filename)</font></strong>
+<a name="line8">  8: </a>{
+<a name="line9">  9: </a>  FILE  *file       = NULL;
+<a name="line10"> 10: </a>  long   length     = 0;
+<a name="line11"> 11: </a>  char  *content    = NULL;
+<a name="line12"> 12: </a>  size_t read_chars = 0;
+
+<a name="line14"> 14: </a>  <font color="#B22222">/* open in read binary mode */</font>
+<a name="line15"> 15: </a>  file = fopen(filename, <font color="#666666">"rb"</font>);
+<a name="line16"> 16: </a>  <font color="#4169E1">if</font> (file) {
+<a name="line17"> 17: </a>    <font color="#B22222">/* get the length */</font>
+<a name="line18"> 18: </a>    fseek(file, 0, SEEK_END);
+<a name="line19"> 19: </a>    length = ftell(file);
+<a name="line20"> 20: </a>    fseek(file, 0, SEEK_SET);
+<a name="line21"> 21: </a>    <font color="#B22222">/* allocate content buffer */</font>
+<a name="line22"> 22: </a>    content = (char *)malloc((size_t)length + <font color="#4169E1">sizeof</font>(<font color="#666666">""</font>));
+<a name="line23"> 23: </a>    <font color="#B22222">/* read the file into memory */</font>
+<a name="line24"> 24: </a>    read_chars          = fread(content, <font color="#4169E1">sizeof</font>(char), (size_t)length, file);
+<a name="line25"> 25: </a>    content[read_chars] = '\0';
+<a name="line26"> 26: </a>    fclose(file);
+<a name="line27"> 27: </a>  }
+<a name="line28"> 28: </a>  <font color="#4169E1">return</font> content;
+<a name="line29"> 29: </a>}
+
+<a name="line31"> 31: </a><strong><font color="#4169E1"><a name="write_file"></a>void write_file(const char *filename, const char *content)</font></strong>
+<a name="line32"> 32: </a>{
+<a name="line33"> 33: </a>  FILE *file = NULL;
+<a name="line34"> 34: </a>  file       = fopen(filename, <font color="#666666">"w"</font>);
+<a name="line35"> 35: </a>  <font color="#4169E1">if</font> (file) fputs(content, file);
+<a name="line36"> 36: </a>  fclose(file);
+<a name="line37"> 37: </a>}
+
+<a name="line39"> 39: </a><strong><font color="#4169E1"><a name="ParseJSON"></a>int ParseJSON(const char *const inputjsonfile, char ***outputfilenames, char ***outputgroupnames, char ***outputmatnames, int *nmat)</font></strong>
+<a name="line40"> 40: </a>{
+<a name="line41"> 41: </a>  char        *content     = read_file(inputjsonfile);
+<a name="line42"> 42: </a>  cJSON       *matrix_json = NULL;
+<a name="line43"> 43: </a>  const cJSON *problem = NULL, *elem = NULL;
+<a name="line44"> 44: </a>  const cJSON *item = NULL;
+<a name="line45"> 45: </a>  char       **filenames, **groupnames, **matnames;
+<a name="line46"> 46: </a>  int          i, n;
+<a name="line47"> 47: </a>  <font color="#4169E1">if</font> (!content) <font color="#4169E1">return</font> 0;
+<a name="line48"> 48: </a>  matrix_json = cJSON_Parse(content);
+<a name="line49"> 49: </a>  <font color="#4169E1">if</font> (!matrix_json) <font color="#4169E1">return</font> 0;
+<a name="line50"> 50: </a>  n          = cJSON_GetArraySize(matrix_json);
+<a name="line51"> 51: </a>  *nmat      = n;
+<a name="line52"> 52: </a>  filenames  = (char **)malloc(<font color="#4169E1">sizeof</font>(char *) * n);
+<a name="line53"> 53: </a>  groupnames = (char **)malloc(<font color="#4169E1">sizeof</font>(char *) * n);
+<a name="line54"> 54: </a>  matnames   = (char **)malloc(<font color="#4169E1">sizeof</font>(char *) * n);
+<a name="line55"> 55: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; n; i++) {
+<a name="line56"> 56: </a>    elem         = cJSON_GetArrayItem(matrix_json, i);
+<a name="line57"> 57: </a>    item         = cJSON_GetObjectItemCaseSensitive(elem, <font color="#666666">"filename"</font>);
+<a name="line58"> 58: </a>    filenames[i] = (char *)malloc(<font color="#4169E1">sizeof</font>(char) * (strlen(item-&gt;valuestring) + 1));
+<a name="line59"> 59: </a>    strcpy(filenames[i], item-&gt;valuestring);
+<a name="line60"> 60: </a>    problem       = cJSON_GetObjectItemCaseSensitive(elem, <font color="#666666">"problem"</font>);
+<a name="line61"> 61: </a>    item          = cJSON_GetObjectItemCaseSensitive(problem, <font color="#666666">"group"</font>);
+<a name="line62"> 62: </a>    groupnames[i] = (char *)malloc(<font color="#4169E1">sizeof</font>(char) * strlen(item-&gt;valuestring) + 1);
+<a name="line63"> 63: </a>    strcpy(groupnames[i], item-&gt;valuestring);
+<a name="line64"> 64: </a>    item        = cJSON_GetObjectItemCaseSensitive(problem, <font color="#666666">"name"</font>);
+<a name="line65"> 65: </a>    matnames[i] = (char *)malloc(<font color="#4169E1">sizeof</font>(char) * strlen(item-&gt;valuestring) + 1);
+<a name="line66"> 66: </a>    strcpy(matnames[i], item-&gt;valuestring);
+<a name="line67"> 67: </a>  }
+<a name="line68"> 68: </a>  cJSON_Delete(matrix_json);
+<a name="line69"> 69: </a>  free(content);
+<a name="line70"> 70: </a>  *outputfilenames  = filenames;
+<a name="line71"> 71: </a>  *outputgroupnames = groupnames;
+<a name="line72"> 72: </a>  *outputmatnames   = matnames;
+<a name="line73"> 73: </a>  <font color="#4169E1">return</font> 0;
+<a name="line74"> 74: </a>}
+
+<a name="line76"> 76: </a><strong><font color="#4169E1"><a name="UpdateJSON"></a>int UpdateJSON(const char *const inputjsonfile, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *spmv_times, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> starting_spmv_time, const char *const matformat, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> use_gpu, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> repetitions)</font></strong>
+<a name="line77"> 77: </a>{
+<a name="line78"> 78: </a>  char  *content     = read_file(inputjsonfile);
+<a name="line79"> 79: </a>  cJSON *matrix_json = NULL;
+<a name="line80"> 80: </a>  cJSON *elem        = NULL;
+<a name="line81"> 81: </a>  int    i, n;
+<a name="line82"> 82: </a>  <font color="#4169E1">if</font> (!content) <font color="#4169E1">return</font> 0;
+<a name="line83"> 83: </a>  matrix_json = cJSON_Parse(content);
+<a name="line84"> 84: </a>  <font color="#4169E1">if</font> (!matrix_json) <font color="#4169E1">return</font> 0;
+<a name="line85"> 85: </a>  n = cJSON_GetArraySize(matrix_json);
+<a name="line86"> 86: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; n; i++) {
+<a name="line87"> 87: </a>    cJSON *spmv   = NULL;
+<a name="line88"> 88: </a>    cJSON *format = NULL;
+<a name="line89"> 89: </a>    elem          = cJSON_GetArrayItem(matrix_json, i);
+<a name="line90"> 90: </a>    spmv          = cJSON_GetObjectItem(elem, <font color="#666666">"spmv"</font>);
+<a name="line91"> 91: </a>    <font color="#4169E1">if</font> (spmv) {
+<a name="line92"> 92: </a>      format = cJSON_GetObjectItem(spmv, matformat);
+<a name="line93"> 93: </a>      <font color="#4169E1">if</font> (format) {
+<a name="line94"> 94: </a>        cJSON_SetNumberValue(cJSON_GetObjectItem(format, <font color="#666666">"time"</font>), (spmv_times[i] - ((i == 0) ? starting_spmv_time : spmv_times[i - 1])) / repetitions);
+<a name="line95"> 95: </a>        cJSON_SetIntValue(cJSON_GetObjectItem(format, <font color="#666666">"repetitions"</font>), repetitions);
+<a name="line96"> 96: </a>      } <font color="#4169E1">else</font> {
+<a name="line97"> 97: </a>        format = cJSON_CreateObject();
+<a name="line98"> 98: </a>        cJSON_AddItemToObject(spmv, matformat, format);
+<a name="line99"> 99: </a>        cJSON_AddNumberToObject(format, <font color="#666666">"time"</font>, (spmv_times[i] - ((i == 0) ? starting_spmv_time : spmv_times[i - 1])) / repetitions);
+<a name="line100">100: </a>        cJSON_AddNumberToObject(format, <font color="#666666">"repetitions"</font>, repetitions);
+<a name="line101">101: </a>      }
+<a name="line102">102: </a>    } <font color="#4169E1">else</font> {
+<a name="line103">103: </a>      spmv = cJSON_CreateObject();
+<a name="line104">104: </a>      cJSON_AddItemToObject(elem, <font color="#666666">"spmv"</font>, spmv);
+<a name="line105">105: </a>      format = cJSON_CreateObject();
+<a name="line106">106: </a>      cJSON_AddItemToObject(spmv, matformat, format);
+<a name="line107">107: </a>      cJSON_AddNumberToObject(format, <font color="#666666">"time"</font>, (spmv_times[i] - ((i == 0) ? starting_spmv_time : spmv_times[i - 1])) / repetitions);
+<a name="line108">108: </a>      cJSON_AddNumberToObject(format, <font color="#666666">"repetitions"</font>, repetitions);
+<a name="line109">109: </a>    }
+<a name="line110">110: </a>  }
+<a name="line111">111: </a>  free(content);
+<a name="line112">112: </a>  content = cJSON_Print(matrix_json);
+<a name="line113">113: </a>  write_file(inputjsonfile, content);
+<a name="line114">114: </a>  cJSON_Delete(matrix_json);
+<a name="line115">115: </a>  free(content);
+<a name="line116">116: </a>  <font color="#4169E1">return</font> 0;
+<a name="line117">117: </a>}
+
+<a name="line119">119: </a><font color="#B22222">/*</font>
+<a name="line120">120: </a><font color="#B22222">  For GPU formats, we keep two copies of the matrix on CPU and one copy on GPU.</font>
+<a name="line121">121: </a><font color="#B22222">  The extra CPU copy allows us to destroy the GPU matrix and recreate it efficiently</font>
+<a name="line122">122: </a><font color="#B22222">  in each repetition. As a result,  each <a href="../../../manualpages/Mat/MatMult.html">MatMult</a> call is fresh, and we can capture</font>
+<a name="line123">123: </a><font color="#B22222">  the first-time overhead (e.g. of CuSparse SpMV), and avoids the cache effect</font>
+<a name="line124">124: </a><font color="#B22222">  during consecutive calls.</font>
+<a name="line125">125: </a><font color="#B22222">*/</font>
+<a name="line126">126: </a><strong><font color="#4169E1"><a name="TimedSpMV"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TimedSpMV(<a href="../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../manualpages/Vec/Vec.html">Vec</a> b, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *time, const char *petscmatformat, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> use_gpu, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> repetitions)</font></strong>
+<a name="line127">127: </a>{
+<a name="line128">128: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>            A2 = NULL;
+<a name="line129">129: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       i;
+<a name="line130">130: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>            u;
+<a name="line131">131: </a>  <a href="../../../manualpages/Sys/PetscLogDouble.html">PetscLogDouble</a> vstart = 0, vend = 0;
+<a name="line132">132: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>      isaijcusparse, isaijhipsparse, isaijkokkos, issellcuda, issellhip;
+
+<a name="line134">134: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line135">135: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATAIJCUSPARSE.html">MATAIJCUSPARSE</a>, &amp;isaijcusparse));
+<a name="line136">136: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATAIJHIPSPARSE.html">MATAIJHIPSPARSE</a>, &amp;isaijhipsparse));
+<a name="line137">137: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATAIJKOKKOS.html">MATAIJKOKKOS</a>, &amp;isaijkokkos));
+<a name="line138">138: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATSELLCUDA.html">MATSELLCUDA</a>, &amp;issellcuda));
+<a name="line139">139: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATSELLHIP.html">MATSELLHIP</a>, &amp;issellhip));
+<a name="line140">140: </a>  <font color="#4169E1">if</font> (isaijcusparse || issellcuda) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetType.html">VecSetType</a>(b, <a href="../../../manualpages/Vec/VECCUDA.html">VECCUDA</a>));
+<a name="line141">141: </a>  <font color="#4169E1">if</font> (isaijkokkos) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetType.html">VecSetType</a>(b, <a href="../../../manualpages/Vec/VECKOKKOS.html">VECKOKKOS</a>));
+<a name="line142">142: </a>  <font color="#4169E1">if</font> (isaijhipsparse || issellhip) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetType.html">VecSetType</a>(b, <a href="../../../manualpages/Vec/VECHIP.html">VECHIP</a>));
+<a name="line143">143: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(b, &amp;u));
+<a name="line144">144: </a>  <font color="#4169E1">if</font> (time) *time = 0.0;
+<a name="line145">145: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; repetitions; i++) {
+<a name="line146">146: </a>    <font color="#4169E1">if</font> (use_gpu) {
+<a name="line147">147: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A2));
+<a name="line148">148: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(A, <a href="../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>, &amp;A2));
+<a name="line149">149: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetType.html">MatSetType</a>(A2, petscmatformat));
+<a name="line150">150: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>(A2)); <font color="#B22222">// This allows to change parameters such as slice height in SpMV kernels for SELL</font>
+<a name="line151">151: </a>    } <font color="#4169E1">else</font> A2 = A;
+<a name="line152">152: </a>    <font color="#B22222">/* Timing <a href="../../../manualpages/Mat/MatMult.html">MatMult</a> */</font>
+<a name="line153">153: </a>    <font color="#4169E1">if</font> (time) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscTime.html">PetscTime</a>(&amp;vstart));
+
+<a name="line155">155: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>(A2, b, u));
+
+<a name="line157">157: </a>    <font color="#4169E1">if</font> (time) {
+<a name="line158">158: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscTime.html">PetscTime</a>(&amp;vend));
+<a name="line159">159: </a>      *time += (<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>)(vend - vstart);
+<a name="line160">160: </a>    }
+<a name="line161">161: </a>  }
+<a name="line162">162: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;u));
+<a name="line163">163: </a>  <font color="#4169E1">if</font> (repetitions &gt; 0 &amp;&amp; use_gpu) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A2));
+<a name="line164">164: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line165">165: </a>}
+
+<a name="line167">167: </a><strong><font color="#4169E1"><a name="WarmUpDevice"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> WarmUpDevice(<a href="../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../manualpages/Vec/Vec.html">Vec</a> b, const char *petscmatformat)</font></strong>
+<a name="line168">168: </a>{
+<a name="line169">169: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>           A2 = NULL;
+<a name="line170">170: </a>  <a href="../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> event;
+<a name="line171">171: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>           u;
+<a name="line172">172: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>     isaijcusparse, isaijhipsparse, isaijkokkos, issellcuda, issellhip;
+
+<a name="line174">174: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line175">175: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATAIJCUSPARSE.html">MATAIJCUSPARSE</a>, &amp;isaijcusparse));
+<a name="line176">176: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATAIJHIPSPARSE.html">MATAIJHIPSPARSE</a>, &amp;isaijhipsparse));
+<a name="line177">177: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATAIJKOKKOS.html">MATAIJKOKKOS</a>, &amp;isaijkokkos));
+<a name="line178">178: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATSELLCUDA.html">MATSELLCUDA</a>, &amp;issellcuda));
+<a name="line179">179: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(petscmatformat, <a href="../../../manualpages/Mat/MATSELLHIP.html">MATSELLHIP</a>, &amp;issellhip));
+<a name="line180">180: </a>  <font color="#4169E1">if</font> (!isaijcusparse &amp;&amp; !isaijkokkos &amp;&amp; !isaijhipsparse &amp;&amp; !issellcuda &amp;&amp; !issellhip) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line181">181: </a>  <font color="#4169E1">if</font> (isaijcusparse || issellcuda) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetType.html">VecSetType</a>(b, <a href="../../../manualpages/Vec/VECCUDA.html">VECCUDA</a>));
+<a name="line182">182: </a>  <font color="#4169E1">if</font> (isaijkokkos) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetType.html">VecSetType</a>(b, <a href="../../../manualpages/Vec/VECKOKKOS.html">VECKOKKOS</a>));
+<a name="line183">183: </a>  <font color="#4169E1">if</font> (isaijhipsparse || issellhip) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetType.html">VecSetType</a>(b, <a href="../../../manualpages/Vec/VECHIP.html">VECHIP</a>));
+<a name="line184">184: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(b, &amp;u));
+<a name="line185">185: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(A, <a href="../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>, &amp;A2));
+<a name="line186">186: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetType.html">MatSetType</a>(A2, petscmatformat));
+<a name="line187">187: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventGetId.html">PetscLogEventGetId</a>(<font color="#666666">"<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>"</font>, &amp;event));
+<a name="line188">188: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventDeactivatePush.html">PetscLogEventDeactivatePush</a>(event));
+<a name="line189">189: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>(A2, b, u));
+<a name="line190">190: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventDeactivatePop.html">PetscLogEventDeactivatePop</a>(event));
+<a name="line191">191: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;u));
+<a name="line192">192: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A2));
+<a name="line193">193: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line194">194: </a>}
+
+<a name="line196">196: </a><strong><font color="#4169E1"><a name="PetscLogSpMVTime"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogSpMVTime(<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *gputime, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *cputime, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *gpuflops, const char *petscmatformat)</font></strong>
+<a name="line197">197: </a>{
+<a name="line198">198: </a>  <a href="../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>      event;
+<a name="line199">199: </a>  <a href="../../../manualpages/Log/PetscEventPerfInfo.html">PetscEventPerfInfo</a> eventInfo;
+<a name="line200">200: </a>  <font color="#B22222">// <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>          gpuflopRate;</font>
+
+<a name="line202">202: </a>  <font color="#B22222">// if (matformat) {</font>
+<a name="line203">203: </a>  <font color="#B22222">//   <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventGetId.html">PetscLogEventGetId</a>("MatCUDACopyTo", &event));</font>
+<a name="line204">204: </a>  <font color="#B22222">// } else {</font>
+<a name="line205">205: </a>  <font color="#B22222">//  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventGetId.html">PetscLogEventGetId</a>("MatCUSPARSCopyTo", &event));</font>
+<a name="line206">206: </a>  <font color="#B22222">// }</font>
+<a name="line207">207: </a>  <font color="#B22222">// <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventGetPerfInfo.html">PetscLogEventGetPerfInfo</a>(<a href="../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, event, &eventInfo));</font>
+<a name="line208">208: </a>  <font color="#B22222">// <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, "%.4e ", eventInfo.time));</font>
+
+<a name="line210">210: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line211">211: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventGetId.html">PetscLogEventGetId</a>(<font color="#666666">"<a href="../../../manualpages/Mat/MatMult.html">MatMult</a>"</font>, &amp;event));
+<a name="line212">212: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventGetPerfInfo.html">PetscLogEventGetPerfInfo</a>(<a href="../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, event, &amp;eventInfo));
+<a name="line213">213: </a>  <font color="#B22222">// gpuflopRate = eventInfo.GpuFlops/eventInfo.GpuTime;</font>
+<a name="line214">214: </a>  <font color="#B22222">// <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, "%.2f %.4e %.4e\n", gpuflopRate/1.e6, eventInfo.GpuTime, eventInfo.time));</font>
+<a name="line215">215: </a>  <font color="#4169E1">if</font> (cputime) *cputime = eventInfo.time;
+<a name="line216">216: </a><font color="#A020F0">#if defined(PETSC_HAVE_DEVICE)</font>
+<a name="line217">217: </a>  <font color="#4169E1">if</font> (gputime) *gputime = eventInfo.GpuTime;
+<a name="line218">218: </a>  <font color="#4169E1">if</font> (gpuflops) *gpuflops = eventInfo.GpuFlops / 1.e6;
+<a name="line219">219: </a><font color="#A020F0">#endif</font>
+<a name="line220">220: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line221">221: </a>}
+
+<a name="line223">223: </a><strong><font color="#4169E1"><a name="MapToPetscMatType"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MapToPetscMatType(const char *matformat, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> use_gpu, char **petscmatformat)</font></strong>
+<a name="line224">224: </a>{
+<a name="line225">225: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> iscsr, issell, iscsrkokkos;
+
+<a name="line227">227: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line228">228: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(matformat, <font color="#666666">"csr"</font>, &amp;iscsr));
+<a name="line229">229: </a>  <font color="#4169E1">if</font> (iscsr) {
+<a name="line230">230: </a>    <font color="#4169E1">if</font> (use_gpu) {
+<a name="line231">231: </a><font color="#A020F0">#if defined(PETSC_HAVE_CUDA)</font>
+<a name="line232">232: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../manualpages/Mat/MATAIJCUSPARSE.html">MATAIJCUSPARSE</a>, petscmatformat));
+<a name="line233">233: </a><font color="#A020F0">#endif</font>
+<a name="line234">234: </a><font color="#A020F0">#if defined(PETSC_HAVE_HIP)</font>
+<a name="line235">235: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../manualpages/Mat/MATAIJHIPSPARSE.html">MATAIJHIPSPARSE</a>, petscmatformat));
+<a name="line236">236: </a><font color="#A020F0">#endif</font>
+<a name="line237">237: </a>    } <font color="#4169E1">else</font> <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../manualpages/Mat/MATAIJ.html">MATAIJ</a>, petscmatformat));
+<a name="line238">238: </a>  } <font color="#4169E1">else</font> {
+<a name="line239">239: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(matformat, <font color="#666666">"sell"</font>, &amp;issell));
+<a name="line240">240: </a>    <font color="#4169E1">if</font> (issell) {
+<a name="line241">241: </a>      <font color="#4169E1">if</font> (use_gpu) {
+<a name="line242">242: </a><font color="#A020F0">#if defined(PETSC_HAVE_CUDA)</font>
+<a name="line243">243: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../manualpages/Mat/MATSELLCUDA.html">MATSELLCUDA</a>, petscmatformat));
+<a name="line244">244: </a><font color="#A020F0">#endif</font>
+<a name="line245">245: </a><font color="#A020F0">#if defined(PETSC_HAVE_HIP)</font>
+<a name="line246">246: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../manualpages/Mat/MATSELLHIP.html">MATSELLHIP</a>, petscmatformat));
+<a name="line247">247: </a><font color="#A020F0">#endif</font>
+<a name="line248">248: </a>      } <font color="#4169E1">else</font> <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../manualpages/Mat/MATSELL.html">MATSELL</a>, petscmatformat));
+<a name="line249">249: </a>    } <font color="#4169E1">else</font> {
+<a name="line250">250: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(matformat, <font color="#666666">"csrkokkos"</font>, &amp;iscsrkokkos));
+<a name="line251">251: </a>      <font color="#4169E1">if</font> (iscsrkokkos) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../manualpages/Mat/MATAIJKOKKOS.html">MATAIJKOKKOS</a>, petscmatformat));
+<a name="line252">252: </a>    }
+<a name="line253">253: </a>  }
+<a name="line254">254: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line255">255: </a>}
+
+<a name="line257">257: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **args)</font></strong>
+<a name="line258">258: </a>{
+<a name="line259">259: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    nmat = 1, nformats = 5, i, j, repetitions = 1;
+<a name="line260">260: </a>  <a href="../../../manualpages/Mat/Mat.html">Mat</a>         A;
+<a name="line261">261: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>         b;
+<a name="line262">262: </a>  char        jfilename[PETSC_MAX_PATH_LEN];
+<a name="line263">263: </a>  char        filename[PETSC_MAX_PATH_LEN], bfilename[PETSC_MAX_PATH_LEN];
+<a name="line264">264: </a>  char        groupname[PETSC_MAX_PATH_LEN], matname[PETSC_MAX_PATH_LEN];
+<a name="line265">265: </a>  char       *matformats[5];
+<a name="line266">266: </a>  char      **filenames = NULL, **groupnames = NULL, **matnames = NULL;
+<a name="line267">267: </a>  char        ordering[256] = MATORDERINGRCM;
+<a name="line268">268: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>   bflg, flg1, flg2, flg3, use_gpu = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, permute = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line269">269: </a>  <a href="../../../manualpages/IS/IS.html">IS</a>          rowperm = NULL, colperm = NULL;
+<a name="line270">270: </a>  <a href="../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> fd;
+<a name="line271">271: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>   starting_spmv_time = 0, *spmv_times;
+
+<a name="line273">273: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsInsertString.html">PetscOptionsInsertString</a>(NULL, <font color="#666666">"-log_view_gpu_time -log_view :/dev/null"</font>));
+<a name="line274">274: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;args, NULL, help));
+<a name="line275">275: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetStringArray.html">PetscOptionsGetStringArray</a>(NULL, NULL, <font color="#666666">"-formats"</font>, matformats, &amp;nformats, &amp;flg1));
+<a name="line276">276: </a>  <font color="#4169E1">if</font> (!flg1) {
+<a name="line277">277: </a>    nformats = 1;
+<a name="line278">278: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<font color="#666666">"csr"</font>, &amp;matformats[0]));
+<a name="line279">279: </a>  }
+<a name="line280">280: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetBool.html">PetscOptionsGetBool</a>(NULL, NULL, <font color="#666666">"-use_gpu"</font>, &amp;use_gpu, NULL));
+<a name="line281">281: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetInt.html">PetscOptionsGetInt</a>(NULL, NULL, <font color="#666666">"-repetitions"</font>, &amp;repetitions, NULL));
+<a name="line282">282: </a>  <font color="#B22222">/* Read matrix and RHS */</font>
+<a name="line283">283: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-groupname"</font>, groupname, PETSC_MAX_PATH_LEN, NULL));
+<a name="line284">284: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-matname"</font>, matname, PETSC_MAX_PATH_LEN, NULL));
+<a name="line285">285: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-ABIN"</font>, filename, PETSC_MAX_PATH_LEN, &amp;flg1));
+<a name="line286">286: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-AMTX"</font>, filename, PETSC_MAX_PATH_LEN, &amp;flg2));
+<a name="line287">287: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-AJSON"</font>, jfilename, PETSC_MAX_PATH_LEN, &amp;flg3));
+<a name="line288">288: </a>  <a href="../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, <font color="#666666">"Extra options"</font>, <font color="#666666">""</font>);
+<a name="line289">289: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsFList.html">PetscOptionsFList</a>(<font color="#666666">"-permute"</font>, <font color="#666666">"Permute matrix and vector to solving in new ordering"</font>, <font color="#666666">""</font>, MatOrderingList, ordering, ordering, <font color="#4169E1">sizeof</font>(ordering), &amp;permute));
+<a name="line290">290: </a>  <a href="../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+<a name="line291">291: </a><font color="#A020F0">#if !defined(PETSC_HAVE_DEVICE)</font>
+<a name="line292">292: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!use_gpu, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER_INPUT</a>, <font color="#666666">"To use the option -use_gpu 1, PETSc must be configured with GPU support"</font>);
+<a name="line293">293: </a><font color="#A020F0">#endif</font>
+<a name="line294">294: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(flg1 || flg2 || flg3, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER_INPUT</a>, <font color="#666666">"Must indicate an input file with the -ABIN or -AMTX or -AJSON depending on the file format"</font>);
+<a name="line295">295: </a>  <font color="#4169E1">if</font> (flg3) {
+<a name="line296">296: </a>    ParseJSON(jfilename, &amp;filenames, &amp;groupnames, &amp;matnames, &amp;nmat);
+<a name="line297">297: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(nmat, &amp;spmv_times));
+<a name="line298">298: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (flg2) {
+<a name="line299">299: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatCreateFromMTX(&amp;A, filename, <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line300">300: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (flg1) {
+<a name="line301">301: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerBinaryOpen.html">PetscViewerBinaryOpen</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, filename, <a href="../../../manualpages/Sys/PetscFileMode.html">FILE_MODE_READ</a>, &amp;fd));
+<a name="line302">302: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;A));
+<a name="line303">303: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetType.html">MatSetType</a>(A, <a href="../../../manualpages/Mat/MATAIJ.html">MATAIJ</a>));
+<a name="line304">304: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatSetFromOptions.html">MatSetFromOptions</a>(A));
+<a name="line305">305: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatLoad.html">MatLoad</a>(A, fd));
+<a name="line306">306: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(&amp;fd));
+<a name="line307">307: </a>  }
+<a name="line308">308: </a>  <font color="#4169E1">if</font> (permute) {
+<a name="line309">309: </a>    <a href="../../../manualpages/Mat/Mat.html">Mat</a> Aperm;
+<a name="line310">310: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/MatGraphOperations/MatGetOrdering.html">MatGetOrdering</a>(A, ordering, &amp;rowperm, &amp;colperm));
+<a name="line311">311: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatPermute.html">MatPermute</a>(A, rowperm, colperm, &amp;Aperm));
+<a name="line312">312: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+<a name="line313">313: </a>    A = Aperm; <font color="#B22222">/* Replace original operator with permuted version */</font>
+<a name="line314">314: </a>  }
+<a name="line315">315: </a>  <font color="#B22222">/* Let the vec object trigger the first CUDA call, which takes a relatively long time to init CUDA */</font>
+<a name="line316">316: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-b"</font>, bfilename, PETSC_MAX_PATH_LEN, &amp;bflg));
+<a name="line317">317: </a>  <font color="#4169E1">if</font> (bflg) {
+<a name="line318">318: </a>    <a href="../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> fb;
+<a name="line319">319: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecCreate.html">VecCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;b));
+<a name="line320">320: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSetFromOptions.html">VecSetFromOptions</a>(b));
+<a name="line321">321: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerBinaryOpen.html">PetscViewerBinaryOpen</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, bfilename, <a href="../../../manualpages/Sys/PetscFileMode.html">FILE_MODE_READ</a>, &amp;fb));
+<a name="line322">322: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecLoad.html">VecLoad</a>(b, fb));
+<a name="line323">323: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(&amp;fb));
+<a name="line324">324: </a>  }
+
+<a name="line326">326: </a>  <font color="#4169E1">for</font> (j = 0; j &lt; nformats; j++) {
+<a name="line327">327: </a>    char *petscmatformat = NULL;
+<a name="line328">328: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MapToPetscMatType(matformats[j], use_gpu, &amp;petscmatformat));
+<a name="line329">329: </a>    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(petscmatformat, <a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER_INPUT</a>, <font color="#666666">"Invalid mat format %s, supported options include csr and sell."</font>, matformats[j]);
+<a name="line330">330: </a>    <font color="#4169E1">if</font> (flg3) { <font color="#B22222">// mat names specified in a JSON file</font>
+<a name="line331">331: </a>      <font color="#4169E1">for</font> (i = 0; i &lt; nmat; i++) {
+<a name="line332">332: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatCreateFromMTX(&amp;A, filenames[i], <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line333">333: </a>        <font color="#4169E1">if</font> (!bflg) {
+<a name="line334">334: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateVecs.html">MatCreateVecs</a>(A, &amp;b, NULL));
+<a name="line335">335: </a>          <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSet.html">VecSet</a>(b, 1.0));
+<a name="line336">336: </a>        }
+<a name="line337">337: </a>        <font color="#4169E1">if</font> (use_gpu) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(WarmUpDevice(A, b, petscmatformat));
+<a name="line338">338: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(TimedSpMV(A, b, NULL, petscmatformat, use_gpu, repetitions));
+<a name="line339">339: </a>        <font color="#4169E1">if</font> (use_gpu) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogSpMVTime(&amp;spmv_times[i], NULL, NULL, petscmatformat));
+<a name="line340">340: </a>        <font color="#4169E1">else</font> <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogSpMVTime(NULL, &amp;spmv_times[i], NULL, petscmatformat));
+<a name="line341">341: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+<a name="line342">342: </a>        <font color="#4169E1">if</font> (!bflg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;b));
+<a name="line343">343: </a>      }
+<a name="line344">344: </a>      UpdateJSON(jfilename, spmv_times, starting_spmv_time, matformats[j], use_gpu, repetitions);
+<a name="line345">345: </a>      starting_spmv_time = spmv_times[nmat - 1];
+<a name="line346">346: </a>    } <font color="#4169E1">else</font> {
+<a name="line347">347: </a>      <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> spmv_time;
+<a name="line348">348: </a>      <font color="#4169E1">if</font> (!bflg) {
+<a name="line349">349: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatCreateVecs.html">MatCreateVecs</a>(A, &amp;b, NULL));
+<a name="line350">350: </a>        <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecSet.html">VecSet</a>(b, 1.0));
+<a name="line351">351: </a>      }
+<a name="line352">352: </a>      <font color="#4169E1">if</font> (use_gpu) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(WarmUpDevice(A, b, petscmatformat));
+<a name="line353">353: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(TimedSpMV(A, b, &amp;spmv_time, petscmatformat, use_gpu, repetitions));
+<a name="line354">354: </a>      <font color="#4169E1">if</font> (!bflg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;b));
+<a name="line355">355: </a>    }
+<a name="line356">356: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(petscmatformat));
+<a name="line357">357: </a>  }
+<a name="line358">358: </a>  <font color="#4169E1">if</font> (flg3) {
+<a name="line359">359: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; nmat; i++) {
+<a name="line360">360: </a>      free(filenames[i]);
+<a name="line361">361: </a>      free(groupnames[i]);
+<a name="line362">362: </a>      free(matnames[i]);
+<a name="line363">363: </a>    }
+<a name="line364">364: </a>    free(filenames);
+<a name="line365">365: </a>    free(groupnames);
+<a name="line366">366: </a>    free(matnames);
+<a name="line367">367: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(spmv_times));
+<a name="line368">368: </a>  }
+<a name="line369">369: </a>  <font color="#4169E1">for</font> (j = 0; j &lt; nformats; j++) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(matformats[j]));
+<a name="line370">370: </a>  <font color="#4169E1">if</font> (flg1 || flg2) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+<a name="line371">371: </a>  <font color="#4169E1">if</font> (bflg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;b));
+<a name="line372">372: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;rowperm));
+<a name="line373">373: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;colperm));
+<a name="line374">374: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line375">375: </a>  <font color="#4169E1">return</font> 0;
+<a name="line376">376: </a>}
+<a name="line377">377: </a><font color="#B22222">/*TEST</font>
+
+<a name="line379">379: </a><font color="#B22222">   build:</font>
+<a name="line380">380: </a><font color="#B22222">      requires: !complex double !windows_compilers !defined(PETSC_USE_64BIT_INDICES)</font>
+<a name="line381">381: </a><font color="#B22222">      depends: mmloader.c mmio.c cJSON.c</font>
+
+<a name="line383">383: </a><font color="#B22222">   test:</font>
+<a name="line384">384: </a><font color="#B22222">      suffix: 1</font>
+<a name="line385">385: </a><font color="#B22222">      args: -AMTX ${wPETSC_DIR}/share/petsc/datafiles/matrices/amesos2_test_mat0.mtx</font>
+<a name="line386">386: </a><font color="#B22222">      output_file: output/empty.out</font>
+
+<a name="line388">388: </a><font color="#B22222">   test:</font>
+<a name="line389">389: </a><font color="#B22222">      suffix: 2</font>
+<a name="line390">390: </a><font color="#B22222">      args:-AMTX ${wPETSC_DIR}/share/petsc/datafiles/matrices/amesos2_test_mat0.mtx -use_gpu</font>
+<a name="line391">391: </a><font color="#B22222">      output_file: output/empty.out</font>
+<a name="line392">392: </a><font color="#B22222">      requires: cuda</font>
+
+<a name="line394">394: </a><font color="#B22222">   test:</font>
+<a name="line395">395: </a><font color="#B22222">      suffix: 3</font>
+<a name="line396">396: </a><font color="#B22222">      args:-AMTX ${wPETSC_DIR}/share/petsc/datafiles/matrices/amesos2_test_mat0.mtx -use_gpu</font>
+<a name="line397">397: </a><font color="#B22222">      output_file: output/empty.out</font>
+<a name="line398">398: </a><font color="#B22222">      requires: hip</font>
+
+<a name="line400">400: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,161 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/is/utils/tests/ex1.c">Actual source code: ex1.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:20+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static const char help[] = <font color="#666666">"Test KDTree\n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc.h.html">&lt;petsc.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#4169E1"><a name="Distance"></a>static inline <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> Distance(<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, const <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *PETSC_RESTRICT x, const <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *PETSC_RESTRICT y)</font></strong>
+<a name="line6">  6: </a>{
+<a name="line7">  7: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> dist = 0;
+<a name="line8">  8: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> j = 0; j &lt; dim; j++) dist += <a href="../../../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(x[j] - y[j]);
+<a name="line9">  9: </a>  <font color="#4169E1">return</font> PetscSqrtReal(dist);
+<a name="line10"> 10: </a>}
+
+<a name="line12"> 12: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line13"> 13: </a>{
+<a name="line14"> 14: </a>  <a href="../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>      comm;
+<a name="line15"> 15: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      num_coords, dim, num_rand_points = 0, bucket_size = <a href="../../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>;
+<a name="line16"> 16: </a>  <a href="../../../../../manualpages/Sys/PetscRandom.html">PetscRandom</a>   random;
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>    *coords;
+<a name="line18"> 18: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      coords_size, num_points_queried = 0, num_trees_built = 0, loops = 1;
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>     view_tree = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, view_performance = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, test_tree_points = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, test_rand_points = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, query_rand_points = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line20"> 20: </a>  <a href="../../../../../manualpages/Sys/PetscCopyMode.html">PetscCopyMode</a> copy_mode = <a href="../../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>;
+<a name="line21"> 21: </a>  <a href="../../../../../manualpages/IS/PetscKDTree.html">PetscKDTree</a>   tree;
+
+<a name="line23"> 23: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line25"> 25: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogDefaultBegin.html">PetscLogDefaultBegin</a>()); <font color="#B22222">// So we can use <a href="../../../../../manualpages/Log/PetscLogEventGetPerfInfo.html">PetscLogEventGetPerfInfo</a> without -log_view</font>
+<a name="line26"> 26: </a>  comm = <a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>;
+
+<a name="line28"> 28: </a>  <a href="../../../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">""</font>, <font color="#666666">"Test Options"</font>, <font color="#666666">"none"</font>);
+<a name="line29"> 29: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-num_coords"</font>, <font color="#666666">"Number of coordinates"</font>, <font color="#666666">""</font>, <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, &amp;num_coords, NULL));
+<a name="line30"> 30: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-dim"</font>, <font color="#666666">"Dimension of the coordinates"</font>, <font color="#666666">""</font>, <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, &amp;dim, NULL));
+<a name="line31"> 31: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-bucket_size"</font>, <font color="#666666">"Size of the bucket at each leaf"</font>, <font color="#666666">""</font>, bucket_size, &amp;bucket_size, NULL));
+<a name="line32"> 32: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsBoundedInt.html">PetscOptionsBoundedInt</a>(<font color="#666666">"-loops"</font>, <font color="#666666">"Number of times to loop through KDTree creation and querying"</font>, <font color="#666666">""</font>, loops, &amp;loops, NULL, 1));
+<a name="line33"> 33: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsEnum.html">PetscOptionsEnum</a>(<font color="#666666">"-copy_mode"</font>, <font color="#666666">"Copy mode to use with KDTree"</font>, <font color="#666666">"<a href="../../../../../manualpages/IS/PetscKDTreeCreate.html">PetscKDTreeCreate</a>"</font>, PetscCopyModes, (<a href="../../../../../manualpages/Sys/PetscEnum.html">PetscEnum</a>)copy_mode, (<a href="../../../../../manualpages/Sys/PetscEnum.html">PetscEnum</a> *)&amp;copy_mode, NULL));
+<a name="line34"> 34: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-view_tree"</font>, <font color="#666666">"View the KDTree"</font>, <font color="#666666">""</font>, view_tree, &amp;view_tree, NULL));
+<a name="line35"> 35: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-view_performance"</font>, <font color="#666666">"View the performance speed of the KDTree"</font>, <font color="#666666">""</font>, view_performance, &amp;view_performance, NULL));
+<a name="line36"> 36: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-test_tree_points"</font>, <font color="#666666">"Test querying tree points against itself"</font>, <font color="#666666">""</font>, test_tree_points, &amp;test_tree_points, NULL));
+<a name="line37"> 37: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-test_rand_points"</font>, <font color="#666666">"Test querying random points via brute force"</font>, <font color="#666666">""</font>, test_rand_points, &amp;test_rand_points, NULL));
+<a name="line38"> 38: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-query_rand_points"</font>, <font color="#666666">"Query querying random points"</font>, <font color="#666666">""</font>, query_rand_points, &amp;query_rand_points, NULL));
+<a name="line39"> 39: </a>  <font color="#4169E1">if</font> (test_rand_points || query_rand_points) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-num_rand_points"</font>, <font color="#666666">"Number of random points to test with"</font>, <font color="#666666">""</font>, num_rand_points, &amp;num_rand_points, NULL));
+<a name="line40"> 40: </a>  <a href="../../../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+
+<a name="line42"> 42: </a>  coords_size = num_coords * dim;
+<a name="line43"> 43: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(coords_size, &amp;coords));
+<a name="line44"> 44: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscRandomCreate.html">PetscRandomCreate</a>(comm, &amp;random));
+
+<a name="line46"> 46: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> loop_count = 0; loop_count &lt; loops; loop_count++) {
+<a name="line47"> 47: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscRandomGetValuesReal.html">PetscRandomGetValuesReal</a>(random, coords_size, coords));
+
+<a name="line49"> 49: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/PetscKDTreeCreate.html">PetscKDTreeCreate</a>(num_coords, dim, coords, copy_mode, bucket_size, &amp;tree));
+<a name="line50"> 50: </a>    num_trees_built++;
+<a name="line51"> 51: </a>    <font color="#4169E1">if</font> (view_tree) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/PetscKDTreeView.html">PetscKDTreeView</a>(tree, NULL));
+
+<a name="line53"> 53: </a>    <font color="#4169E1">if</font> (test_tree_points) { <font color="#B22222">// Test querying the current coordinates</font>
+<a name="line54"> 54: </a>      <a href="../../../../../manualpages/Sys/PetscCount.html">PetscCount</a> *indices;
+<a name="line55"> 55: </a>      <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>  *distances;
+<a name="line56"> 56: </a>      num_points_queried += num_coords;
+
+<a name="line58"> 58: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc2.html">PetscMalloc2</a>(num_coords, &amp;indices, num_coords, &amp;distances));
+<a name="line59"> 59: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/PetscKDTreeQueryPointsNearestNeighbor.html">PetscKDTreeQueryPointsNearestNeighbor</a>(tree, num_coords, coords, <a href="../../../../../manualpages/Sys/PETSC_MACHINE_EPSILON.html">PETSC_MACHINE_EPSILON</a> * 1e3, indices, distances));
+<a name="line60"> 60: </a>      <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; num_coords; i++) {
+<a name="line61"> 61: </a>        <font color="#4169E1">if</font> (indices[i] != i) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"Query failed for coord %"</font> PetscInt_FMT <font color="#666666">", query returned index %"</font> PetscCount_FMT <font color="#666666">" with distance %g\n"</font>, i, indices[i], (double)distances[i]));
+<a name="line62"> 62: </a>      }
+<a name="line63"> 63: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(indices, distances));
+<a name="line64"> 64: </a>    }
+
+<a name="line66"> 66: </a>    <font color="#4169E1">if</font> (num_rand_points &gt; 0) {
+<a name="line67"> 67: </a>      <a href="../../../../../manualpages/Sys/PetscCount.html">PetscCount</a> *indices;
+<a name="line68"> 68: </a>      <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>  *distances;
+<a name="line69"> 69: </a>      <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>  *rand_points;
+<a name="line70"> 70: </a>      <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    rand_queries_size = num_rand_points * dim;
+
+<a name="line72"> 72: </a>      num_points_queried += num_rand_points;
+<a name="line73"> 73: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc3.html">PetscMalloc3</a>(rand_queries_size, &amp;rand_points, num_rand_points, &amp;indices, num_rand_points, &amp;distances));
+<a name="line74"> 74: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscRandomGetValuesReal.html">PetscRandomGetValuesReal</a>(random, rand_queries_size, rand_points));
+<a name="line75"> 75: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/PetscKDTreeQueryPointsNearestNeighbor.html">PetscKDTreeQueryPointsNearestNeighbor</a>(tree, num_rand_points, rand_points, 0., indices, distances));
+
+<a name="line77"> 77: </a>      <font color="#4169E1">if</font> (test_rand_points) {
+<a name="line78"> 78: </a>        <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; num_rand_points; i++) {
+<a name="line79"> 79: </a>          <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *rand_point = &amp;rand_points[dim * i], nearest_distance = <a href="../../../../../manualpages/Sys/PETSC_MAX_REAL.html">PETSC_MAX_REAL</a>;
+<a name="line80"> 80: </a>          <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   index = -1;
+<a name="line81"> 81: </a>          <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> j = 0; j &lt; num_coords; j++) {
+<a name="line82"> 82: </a>            <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> dist = Distance(dim, rand_point, &amp;coords[dim * j]);
+<a name="line83"> 83: </a>            <font color="#4169E1">if</font> (dist &lt; nearest_distance) {
+<a name="line84"> 84: </a>              nearest_distance = dist;
+<a name="line85"> 85: </a>              index            = j;
+<a name="line86"> 86: </a>            }
+<a name="line87"> 87: </a>          }
+<a name="line88"> 88: </a>          <font color="#4169E1">if</font> (indices[i] != index)
+<a name="line89"> 89: </a>            <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"Query failed for random point %"</font> PetscInt_FMT <font color="#666666">". Query returned index %"</font> PetscCount_FMT <font color="#666666">" with distance %g, but coordinate %"</font> PetscInt_FMT <font color="#666666">" with distance %g is closer\n"</font>, i, indices[i], (double)distances[i], index, (double)nearest_distance));
+<a name="line90"> 90: </a>        }
+<a name="line91"> 91: </a>      }
+<a name="line92"> 92: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree3.html">PetscFree3</a>(rand_points, indices, distances));
+<a name="line93"> 93: </a>    }
+<a name="line94"> 94: </a>  }
+
+<a name="line96"> 96: </a>  <font color="#4169E1">if</font> (view_performance) {
+<a name="line97"> 97: </a>    <a href="../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>      kdtree_build_log, kdtree_query_log;
+<a name="line98"> 98: </a>    <a href="../../../../../manualpages/Log/PetscEventPerfInfo.html">PetscEventPerfInfo</a> build_perf_info, query_perf_info;
+
+<a name="line100">100: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogEventGetId.html">PetscLogEventGetId</a>(<font color="#666666">"KDTreeBuild"</font>, &amp;kdtree_build_log));
+<a name="line101">101: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogEventGetPerfInfo.html">PetscLogEventGetPerfInfo</a>(<a href="../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, kdtree_build_log, &amp;build_perf_info));
+<a name="line102">102: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogEventGetId.html">PetscLogEventGetId</a>(<font color="#666666">"KDTreeQuery"</font>, &amp;kdtree_query_log));
+<a name="line103">103: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogEventGetPerfInfo.html">PetscLogEventGetPerfInfo</a>(<a href="../../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, kdtree_query_log, &amp;query_perf_info));
+<a name="line104">104: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"KDTreeBuild %.6e for %"</font> PetscInt_FMT <font color="#666666">" trees built\n"</font>, build_perf_info.time, num_trees_built));
+<a name="line105">105: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"\tTime per tree: %.6e\n"</font>, build_perf_info.time / num_trees_built));
+<a name="line106">106: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"KDTreeQuery %.6e for %"</font> PetscCount_FMT <font color="#666666">" queries\n"</font>, query_perf_info.time, (<a href="../../../../../manualpages/Sys/PetscCount.html">PetscCount</a>)num_points_queried));
+<a name="line107">107: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"\tTime per query: %.6e\n"</font>, query_perf_info.time / num_points_queried));
+<a name="line108">108: </a>  }
+
+<a name="line110">110: </a>  <font color="#4169E1">if</font> (copy_mode != <a href="../../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(coords));
+<a name="line111">111: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/PetscKDTreeDestroy.html">PetscKDTreeDestroy</a>(&amp;tree));
+<a name="line112">112: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscRandomDestroy.html">PetscRandomDestroy</a>(&amp;random));
+<a name="line113">113: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line114">114: </a>  <font color="#4169E1">return</font> 0;
+<a name="line115">115: </a>}
+
+<a name="line117">117: </a><font color="#B22222">/*TEST</font>
+<a name="line118">118: </a><font color="#B22222">  testset:</font>
+<a name="line119">119: </a><font color="#B22222">    suffix: kdtree</font>
+<a name="line120">120: </a><font color="#B22222">    args: -num_coords 35 -test_tree_points -test_rand_points -num_rand_points 300 -bucket_size 13 -view_performance false -view_tree true -kdtree_debug</font>
+<a name="line121">121: </a><font color="#B22222">    test:</font>
+<a name="line122">122: </a><font color="#B22222">      suffix: 1D</font>
+<a name="line123">123: </a><font color="#B22222">      args: -dim 1</font>
+<a name="line124">124: </a><font color="#B22222">    test:</font>
+<a name="line125">125: </a><font color="#B22222">      suffix: 2D</font>
+<a name="line126">126: </a><font color="#B22222">      args: -dim 2</font>
+<a name="line127">127: </a><font color="#B22222">    test:</font>
+<a name="line128">128: </a><font color="#B22222">      suffix: 3D</font>
+<a name="line129">129: </a><font color="#B22222">      args: -dim 3</font>
+<a name="line130">130: </a><font color="#B22222">    test:</font>
+<a name="line131">131: </a><font color="#B22222">      suffix: 3D_small</font>
+<a name="line132">132: </a><font color="#B22222">      args: -dim 3 -num_coords 13</font>
+
+<a name="line134">134: </a><font color="#B22222">  testset:</font>
+<a name="line135">135: </a><font color="#B22222">    suffix: kdtree_3D_large</font>
+<a name="line136">136: </a><font color="#B22222">    args: -dim 3 -num_coords 350 -test_tree_points -test_rand_points -num_rand_points 300 -view_performance false -kdtree_debug</font>
+<a name="line137">137: </a><font color="#B22222">    output_file: output/empty.out</font>
+<a name="line138">138: </a><font color="#B22222">    test:</font>
+<a name="line139">139: </a><font color="#B22222">    test:</font>
+<a name="line140">140: </a><font color="#B22222">      suffix: copy</font>
+<a name="line141">141: </a><font color="#B22222">      args: -copy_mode copy_values</font>
+<a name="line142">142: </a><font color="#B22222">    test:</font>
+<a name="line143">143: </a><font color="#B22222">      suffix: use</font>
+<a name="line144">144: </a><font color="#B22222">      args: -copy_mode use_pointer</font>
+<a name="line145">145: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

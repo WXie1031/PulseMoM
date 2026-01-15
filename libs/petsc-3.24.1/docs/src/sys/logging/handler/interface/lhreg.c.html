@@ -1,0 +1,178 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/logging/handler/interface/lhreg.c">Actual source code: lhreg.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:10+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/petscimpl.h.html">&lt;petsc/private/petscimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/loghandlerimpl.h.html">&lt;petsc/private/loghandlerimpl.h&gt;</A>
+
+<a name="line4">  4: </a><a href="../../../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> PETSCLOGHANDLER_CLASSID = 0;
+
+<a name="line6">  6: </a><a href="../../../../../manualpages/Sys/PetscFunctionList.html">PetscFunctionList</a> PetscLogHandlerList               = NULL;
+<a name="line7">  7: </a><a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>         PetscLogHandlerRegisterAllCalled  = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line8">  8: </a><a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>         PetscLogHandlerPackageInitialized = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line10"> 10: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_Default(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line11"> 11: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_Nested(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line12"> 12: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_Trace(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line13"> 13: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_MPE)</font>
+<a name="line14"> 14: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_MPE(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line15"> 15: </a><font color="#A020F0">#endif</font>
+<a name="line16"> 16: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_TAU_PERFSTUBS)</font>
+<a name="line17"> 17: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_Perfstubs(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line18"> 18: </a><font color="#A020F0">#endif</font>
+<a name="line19"> 19: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_Legacy(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line20"> 20: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line21"> 21: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_NVTX(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line22"> 22: </a><font color="#A020F0">#endif</font>
+<a name="line23"> 23: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line24"> 24: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_ROCTX(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>)</font></strong>;
+<a name="line25"> 25: </a><font color="#A020F0">#endif</font>
+
+<a name="line27"> 27: </a><strong><font color="#4169E1"><a name="PetscLogHandlerRegisterAll"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerRegisterAll(void)</font></strong>
+<a name="line28"> 28: </a>{
+<a name="line29"> 29: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line30"> 30: </a>  <font color="#4169E1">if</font> (PetscLogHandlerRegisterAllCalled) <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line31"> 31: </a>  PetscLogHandlerRegisterAllCalled = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line32"> 32: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERDEFAULT.html">PETSCLOGHANDLERDEFAULT</a>, PetscLogHandlerCreate_Default));
+<a name="line33"> 33: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERNESTED.html">PETSCLOGHANDLERNESTED</a>, PetscLogHandlerCreate_Nested));
+<a name="line34"> 34: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERTRACE.html">PETSCLOGHANDLERTRACE</a>, PetscLogHandlerCreate_Trace));
+<a name="line35"> 35: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_MPE)</font>
+<a name="line36"> 36: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERMPE.html">PETSCLOGHANDLERMPE</a>, PetscLogHandlerCreate_MPE));
+<a name="line37"> 37: </a><font color="#A020F0">#endif</font>
+<a name="line38"> 38: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_TAU_PERFSTUBS)</font>
+<a name="line39"> 39: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERPERFSTUBS.html">PETSCLOGHANDLERPERFSTUBS</a>, PetscLogHandlerCreate_Perfstubs));
+<a name="line40"> 40: </a><font color="#A020F0">#endif</font>
+<a name="line41"> 41: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERLEGACY.html">PETSCLOGHANDLERLEGACY</a>, PetscLogHandlerCreate_Legacy));
+<a name="line42"> 42: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line43"> 43: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERNVTX.html">PETSCLOGHANDLERNVTX</a>, PetscLogHandlerCreate_NVTX));
+<a name="line44"> 44: </a><font color="#A020F0">#endif</font>
+<a name="line45"> 45: </a><font color="#A020F0">#if <a href="../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_ROCTX)</font>
+<a name="line46"> 46: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(<a href="../../../../../manualpages/Log/PETSCLOGHANDLERROCTX.html">PETSCLOGHANDLERROCTX</a>, PetscLogHandlerCreate_ROCTX));
+<a name="line47"> 47: </a><font color="#A020F0">#endif</font>
+<a name="line48"> 48: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line49"> 49: </a>}
+
+<a name="line51"> 51: </a><font color="#B22222">/*@C</font>
+<a name="line52"> 52: </a><font color="#B22222">  <a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a> - Register a new `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`</font>
+
+<a name="line54"> 54: </a><font color="#B22222">  Not Collective, No Fortran Support</font>
+
+<a name="line56"> 56: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line57"> 57: </a><font color="#B22222">+ sname    - The name of a new user-defined creation routine</font>
+<a name="line58"> 58: </a><font color="#B22222">- function - The creation routine</font>
+
+<a name="line60"> 60: </a><font color="#B22222">  Example Usage:</font>
+<a name="line61"> 61: </a><font color="#B22222">.vb</font>
+<a name="line62"> 62: </a><font color="#B22222">    <a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>("my_profiler", MyPetscLogHandlerCreate);</font>
+<a name="line63"> 63: </a><font color="#B22222">.ve</font>
+
+<a name="line65"> 65: </a><font color="#B22222">  Then, your `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>` type can be chosen with the procedural interface via</font>
+<a name="line66"> 66: </a><font color="#B22222">.vb</font>
+<a name="line67"> 67: </a><font color="#B22222">    <a href="../../../../../manualpages/Log/PetscLogHandlerCreate.html">PetscLogHandlerCreate</a>(<a href="../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>, <a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> *);</font>
+<a name="line68"> 68: </a><font color="#B22222">    <a href="../../../../../manualpages/Log/PetscLogHandlerSetType.html">PetscLogHandlerSetType</a>(<a href="../../../../../manualpages/FE/PetscFE.html">PetscFE</a>, "my_fe");</font>
+<a name="line69"> 69: </a><font color="#B22222">.ve</font>
+
+<a name="line71"> 71: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line73"> 73: </a><font color="#B22222">.seealso: [](ch_profiling), `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`, `<a href="../../../../../manualpages/Log/PetscLogHandlerCreate.html">PetscLogHandlerCreate</a>()`, `<a href="../../../../../manualpages/Log/PetscLogHandlerSetType.html">PetscLogHandlerSetType</a>()`, `<a href="../../../../../manualpages/Log/PetscLogHandlerGetType.html">PetscLogHandlerGetType</a>()`</font>
+<a name="line74"> 74: </a><font color="#B22222">@*/</font>
+<a name="line75"> 75: </a><strong><font color="#4169E1"><a name="PetscLogHandlerRegister"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>(const char sname[], <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*function)(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>))</font></strong>
+<a name="line76"> 76: </a>{
+<a name="line77"> 77: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line78"> 78: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFunctionListAdd.html">PetscFunctionListAdd</a>(&amp;PetscLogHandlerList, sname, function));
+<a name="line79"> 79: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line80"> 80: </a>}
+
+<a name="line82"> 82: </a><font color="#B22222">/*@C</font>
+<a name="line83"> 83: </a><font color="#B22222">  <a href="../../../../../manualpages/Log/PetscLogHandlerSetType.html">PetscLogHandlerSetType</a> - Set the type of a `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`</font>
+
+<a name="line85"> 85: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line86"> 86: </a><font color="#B22222">+ handler - the `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`</font>
+<a name="line87"> 87: </a><font color="#B22222">- name    - The kind of log handler</font>
+
+<a name="line89"> 89: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line91"> 91: </a><font color="#B22222">.seealso: [](ch_profiling), `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`, `<a href="../../../../../manualpages/Log/PetscLogHandlerCreate.html">PetscLogHandlerCreate</a>()`, `<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>()`, `<a href="../../../../../manualpages/Log/PetscLogHandlerGetType.html">PetscLogHandlerGetType</a>()`</font>
+<a name="line92"> 92: </a><font color="#B22222">@*/</font>
+<a name="line93"> 93: </a><strong><font color="#4169E1"><a name="PetscLogHandlerSetType"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/Log/PetscLogHandlerSetType.html">PetscLogHandlerSetType</a>(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../manualpages/Log/PetscLogHandlerType.html">PetscLogHandlerType</a> name)</font></strong>
+<a name="line94"> 94: </a>{
+<a name="line95"> 95: </a>  <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*r)(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>);
+<a name="line96"> 96: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> match;
+
+<a name="line98"> 98: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line100">100: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)handler, name, &amp;match));
+<a name="line101">101: </a>  <font color="#4169E1">if</font> (match) <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+
+<a name="line103">103: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogHandlerRegisterAll());
+<a name="line104">104: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFunctionListFind.html">PetscFunctionListFind</a>(PetscLogHandlerList, name, &amp;r));
+<a name="line105">105: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(r, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)handler), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_UNKNOWN_TYPE</a>, <font color="#666666">"Unknown <a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> type: %s"</font>, name);
+
+<a name="line107">107: </a>  <a href="../../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(handler, destroy);
+<a name="line108">108: </a>  handler-&gt;ops-&gt;destroy = NULL;
+
+<a name="line110">110: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*r)(handler));
+<a name="line111">111: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscObjectChangeTypeName((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)handler, name));
+<a name="line112">112: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line113">113: </a>}
+
+<a name="line115">115: </a><font color="#B22222">/*@C</font>
+<a name="line116">116: </a><font color="#B22222">  <a href="../../../../../manualpages/Log/PetscLogHandlerGetType.html">PetscLogHandlerGetType</a> - Gets the `PetscLoagHandlerType` (as a string) from the `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>` object.</font>
+
+<a name="line118">118: </a><font color="#B22222">  Not collective</font>
+
+<a name="line120">120: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line121">121: </a><font color="#B22222">. handler - the `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`</font>
+
+<a name="line123">123: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line124">124: </a><font color="#B22222">. name - The `<a href="../../../../../manualpages/Log/PetscLogHandlerType.html">PetscLogHandlerType</a>` name</font>
+
+<a name="line126">126: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line128">128: </a><font color="#B22222">.seealso: [](ch_profiling), `<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`, `<a href="../../../../../manualpages/Log/PetscLogHandlerCreate.html">PetscLogHandlerCreate</a>()`, `<a href="../../../../../manualpages/Log/PetscLogHandlerRegister.html">PetscLogHandlerRegister</a>()`, `<a href="../../../../../manualpages/Log/PetscLogHandlerSetType.html">PetscLogHandlerSetType</a>()`</font>
+<a name="line129">129: </a><font color="#B22222">@*/</font>
+<a name="line130">130: </a><strong><font color="#4169E1"><a name="PetscLogHandlerGetType"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../manualpages/Log/PetscLogHandlerGetType.html">PetscLogHandlerGetType</a>(<a href="../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../manualpages/Log/PetscLogHandlerType.html">PetscLogHandlerType</a> *name)</font></strong>
+<a name="line131">131: </a>{
+<a name="line132">132: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line134">134: </a>  PetscAssertPointer(name, 2);
+<a name="line135">135: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogHandlerRegisterAll());
+<a name="line136">136: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectGetType.html">PetscObjectGetType</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)handler, name));
+<a name="line137">137: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line138">138: </a>}
+
+<a name="line140">140: </a><strong><font color="#4169E1"><a name="PetscLogHandlerFinalizePackage"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerFinalizePackage(void)</font></strong>
+<a name="line141">141: </a>{
+<a name="line142">142: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line143">143: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;PetscLogHandlerList));
+<a name="line144">144: </a>  PetscLogHandlerRegisterAllCalled  = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line145">145: </a>  PetscLogHandlerPackageInitialized = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line146">146: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line147">147: </a>}
+
+<a name="line149">149: </a><strong><font color="#4169E1"><a name="PetscLogHandlerPackageInitialize"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerPackageInitialize(void)</font></strong>
+<a name="line150">150: </a>{
+<a name="line151">151: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line152">152: </a>  <font color="#4169E1">if</font> (PetscLogHandlerPackageInitialized) <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line153">153: </a>  PetscLogHandlerPackageInitialized = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line155">155: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"PETSc Log Handler"</font>, &amp;PETSCLOGHANDLER_CLASSID));
+<a name="line156">156: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogHandlerRegisterAll());
+<a name="line157">157: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(PetscLogHandlerFinalizePackage));
+<a name="line158">158: </a>  {
+<a name="line159">159: </a>    const <a href="../../../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classids[] = {PETSCLOGHANDLER_CLASSID};
+
+<a name="line161">161: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"loghandler"</font>, <a href="../../../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(classids), classids));
+<a name="line162">162: </a>  }
+<a name="line163">163: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line164">164: </a>}
+</pre>
+</body>
+
+</html>
+

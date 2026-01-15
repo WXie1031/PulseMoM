@@ -1,0 +1,100 @@
+# Makefile for Satellite MoM/PEEC C Solver
+# Builds the complete C solver with proper interfaces
+
+CC = gcc
+CXX = g++
+CFLAGS = -Wall -O2 -std=c99 -fopenmp -march=native -mfma -DWIN32
+LDFLAGS = -lm -fopenmp
+
+# Directories
+SRC_DIR = src
+BUILD_DIR = build
+BIN_DIR = $(BUILD_DIR)/bin
+LIB_DIR = $(BUILD_DIR)/lib
+
+# Include paths
+INCLUDES = -I$(SRC_DIR) -I$(SRC_DIR)/core -I$(SRC_DIR)/solvers -I$(SRC_DIR)/mesh -I$(SRC_DIR)/cad -I$(SRC_DIR)/math -I$(SRC_DIR)/io -I$(SRC_DIR)/materials -I$(SRC_DIR)/c_interface
+
+# Source files
+CORE_SRCS = $(SRC_DIR)/core/core_geometry.c \
+            $(SRC_DIR)/core/core_kernels.c \
+            $(SRC_DIR)/core/core_mesh.c \
+            $(SRC_DIR)/core/core_solver.c \
+            $(SRC_DIR)/core/electromagnetic_kernels.c \
+            $(SRC_DIR)/core/layered_greens_function.c \
+            $(SRC_DIR)/core/basis_functions.c
+
+SOLVER_SRCS = $(SRC_DIR)/solvers/mom/mom_solver.c \
+              $(SRC_DIR)/solvers/peec/peec_solver.c
+
+MESH_SRCS = $(SRC_DIR)/mesh/mesh_engine.c \
+            $(SRC_DIR)/mesh/mesh_algorithms.c
+
+IO_SRCS = $(SRC_DIR)/io/advanced_file_formats.c \
+          $(SRC_DIR)/io/format_validation.c
+
+PARSER_SRCS = $(SRC_DIR)/pfd_parser.c
+
+INTERFACE_SRCS = $(SRC_DIR)/c_interface/satellite_mom_peec_interface.c
+
+# Object files
+CORE_OBJS = $(CORE_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+SOLVER_OBJS = $(SOLVER_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+MESH_OBJS = $(MESH_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+IO_OBJS = $(IO_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+PARSER_OBJS = $(PARSER_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+INTERFACE_OBJS = $(INTERFACE_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+
+ALL_OBJS = $(CORE_OBJS) $(SOLVER_OBJS) $(MESH_OBJS) $(IO_OBJS) $(PARSER_OBJS) $(INTERFACE_OBJS)
+
+# Targets
+.PHONY: all clean directories satellite_solver test
+
+all: directories satellite_solver
+
+directories:
+	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+	@if not exist $(LIB_DIR) mkdir $(LIB_DIR)
+
+# Pattern rule for compiling C files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+	@if not exist $(dir $@) mkdir $(dir $@)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Build the satellite solver executable
+satellite_solver: $(ALL_OBJS) $(BUILD_DIR)/satellite_main.o
+	$(CC) $(CFLAGS) -o $(BIN_DIR)/satellite_solver.exe $^ $(LDFLAGS)
+	@echo "Built satellite_solver.exe successfully!"
+
+# Build individual components
+libcore: $(CORE_OBJS)
+	ar rcs $(LIB_DIR)/libcore.a $^
+
+libsolvers: $(SOLVER_OBJS)
+	ar rcs $(LIB_DIR)/libsolvers.a $^
+
+libmesh: $(MESH_OBJS)
+	ar rcs $(LIB_DIR)/libmesh.a $^
+
+libinterface: $(INTERFACE_OBJS)
+	ar rcs $(LIB_DIR)/libinterface.a $^
+
+# Test build
+test: satellite_solver
+	@echo "Testing satellite solver..."
+	$(BIN_DIR)/satellite_solver.exe tests/test_hpm/weixing_v1_case.pfd -solver mom -output test_results.json -verbose
+
+# Clean
+clean:
+	@if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
+	@echo "Cleaned build directory"
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all           - Build everything"
+	@echo "  satellite_solver - Build the main satellite solver executable"
+	@echo "  test          - Build and run a test"
+	@echo "  clean         - Remove build directory"
+	@echo "  help          - Show this help message"

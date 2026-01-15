@@ -1,0 +1,442 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/da/ftn-custom/zda1f90.c">Actual source code: zda1f90.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:46+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscdmda.h.html">&lt;petscdmda.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define dmdavecgetarrayf901_         DMDAVECGETARRAYF901</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf901_     DMDAVECRESTOREARRAYF901</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define dmdavecgetarrayf902_         DMDAVECGETARRAYF902</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf902_     DMDAVECRESTOREARRAYF902</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define dmdavecgetarrayf903_         DMDAVECGETARRAYF903</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf903_     DMDAVECRESTOREARRAYF903</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define dmdavecgetarrayf904_         DMDAVECGETARRAYF904</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf904_     DMDAVECRESTOREARRAYF904</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf901_     DMDAVECGETARRAYREADF901</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf901_ DMDAVECRESTOREARRAYREADF901</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf902_     DMDAVECGETARRAYREADF902</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf902_ DMDAVECRESTOREARRAYREADF902</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf903_     DMDAVECGETARRAYREADF903</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf903_ DMDAVECRESTOREARRAYREADF903</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf904_     DMDAVECGETARRAYREADF904</font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf904_ DMDAVECRESTOREARRAYREADF904</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  #define dmdagetelements_             DMDAGETELEMENTS</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">  #define dmdarestoreelements_         DMDARESTOREELEMENTS</font></strong>
+<a name="line23"> 23: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line24"> 24: </a><strong><font color="#228B22">  #define dmdavecgetarrayf901_         dmdavecgetarrayf901</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf901_     dmdavecrestorearrayf901</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">  #define dmdavecgetarrayf902_         dmdavecgetarrayf902</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf902_     dmdavecrestorearrayf902</font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">  #define dmdavecgetarrayf903_         dmdavecgetarrayf903</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf903_     dmdavecrestorearrayf903</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">  #define dmdavecgetarrayf904_         dmdavecgetarrayf904</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">  #define dmdavecrestorearrayf904_     dmdavecrestorearrayf904</font></strong>
+<a name="line32"> 32: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf901_     dmdavecgetarrayreadf901</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf901_ dmdavecrestorearrayreadf901</font></strong>
+<a name="line34"> 34: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf902_     dmdavecgetarrayreadf902</font></strong>
+<a name="line35"> 35: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf902_ dmdavecrestorearrayreadf902</font></strong>
+<a name="line36"> 36: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf903_     dmdavecgetarrayreadf903</font></strong>
+<a name="line37"> 37: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf903_ dmdavecrestorearrayreadf903</font></strong>
+<a name="line38"> 38: </a><strong><font color="#228B22">  #define dmdavecgetarrayreadf904_     dmdavecgetarrayreadf904</font></strong>
+<a name="line39"> 39: </a><strong><font color="#228B22">  #define dmdavecrestorearrayreadf904_ dmdavecrestorearrayreadf904</font></strong>
+<a name="line40"> 40: </a><strong><font color="#228B22">  #define dmdagetelements_             dmdagetelements</font></strong>
+<a name="line41"> 41: </a><strong><font color="#228B22">  #define dmdarestoreelements_         dmdarestoreelements</font></strong>
+<a name="line42"> 42: </a><font color="#A020F0">#endif</font>
+
+<a name="line44"> 44: </a><strong><font color="#4169E1"><a name="dmdagetelements_"></a>PETSC_EXTERN void dmdagetelements_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *nel, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *nen, F90Array1d *e, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line45"> 45: </a>{
+<a name="line46"> 46: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *fa;
+
+<a name="line48"> 48: </a>  <font color="#4169E1">if</font> (!e) {
+<a name="line49"> 49: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscError.html">PetscError</a>(((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)e)-&gt;comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_BADPTR</a>, <a href="../../../../../manualpages/Sys/PetscErrorType.html">PETSC_ERROR_INITIAL</a>, <font color="#666666">"e==NULL, maybe #include &lt;petsc/finclude/petscvec.h&gt; is missing?"</font>);
+<a name="line50"> 50: </a>    <font color="#4169E1">return</font>;
+<a name="line51"> 51: </a>  }
+<a name="line52"> 52: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetElements.html">DMDAGetElements</a>(*dm, nel, nen, &amp;fa);
+<a name="line53"> 53: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line54"> 54: </a>  *ierr = F90Array1dCreate((<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *)fa, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, (*nel) * (*nen), e PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line55"> 55: </a>}
+
+<a name="line57"> 57: </a><strong><font color="#4169E1"><a name="dmdarestoreelements_"></a>PETSC_EXTERN void dmdarestoreelements_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *nel, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *nen, F90Array1d *e, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line58"> 58: </a>{
+<a name="line59"> 59: </a>  <font color="#4169E1">if</font> (!e) {
+<a name="line60"> 60: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscError.html">PetscError</a>(((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)e)-&gt;comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_BADPTR</a>, <a href="../../../../../manualpages/Sys/PetscErrorType.html">PETSC_ERROR_INITIAL</a>, <font color="#666666">"e==NULL, maybe #include &lt;petsc/finclude/petscvec.h&gt; is missing?"</font>);
+<a name="line61"> 61: </a>    <font color="#4169E1">return</font>;
+<a name="line62"> 62: </a>  }
+<a name="line63"> 63: </a>  *ierr = F90Array1dDestroy(e, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line64"> 64: </a>}
+
+<a name="line66"> 66: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayf901_"></a>PETSC_EXTERN void dmdavecgetarrayf901_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array1d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line67"> 67: </a>{
+<a name="line68"> 68: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof;
+<a name="line69"> 69: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line71"> 71: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line72"> 72: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line73"> 73: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line74"> 74: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line75"> 75: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line76"> 76: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line78"> 78: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line79"> 79: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line80"> 80: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line81"> 81: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line82"> 82: </a>    gxm = xm;
+<a name="line83"> 83: </a>    gym = ym;
+<a name="line84"> 84: </a>    gzm = zm;
+<a name="line85"> 85: </a>    gxs = xs;
+<a name="line86"> 86: </a>    gys = ys;
+<a name="line87"> 87: </a>    gzs = zs;
+<a name="line88"> 88: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line89"> 89: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line90"> 90: </a>    <font color="#4169E1">return</font>;
+<a name="line91"> 91: </a>  }
+<a name="line92"> 92: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArray.html">VecGetArray</a>(*v, &amp;aa);
+<a name="line93"> 93: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line94"> 94: </a>  *ierr = F90Array1dCreate(aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, gxs, gxm, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line95"> 95: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line96"> 96: </a>}
+
+<a name="line98"> 98: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayf901_"></a>PETSC_EXTERN void dmdavecrestorearrayf901_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array1d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line99"> 99: </a>{
+<a name="line100">100: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line101">101: </a>  *ierr = F90Array1dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line102">102: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArray.html">VecRestoreArray</a>(*v, &amp;fa);
+<a name="line103">103: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line104">104: </a>  *ierr = F90Array1dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line105">105: </a>}
+
+<a name="line107">107: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayf902_"></a>PETSC_EXTERN void dmdavecgetarrayf902_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array2d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line108">108: </a>{
+<a name="line109">109: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof;
+<a name="line110">110: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line112">112: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line113">113: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line114">114: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line115">115: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line116">116: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line117">117: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line119">119: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line120">120: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line121">121: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line122">122: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line123">123: </a>    gxm = xm;
+<a name="line124">124: </a>    gym = ym;
+<a name="line125">125: </a>    gzm = zm;
+<a name="line126">126: </a>    gxs = xs;
+<a name="line127">127: </a>    gys = ys;
+<a name="line128">128: </a>    gzs = zs;
+<a name="line129">129: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line130">130: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line131">131: </a>    <font color="#4169E1">return</font>;
+<a name="line132">132: </a>  }
+<a name="line133">133: </a>  <font color="#4169E1">if</font> (dim == 1) {
+<a name="line134">134: </a>    gys = gxs;
+<a name="line135">135: </a>    gym = gxm;
+<a name="line136">136: </a>    gxs = 0;
+<a name="line137">137: </a>    gxm = dof;
+<a name="line138">138: </a>  }
+<a name="line139">139: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArray.html">VecGetArray</a>(*v, &amp;aa);
+<a name="line140">140: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line141">141: </a>  *ierr = F90Array2dCreate(aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, gxs, gxm, gys, gym, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line142">142: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line143">143: </a>}
+
+<a name="line145">145: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayf902_"></a>PETSC_EXTERN void dmdavecrestorearrayf902_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array2d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line146">146: </a>{
+<a name="line147">147: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line148">148: </a>  *ierr = F90Array2dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line149">149: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArray.html">VecRestoreArray</a>(*v, &amp;fa);
+<a name="line150">150: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line151">151: </a>  *ierr = F90Array2dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line152">152: </a>}
+
+<a name="line154">154: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayf903_"></a>PETSC_EXTERN void dmdavecgetarrayf903_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array3d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line155">155: </a>{
+<a name="line156">156: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof;
+<a name="line157">157: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line159">159: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line160">160: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line161">161: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line162">162: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line163">163: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line164">164: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line166">166: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line167">167: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line168">168: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line169">169: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line170">170: </a>    gxm = xm;
+<a name="line171">171: </a>    gym = ym;
+<a name="line172">172: </a>    gzm = zm;
+<a name="line173">173: </a>    gxs = xs;
+<a name="line174">174: </a>    gys = ys;
+<a name="line175">175: </a>    gzs = zs;
+<a name="line176">176: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line177">177: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line178">178: </a>    <font color="#4169E1">return</font>;
+<a name="line179">179: </a>  }
+<a name="line180">180: </a>  <font color="#4169E1">if</font> (dim == 2) {
+<a name="line181">181: </a>    gzs = gys;
+<a name="line182">182: </a>    gzm = gym;
+<a name="line183">183: </a>    gys = gxs;
+<a name="line184">184: </a>    gym = gxm;
+<a name="line185">185: </a>    gxs = 0;
+<a name="line186">186: </a>    gxm = dof;
+<a name="line187">187: </a>  }
+<a name="line188">188: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArray.html">VecGetArray</a>(*v, &amp;aa);
+<a name="line189">189: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line190">190: </a>  *ierr = F90Array3dCreate(aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, gxs, gxm, gys, gym, gzs, gzm, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line191">191: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line192">192: </a>}
+
+<a name="line194">194: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayf903_"></a>PETSC_EXTERN void dmdavecrestorearrayf903_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array3d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line195">195: </a>{
+<a name="line196">196: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line197">197: </a>  *ierr = F90Array3dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line198">198: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArray.html">VecRestoreArray</a>(*v, &amp;fa);
+<a name="line199">199: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line200">200: </a>  *ierr = F90Array3dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line201">201: </a>}
+
+<a name="line203">203: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayf904_"></a>PETSC_EXTERN void dmdavecgetarrayf904_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array4d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line204">204: </a>{
+<a name="line205">205: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof, zero = 0;
+<a name="line206">206: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line208">208: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line209">209: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line210">210: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line211">211: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line212">212: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line213">213: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line215">215: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line216">216: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line217">217: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line218">218: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line219">219: </a>    gxm = xm;
+<a name="line220">220: </a>    gym = ym;
+<a name="line221">221: </a>    gzm = zm;
+<a name="line222">222: </a>    gxs = xs;
+<a name="line223">223: </a>    gys = ys;
+<a name="line224">224: </a>    gzs = zs;
+<a name="line225">225: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line226">226: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line227">227: </a>    <font color="#4169E1">return</font>;
+<a name="line228">228: </a>  }
+<a name="line229">229: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArray.html">VecGetArray</a>(*v, &amp;aa);
+<a name="line230">230: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line231">231: </a>  *ierr = F90Array4dCreate(aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, zero, dof, gxs, gxm, gys, gym, gzs, gzm, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line232">232: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line233">233: </a>}
+
+<a name="line235">235: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayf904_"></a>PETSC_EXTERN void dmdavecrestorearrayf904_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array4d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line236">236: </a>{
+<a name="line237">237: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line238">238: </a>  <font color="#B22222">/*</font>
+<a name="line239">239: </a><font color="#B22222">    F90Array4dAccess is not implemented, so the following call would fail</font>
+<a name="line240">240: </a><font color="#B22222">  */</font>
+<a name="line241">241: </a>  *ierr = F90Array4dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line242">242: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArray.html">VecRestoreArray</a>(*v, &amp;fa);
+<a name="line243">243: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line244">244: </a>  *ierr = F90Array4dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line245">245: </a>}
+
+<a name="line247">247: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayreadf901_"></a>PETSC_EXTERN void dmdavecgetarrayreadf901_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array1d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line248">248: </a>{
+<a name="line249">249: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof;
+<a name="line250">250: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line252">252: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line253">253: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line254">254: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line255">255: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line256">256: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line257">257: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line259">259: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line260">260: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line261">261: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line262">262: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line263">263: </a>    gxm = xm;
+<a name="line264">264: </a>    gym = ym;
+<a name="line265">265: </a>    gzm = zm;
+<a name="line266">266: </a>    gxs = xs;
+<a name="line267">267: </a>    gys = ys;
+<a name="line268">268: </a>    gzs = zs;
+<a name="line269">269: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line270">270: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line271">271: </a>    <font color="#4169E1">return</font>;
+<a name="line272">272: </a>  }
+<a name="line273">273: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArrayRead.html">VecGetArrayRead</a>(*v, &amp;aa);
+<a name="line274">274: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line275">275: </a>  *ierr = F90Array1dCreate((void *)aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, gxs, gxm, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line276">276: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line277">277: </a>}
+
+<a name="line279">279: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayreadf901_"></a>PETSC_EXTERN void dmdavecrestorearrayreadf901_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array1d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line280">280: </a>{
+<a name="line281">281: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line282">282: </a>  *ierr = F90Array1dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line283">283: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArrayRead.html">VecRestoreArrayRead</a>(*v, &amp;fa);
+<a name="line284">284: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line285">285: </a>  *ierr = F90Array1dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line286">286: </a>}
+
+<a name="line288">288: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayreadf902_"></a>PETSC_EXTERN void dmdavecgetarrayreadf902_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array2d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line289">289: </a>{
+<a name="line290">290: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof;
+<a name="line291">291: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line293">293: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line294">294: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line295">295: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line296">296: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line297">297: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line298">298: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line300">300: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line301">301: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line302">302: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line303">303: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line304">304: </a>    gxm = xm;
+<a name="line305">305: </a>    gym = ym;
+<a name="line306">306: </a>    gzm = zm;
+<a name="line307">307: </a>    gxs = xs;
+<a name="line308">308: </a>    gys = ys;
+<a name="line309">309: </a>    gzs = zs;
+<a name="line310">310: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line311">311: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line312">312: </a>    <font color="#4169E1">return</font>;
+<a name="line313">313: </a>  }
+<a name="line314">314: </a>  <font color="#4169E1">if</font> (dim == 1) {
+<a name="line315">315: </a>    gys = gxs;
+<a name="line316">316: </a>    gym = gxm;
+<a name="line317">317: </a>    gxs = 0;
+<a name="line318">318: </a>    gxm = dof;
+<a name="line319">319: </a>  }
+<a name="line320">320: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArrayRead.html">VecGetArrayRead</a>(*v, &amp;aa);
+<a name="line321">321: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line322">322: </a>  *ierr = F90Array2dCreate((void *)aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, gxs, gxm, gys, gym, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line323">323: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line324">324: </a>}
+
+<a name="line326">326: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayreadf902_"></a>PETSC_EXTERN void dmdavecrestorearrayreadf902_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array2d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line327">327: </a>{
+<a name="line328">328: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line329">329: </a>  *ierr = F90Array2dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line330">330: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArrayRead.html">VecRestoreArrayRead</a>(*v, &amp;fa);
+<a name="line331">331: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line332">332: </a>  *ierr = F90Array2dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line333">333: </a>}
+
+<a name="line335">335: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayreadf903_"></a>PETSC_EXTERN void dmdavecgetarrayreadf903_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array3d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line336">336: </a>{
+<a name="line337">337: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof;
+<a name="line338">338: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line340">340: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line341">341: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line342">342: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line343">343: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line344">344: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line345">345: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line347">347: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line348">348: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line349">349: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line350">350: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line351">351: </a>    gxm = xm;
+<a name="line352">352: </a>    gym = ym;
+<a name="line353">353: </a>    gzm = zm;
+<a name="line354">354: </a>    gxs = xs;
+<a name="line355">355: </a>    gys = ys;
+<a name="line356">356: </a>    gzs = zs;
+<a name="line357">357: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line358">358: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line359">359: </a>    <font color="#4169E1">return</font>;
+<a name="line360">360: </a>  }
+<a name="line361">361: </a>  <font color="#4169E1">if</font> (dim == 2) {
+<a name="line362">362: </a>    gzs = gys;
+<a name="line363">363: </a>    gzm = gym;
+<a name="line364">364: </a>    gys = gxs;
+<a name="line365">365: </a>    gym = gxm;
+<a name="line366">366: </a>    gxs = 0;
+<a name="line367">367: </a>    gxm = dof;
+<a name="line368">368: </a>  }
+<a name="line369">369: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArrayRead.html">VecGetArrayRead</a>(*v, &amp;aa);
+<a name="line370">370: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line371">371: </a>  *ierr = F90Array3dCreate((void *)aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, gxs, gxm, gys, gym, gzs, gzm, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line372">372: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line373">373: </a>}
+
+<a name="line375">375: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayreadf903_"></a>PETSC_EXTERN void dmdavecrestorearrayreadf903_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array3d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line376">376: </a>{
+<a name="line377">377: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line378">378: </a>  *ierr = F90Array3dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line379">379: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArrayRead.html">VecRestoreArrayRead</a>(*v, &amp;fa);
+<a name="line380">380: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line381">381: </a>  *ierr = F90Array3dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line382">382: </a>}
+
+<a name="line384">384: </a><strong><font color="#4169E1"><a name="dmdavecgetarrayreadf904_"></a>PETSC_EXTERN void dmdavecgetarrayreadf904_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array4d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line385">385: </a>{
+<a name="line386">386: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           xs, ys, zs, xm, ym, zm, gxs, gys, gzs, gxm, gym, gzm, N, dim, dof, zero = 0;
+<a name="line387">387: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa;
+
+<a name="line389">389: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetCorners.html">DMDAGetCorners</a>(*da, &amp;xs, &amp;ys, &amp;zs, &amp;xm, &amp;ym, &amp;zm);
+<a name="line390">390: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line391">391: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetGhostCorners.html">DMDAGetGhostCorners</a>(*da, &amp;gxs, &amp;gys, &amp;gzs, &amp;gxm, &amp;gym, &amp;gzm);
+<a name="line392">392: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line393">393: </a>  *ierr = <a href="../../../../../manualpages/DMDA/DMDAGetInfo.html">DMDAGetInfo</a>(*da, &amp;dim, NULL, NULL, NULL, NULL, NULL, NULL, &amp;dof, NULL, NULL, NULL, NULL, NULL);
+<a name="line394">394: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+
+<a name="line396">396: </a>  <font color="#B22222">/* Handle case where user passes in global vector as opposed to local */</font>
+<a name="line397">397: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(*v, &amp;N);
+<a name="line398">398: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line399">399: </a>  <font color="#4169E1">if</font> (N == xm * ym * zm * dof) {
+<a name="line400">400: </a>    gxm = xm;
+<a name="line401">401: </a>    gym = ym;
+<a name="line402">402: </a>    gzm = zm;
+<a name="line403">403: </a>    gxs = xs;
+<a name="line404">404: </a>    gys = ys;
+<a name="line405">405: </a>    gzs = zs;
+<a name="line406">406: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (N != gxm * gym * gzm * dof) {
+<a name="line407">407: </a>    *ierr = <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>;
+<a name="line408">408: </a>    <font color="#4169E1">return</font>;
+<a name="line409">409: </a>  }
+<a name="line410">410: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecGetArrayRead.html">VecGetArrayRead</a>(*v, &amp;aa);
+<a name="line411">411: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line412">412: </a>  *ierr = F90Array4dCreate((void *)aa, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, zero, dof, gxs, gxm, gys, gym, gzs, gzm, a PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line413">413: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line414">414: </a>}
+
+<a name="line416">416: </a><strong><font color="#4169E1"><a name="dmdavecrestorearrayreadf904_"></a>PETSC_EXTERN void dmdavecrestorearrayreadf904_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *da, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, F90Array4d *a, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line417">417: </a>{
+<a name="line418">418: </a>  const <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *fa;
+<a name="line419">419: </a>  <font color="#B22222">/*</font>
+<a name="line420">420: </a><font color="#B22222">    F90Array4dAccess is not implemented, so the following call would fail</font>
+<a name="line421">421: </a><font color="#B22222">  */</font>
+<a name="line422">422: </a>  *ierr = F90Array4dAccess(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line423">423: </a>  *ierr = <a href="../../../../../manualpages/Vec/VecRestoreArrayRead.html">VecRestoreArrayRead</a>(*v, &amp;fa);
+<a name="line424">424: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line425">425: </a>  *ierr = F90Array4dDestroy(a, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line426">426: </a>}
+</pre>
+</body>
+
+</html>
+

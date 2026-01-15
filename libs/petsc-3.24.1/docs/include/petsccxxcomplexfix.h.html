@@ -1,0 +1,148 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsccxxcomplexfix.h">Actual source code: petsccxxcomplexfix.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:44+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a><font color="#B22222">/* MANSEC = Sys */</font>
+
+<a name="line5">  5: </a><font color="#B22222">/*</font>
+<a name="line6">  6: </a><font color="#B22222">    The pragma below silence all compiler warnings coming from code in this header file.</font>
+<a name="line7">  7: </a><font color="#B22222">    In particular, it silences `-Wfloat-equal` warnings in `operator==()` and `operator!=` below.</font>
+<a name="line8">  8: </a><font color="#B22222">    Other compilers beyond GCC support this pragma.</font>
+<a name="line9">  9: </a><font color="#B22222">*/</font>
+<a name="line10"> 10: </a><font color="#A020F0">#if defined(__GNUC__) &amp;&amp; (__GNUC__ &gt;= 4) &amp;&amp; !defined(__NEC__)</font>
+<a name="line11"> 11: </a><font color="#A020F0">  #pragma GCC system_header</font>
+<a name="line12"> 12: </a><font color="#A020F0">#endif</font>
+
+<a name="line14"> 14: </a><font color="#B22222">/*</font>
+<a name="line15"> 15: </a><font color="#B22222">     Defines additional operator overloading for the C++ complex class that are "missing" in the standard</font>
+<a name="line16"> 16: </a><font color="#B22222">     include files. For example, the code fragment</font>
+
+<a name="line18"> 18: </a><font color="#B22222">     std::complex&lt;double&gt; c = 22.0;</font>
+<a name="line19"> 19: </a><font color="#B22222">     c = 11 + c;</font>
+
+<a name="line21"> 21: </a><font color="#B22222">     will produce a compile time error such as</font>
+
+<a name="line23"> 23: </a><font color="#B22222">     error: no match for 'operator+' (operand types are 'int' and 'std::complex&lt;double&gt;')</font>
+
+<a name="line25"> 25: </a><font color="#B22222">     The code fragment</font>
+
+<a name="line27"> 27: </a><font color="#B22222">     std::complex&lt;float&gt; c = 22.0;</font>
+<a name="line28"> 28: </a><font color="#B22222">     c = 11.0 + c;</font>
+
+<a name="line30"> 30: </a><font color="#B22222">     will produce a compile time error such as</font>
+
+<a name="line32"> 32: </a><font color="#B22222">     error: no match for 'operator+' (operand types are 'double' and 'std::complex&lt;float&gt;')</font>
+
+<a name="line34"> 34: </a><font color="#B22222">     This deficiency means one may need to write cumbersome code while working with the C++ complex classes.</font>
+
+<a name="line36"> 36: </a><font color="#B22222">     This include file defines a few additional operator overload methods for the C++ complex classes to handle</font>
+<a name="line37"> 37: </a><font color="#B22222">     these cases naturally within PETSc code.</font>
+
+<a name="line39"> 39: </a><font color="#B22222">     This file is included in petscsystypes.h when feasible. In the small number of cases where these additional methods</font>
+<a name="line40"> 40: </a><font color="#B22222">     may conflict with other code one may add '#define PETSC_SKIP_CXX_COMPLEX_FIX 1' before including any PETSc include</font>
+<a name="line41"> 41: </a><font color="#B22222">     files to prevent these methods from being provided.</font>
+<a name="line42"> 42: </a><font color="#B22222">*/</font>
+
+<a name="line44"> 44: </a><strong><font color="#228B22">#define PETSC_CXX_COMPLEX_FIX(Type) \</font></strong>
+<a name="line45"> 45: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator+(const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;lhs, const Type &amp;rhs) \</font></strong>
+<a name="line46"> 46: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line47"> 47: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs) + <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(rhs); \</font></strong>
+<a name="line48"> 48: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line49"> 49: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator+(const Type &amp;lhs, const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;rhs) \</font></strong>
+<a name="line50"> 50: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line51"> 51: </a><strong><font color="#228B22">    return <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(lhs) + const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs); \</font></strong>
+<a name="line52"> 52: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line53"> 53: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator-(const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;lhs, const Type &amp;rhs) \</font></strong>
+<a name="line54"> 54: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line55"> 55: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs) - <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(rhs); \</font></strong>
+<a name="line56"> 56: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line57"> 57: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator-(const Type &amp;lhs, const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;rhs) \</font></strong>
+<a name="line58"> 58: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line59"> 59: </a><strong><font color="#228B22">    return <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(lhs) - const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs); \</font></strong>
+<a name="line60"> 60: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line61"> 61: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator*(const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;lhs, const Type &amp;rhs) \</font></strong>
+<a name="line62"> 62: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line63"> 63: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs) * <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(rhs); \</font></strong>
+<a name="line64"> 64: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line65"> 65: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator*(const Type &amp;lhs, const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;rhs) \</font></strong>
+<a name="line66"> 66: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line67"> 67: </a><strong><font color="#228B22">    return <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(lhs) * const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs); \</font></strong>
+<a name="line68"> 68: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line69"> 69: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator/(const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;lhs, const Type &amp;rhs) \</font></strong>
+<a name="line70"> 70: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line71"> 71: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs) / <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(rhs); \</font></strong>
+<a name="line72"> 72: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line73"> 73: </a><strong><font color="#228B22">  static inline <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator/(const Type &amp;lhs, const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;rhs) \</font></strong>
+<a name="line74"> 74: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line75"> 75: </a><strong><font color="#228B22">    return <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(lhs) / const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs); \</font></strong>
+<a name="line76"> 76: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line77"> 77: </a><strong><font color="#228B22">  static inline bool operator==(const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;lhs, const Type &amp;rhs) \</font></strong>
+<a name="line78"> 78: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line79"> 79: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs).imag() == <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(0) &amp;&amp; const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs).real() == <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(rhs); \</font></strong>
+<a name="line80"> 80: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line81"> 81: </a><strong><font color="#228B22">  static inline bool operator==(const Type &amp;lhs, const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;rhs) \</font></strong>
+<a name="line82"> 82: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line83"> 83: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs).imag() == <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(0) &amp;&amp; const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs).real() == <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(lhs); \</font></strong>
+<a name="line84"> 84: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line85"> 85: </a><strong><font color="#228B22">  static inline bool operator!=(const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;lhs, const Type &amp;rhs) \</font></strong>
+<a name="line86"> 86: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line87"> 87: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs).imag() != <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(0) || const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(lhs).real() != <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(rhs); \</font></strong>
+<a name="line88"> 88: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line89"> 89: </a><strong><font color="#228B22">  static inline bool operator!=(const Type &amp;lhs, const <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;rhs) \</font></strong>
+<a name="line90"> 90: </a><strong><font color="#228B22">  { \</font></strong>
+<a name="line91"> 91: </a><strong><font color="#228B22">    return const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs).imag() != <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(0) || const_cast&lt;<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;&gt;(rhs).real() != <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>(lhs); \</font></strong>
+<a name="line92"> 92: </a><strong><font color="#228B22">  } \</font></strong>
+<a name="line93"> 93: </a><strong><font color="#228B22"><font color="#B22222">/* PETSC_CXX_COMPLEX_FIX */</font><font color="#228B22"></font></strong>
+
+<a name="line95"> 95: </a><font color="#B22222">// In PETSc, a quad precision <a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> is a C type even with clanguage=cxx, therefore no C++ operator overloading needed for it.</font>
+<a name="line96"> 96: </a><font color="#A020F0">#if !defined(PETSC_USE_REAL___FLOAT128)</font>
+
+<a name="line98"> 98: </a><font color="#B22222">// Provide operator overloading for '<a href="../manualpages/Sys/PetscComplex.html">PetscComplex</a> .op. (an integer type or a real type but not <a href="../manualpages/Sys/PetscReal.html">PetscReal</a>)'.</font>
+<a name="line99"> 99: </a><font color="#B22222">//</font>
+<a name="line100">100: </a><font color="#B22222">// We enumerate all C/C++ POD (Plain Old Data) types to provide exact overload resolution, to keep the precision change</font>
+<a name="line101">101: </a><font color="#B22222">// in the Type to <a href="../manualpages/Sys/PetscReal.html">PetscReal</a> conversion intact, as intended by users performing these mixed precision operations.</font>
+<a name="line102">102: </a><font color="#A020F0">  #if !defined(PETSC_USE_REAL___FP16) &amp;&amp; defined(PETSC_HAVE_REAL___FP16)</font>
+<a name="line103">103: </a><strong><font color="#4169E1"><a name="ETSC_CXX_COMPLEX_FIX"></a>PETSC_CXX_COMPLEX_FIX(__fp16)</font></strong>
+<a name="line104">104: </a><font color="#A020F0">  #endif</font>
+
+<a name="line106">106: </a><font color="#A020F0">  #if !defined(PETSC_USE_REAL_SINGLE)</font>
+<a name="line107">107: </a><strong><font color="#4169E1"><a name="ETSC_CXX_COMPLEX_FIX"></a>PETSC_CXX_COMPLEX_FIX(float)</font></strong>
+<a name="line108">108: </a><font color="#A020F0">  #endif</font>
+
+<a name="line110">110: </a><font color="#A020F0">  #if !defined(PETSC_USE_REAL_DOUBLE)</font>
+<a name="line111">111: </a><strong><font color="#4169E1"><a name="ETSC_CXX_COMPLEX_FIX"></a>PETSC_CXX_COMPLEX_FIX(double)</font></strong>
+<a name="line112">112: </a><font color="#A020F0">  #endif</font>
+
+<a name="line114">114: </a><strong><font color="#4169E1"><a name="ETSC_CXX_COMPLEX_FIX"></a>PETSC_CXX_COMPLEX_FIX(long double)</font></strong>
+
+<a name="line116">116: </a><font color="#A020F0">  #if defined(PETSC_HAVE_REAL___FLOAT128)</font>
+<a name="line117">117: </a><strong><font color="#4169E1"><a name="ETSC_CXX_COMPLEX_FIX"></a>PETSC_CXX_COMPLEX_FIX(__float128)</font></strong>
+<a name="line118">118: </a><font color="#A020F0">  #endif</font>
+
+<a name="line120">120: </a><strong><font color="#4169E1"><a name="ETSC_CXX_COMPLEX_FIX"></a>PETSC_CXX_COMPLEX_FIX(signed char)</font></strong>
+<a name="line121">121: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(short)</font></strong>
+<a name="line122">122: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(int)</font></strong>
+<a name="line123">123: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(long)</font></strong>
+<a name="line124">124: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(long long)</font></strong>
+
+<a name="line126">126: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(unsigned char)</font></strong>
+<a name="line127">127: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(unsigned short)</font></strong>
+<a name="line128">128: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(unsigned int)</font></strong>
+<a name="line129">129: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(unsigned long)</font></strong>
+<a name="line130">130: </a><strong><font color="#4169E1">PETSC_CXX_COMPLEX_FIX(unsigned long long)</font></strong>
+
+<a name="line132">132: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+

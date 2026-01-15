@@ -1,0 +1,35 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/adj/mpi/ftn-custom/zmpiadjf.c">Actual source code: zmpiadjf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:58+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../src/mat/impls/adj/mpi/mpiadj.h.html">&lt;../src/mat/impls/adj/mpi/mpiadj.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petscmat.h.html">&lt;petscmat.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define matcreatempiadj_ MATCREATEMPIADJ</font></strong>
+<a name="line7">  7: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define matcreatempiadj_ matcreatempiadj</font></strong>
+<a name="line9">  9: </a><font color="#A020F0">#endif</font>
+
+<a name="line11"> 11: </a><strong><font color="#4169E1"><a name="matcreatempiadj_"></a>PETSC_EXTERN void matcreatempiadj_(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *comm, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *m, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *i, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *j, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *values, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> *A, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line12"> 12: </a>{
+<a name="line13"> 13: </a>  Mat_MPIAdj *adj;
+
+<a name="line15"> 15: </a>  CHKFORTRANNULLINTEGER(values);
+<a name="line16"> 16: </a>  *ierr        = <a href="../../../../../../manualpages/Mat/MatCreateMPIAdj.html">MatCreateMPIAdj</a>(MPI_Comm_f2c(*(MPI_Fint *)&amp;*comm), *m, *n, i, j, values, A);
+<a name="line17"> 17: </a>  adj          = (Mat_MPIAdj *)(*A)-&gt;data;
+<a name="line18"> 18: </a>  adj-&gt;freeaij = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line19"> 19: </a>}
+</pre>
+</body>
+
+</html>
+

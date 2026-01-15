@@ -1,0 +1,32 @@
+# Create shared library for Python wrapper compatibility
+set(ELECTROMAGNETIC_KERNELS_SOURCES
+    src/core/core_geometry.c
+    src/core/core_mesh_unified.c
+    src/core/core_kernels.c
+    src/core/core_assembler.c
+    src/core/core_solver_electromagnetic_kernels.c
+    src/core/gpu_acceleration.c
+)
+
+# Add layered Green's function if not MSVC
+if(NOT MSVC)
+    list(APPEND ELECTROMAGNETIC_KERNELS_SOURCES
+        src/core/layered_greens_function_unified.c
+    )
+endif()
+
+add_library(electromagnetic_kernels SHARED ${ELECTROMAGNETIC_KERNELS_SOURCES})
+target_link_libraries(electromagnetic_kernels 
+    PUBLIC OpenMP::OpenMP_C Threads::Threads m
+)
+
+# Set proper export symbols for Windows
+if(MSVC)
+    target_compile_definitions(electromagnetic_kernels PRIVATE BUILDING_ELECTROMAGNETIC_KERNELS_DLL)
+endif()
+
+# Include directories for electromagnetic kernels
+target_include_directories(electromagnetic_kernels PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+)

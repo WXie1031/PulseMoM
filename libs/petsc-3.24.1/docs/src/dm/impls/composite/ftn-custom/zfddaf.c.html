@@ -1,0 +1,133 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/composite/ftn-custom/zfddaf.c">Actual source code: zfddaf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:46+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petscdmcomposite.h.html">&lt;petscdmcomposite.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define dmcompositegetentries1_          DMCOMPOSITEGETENTRIES1</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define dmcompositegetentries2_          DMCOMPOSITEGETENTRIES2</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define dmcompositegetentries3_          DMCOMPOSITEGETENTRIES3</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define dmcompositegetentries4_          DMCOMPOSITEGETENTRIES4</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define dmcompositegetentries5_          DMCOMPOSITEGETENTRIES5</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define dmcompositegetaccess4_           DMCOMPOSITEGETACCESS4</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define dmcompositescatter4_             DMCOMPOSITESCATTER4</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define dmcompositerestoreaccess4_       DMCOMPOSITERESTOREACCESS4</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define dmcompositegetlocalvectors4_     DMCOMPOSITEGETLOCALVECTORS4</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  #define dmcompositerestorelocalvectors4_ DMCOMPOSITERESTORELOCALVECTORS4</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  #define dmcompositegetglobaliss_         DMCOMPOSITEGETGLOBALISS</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  #define dmcompositerestoreglobaliss_     DMCOMPOSITERESTOREGLOBALISS</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  #define dmcompositegetlocaliss_          DMCOMPOSITEGETLOCALISS</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  #define dmcompositerestorelocaliss_      DMCOMPOSITERESTORELOCALISS</font></strong>
+<a name="line19"> 19: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line20"> 20: </a><strong><font color="#228B22">  #define dmcompositegetentries1_          dmcompositegetentries1</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  #define dmcompositegetentries2_          dmcompositegetentries2</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">  #define dmcompositegetentries3_          dmcompositegetentries3</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">  #define dmcompositegetentries4_          dmcompositegetentries4</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">  #define dmcompositegetentries5_          dmcompositegetentries5</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">  #define dmcompositegetaccess4_           dmcompositegetaccess4</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">  #define dmcompositescatter4_             dmcompositescatter4</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">  #define dmcompositerestoreaccess4_       dmcompositerestoreaccess4</font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">  #define dmcompositegetlocalvectors4_     dmcompositegetlocalvectors4</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">  #define dmcompositerestorelocalvectors4_ dmcompositerestorelocalvectors4</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">  #define dmcompositegetglobaliss_         dmcompositegetglobaliss</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">  #define dmcompositerestoreglobaliss_     dmcompositerestoreglobaliss</font></strong>
+<a name="line32"> 32: </a><strong><font color="#228B22">  #define dmcompositegetlocaliss_          dmcompositegetlocaliss</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  #define dmcompositerestorelocaliss_      dmcompositerestorelocaliss</font></strong>
+<a name="line34"> 34: </a><font color="#A020F0">#endif</font>
+
+<a name="line36"> 36: </a><strong><font color="#4169E1"><a name="dmcompositegetentries1_"></a>PETSC_EXTERN void dmcompositegetentries1_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da1, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line37"> 37: </a>{
+<a name="line38"> 38: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetEntries.html">DMCompositeGetEntries</a>(*dm, da1);
+<a name="line39"> 39: </a>}
+
+<a name="line41"> 41: </a><strong><font color="#4169E1"><a name="dmcompositegetentries2_"></a>PETSC_EXTERN void dmcompositegetentries2_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da1, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da2, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line42"> 42: </a>{
+<a name="line43"> 43: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetEntries.html">DMCompositeGetEntries</a>(*dm, da1, da2);
+<a name="line44"> 44: </a>}
+
+<a name="line46"> 46: </a><strong><font color="#4169E1"><a name="dmcompositegetentries3_"></a>PETSC_EXTERN void dmcompositegetentries3_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da1, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da2, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da3, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line47"> 47: </a>{
+<a name="line48"> 48: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetEntries.html">DMCompositeGetEntries</a>(*dm, da1, da2, da3);
+<a name="line49"> 49: </a>}
+
+<a name="line51"> 51: </a><strong><font color="#4169E1"><a name="dmcompositegetentries4_"></a>PETSC_EXTERN void dmcompositegetentries4_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da1, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da2, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da3, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da4, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line52"> 52: </a>{
+<a name="line53"> 53: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetEntries.html">DMCompositeGetEntries</a>(*dm, da1, da2, da3, da4);
+<a name="line54"> 54: </a>}
+
+<a name="line56"> 56: </a><strong><font color="#4169E1"><a name="dmcompositegetentries5_"></a>PETSC_EXTERN void dmcompositegetentries5_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da1, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da2, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da3, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da4, <a href="../../../../../manualpages/DM/DM.html">DM</a> *da5, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line57"> 57: </a>{
+<a name="line58"> 58: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetEntries.html">DMCompositeGetEntries</a>(*dm, da1, da2, da3, da4, da5);
+<a name="line59"> 59: </a>}
+
+<a name="line61"> 61: </a><strong><font color="#4169E1"><a name="dmcompositegetglobaliss_"></a>PETSC_EXTERN void dmcompositegetglobaliss_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, F90Array1d *ptr, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line62"> 62: </a>{
+<a name="line63"> 63: </a>  <a href="../../../../../manualpages/IS/IS.html">IS</a>      *ais;
+<a name="line64"> 64: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ndm;
+
+<a name="line66"> 66: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetGlobalISs.html">DMCompositeGetGlobalISs</a>(*dm, &amp;ais);
+<a name="line67"> 67: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line68"> 68: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetNumberDM.html">DMCompositeGetNumberDM</a>(*dm, &amp;ndm);
+<a name="line69"> 69: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line70"> 70: </a>  *ierr = F90Array1dCreate((void *)ais, MPIU_FORTRANADDR, 1, ndm, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line71"> 71: </a>}
+
+<a name="line73"> 73: </a><strong><font color="#4169E1"><a name="dmcompositerestoreglobaliss_"></a>PETSC_EXTERN void dmcompositerestoreglobaliss_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, F90Array1d *ptr, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line74"> 74: </a>{
+<a name="line75"> 75: </a>  <a href="../../../../../manualpages/IS/IS.html">IS</a>      *ais;
+<a name="line76"> 76: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ndm;
+
+<a name="line78"> 78: </a>  *ierr = F90Array1dAccess(ptr, MPIU_FORTRANADDR, (void **)&amp;ais PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line79"> 79: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line80"> 80: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetNumberDM.html">DMCompositeGetNumberDM</a>(*dm, &amp;ndm);
+<a name="line81"> 81: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; ndm; i++) {
+<a name="line82"> 82: </a>    *ierr = <a href="../../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;ais[i]);
+<a name="line83"> 83: </a>    <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line84"> 84: </a>  }
+<a name="line85"> 85: </a>  *ierr = <a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(ais);
+<a name="line86"> 86: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line87"> 87: </a>  *ierr = F90Array1dDestroy(ptr, MPIU_FORTRANADDR PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line88"> 88: </a>}
+
+<a name="line90"> 90: </a><strong><font color="#4169E1"><a name="dmcompositegetlocaliss_"></a>PETSC_EXTERN void dmcompositegetlocaliss_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, F90Array1d *ptr, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line91"> 91: </a>{
+<a name="line92"> 92: </a>  <a href="../../../../../manualpages/IS/IS.html">IS</a>      *ais;
+<a name="line93"> 93: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ndm;
+
+<a name="line95"> 95: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetLocalISs.html">DMCompositeGetLocalISs</a>(*dm, &amp;ais);
+<a name="line96"> 96: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line97"> 97: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetNumberDM.html">DMCompositeGetNumberDM</a>(*dm, &amp;ndm);
+<a name="line98"> 98: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line99"> 99: </a>  *ierr = F90Array1dCreate((void *)ais, MPIU_FORTRANADDR, 1, ndm, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line100">100: </a>}
+
+<a name="line102">102: </a><strong><font color="#4169E1"><a name="dmcompositerestorelocaliss_"></a>PETSC_EXTERN void dmcompositerestorelocaliss_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, F90Array1d *ptr, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line103">103: </a>{
+<a name="line104">104: </a>  <a href="../../../../../manualpages/IS/IS.html">IS</a>      *ais;
+<a name="line105">105: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ndm;
+
+<a name="line107">107: </a>  *ierr = F90Array1dAccess(ptr, MPIU_FORTRANADDR, (void **)&amp;ais PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line108">108: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line109">109: </a>  *ierr = <a href="../../../../../manualpages/DMComposite/DMCompositeGetNumberDM.html">DMCompositeGetNumberDM</a>(*dm, &amp;ndm);
+<a name="line110">110: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; ndm; i++) {
+<a name="line111">111: </a>    *ierr = <a href="../../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;ais[i]);
+<a name="line112">112: </a>    <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line113">113: </a>  }
+<a name="line114">114: </a>  *ierr = <a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(ais);
+<a name="line115">115: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line116">116: </a>  *ierr = F90Array1dDestroy(ptr, MPIU_FORTRANADDR PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line117">117: </a>}
+</pre>
+</body>
+
+</html>
+

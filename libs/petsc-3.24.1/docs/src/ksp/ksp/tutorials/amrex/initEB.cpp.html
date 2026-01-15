@@ -1,0 +1,62 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/tutorials/amrex/initEB.cpp">Actual source code: initEB.cpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#include &lt;AMReX_EB2.H&gt;</font>
+<a name="line2">  2: </a><font color="#A020F0">#include &lt;AMReX_EB2_IF.H&gt;</font>
+
+<a name="line4">  4: </a><font color="#A020F0">#include &lt;AMReX_ParmParse.H&gt;</font>
+
+<a name="line6">  6: </a><font color="#A020F0">#include &lt;cmath&gt;</font>
+<a name="line7">  7: </a><font color="#A020F0">#include &lt;algorithm&gt;</font>
+
+<a name="line9">  9: </a><font color="#A020F0">#include </font><font color="#666666">"MyTest.H"</font><font color="#A020F0"></font>
+<a name="line10"> 10: </a><font color="#A020F0">#include </font><font color="#666666">"MyEB.H"</font><font color="#A020F0"></font>
+
+<a name="line12"> 12: </a>using namespace amrex;
+
+<a name="line14"> 14: </a>void MyTest::initializeEB()
+<a name="line15"> 15: </a>{
+<a name="line16"> 16: </a>  ParmParse   pp(<font color="#666666">"eb2"</font>);
+<a name="line17"> 17: </a>  std::string geom_type;
+<a name="line18"> 18: </a>  pp.get(<font color="#666666">"geom_type"</font>, geom_type);
+
+<a name="line20"> 20: </a>  <font color="#4169E1">if</font> (geom_type == <font color="#666666">"combustor"</font>) {
+<a name="line21"> 21: </a>    amrex::Abort(<font color="#666666">"initializeEB: todo"</font>);
+<a name="line22"> 22: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (geom_type == <font color="#666666">"rotated_box"</font>) {
+<a name="line23"> 23: </a>    EB2::BoxIF box({AMREX_D_DECL(0.25, 0.25, 0.25)}, {AMREX_D_DECL(0.75, 0.75, 0.75)}, false);
+<a name="line24"> 24: </a>    auto       gshop = EB2::makeShop(EB2::translate(EB2::rotate(EB2::translate(box, {AMREX_D_DECL(-0.5, -0.5, -0.5)}), std::atan(1.0) * 0.3, 2), {AMREX_D_DECL(0.5, 0.5, 0.5)}));
+<a name="line25"> 25: </a>    EB2::Build(gshop, geom.back(), max_level, max_level + max_coarsening_level);
+<a name="line26"> 26: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (geom_type == <font color="#666666">"two_spheres"</font>) {
+<a name="line27"> 27: </a>    EB2::SphereIF sphere1(0.2, {AMREX_D_DECL(0.45, 0.4, 0.58)}, false);
+<a name="line28"> 28: </a>    EB2::SphereIF sphere2(0.2, {AMREX_D_DECL(0.55, 0.42, 0.6)}, false);
+<a name="line29"> 29: </a>    auto          twospheres = EB2::makeUnion(sphere1, sphere2);
+<a name="line30"> 30: </a>    auto          gshop      = EB2::makeShop(twospheres);
+<a name="line31"> 31: </a>    EB2::Build(gshop, geom.back(), max_level, max_level + max_coarsening_level);
+<a name="line32"> 32: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (geom_type == <font color="#666666">"two_spheres_one_box"</font>) {
+<a name="line33"> 33: </a>    EB2::SphereIF sphere1(0.2, {AMREX_D_DECL(0.5, 0.48, 0.5)}, false);
+<a name="line34"> 34: </a>    EB2::SphereIF sphere2(0.2, {AMREX_D_DECL(0.55, 0.58, 0.5)}, false);
+<a name="line35"> 35: </a>    EB2::BoxIF    box({AMREX_D_DECL(0.25, 0.75, 0.5)}, {AMREX_D_DECL(0.75, 0.8, 0.75)}, false);
+<a name="line36"> 36: </a>    auto          twospheres = EB2::makeUnion(sphere1, sphere2, box);
+<a name="line37"> 37: </a>    auto          gshop      = EB2::makeShop(twospheres);
+<a name="line38"> 38: </a>    EB2::Build(gshop, geom.back(), max_level, max_level + max_coarsening_level);
+<a name="line39"> 39: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (geom_type == <font color="#666666">"flower"</font>) {
+<a name="line40"> 40: </a>    FlowerIF flower(0.2, 0.1, 6, {AMREX_D_DECL(0.5, 0.5, 0.5)}, false);
+<a name="line41"> 41: </a>    auto     gshop = EB2::makeShop(flower);
+<a name="line42"> 42: </a>    EB2::Build(gshop, geom.back(), max_level, max_level + max_coarsening_level);
+<a name="line43"> 43: </a>  } <font color="#4169E1">else</font> {
+<a name="line44"> 44: </a>    EB2::Build(geom.back(), max_level, max_level + max_coarsening_level);
+<a name="line45"> 45: </a>  }
+<a name="line46"> 46: </a>}
+</pre>
+</body>
+
+</html>
+

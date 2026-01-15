@@ -1,0 +1,112 @@
+% refinement for edge area of the plate
+% dep      the depth affected by skin effect
+% ne       the number of meshes for dep
+% q        the ratio for generating mesh for dep
+%
+function [u v w]=Refinement_3D_M2(Ps,N,dep,ne,q)
+wx=Ps(1);  wy=Ps(2);  wz=Ps(3);  
+Nx=N(1);   Ny=N(2);   
+u=(-0.5+(0:Nx)/Nx)*wx;
+v=(-0.5+(0:Ny)/Ny)*wy;
+du=wx/Nx;
+dv=wy/Ny;
+p=1.2;      % the ratio for generating mesh for the over zone
+
+tz=[-0.5 -0.25 0 0.25 0.5];        % partition for edge blocks along z direction
+w=wz*tz;
+
+ae=dep*(1-q)/(1-q^ne);      % the first item of mesh during dep
+ue=ae*q.^(0:ne-1);           % generating mesh for dep
+
+am=ae*q^ne;                 % the first item of mesh during transition zone
+
+um=[]; vm=[];
+au=am; av=am;
+while (au<du)               % generating mesh for transition zone          
+    um=[um au];
+    au=au*q;    
+end
+while (av<dv)
+    vm=[vm av];
+    av=av*q;    
+end
+num=length(um);
+nvm=length(vm);
+Nue=ne+num;                 % the number of mesh for edge zone
+Nve=ne+nvm;
+eu=sum(um)+dep;             % the width of edge zone
+ev=sum(vm)+dep;
+Nu=1+fix(eu/du);
+Nv=1+fix(ev/dv);
+
+tu=Nu*du-eu;
+tv=Nv*dv-ev;
+atu=tu*(1-p)/(1-p^Nue);
+atv=tv*(1-p)/(1-p^Nve);
+ut=atu*p.^(0:Nue-1);
+vt=atv*p.^(0:Nve-1);         % the difference mesh
+
+ur=[ue um]+ut;
+vr=[ue vm]+vt;
+u1=[]; v1=[];
+ud=0; vd=0;
+for i=1:Nue
+    ud=ud+ur(i);
+    u1=[u1 ud];
+end
+for i=1:Nve
+    vd=vd+vr(i);
+    v1=[v1 vd];
+end
+    
+ur=u1+u(1);
+vr=v1+v(1);
+ur=[u(1) ur];
+vr=[v(1) vr];
+
+u=[ur  u(Nu+2:Nx-Nu+2) -fliplr(ur)];           % the total partition
+v=[vr  v(Nv:Ny-Nv+2) -fliplr(vr)];
+
+% if Nx==40   
+%     ue=[ue(1)-0.0045 ue(1)-0.0025 ue(1)-0.001 ue];      % add several buffer grid
+%     ve=[ve(1)-0.0045 ve(1)-0.0025 ve(1)-0.001 ve];
+%     u=[-fliplr(ue) u(3:Nx-1) ue];           % the total partition
+%     v=[-fliplr(ve) v(3:Ny-1) ve];
+% end
+% 
+% if Nx==36    
+%     ue=[ue(1)-0.0085 ue(1)-0.0048 ue(1)-0.0025 ue(1)-0.001 ue];      % add several buffer grid
+%     ve=[ve(1)-0.0085 ve(1)-0.0048 ve(1)-0.0025 ve(1)-0.001 ve];
+%     u=[-fliplr(ue) u(3:Nx-1) ue];           % the total partition
+%     v=[-fliplr(ve) v(3:Ny-1) ve];
+% end
+% 
+% if Nx==32
+%     ue=[ue(1)-0.0085 ue(1)-0.0048 ue(1)-0.0025 ue(1)-0.001 ue];      % add several buffer grid
+%     ve=[ve(1)-0.0085 ve(1)-0.0048 ve(1)-0.0025 ve(1)-0.001 ve];
+%     u=[-fliplr(ue) u(3:Nx-1) ue];           % the total partition
+%     v=[-fliplr(ve) v(3:Ny-1) ve];
+% end
+% 
+% if Nx==28
+%     ue=[ue(1)-0.0085 ue(1)-0.0048 ue(1)-0.0025 ue(1)-0.001 ue];      % add several buffer grid
+%     ve=[ve(1)-0.0085 ve(1)-0.0048 ve(1)-0.0025 ve(1)-0.001 ve];
+%     u=[-fliplr(ue) u(3:Nx-1) ue];           % the total partition
+%     v=[-fliplr(ve) v(3:Ny-1) ve];
+% end
+% 
+% if Nx==24
+%     ue=[ue(1)-0.0085 ue(1)-0.0048 ue(1)-0.0025 ue(1)-0.001 ue];      % add several buffer grid
+%     ve=[ve(1)-0.0085 ve(1)-0.0048 ve(1)-0.0025 ve(1)-0.001 ve];
+%     u=[-fliplr(ue) u(3:Nx-1) ue];           % the total partition
+%     v=[-fliplr(ve) v(3:Ny-1) ve];
+% end
+% 
+% if Nx==20
+%     ue=[ue(1)-0.0115 ue(1)-0.0075 ue(1)-0.0045 ue(1)-0.0025 ue(1)-0.001 ue];      % add several buffer grid
+%     ve=[ve(1)-0.0115 ve(1)-0.0075 ve(1)-0.0045 ve(1)-0.0025 ve(1)-0.001 ve];
+%     u=[-fliplr(ue) u(3:Nx-1) ue];           % the total partition
+%     v=[-fliplr(ve) v(3:Ny-1) ve];
+% end
+
+end

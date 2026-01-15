@@ -1,0 +1,63 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/impls/gmres/fgmres/ftn-custom/zmodpcff.c">Actual source code: zmodpcff.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define kspfgmressetmodifypc_      KSPFGMRESSETMODIFYPC</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define kspfgmresmodifypcnochange_ KSPFGMRESMODIFYPCNOCHANGE</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define kspfgmresmodifypcksp_      KSPFGMRESMODIFYPCKSP</font></strong>
+<a name="line8">  8: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define kspfgmressetmodifypc_      kspfgmressetmodifypc</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define kspfgmresmodifypcnochange_ kspfgmresmodifypcnochange</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define kspfgmresmodifypcksp_      kspfgmresmodifypcksp</font></strong>
+<a name="line12"> 12: </a><font color="#A020F0">#endif</font>
+
+<a name="line14"> 14: </a>static <font color="#4169E1">struct</font> {
+<a name="line15"> 15: </a>  PetscFortranCallbackId modify;
+<a name="line16"> 16: </a>  PetscFortranCallbackId destroy;
+<a name="line17"> 17: </a>} _cb;
+
+<a name="line19"> 19: </a><strong><font color="#4169E1"><a name="ourmodify"></a>static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourmodify(<a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i2, <a href="../../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> d, void *ctx)</font></strong>
+<a name="line20"> 20: </a>{
+<a name="line21"> 21: </a>  PetscObjectUseFortranCallbackSubType(ksp, _cb.modify, (<a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, void *, <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), (&amp;ksp, &amp;i, &amp;i2, &amp;d, _ctx, &amp;ierr));
+<a name="line22"> 22: </a>}
+
+<a name="line24"> 24: </a><strong><font color="#4169E1"><a name="ourmoddestroy"></a>static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourmoddestroy(void **ctx)</font></strong>
+<a name="line25"> 25: </a>{
+<a name="line26"> 26: </a>  <a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp = (<a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a>)*ctx;
+<a name="line27"> 27: </a>  PetscObjectUseFortranCallbackSubType(ksp, _cb.destroy, (void *, <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), (_ctx, &amp;ierr));
+<a name="line28"> 28: </a>}
+
+<a name="line30"> 30: </a><strong><font color="#4169E1">PETSC_EXTERN void kspfgmresmodifypcnochange_(<a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, void *, <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *)</font></strong>;
+<a name="line31"> 31: </a><strong><font color="#4169E1">PETSC_EXTERN void kspfgmresmodifypcksp_(<a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, void *, <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *)</font></strong>;
+
+<a name="line33"> 33: </a><strong><font color="#4169E1"><a name="kspfgmressetmodifypc_"></a>PETSC_EXTERN void kspfgmressetmodifypc_(<a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a> *ksp, void (*fcn)(<a href="../../../../../../../manualpages/KSP/KSP.html">KSP</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, void *, <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), void *ctx, void (*d)(void *, <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line34"> 34: </a>{
+<a name="line35"> 35: </a>  CHKFORTRANNULLFUNCTION(d);
+<a name="line36"> 36: </a>  <font color="#4169E1">if</font> (fcn == kspfgmresmodifypcksp_) {
+<a name="line37"> 37: </a>    *ierr = <a href="../../../../../../../manualpages/KSP/KSPFGMRESSetModifyPC.html">KSPFGMRESSetModifyPC</a>(*ksp, <a href="../../../../../../../manualpages/KSP/KSPFGMRESModifyPCKSP.html">KSPFGMRESModifyPCKSP</a>, NULL, NULL);
+<a name="line38"> 38: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (fcn == kspfgmresmodifypcnochange_) {
+<a name="line39"> 39: </a>    *ierr = <a href="../../../../../../../manualpages/KSP/KSPFGMRESSetModifyPC.html">KSPFGMRESSetModifyPC</a>(*ksp, <a href="../../../../../../../manualpages/KSP/KSPFGMRESModifyPCNoChange.html">KSPFGMRESModifyPCNoChange</a>, NULL, NULL);
+<a name="line40"> 40: </a>  } <font color="#4169E1">else</font> {
+<a name="line41"> 41: </a>    *ierr = <a href="../../../../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ksp, PETSC_FORTRAN_CALLBACK_SUBTYPE, &amp;_cb.modify, (<a href="../../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)fcn, ctx);
+<a name="line42"> 42: </a>    <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line43"> 43: </a>    *ierr = <a href="../../../../../../../manualpages/Sys/PetscObjectSetFortranCallback.html">PetscObjectSetFortranCallback</a>((<a href="../../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ksp, PETSC_FORTRAN_CALLBACK_SUBTYPE, &amp;_cb.destroy, (<a href="../../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)d, ctx);
+<a name="line44"> 44: </a>    <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line45"> 45: </a>    *ierr = <a href="../../../../../../../manualpages/KSP/KSPFGMRESSetModifyPC.html">KSPFGMRESSetModifyPC</a>(*ksp, ourmodify, *ksp, ourmoddestroy);
+<a name="line46"> 46: </a>  }
+<a name="line47"> 47: </a>}
+</pre>
+</body>
+
+</html>
+

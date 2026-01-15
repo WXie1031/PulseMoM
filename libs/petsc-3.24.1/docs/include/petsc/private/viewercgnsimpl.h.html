@@ -1,0 +1,125 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsc/private/viewercgnsimpl.h">Actual source code: viewercgnsimpl.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:45+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../include/petsc/private/viewerimpl.h.html">&lt;petsc/private/viewerimpl.h&gt;</A>
+<a name="line4">  4: </a><font color="#A020F0">#include &lt;cgnstypes.h&gt;</font>
+<a name="line5">  5: </a><font color="#A020F0">#include &lt;cgnslib.h&gt;</font>
+
+<a name="line7">  7: </a>PETSC_EXTERN <a href="../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> PETSC_VIEWER_CGNS_Open, PETSC_VIEWER_CGNS_Close, PETSC_VIEWER_CGNS_ReadMeta, PETSC_VIEWER_CGNS_WriteMeta, PETSC_VIEWER_CGNS_ReadData, PETSC_VIEWER_CGNS_WriteData;
+
+<a name="line9">  9: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line10"> 10: </a>  char           *filename_template;
+<a name="line11"> 11: </a>  char           *filename;
+<a name="line12"> 12: </a>  <a href="../../../manualpages/Sys/PetscFileMode.html">PetscFileMode</a>   btype;
+<a name="line13"> 13: </a>  int             file_num;
+<a name="line14"> 14: </a>  const <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *node_l2g;
+<a name="line15"> 15: </a>  int             base, zone;
+<a name="line16"> 16: </a>  CGNS_ENUMT(GridLocation_t) grid_loc;
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       num_local_nodes, nStart, nEnd;
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       eStart, eEnd;
+<a name="line19"> 19: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>   *nodal_field;
+<a name="line20"> 20: </a>  <a href="../../../manualpages/Sys/PetscSegBuffer.html">PetscSegBuffer</a> output_steps;
+<a name="line21"> 21: </a>  <a href="../../../manualpages/Sys/PetscSegBuffer.html">PetscSegBuffer</a> output_times;
+<a name="line22"> 22: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       previous_output_step;
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       batch_size;
+
+<a name="line25"> 25: </a>  <font color="#B22222">// Solution reading information</font>
+<a name="line26"> 26: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> solution_index;              <font color="#B22222">// User set solution index</font>
+<a name="line27"> 27: </a>  int      solution_file_index;         <font color="#B22222">// CGNS file solution index for direct access</font>
+<a name="line28"> 28: </a>  int      solution_file_pointer_index; <font color="#B22222">// CGNS file solution index for FlowSolutionPointers (and other related arrays), index by 1</font>
+<a name="line29"> 29: </a>  char    *solution_name;
+<a name="line30"> 30: </a>} PetscViewer_CGNS;
+
+<a name="line32"> 32: </a><strong><font color="#228B22">#define PetscCallCGNS(ierr) \</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line34"> 34: </a><strong><font color="#228B22">    int _cgns_ier = (ierr); \</font></strong>
+<a name="line35"> 35: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!_cgns_ier, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, </font><font color="#666666">"CGNS error %d %s"</font><font color="#228B22">, _cgns_ier, cg_get_error()); \</font></strong>
+<a name="line36"> 36: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line38"> 38: </a><strong><font color="#228B22">#define PetscCallCGNSOpen(ierr, o1, o2) \</font></strong>
+<a name="line39"> 39: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line40"> 40: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PETSC_VIEWER_CGNS_Open, o1, o2, 0, 0)); \</font></strong>
+<a name="line41"> 41: </a><strong><font color="#228B22">    PetscCallCGNS((ierr)); \</font></strong>
+<a name="line42"> 42: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PETSC_VIEWER_CGNS_Open, o1, o2, 0, 0)); \</font></strong>
+<a name="line43"> 43: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line45"> 45: </a><strong><font color="#228B22">#define PetscCallCGNSClose(ierr, o1, o2) \</font></strong>
+<a name="line46"> 46: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line47"> 47: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PETSC_VIEWER_CGNS_Close, o1, o2, 0, 0)); \</font></strong>
+<a name="line48"> 48: </a><strong><font color="#228B22">    PetscCallCGNS((ierr)); \</font></strong>
+<a name="line49"> 49: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PETSC_VIEWER_CGNS_Close, o1, o2, 0, 0)); \</font></strong>
+<a name="line50"> 50: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line52"> 52: </a><strong><font color="#228B22">#define PetscCallCGNSRead(ierr, o1, o2) \</font></strong>
+<a name="line53"> 53: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line54"> 54: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PETSC_VIEWER_CGNS_ReadMeta, o1, o2, 0, 0)); \</font></strong>
+<a name="line55"> 55: </a><strong><font color="#228B22">    PetscCallCGNS((ierr)); \</font></strong>
+<a name="line56"> 56: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PETSC_VIEWER_CGNS_ReadMeta, o1, o2, 0, 0)); \</font></strong>
+<a name="line57"> 57: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line59"> 59: </a><strong><font color="#228B22">#define PetscCallCGNSReadData(ierr, o1, o2) \</font></strong>
+<a name="line60"> 60: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line61"> 61: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PETSC_VIEWER_CGNS_ReadData, o1, o2, 0, 0)); \</font></strong>
+<a name="line62"> 62: </a><strong><font color="#228B22">    PetscCallCGNS((ierr)); \</font></strong>
+<a name="line63"> 63: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PETSC_VIEWER_CGNS_ReadData, o1, o2, 0, 0)); \</font></strong>
+<a name="line64"> 64: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line66"> 66: </a><strong><font color="#228B22">#define PetscCallCGNSWrite(ierr, o1, o2) \</font></strong>
+<a name="line67"> 67: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line68"> 68: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PETSC_VIEWER_CGNS_WriteMeta, o1, o2, 0, 0)); \</font></strong>
+<a name="line69"> 69: </a><strong><font color="#228B22">    PetscCallCGNS((ierr)); \</font></strong>
+<a name="line70"> 70: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PETSC_VIEWER_CGNS_WriteMeta, o1, o2, 0, 0)); \</font></strong>
+<a name="line71"> 71: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line73"> 73: </a><strong><font color="#228B22">#define PetscCallCGNSWriteData(ierr, o1, o2) \</font></strong>
+<a name="line74"> 74: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line75"> 75: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(PETSC_VIEWER_CGNS_WriteData, o1, o2, 0, 0)); \</font></strong>
+<a name="line76"> 76: </a><strong><font color="#228B22">    PetscCallCGNS((ierr)); \</font></strong>
+<a name="line77"> 77: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(PETSC_VIEWER_CGNS_WriteData, o1, o2, 0, 0)); \</font></strong>
+<a name="line78"> 78: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line80"> 80: </a><font color="#A020F0">#if !defined(PRIdCGSIZE)</font>
+<a name="line81"> 81: </a><font color="#A020F0">  #if CG_SIZEOF_SIZE == 32</font>
+<a name="line82"> 82: </a>    <font color="#B22222">// cgsize_t is defined as int</font>
+<a name="line83"> 83: </a><strong><font color="#228B22">    #define MPIU_CGSIZE MPI_INT</font></strong>
+<a name="line84"> 84: </a><strong><font color="#228B22">    #define PRIdCGSIZE  </font><font color="#666666">"d"</font><font color="#228B22"></font></strong>
+<a name="line85"> 85: </a><font color="#A020F0">  #else</font>
+<a name="line86"> 86: </a><font color="#A020F0">    #if defined(_WIN32)</font>
+<a name="line87"> 87: </a>      <font color="#B22222">// cgsize_t is defined as __int64, which is synonymous with long long</font>
+<a name="line88"> 88: </a><strong><font color="#228B22">      #define MPIU_CGSIZE MPI_LONG_LONG</font></strong>
+<a name="line89"> 89: </a><strong><font color="#228B22">      #define PRIdCGSIZE  </font><font color="#666666">"lld"</font><font color="#228B22"></font></strong>
+<a name="line90"> 90: </a><font color="#A020F0">    #else</font>
+<a name="line91"> 91: </a>      <font color="#B22222">// cgsize_t is defined as long</font>
+<a name="line92"> 92: </a><strong><font color="#228B22">      #define MPIU_CGSIZE MPI_LONG</font></strong>
+<a name="line93"> 93: </a><strong><font color="#228B22">      #define PRIdCGSIZE  </font><font color="#666666">"ld"</font><font color="#228B22"></font></strong>
+<a name="line94"> 94: </a><font color="#A020F0">    #endif</font>
+<a name="line95"> 95: </a><font color="#A020F0">  #endif</font>
+<a name="line96"> 96: </a><font color="#A020F0">#else</font>
+<a name="line97"> 97: </a><font color="#A020F0">  #if CG_SIZEOF_SIZE == 32</font>
+<a name="line98"> 98: </a>    <font color="#B22222">// cgsize_t is defined as int32_t</font>
+<a name="line99"> 99: </a><strong><font color="#228B22">    #define MPIU_CGSIZE MPI_INT32_T</font></strong>
+<a name="line100">100: </a><font color="#A020F0">  #else</font>
+<a name="line101">101: </a>    <font color="#B22222">// cgsize_t is defined as int64_t</font>
+<a name="line102">102: </a><strong><font color="#228B22">    #define MPIU_CGSIZE MPI_INT64_T</font></strong>
+<a name="line103">103: </a><font color="#A020F0">  #endif</font>
+<a name="line104">104: </a><font color="#A020F0">#endif</font>
+
+<a name="line106">106: </a><strong><font color="#4169E1">PETSC_SINGLE_LIBRARY_INTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscViewerCGNSRegisterLogEvents_Internal()</font></strong>;
+<a name="line107">107: </a><strong><font color="#4169E1">PETSC_SINGLE_LIBRARY_INTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscViewerCGNSCheckBatch_Internal(<a href="../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+<a name="line108">108: </a><strong><font color="#4169E1">PETSC_SINGLE_LIBRARY_INTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscViewerCGNSFileOpen_Internal(<a href="../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>)</font></strong>;
+<a name="line109">109: </a><strong><font color="#4169E1">PETSC_SINGLE_LIBRARY_INTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscViewerCGNSGetSolutionFileIndex_Internal(<a href="../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>, int *)</font></strong>;
+</pre>
+</body>
+
+</html>
+

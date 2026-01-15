@@ -1,0 +1,659 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/baij/seq/baijfact11.c">Actual source code: baijfact11.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:00+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#B22222">/*</font>
+<a name="line2">  2: </a><font color="#B22222">    Factorization code for BAIJ format.</font>
+<a name="line3">  3: </a><font color="#B22222">*/</font>
+<a name="line4">  4: </a>#include <A href="../../../../src/mat/impls/baij/seq/baij.h.html">&lt;../src/mat/impls/baij/seq/baij.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../include/petsc/private/kernels/blockinvert.h.html">&lt;petsc/private/kernels/blockinvert.h&gt;</A>
+
+<a name="line7">  7: </a><font color="#B22222">/*</font>
+<a name="line8">  8: </a><font color="#B22222">      Version for when blocks are 4 by 4</font>
+<a name="line9">  9: </a><font color="#B22222">*/</font>
+<a name="line10"> 10: </a><strong><font color="#4169E1"><a name="MatLUFactorNumeric_SeqBAIJ_4_inplace"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLUFactorNumeric_SeqBAIJ_4_inplace(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> C, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, const <a href="../../../../../manualpages/Mat/MatFactorInfo.html">MatFactorInfo</a> *info)</font></strong>
+<a name="line11"> 11: </a>{
+<a name="line12"> 12: </a>  Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A-&gt;data, *b = (Mat_SeqBAIJ *)C-&gt;data;
+<a name="line13"> 13: </a>  <a href="../../../../../manualpages/IS/IS.html">IS</a>              isrow = b-&gt;row, isicol = b-&gt;icol;
+<a name="line14"> 14: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *r, *ic;
+<a name="line15"> 15: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        i, j, n = a-&gt;mbs, *bi = b-&gt;i, *bj = b-&gt;j;
+<a name="line16"> 16: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       *ajtmpold, *ajtmp, nz, row;
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       *diag_offset = b-&gt;diag, idx, *ai = a-&gt;i, *aj = a-&gt;j, *pj;
+<a name="line18"> 18: </a>  MatScalar      *pv, *v, *rtmp, *pc, *w, *x;
+<a name="line19"> 19: </a>  MatScalar       p1, p2, p3, p4, m1, m2, m3, m4, m5, m6, m7, m8, m9, x1, x2, x3, x4;
+<a name="line20"> 20: </a>  MatScalar       p5, p6, p7, p8, p9, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16;
+<a name="line21"> 21: </a>  MatScalar       p10, p11, p12, p13, p14, p15, p16, m10, m11, m12;
+<a name="line22"> 22: </a>  MatScalar       m13, m14, m15, m16;
+<a name="line23"> 23: </a>  MatScalar      *ba = b-&gt;a, *aa = a-&gt;a;
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>       pivotinblocks = b-&gt;pivotinblocks;
+<a name="line25"> 25: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>       shift         = info-&gt;shiftamount;
+<a name="line26"> 26: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>       allowzeropivot, zeropivotdetected = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line28"> 28: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line29"> 29: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isrow, &amp;r));
+<a name="line30"> 30: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isicol, &amp;ic));
+<a name="line31"> 31: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(16 * (n + 1), &amp;rtmp));
+<a name="line32"> 32: </a>  allowzeropivot = <a href="../../../../../manualpages/Sys/PetscNot.html">PetscNot</a>(A-&gt;erroriffailure);
+
+<a name="line34"> 34: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; n; i++) {
+<a name="line35"> 35: </a>    nz    = bi[i + 1] - bi[i];
+<a name="line36"> 36: </a>    ajtmp = bj + bi[i];
+<a name="line37"> 37: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line38"> 38: </a>      x    = rtmp + 16 * ajtmp[j];
+<a name="line39"> 39: </a>      x[0] = x[1] = x[2] = x[3] = x[4] = x[5] = x[6] = x[7] = x[8] = x[9] = 0.0;
+<a name="line40"> 40: </a>      x[10] = x[11] = x[12] = x[13] = x[14] = x[15] = 0.0;
+<a name="line41"> 41: </a>    }
+<a name="line42"> 42: </a>    <font color="#B22222">/* load in initial (unfactored row) */</font>
+<a name="line43"> 43: </a>    idx      = r[i];
+<a name="line44"> 44: </a>    nz       = ai[idx + 1] - ai[idx];
+<a name="line45"> 45: </a>    ajtmpold = aj + ai[idx];
+<a name="line46"> 46: </a>    v        = aa + 16 * ai[idx];
+<a name="line47"> 47: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line48"> 48: </a>      x     = rtmp + 16 * ic[ajtmpold[j]];
+<a name="line49"> 49: </a>      x[0]  = v[0];
+<a name="line50"> 50: </a>      x[1]  = v[1];
+<a name="line51"> 51: </a>      x[2]  = v[2];
+<a name="line52"> 52: </a>      x[3]  = v[3];
+<a name="line53"> 53: </a>      x[4]  = v[4];
+<a name="line54"> 54: </a>      x[5]  = v[5];
+<a name="line55"> 55: </a>      x[6]  = v[6];
+<a name="line56"> 56: </a>      x[7]  = v[7];
+<a name="line57"> 57: </a>      x[8]  = v[8];
+<a name="line58"> 58: </a>      x[9]  = v[9];
+<a name="line59"> 59: </a>      x[10] = v[10];
+<a name="line60"> 60: </a>      x[11] = v[11];
+<a name="line61"> 61: </a>      x[12] = v[12];
+<a name="line62"> 62: </a>      x[13] = v[13];
+<a name="line63"> 63: </a>      x[14] = v[14];
+<a name="line64"> 64: </a>      x[15] = v[15];
+<a name="line65"> 65: </a>      v += 16;
+<a name="line66"> 66: </a>    }
+<a name="line67"> 67: </a>    row = *ajtmp++;
+<a name="line68"> 68: </a>    <font color="#4169E1">while</font> (row &lt; i) {
+<a name="line69"> 69: </a>      pc  = rtmp + 16 * row;
+<a name="line70"> 70: </a>      p1  = pc[0];
+<a name="line71"> 71: </a>      p2  = pc[1];
+<a name="line72"> 72: </a>      p3  = pc[2];
+<a name="line73"> 73: </a>      p4  = pc[3];
+<a name="line74"> 74: </a>      p5  = pc[4];
+<a name="line75"> 75: </a>      p6  = pc[5];
+<a name="line76"> 76: </a>      p7  = pc[6];
+<a name="line77"> 77: </a>      p8  = pc[7];
+<a name="line78"> 78: </a>      p9  = pc[8];
+<a name="line79"> 79: </a>      p10 = pc[9];
+<a name="line80"> 80: </a>      p11 = pc[10];
+<a name="line81"> 81: </a>      p12 = pc[11];
+<a name="line82"> 82: </a>      p13 = pc[12];
+<a name="line83"> 83: </a>      p14 = pc[13];
+<a name="line84"> 84: </a>      p15 = pc[14];
+<a name="line85"> 85: </a>      p16 = pc[15];
+<a name="line86"> 86: </a>      <font color="#4169E1">if</font> (p1 != 0.0 || p2 != 0.0 || p3 != 0.0 || p4 != 0.0 || p5 != 0.0 || p6 != 0.0 || p7 != 0.0 || p8 != 0.0 || p9 != 0.0 || p10 != 0.0 || p11 != 0.0 || p12 != 0.0 || p13 != 0.0 || p14 != 0.0 || p15 != 0.0 || p16 != 0.0) {
+<a name="line87"> 87: </a>        pv    = ba + 16 * diag_offset[row];
+<a name="line88"> 88: </a>        pj    = bj + diag_offset[row] + 1;
+<a name="line89"> 89: </a>        x1    = pv[0];
+<a name="line90"> 90: </a>        x2    = pv[1];
+<a name="line91"> 91: </a>        x3    = pv[2];
+<a name="line92"> 92: </a>        x4    = pv[3];
+<a name="line93"> 93: </a>        x5    = pv[4];
+<a name="line94"> 94: </a>        x6    = pv[5];
+<a name="line95"> 95: </a>        x7    = pv[6];
+<a name="line96"> 96: </a>        x8    = pv[7];
+<a name="line97"> 97: </a>        x9    = pv[8];
+<a name="line98"> 98: </a>        x10   = pv[9];
+<a name="line99"> 99: </a>        x11   = pv[10];
+<a name="line100">100: </a>        x12   = pv[11];
+<a name="line101">101: </a>        x13   = pv[12];
+<a name="line102">102: </a>        x14   = pv[13];
+<a name="line103">103: </a>        x15   = pv[14];
+<a name="line104">104: </a>        x16   = pv[15];
+<a name="line105">105: </a>        pc[0] = m1 = p1 * x1 + p5 * x2 + p9 * x3 + p13 * x4;
+<a name="line106">106: </a>        pc[1] = m2 = p2 * x1 + p6 * x2 + p10 * x3 + p14 * x4;
+<a name="line107">107: </a>        pc[2] = m3 = p3 * x1 + p7 * x2 + p11 * x3 + p15 * x4;
+<a name="line108">108: </a>        pc[3] = m4 = p4 * x1 + p8 * x2 + p12 * x3 + p16 * x4;
+
+<a name="line110">110: </a>        pc[4] = m5 = p1 * x5 + p5 * x6 + p9 * x7 + p13 * x8;
+<a name="line111">111: </a>        pc[5] = m6 = p2 * x5 + p6 * x6 + p10 * x7 + p14 * x8;
+<a name="line112">112: </a>        pc[6] = m7 = p3 * x5 + p7 * x6 + p11 * x7 + p15 * x8;
+<a name="line113">113: </a>        pc[7] = m8 = p4 * x5 + p8 * x6 + p12 * x7 + p16 * x8;
+
+<a name="line115">115: </a>        pc[8] = m9 = p1 * x9 + p5 * x10 + p9 * x11 + p13 * x12;
+<a name="line116">116: </a>        pc[9] = m10 = p2 * x9 + p6 * x10 + p10 * x11 + p14 * x12;
+<a name="line117">117: </a>        pc[10] = m11 = p3 * x9 + p7 * x10 + p11 * x11 + p15 * x12;
+<a name="line118">118: </a>        pc[11] = m12 = p4 * x9 + p8 * x10 + p12 * x11 + p16 * x12;
+
+<a name="line120">120: </a>        pc[12] = m13 = p1 * x13 + p5 * x14 + p9 * x15 + p13 * x16;
+<a name="line121">121: </a>        pc[13] = m14 = p2 * x13 + p6 * x14 + p10 * x15 + p14 * x16;
+<a name="line122">122: </a>        pc[14] = m15 = p3 * x13 + p7 * x14 + p11 * x15 + p15 * x16;
+<a name="line123">123: </a>        pc[15] = m16 = p4 * x13 + p8 * x14 + p12 * x15 + p16 * x16;
+
+<a name="line125">125: </a>        nz = bi[row + 1] - diag_offset[row] - 1;
+<a name="line126">126: </a>        pv += 16;
+<a name="line127">127: </a>        <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line128">128: </a>          x1  = pv[0];
+<a name="line129">129: </a>          x2  = pv[1];
+<a name="line130">130: </a>          x3  = pv[2];
+<a name="line131">131: </a>          x4  = pv[3];
+<a name="line132">132: </a>          x5  = pv[4];
+<a name="line133">133: </a>          x6  = pv[5];
+<a name="line134">134: </a>          x7  = pv[6];
+<a name="line135">135: </a>          x8  = pv[7];
+<a name="line136">136: </a>          x9  = pv[8];
+<a name="line137">137: </a>          x10 = pv[9];
+<a name="line138">138: </a>          x11 = pv[10];
+<a name="line139">139: </a>          x12 = pv[11];
+<a name="line140">140: </a>          x13 = pv[12];
+<a name="line141">141: </a>          x14 = pv[13];
+<a name="line142">142: </a>          x15 = pv[14];
+<a name="line143">143: </a>          x16 = pv[15];
+<a name="line144">144: </a>          x   = rtmp + 16 * pj[j];
+<a name="line145">145: </a>          x[0] -= m1 * x1 + m5 * x2 + m9 * x3 + m13 * x4;
+<a name="line146">146: </a>          x[1] -= m2 * x1 + m6 * x2 + m10 * x3 + m14 * x4;
+<a name="line147">147: </a>          x[2] -= m3 * x1 + m7 * x2 + m11 * x3 + m15 * x4;
+<a name="line148">148: </a>          x[3] -= m4 * x1 + m8 * x2 + m12 * x3 + m16 * x4;
+
+<a name="line150">150: </a>          x[4] -= m1 * x5 + m5 * x6 + m9 * x7 + m13 * x8;
+<a name="line151">151: </a>          x[5] -= m2 * x5 + m6 * x6 + m10 * x7 + m14 * x8;
+<a name="line152">152: </a>          x[6] -= m3 * x5 + m7 * x6 + m11 * x7 + m15 * x8;
+<a name="line153">153: </a>          x[7] -= m4 * x5 + m8 * x6 + m12 * x7 + m16 * x8;
+
+<a name="line155">155: </a>          x[8] -= m1 * x9 + m5 * x10 + m9 * x11 + m13 * x12;
+<a name="line156">156: </a>          x[9] -= m2 * x9 + m6 * x10 + m10 * x11 + m14 * x12;
+<a name="line157">157: </a>          x[10] -= m3 * x9 + m7 * x10 + m11 * x11 + m15 * x12;
+<a name="line158">158: </a>          x[11] -= m4 * x9 + m8 * x10 + m12 * x11 + m16 * x12;
+
+<a name="line160">160: </a>          x[12] -= m1 * x13 + m5 * x14 + m9 * x15 + m13 * x16;
+<a name="line161">161: </a>          x[13] -= m2 * x13 + m6 * x14 + m10 * x15 + m14 * x16;
+<a name="line162">162: </a>          x[14] -= m3 * x13 + m7 * x14 + m11 * x15 + m15 * x16;
+<a name="line163">163: </a>          x[15] -= m4 * x13 + m8 * x14 + m12 * x15 + m16 * x16;
+
+<a name="line165">165: </a>          pv += 16;
+<a name="line166">166: </a>        }
+<a name="line167">167: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(128.0 * nz + 112.0));
+<a name="line168">168: </a>      }
+<a name="line169">169: </a>      row = *ajtmp++;
+<a name="line170">170: </a>    }
+<a name="line171">171: </a>    <font color="#B22222">/* finished row so stick it into b-&gt;a */</font>
+<a name="line172">172: </a>    pv = ba + 16 * bi[i];
+<a name="line173">173: </a>    pj = bj + bi[i];
+<a name="line174">174: </a>    nz = bi[i + 1] - bi[i];
+<a name="line175">175: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line176">176: </a>      x      = rtmp + 16 * pj[j];
+<a name="line177">177: </a>      pv[0]  = x[0];
+<a name="line178">178: </a>      pv[1]  = x[1];
+<a name="line179">179: </a>      pv[2]  = x[2];
+<a name="line180">180: </a>      pv[3]  = x[3];
+<a name="line181">181: </a>      pv[4]  = x[4];
+<a name="line182">182: </a>      pv[5]  = x[5];
+<a name="line183">183: </a>      pv[6]  = x[6];
+<a name="line184">184: </a>      pv[7]  = x[7];
+<a name="line185">185: </a>      pv[8]  = x[8];
+<a name="line186">186: </a>      pv[9]  = x[9];
+<a name="line187">187: </a>      pv[10] = x[10];
+<a name="line188">188: </a>      pv[11] = x[11];
+<a name="line189">189: </a>      pv[12] = x[12];
+<a name="line190">190: </a>      pv[13] = x[13];
+<a name="line191">191: </a>      pv[14] = x[14];
+<a name="line192">192: </a>      pv[15] = x[15];
+<a name="line193">193: </a>      pv += 16;
+<a name="line194">194: </a>    }
+<a name="line195">195: </a>    <font color="#B22222">/* invert diagonal block */</font>
+<a name="line196">196: </a>    w = ba + 16 * diag_offset[i];
+<a name="line197">197: </a>    <font color="#4169E1">if</font> (pivotinblocks) {
+<a name="line198">198: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_inverse_A_4(w, shift, allowzeropivot, &amp;zeropivotdetected));
+<a name="line199">199: </a>      <font color="#4169E1">if</font> (zeropivotdetected) C-&gt;factorerrortype = MAT_FACTOR_NUMERIC_ZEROPIVOT;
+<a name="line200">200: </a>    } <font color="#4169E1">else</font> {
+<a name="line201">201: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_inverse_A_4_nopivot(w));
+<a name="line202">202: </a>    }
+<a name="line203">203: </a>  }
+
+<a name="line205">205: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(rtmp));
+<a name="line206">206: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isicol, &amp;ic));
+<a name="line207">207: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isrow, &amp;r));
+
+<a name="line209">209: </a>  C-&gt;ops-&gt;solve          = MatSolve_SeqBAIJ_4_inplace;
+<a name="line210">210: </a>  C-&gt;ops-&gt;solvetranspose = MatSolveTranspose_SeqBAIJ_4_inplace;
+<a name="line211">211: </a>  C-&gt;assembled           = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line213">213: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(1.333333333333 * 4 * 4 * 4 * b-&gt;mbs)); <font color="#B22222">/* from inverting diagonal blocks */</font>
+<a name="line214">214: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line215">215: </a>}
+
+<a name="line217">217: </a><font color="#B22222">/* MatLUFactorNumeric_SeqBAIJ_4 -</font>
+<a name="line218">218: </a><font color="#B22222">     copied from MatLUFactorNumeric_SeqBAIJ_N_inplace() and manually re-implemented</font>
+<a name="line219">219: </a><font color="#B22222">       PetscKernel_A_gets_A_times_B()</font>
+<a name="line220">220: </a><font color="#B22222">       PetscKernel_A_gets_A_minus_B_times_C()</font>
+<a name="line221">221: </a><font color="#B22222">       PetscKernel_A_gets_inverse_A()</font>
+<a name="line222">222: </a><font color="#B22222">*/</font>
+
+<a name="line224">224: </a><strong><font color="#4169E1"><a name="MatLUFactorNumeric_SeqBAIJ_4"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLUFactorNumeric_SeqBAIJ_4(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, const <a href="../../../../../manualpages/Mat/MatFactorInfo.html">MatFactorInfo</a> *info)</font></strong>
+<a name="line225">225: </a>{
+<a name="line226">226: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>             C = B;
+<a name="line227">227: </a>  Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A-&gt;data, *b = (Mat_SeqBAIJ *)C-&gt;data;
+<a name="line228">228: </a>  <a href="../../../../../manualpages/IS/IS.html">IS</a>              isrow = b-&gt;row, isicol = b-&gt;icol;
+<a name="line229">229: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *r, *ic;
+<a name="line230">230: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        i, j, k, nz, nzL, row;
+<a name="line231">231: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  n = a-&gt;mbs, *ai = a-&gt;i, *aj = a-&gt;j, *bi = b-&gt;i, *bj = b-&gt;j;
+<a name="line232">232: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *ajtmp, *bjtmp, *bdiag = b-&gt;diag, *pj, bs2 = a-&gt;bs2;
+<a name="line233">233: </a>  MatScalar      *rtmp, *pc, *mwork, *v, *pv, *aa = a-&gt;a;
+<a name="line234">234: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        flg;
+<a name="line235">235: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>       shift;
+<a name="line236">236: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>       allowzeropivot, zeropivotdetected;
+
+<a name="line238">238: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line239">239: </a>  allowzeropivot = <a href="../../../../../manualpages/Sys/PetscNot.html">PetscNot</a>(A-&gt;erroriffailure);
+<a name="line240">240: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isrow, &amp;r));
+<a name="line241">241: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isicol, &amp;ic));
+
+<a name="line243">243: </a>  <font color="#4169E1">if</font> (info-&gt;shifttype == (<a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>)MAT_SHIFT_NONE) {
+<a name="line244">244: </a>    shift = 0;
+<a name="line245">245: </a>  } <font color="#4169E1">else</font> { <font color="#B22222">/* info-&gt;shifttype == MAT_SHIFT_INBLOCKS */</font>
+<a name="line246">246: </a>    shift = info-&gt;shiftamount;
+<a name="line247">247: </a>  }
+
+<a name="line249">249: </a>  <font color="#B22222">/* generate work space needed by the factorization */</font>
+<a name="line250">250: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc2.html">PetscMalloc2</a>(bs2 * n, &amp;rtmp, bs2, &amp;mwork));
+<a name="line251">251: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(rtmp, bs2 * n));
+
+<a name="line253">253: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; n; i++) {
+<a name="line254">254: </a>    <font color="#B22222">/* zero rtmp */</font>
+<a name="line255">255: </a>    <font color="#B22222">/* L part */</font>
+<a name="line256">256: </a>    nz    = bi[i + 1] - bi[i];
+<a name="line257">257: </a>    bjtmp = bj + bi[i];
+<a name="line258">258: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(rtmp + bs2 * bjtmp[j], bs2));
+
+<a name="line260">260: </a>    <font color="#B22222">/* U part */</font>
+<a name="line261">261: </a>    nz    = bdiag[i] - bdiag[i + 1];
+<a name="line262">262: </a>    bjtmp = bj + bdiag[i + 1] + 1;
+<a name="line263">263: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(rtmp + bs2 * bjtmp[j], bs2));
+
+<a name="line265">265: </a>    <font color="#B22222">/* load in initial (unfactored row) */</font>
+<a name="line266">266: </a>    nz    = ai[r[i] + 1] - ai[r[i]];
+<a name="line267">267: </a>    ajtmp = aj + ai[r[i]];
+<a name="line268">268: </a>    v     = aa + bs2 * ai[r[i]];
+<a name="line269">269: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(rtmp + bs2 * ic[ajtmp[j]], v + bs2 * j, bs2));
+
+<a name="line271">271: </a>    <font color="#B22222">/* elimination */</font>
+<a name="line272">272: </a>    bjtmp = bj + bi[i];
+<a name="line273">273: </a>    nzL   = bi[i + 1] - bi[i];
+<a name="line274">274: </a>    <font color="#4169E1">for</font> (k = 0; k &lt; nzL; k++) {
+<a name="line275">275: </a>      row = bjtmp[k];
+<a name="line276">276: </a>      pc  = rtmp + bs2 * row;
+<a name="line277">277: </a>      <font color="#4169E1">for</font> (flg = 0, j = 0; j &lt; bs2; j++) {
+<a name="line278">278: </a>        <font color="#4169E1">if</font> (pc[j] != 0.0) {
+<a name="line279">279: </a>          flg = 1;
+<a name="line280">280: </a>          <font color="#4169E1">break</font>;
+<a name="line281">281: </a>        }
+<a name="line282">282: </a>      }
+<a name="line283">283: </a>      <font color="#4169E1">if</font> (flg) {
+<a name="line284">284: </a>        pv = b-&gt;a + bs2 * bdiag[row];
+<a name="line285">285: </a>        <font color="#B22222">/* PetscKernel_A_gets_A_times_B(bs,pc,pv,mwork); *pc = *pc * (*pv); */</font>
+<a name="line286">286: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_A_times_B_4(pc, pv, mwork));
+
+<a name="line288">288: </a>        pj = b-&gt;j + bdiag[row + 1] + 1; <font color="#B22222">/* beginning of U(row,:) */</font>
+<a name="line289">289: </a>        pv = b-&gt;a + bs2 * (bdiag[row + 1] + 1);
+<a name="line290">290: </a>        nz = bdiag[row] - bdiag[row + 1] - 1; <font color="#B22222">/* num of entries inU(row,:), excluding diag */</font>
+<a name="line291">291: </a>        <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line292">292: </a>          <font color="#B22222">/* PetscKernel_A_gets_A_minus_B_times_C(bs,rtmp+bs2*pj[j],pc,pv+bs2*j); */</font>
+<a name="line293">293: </a>          <font color="#B22222">/* rtmp+bs2*pj[j] = rtmp+bs2*pj[j] - (*pc)*(pv+bs2*j) */</font>
+<a name="line294">294: </a>          v = rtmp + bs2 * pj[j];
+<a name="line295">295: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_A_minus_B_times_C_4(v, pc, pv));
+<a name="line296">296: </a>          pv += bs2;
+<a name="line297">297: </a>        }
+<a name="line298">298: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(128.0 * nz + 112)); <font color="#B22222">/* flops = 2*bs^3*nz + 2*bs^3 - bs2) */</font>
+<a name="line299">299: </a>      }
+<a name="line300">300: </a>    }
+
+<a name="line302">302: </a>    <font color="#B22222">/* finished row so stick it into b-&gt;a */</font>
+<a name="line303">303: </a>    <font color="#B22222">/* L part */</font>
+<a name="line304">304: </a>    pv = b-&gt;a + bs2 * bi[i];
+<a name="line305">305: </a>    pj = b-&gt;j + bi[i];
+<a name="line306">306: </a>    nz = bi[i + 1] - bi[i];
+<a name="line307">307: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(pv + bs2 * j, rtmp + bs2 * pj[j], bs2));
+
+<a name="line309">309: </a>    <font color="#B22222">/* Mark diagonal and invert diagonal for simpler triangular solves */</font>
+<a name="line310">310: </a>    pv = b-&gt;a + bs2 * bdiag[i];
+<a name="line311">311: </a>    pj = b-&gt;j + bdiag[i];
+<a name="line312">312: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(pv, rtmp + bs2 * pj[0], bs2));
+<a name="line313">313: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_inverse_A_4(pv, shift, allowzeropivot, &amp;zeropivotdetected));
+<a name="line314">314: </a>    <font color="#4169E1">if</font> (zeropivotdetected) C-&gt;factorerrortype = MAT_FACTOR_NUMERIC_ZEROPIVOT;
+
+<a name="line316">316: </a>    <font color="#B22222">/* U part */</font>
+<a name="line317">317: </a>    pv = b-&gt;a + bs2 * (bdiag[i + 1] + 1);
+<a name="line318">318: </a>    pj = b-&gt;j + bdiag[i + 1] + 1;
+<a name="line319">319: </a>    nz = bdiag[i] - bdiag[i + 1] - 1;
+<a name="line320">320: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(pv + bs2 * j, rtmp + bs2 * pj[j], bs2));
+<a name="line321">321: </a>  }
+
+<a name="line323">323: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(rtmp, mwork));
+<a name="line324">324: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isicol, &amp;ic));
+<a name="line325">325: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isrow, &amp;r));
+
+<a name="line327">327: </a>  C-&gt;ops-&gt;solve          = MatSolve_SeqBAIJ_4;
+<a name="line328">328: </a>  C-&gt;ops-&gt;solvetranspose = MatSolveTranspose_SeqBAIJ_4;
+<a name="line329">329: </a>  C-&gt;assembled           = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line331">331: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(1.333333333333 * 4 * 4 * 4 * n)); <font color="#B22222">/* from inverting diagonal blocks */</font>
+<a name="line332">332: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line333">333: </a>}
+
+<a name="line335">335: </a><strong><font color="#4169E1"><a name="MatLUFactorNumeric_SeqBAIJ_4_NaturalOrdering_inplace"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLUFactorNumeric_SeqBAIJ_4_NaturalOrdering_inplace(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> C, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, const <a href="../../../../../manualpages/Mat/MatFactorInfo.html">MatFactorInfo</a> *info)</font></strong>
+<a name="line336">336: </a>{
+<a name="line337">337: </a>  <font color="#B22222">/*</font>
+<a name="line338">338: </a><font color="#B22222">    Default Version for when blocks are 4 by 4 Using natural ordering</font>
+<a name="line339">339: </a><font color="#B22222">*/</font>
+<a name="line340">340: </a>  Mat_SeqBAIJ *a = (Mat_SeqBAIJ *)A-&gt;data, *b = (Mat_SeqBAIJ *)C-&gt;data;
+<a name="line341">341: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     i, j, n = a-&gt;mbs, *bi = b-&gt;i, *bj = b-&gt;j;
+<a name="line342">342: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *ajtmpold, *ajtmp, nz, row;
+<a name="line343">343: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *diag_offset = b-&gt;diag, *ai = a-&gt;i, *aj = a-&gt;j, *pj;
+<a name="line344">344: </a>  MatScalar   *pv, *v, *rtmp, *pc, *w, *x;
+<a name="line345">345: </a>  MatScalar    p1, p2, p3, p4, m1, m2, m3, m4, m5, m6, m7, m8, m9, x1, x2, x3, x4;
+<a name="line346">346: </a>  MatScalar    p5, p6, p7, p8, p9, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16;
+<a name="line347">347: </a>  MatScalar    p10, p11, p12, p13, p14, p15, p16, m10, m11, m12;
+<a name="line348">348: </a>  MatScalar    m13, m14, m15, m16;
+<a name="line349">349: </a>  MatScalar   *ba = b-&gt;a, *aa = a-&gt;a;
+<a name="line350">350: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>    pivotinblocks = b-&gt;pivotinblocks;
+<a name="line351">351: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>    shift         = info-&gt;shiftamount;
+<a name="line352">352: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>    allowzeropivot, zeropivotdetected = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line354">354: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line355">355: </a>  allowzeropivot = <a href="../../../../../manualpages/Sys/PetscNot.html">PetscNot</a>(A-&gt;erroriffailure);
+<a name="line356">356: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(16 * (n + 1), &amp;rtmp));
+
+<a name="line358">358: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; n; i++) {
+<a name="line359">359: </a>    nz    = bi[i + 1] - bi[i];
+<a name="line360">360: </a>    ajtmp = bj + bi[i];
+<a name="line361">361: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line362">362: </a>      x    = rtmp + 16 * ajtmp[j];
+<a name="line363">363: </a>      x[0] = x[1] = x[2] = x[3] = x[4] = x[5] = x[6] = x[7] = x[8] = x[9] = 0.0;
+<a name="line364">364: </a>      x[10] = x[11] = x[12] = x[13] = x[14] = x[15] = 0.0;
+<a name="line365">365: </a>    }
+<a name="line366">366: </a>    <font color="#B22222">/* load in initial (unfactored row) */</font>
+<a name="line367">367: </a>    nz       = ai[i + 1] - ai[i];
+<a name="line368">368: </a>    ajtmpold = aj + ai[i];
+<a name="line369">369: </a>    v        = aa + 16 * ai[i];
+<a name="line370">370: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line371">371: </a>      x     = rtmp + 16 * ajtmpold[j];
+<a name="line372">372: </a>      x[0]  = v[0];
+<a name="line373">373: </a>      x[1]  = v[1];
+<a name="line374">374: </a>      x[2]  = v[2];
+<a name="line375">375: </a>      x[3]  = v[3];
+<a name="line376">376: </a>      x[4]  = v[4];
+<a name="line377">377: </a>      x[5]  = v[5];
+<a name="line378">378: </a>      x[6]  = v[6];
+<a name="line379">379: </a>      x[7]  = v[7];
+<a name="line380">380: </a>      x[8]  = v[8];
+<a name="line381">381: </a>      x[9]  = v[9];
+<a name="line382">382: </a>      x[10] = v[10];
+<a name="line383">383: </a>      x[11] = v[11];
+<a name="line384">384: </a>      x[12] = v[12];
+<a name="line385">385: </a>      x[13] = v[13];
+<a name="line386">386: </a>      x[14] = v[14];
+<a name="line387">387: </a>      x[15] = v[15];
+<a name="line388">388: </a>      v += 16;
+<a name="line389">389: </a>    }
+<a name="line390">390: </a>    row = *ajtmp++;
+<a name="line391">391: </a>    <font color="#4169E1">while</font> (row &lt; i) {
+<a name="line392">392: </a>      pc  = rtmp + 16 * row;
+<a name="line393">393: </a>      p1  = pc[0];
+<a name="line394">394: </a>      p2  = pc[1];
+<a name="line395">395: </a>      p3  = pc[2];
+<a name="line396">396: </a>      p4  = pc[3];
+<a name="line397">397: </a>      p5  = pc[4];
+<a name="line398">398: </a>      p6  = pc[5];
+<a name="line399">399: </a>      p7  = pc[6];
+<a name="line400">400: </a>      p8  = pc[7];
+<a name="line401">401: </a>      p9  = pc[8];
+<a name="line402">402: </a>      p10 = pc[9];
+<a name="line403">403: </a>      p11 = pc[10];
+<a name="line404">404: </a>      p12 = pc[11];
+<a name="line405">405: </a>      p13 = pc[12];
+<a name="line406">406: </a>      p14 = pc[13];
+<a name="line407">407: </a>      p15 = pc[14];
+<a name="line408">408: </a>      p16 = pc[15];
+<a name="line409">409: </a>      <font color="#4169E1">if</font> (p1 != 0.0 || p2 != 0.0 || p3 != 0.0 || p4 != 0.0 || p5 != 0.0 || p6 != 0.0 || p7 != 0.0 || p8 != 0.0 || p9 != 0.0 || p10 != 0.0 || p11 != 0.0 || p12 != 0.0 || p13 != 0.0 || p14 != 0.0 || p15 != 0.0 || p16 != 0.0) {
+<a name="line410">410: </a>        pv    = ba + 16 * diag_offset[row];
+<a name="line411">411: </a>        pj    = bj + diag_offset[row] + 1;
+<a name="line412">412: </a>        x1    = pv[0];
+<a name="line413">413: </a>        x2    = pv[1];
+<a name="line414">414: </a>        x3    = pv[2];
+<a name="line415">415: </a>        x4    = pv[3];
+<a name="line416">416: </a>        x5    = pv[4];
+<a name="line417">417: </a>        x6    = pv[5];
+<a name="line418">418: </a>        x7    = pv[6];
+<a name="line419">419: </a>        x8    = pv[7];
+<a name="line420">420: </a>        x9    = pv[8];
+<a name="line421">421: </a>        x10   = pv[9];
+<a name="line422">422: </a>        x11   = pv[10];
+<a name="line423">423: </a>        x12   = pv[11];
+<a name="line424">424: </a>        x13   = pv[12];
+<a name="line425">425: </a>        x14   = pv[13];
+<a name="line426">426: </a>        x15   = pv[14];
+<a name="line427">427: </a>        x16   = pv[15];
+<a name="line428">428: </a>        pc[0] = m1 = p1 * x1 + p5 * x2 + p9 * x3 + p13 * x4;
+<a name="line429">429: </a>        pc[1] = m2 = p2 * x1 + p6 * x2 + p10 * x3 + p14 * x4;
+<a name="line430">430: </a>        pc[2] = m3 = p3 * x1 + p7 * x2 + p11 * x3 + p15 * x4;
+<a name="line431">431: </a>        pc[3] = m4 = p4 * x1 + p8 * x2 + p12 * x3 + p16 * x4;
+
+<a name="line433">433: </a>        pc[4] = m5 = p1 * x5 + p5 * x6 + p9 * x7 + p13 * x8;
+<a name="line434">434: </a>        pc[5] = m6 = p2 * x5 + p6 * x6 + p10 * x7 + p14 * x8;
+<a name="line435">435: </a>        pc[6] = m7 = p3 * x5 + p7 * x6 + p11 * x7 + p15 * x8;
+<a name="line436">436: </a>        pc[7] = m8 = p4 * x5 + p8 * x6 + p12 * x7 + p16 * x8;
+
+<a name="line438">438: </a>        pc[8] = m9 = p1 * x9 + p5 * x10 + p9 * x11 + p13 * x12;
+<a name="line439">439: </a>        pc[9] = m10 = p2 * x9 + p6 * x10 + p10 * x11 + p14 * x12;
+<a name="line440">440: </a>        pc[10] = m11 = p3 * x9 + p7 * x10 + p11 * x11 + p15 * x12;
+<a name="line441">441: </a>        pc[11] = m12 = p4 * x9 + p8 * x10 + p12 * x11 + p16 * x12;
+
+<a name="line443">443: </a>        pc[12] = m13 = p1 * x13 + p5 * x14 + p9 * x15 + p13 * x16;
+<a name="line444">444: </a>        pc[13] = m14 = p2 * x13 + p6 * x14 + p10 * x15 + p14 * x16;
+<a name="line445">445: </a>        pc[14] = m15 = p3 * x13 + p7 * x14 + p11 * x15 + p15 * x16;
+<a name="line446">446: </a>        pc[15] = m16 = p4 * x13 + p8 * x14 + p12 * x15 + p16 * x16;
+<a name="line447">447: </a>        nz           = bi[row + 1] - diag_offset[row] - 1;
+<a name="line448">448: </a>        pv += 16;
+<a name="line449">449: </a>        <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line450">450: </a>          x1  = pv[0];
+<a name="line451">451: </a>          x2  = pv[1];
+<a name="line452">452: </a>          x3  = pv[2];
+<a name="line453">453: </a>          x4  = pv[3];
+<a name="line454">454: </a>          x5  = pv[4];
+<a name="line455">455: </a>          x6  = pv[5];
+<a name="line456">456: </a>          x7  = pv[6];
+<a name="line457">457: </a>          x8  = pv[7];
+<a name="line458">458: </a>          x9  = pv[8];
+<a name="line459">459: </a>          x10 = pv[9];
+<a name="line460">460: </a>          x11 = pv[10];
+<a name="line461">461: </a>          x12 = pv[11];
+<a name="line462">462: </a>          x13 = pv[12];
+<a name="line463">463: </a>          x14 = pv[13];
+<a name="line464">464: </a>          x15 = pv[14];
+<a name="line465">465: </a>          x16 = pv[15];
+<a name="line466">466: </a>          x   = rtmp + 16 * pj[j];
+<a name="line467">467: </a>          x[0] -= m1 * x1 + m5 * x2 + m9 * x3 + m13 * x4;
+<a name="line468">468: </a>          x[1] -= m2 * x1 + m6 * x2 + m10 * x3 + m14 * x4;
+<a name="line469">469: </a>          x[2] -= m3 * x1 + m7 * x2 + m11 * x3 + m15 * x4;
+<a name="line470">470: </a>          x[3] -= m4 * x1 + m8 * x2 + m12 * x3 + m16 * x4;
+
+<a name="line472">472: </a>          x[4] -= m1 * x5 + m5 * x6 + m9 * x7 + m13 * x8;
+<a name="line473">473: </a>          x[5] -= m2 * x5 + m6 * x6 + m10 * x7 + m14 * x8;
+<a name="line474">474: </a>          x[6] -= m3 * x5 + m7 * x6 + m11 * x7 + m15 * x8;
+<a name="line475">475: </a>          x[7] -= m4 * x5 + m8 * x6 + m12 * x7 + m16 * x8;
+
+<a name="line477">477: </a>          x[8] -= m1 * x9 + m5 * x10 + m9 * x11 + m13 * x12;
+<a name="line478">478: </a>          x[9] -= m2 * x9 + m6 * x10 + m10 * x11 + m14 * x12;
+<a name="line479">479: </a>          x[10] -= m3 * x9 + m7 * x10 + m11 * x11 + m15 * x12;
+<a name="line480">480: </a>          x[11] -= m4 * x9 + m8 * x10 + m12 * x11 + m16 * x12;
+
+<a name="line482">482: </a>          x[12] -= m1 * x13 + m5 * x14 + m9 * x15 + m13 * x16;
+<a name="line483">483: </a>          x[13] -= m2 * x13 + m6 * x14 + m10 * x15 + m14 * x16;
+<a name="line484">484: </a>          x[14] -= m3 * x13 + m7 * x14 + m11 * x15 + m15 * x16;
+<a name="line485">485: </a>          x[15] -= m4 * x13 + m8 * x14 + m12 * x15 + m16 * x16;
+
+<a name="line487">487: </a>          pv += 16;
+<a name="line488">488: </a>        }
+<a name="line489">489: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(128.0 * nz + 112.0));
+<a name="line490">490: </a>      }
+<a name="line491">491: </a>      row = *ajtmp++;
+<a name="line492">492: </a>    }
+<a name="line493">493: </a>    <font color="#B22222">/* finished row so stick it into b-&gt;a */</font>
+<a name="line494">494: </a>    pv = ba + 16 * bi[i];
+<a name="line495">495: </a>    pj = bj + bi[i];
+<a name="line496">496: </a>    nz = bi[i + 1] - bi[i];
+<a name="line497">497: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line498">498: </a>      x      = rtmp + 16 * pj[j];
+<a name="line499">499: </a>      pv[0]  = x[0];
+<a name="line500">500: </a>      pv[1]  = x[1];
+<a name="line501">501: </a>      pv[2]  = x[2];
+<a name="line502">502: </a>      pv[3]  = x[3];
+<a name="line503">503: </a>      pv[4]  = x[4];
+<a name="line504">504: </a>      pv[5]  = x[5];
+<a name="line505">505: </a>      pv[6]  = x[6];
+<a name="line506">506: </a>      pv[7]  = x[7];
+<a name="line507">507: </a>      pv[8]  = x[8];
+<a name="line508">508: </a>      pv[9]  = x[9];
+<a name="line509">509: </a>      pv[10] = x[10];
+<a name="line510">510: </a>      pv[11] = x[11];
+<a name="line511">511: </a>      pv[12] = x[12];
+<a name="line512">512: </a>      pv[13] = x[13];
+<a name="line513">513: </a>      pv[14] = x[14];
+<a name="line514">514: </a>      pv[15] = x[15];
+<a name="line515">515: </a>      pv += 16;
+<a name="line516">516: </a>    }
+<a name="line517">517: </a>    <font color="#B22222">/* invert diagonal block */</font>
+<a name="line518">518: </a>    w = ba + 16 * diag_offset[i];
+<a name="line519">519: </a>    <font color="#4169E1">if</font> (pivotinblocks) {
+<a name="line520">520: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_inverse_A_4(w, shift, allowzeropivot, &amp;zeropivotdetected));
+<a name="line521">521: </a>      <font color="#4169E1">if</font> (zeropivotdetected) C-&gt;factorerrortype = MAT_FACTOR_NUMERIC_ZEROPIVOT;
+<a name="line522">522: </a>    } <font color="#4169E1">else</font> {
+<a name="line523">523: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_inverse_A_4_nopivot(w));
+<a name="line524">524: </a>    }
+<a name="line525">525: </a>  }
+
+<a name="line527">527: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(rtmp));
+
+<a name="line529">529: </a>  C-&gt;ops-&gt;solve          = MatSolve_SeqBAIJ_4_NaturalOrdering_inplace;
+<a name="line530">530: </a>  C-&gt;ops-&gt;solvetranspose = MatSolveTranspose_SeqBAIJ_4_NaturalOrdering_inplace;
+<a name="line531">531: </a>  C-&gt;assembled           = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line533">533: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(1.333333333333 * 4 * 4 * 4 * b-&gt;mbs)); <font color="#B22222">/* from inverting diagonal blocks */</font>
+<a name="line534">534: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line535">535: </a>}
+
+<a name="line537">537: </a><font color="#B22222">/*</font>
+<a name="line538">538: </a><font color="#B22222">  MatLUFactorNumeric_SeqBAIJ_4_NaturalOrdering -</font>
+<a name="line539">539: </a><font color="#B22222">    copied from MatLUFactorNumeric_SeqBAIJ_3_NaturalOrdering_inplace()</font>
+<a name="line540">540: </a><font color="#B22222">*/</font>
+<a name="line541">541: </a><strong><font color="#4169E1"><a name="MatLUFactorNumeric_SeqBAIJ_4_NaturalOrdering"></a><a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLUFactorNumeric_SeqBAIJ_4_NaturalOrdering(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, const <a href="../../../../../manualpages/Mat/MatFactorInfo.html">MatFactorInfo</a> *info)</font></strong>
+<a name="line542">542: </a>{
+<a name="line543">543: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>             C = B;
+<a name="line544">544: </a>  Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A-&gt;data, *b = (Mat_SeqBAIJ *)C-&gt;data;
+<a name="line545">545: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        i, j, k, nz, nzL, row;
+<a name="line546">546: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  n = a-&gt;mbs, *ai = a-&gt;i, *aj = a-&gt;j, *bi = b-&gt;i, *bj = b-&gt;j;
+<a name="line547">547: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *ajtmp, *bjtmp, *bdiag = b-&gt;diag, *pj, bs2 = a-&gt;bs2;
+<a name="line548">548: </a>  MatScalar      *rtmp, *pc, *mwork, *v, *pv, *aa = a-&gt;a;
+<a name="line549">549: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        flg;
+<a name="line550">550: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>       shift;
+<a name="line551">551: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>       allowzeropivot, zeropivotdetected;
+
+<a name="line553">553: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line554">554: </a>  allowzeropivot = <a href="../../../../../manualpages/Sys/PetscNot.html">PetscNot</a>(A-&gt;erroriffailure);
+
+<a name="line556">556: </a>  <font color="#B22222">/* generate work space needed by the factorization */</font>
+<a name="line557">557: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc2.html">PetscMalloc2</a>(bs2 * n, &amp;rtmp, bs2, &amp;mwork));
+<a name="line558">558: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(rtmp, bs2 * n));
+
+<a name="line560">560: </a>  <font color="#4169E1">if</font> (info-&gt;shifttype == (<a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>)MAT_SHIFT_NONE) {
+<a name="line561">561: </a>    shift = 0;
+<a name="line562">562: </a>  } <font color="#4169E1">else</font> { <font color="#B22222">/* info-&gt;shifttype == MAT_SHIFT_INBLOCKS */</font>
+<a name="line563">563: </a>    shift = info-&gt;shiftamount;
+<a name="line564">564: </a>  }
+
+<a name="line566">566: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; n; i++) {
+<a name="line567">567: </a>    <font color="#B22222">/* zero rtmp */</font>
+<a name="line568">568: </a>    <font color="#B22222">/* L part */</font>
+<a name="line569">569: </a>    nz    = bi[i + 1] - bi[i];
+<a name="line570">570: </a>    bjtmp = bj + bi[i];
+<a name="line571">571: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(rtmp + bs2 * bjtmp[j], bs2));
+
+<a name="line573">573: </a>    <font color="#B22222">/* U part */</font>
+<a name="line574">574: </a>    nz    = bdiag[i] - bdiag[i + 1];
+<a name="line575">575: </a>    bjtmp = bj + bdiag[i + 1] + 1;
+<a name="line576">576: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(rtmp + bs2 * bjtmp[j], bs2));
+
+<a name="line578">578: </a>    <font color="#B22222">/* load in initial (unfactored row) */</font>
+<a name="line579">579: </a>    nz    = ai[i + 1] - ai[i];
+<a name="line580">580: </a>    ajtmp = aj + ai[i];
+<a name="line581">581: </a>    v     = aa + bs2 * ai[i];
+<a name="line582">582: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(rtmp + bs2 * ajtmp[j], v + bs2 * j, bs2));
+
+<a name="line584">584: </a>    <font color="#B22222">/* elimination */</font>
+<a name="line585">585: </a>    bjtmp = bj + bi[i];
+<a name="line586">586: </a>    nzL   = bi[i + 1] - bi[i];
+<a name="line587">587: </a>    <font color="#4169E1">for</font> (k = 0; k &lt; nzL; k++) {
+<a name="line588">588: </a>      row = bjtmp[k];
+<a name="line589">589: </a>      pc  = rtmp + bs2 * row;
+<a name="line590">590: </a>      <font color="#4169E1">for</font> (flg = 0, j = 0; j &lt; bs2; j++) {
+<a name="line591">591: </a>        <font color="#4169E1">if</font> (pc[j] != 0.0) {
+<a name="line592">592: </a>          flg = 1;
+<a name="line593">593: </a>          <font color="#4169E1">break</font>;
+<a name="line594">594: </a>        }
+<a name="line595">595: </a>      }
+<a name="line596">596: </a>      <font color="#4169E1">if</font> (flg) {
+<a name="line597">597: </a>        pv = b-&gt;a + bs2 * bdiag[row];
+<a name="line598">598: </a>        <font color="#B22222">/* PetscKernel_A_gets_A_times_B(bs,pc,pv,mwork); *pc = *pc * (*pv); */</font>
+<a name="line599">599: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_A_times_B_4(pc, pv, mwork));
+
+<a name="line601">601: </a>        pj = b-&gt;j + bdiag[row + 1] + 1; <font color="#B22222">/* beginning of U(row,:) */</font>
+<a name="line602">602: </a>        pv = b-&gt;a + bs2 * (bdiag[row + 1] + 1);
+<a name="line603">603: </a>        nz = bdiag[row] - bdiag[row + 1] - 1; <font color="#B22222">/* num of entries inU(row,:), excluding diag */</font>
+<a name="line604">604: </a>        <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) {
+<a name="line605">605: </a>          <font color="#B22222">/* PetscKernel_A_gets_A_minus_B_times_C(bs,rtmp+bs2*pj[j],pc,pv+bs2*j); */</font>
+<a name="line606">606: </a>          <font color="#B22222">/* rtmp+bs2*pj[j] = rtmp+bs2*pj[j] - (*pc)*(pv+bs2*j) */</font>
+<a name="line607">607: </a>          v = rtmp + bs2 * pj[j];
+<a name="line608">608: </a>          <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_A_minus_B_times_C_4(v, pc, pv));
+<a name="line609">609: </a>          pv += bs2;
+<a name="line610">610: </a>        }
+<a name="line611">611: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(128.0 * nz + 112)); <font color="#B22222">/* flops = 2*bs^3*nz + 2*bs^3 - bs2) */</font>
+<a name="line612">612: </a>      }
+<a name="line613">613: </a>    }
+
+<a name="line615">615: </a>    <font color="#B22222">/* finished row so stick it into b-&gt;a */</font>
+<a name="line616">616: </a>    <font color="#B22222">/* L part */</font>
+<a name="line617">617: </a>    pv = b-&gt;a + bs2 * bi[i];
+<a name="line618">618: </a>    pj = b-&gt;j + bi[i];
+<a name="line619">619: </a>    nz = bi[i + 1] - bi[i];
+<a name="line620">620: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(pv + bs2 * j, rtmp + bs2 * pj[j], bs2));
+
+<a name="line622">622: </a>    <font color="#B22222">/* Mark diagonal and invert diagonal for simpler triangular solves */</font>
+<a name="line623">623: </a>    pv = b-&gt;a + bs2 * bdiag[i];
+<a name="line624">624: </a>    pj = b-&gt;j + bdiag[i];
+<a name="line625">625: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(pv, rtmp + bs2 * pj[0], bs2));
+<a name="line626">626: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscKernel_A_gets_inverse_A_4(pv, shift, allowzeropivot, &amp;zeropivotdetected));
+<a name="line627">627: </a>    <font color="#4169E1">if</font> (zeropivotdetected) C-&gt;factorerrortype = MAT_FACTOR_NUMERIC_ZEROPIVOT;
+
+<a name="line629">629: </a>    <font color="#B22222">/* U part */</font>
+<a name="line630">630: </a>    pv = b-&gt;a + bs2 * (bdiag[i + 1] + 1);
+<a name="line631">631: </a>    pj = b-&gt;j + bdiag[i + 1] + 1;
+<a name="line632">632: </a>    nz = bdiag[i] - bdiag[i + 1] - 1;
+<a name="line633">633: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(pv + bs2 * j, rtmp + bs2 * pj[j], bs2));
+<a name="line634">634: </a>  }
+<a name="line635">635: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(rtmp, mwork));
+
+<a name="line637">637: </a>  C-&gt;ops-&gt;solve          = MatSolve_SeqBAIJ_4_NaturalOrdering;
+<a name="line638">638: </a>  C-&gt;ops-&gt;solvetranspose = MatSolveTranspose_SeqBAIJ_4_NaturalOrdering;
+<a name="line639">639: </a>  C-&gt;assembled           = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line641">641: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>(1.333333333333 * 4 * 4 * 4 * n)); <font color="#B22222">/* from inverting diagonal blocks */</font>
+<a name="line642">642: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line643">643: </a>}
+</pre>
+</body>
+
+</html>
+

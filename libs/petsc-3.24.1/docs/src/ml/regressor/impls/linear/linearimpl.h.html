@@ -1,0 +1,43 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ml/regressor/impls/linear/linearimpl.h">Actual source code: linearimpl.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:22+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/regressorimpl.h.html">&lt;petsc/private/regressorimpl.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petsctao.h.html">&lt;petsctao.h&gt;</A>
+
+<a name="line6">  6: </a><font color="#B22222">/* We define this header, since it serves as a "base" for all linear models. */</font>
+<a name="line7">  7: </a><strong><font color="#228B22">#define REGRESSOR_LINEAR_HEADER \</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/PetscRegressor/PetscRegressorLinearType.html">PetscRegressorLinearType</a> type; \</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  </font><font color="#B22222">/* Parameters of the fitted regression model */</font><font color="#228B22"> \</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>         coefficients; \</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> intercept; \</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">\</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> X;        </font><font color="#B22222">/* Operator of the linear model; often the training data matrix, but might be a <a href="../../../../../manualpages/Mat/MATCOMPOSITE.html">MATCOMPOSITE</a> */</font><font color="#228B22"> \</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> C;        </font><font color="#B22222">/* Centering matrix */</font><font color="#228B22"> \</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> rhs;      </font><font color="#B22222">/* Right-hand side of the linear model; often the target vector, but may be the mean-centered version */</font><font color="#228B22"> \</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> residual; </font><font color="#B22222">/* Residual for our model, or the loss vector */</font><font color="#228B22"> \</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  </font><font color="#B22222">/* Various options */</font><font color="#228B22"> \</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> fit_intercept; </font><font color="#B22222">/* Calculate intercept ("bias" or "offset") if true. Assume centered data if false. */</font><font color="#228B22"> \</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> use_ksp        </font><font color="#B22222">/* Use <a href="../../../../../manualpages/KSP/KSP.html">KSP</a> for the model-fitting problem; otherwise we will use TAO. */</font><font color="#228B22"></font></strong>
+
+<a name="line21"> 21: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line22"> 22: </a>  REGRESSOR_LINEAR_HEADER;
+
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ksp_its, ksp_tot_its;
+<a name="line25"> 25: </a>  <a href="../../../../../manualpages/KSP/KSP.html">KSP</a>      ksp;
+<a name="line26"> 26: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>      XtX; <font color="#B22222">/* Normal matrix formed from X */</font>
+<a name="line27"> 27: </a>} PetscRegressor_Linear;
+</pre>
+</body>
+
+</html>
+

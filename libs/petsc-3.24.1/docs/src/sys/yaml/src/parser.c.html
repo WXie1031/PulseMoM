@@ -1,0 +1,1389 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/yaml/src/parser.c">Actual source code: parser.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+
+<a name="line2">  2: </a><font color="#B22222">/*</font>
+<a name="line3">  3: </a><font color="#B22222"> * The parser implements the following grammar:</font>
+<a name="line4">  4: </a><font color="#B22222"> *</font>
+<a name="line5">  5: </a><font color="#B22222"> * stream               ::= STREAM-START implicit_document? explicit_document* STREAM-END</font>
+<a name="line6">  6: </a><font color="#B22222"> * implicit_document    ::= block_node DOCUMENT-END*</font>
+<a name="line7">  7: </a><font color="#B22222"> * explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*</font>
+<a name="line8">  8: </a><font color="#B22222"> * block_node_or_indentless_sequence    ::=</font>
+<a name="line9">  9: </a><font color="#B22222"> *                          ALIAS</font>
+<a name="line10"> 10: </a><font color="#B22222"> *                          | properties (block_content | indentless_block_sequence)?</font>
+<a name="line11"> 11: </a><font color="#B22222"> *                          | block_content</font>
+<a name="line12"> 12: </a><font color="#B22222"> *                          | indentless_block_sequence</font>
+<a name="line13"> 13: </a><font color="#B22222"> * block_node           ::= ALIAS</font>
+<a name="line14"> 14: </a><font color="#B22222"> *                          | properties block_content?</font>
+<a name="line15"> 15: </a><font color="#B22222"> *                          | block_content</font>
+<a name="line16"> 16: </a><font color="#B22222"> * flow_node            ::= ALIAS</font>
+<a name="line17"> 17: </a><font color="#B22222"> *                          | properties flow_content?</font>
+<a name="line18"> 18: </a><font color="#B22222"> *                          | flow_content</font>
+<a name="line19"> 19: </a><font color="#B22222"> * properties           ::= TAG ANCHOR? | ANCHOR TAG?</font>
+<a name="line20"> 20: </a><font color="#B22222"> * block_content        ::= block_collection | flow_collection | SCALAR</font>
+<a name="line21"> 21: </a><font color="#B22222"> * flow_content         ::= flow_collection | SCALAR</font>
+<a name="line22"> 22: </a><font color="#B22222"> * block_collection     ::= block_sequence | block_mapping</font>
+<a name="line23"> 23: </a><font color="#B22222"> * flow_collection      ::= flow_sequence | flow_mapping</font>
+<a name="line24"> 24: </a><font color="#B22222"> * block_sequence       ::= BLOCK-SEQUENCE-START (BLOCK-ENTRY block_node?)* BLOCK-END</font>
+<a name="line25"> 25: </a><font color="#B22222"> * indentless_sequence  ::= (BLOCK-ENTRY block_node?)+</font>
+<a name="line26"> 26: </a><font color="#B22222"> * block_mapping        ::= BLOCK-MAPPING_START</font>
+<a name="line27"> 27: </a><font color="#B22222"> *                          ((KEY block_node_or_indentless_sequence?)?</font>
+<a name="line28"> 28: </a><font color="#B22222"> *                          (VALUE block_node_or_indentless_sequence?)?)*</font>
+<a name="line29"> 29: </a><font color="#B22222"> *                          BLOCK-END</font>
+<a name="line30"> 30: </a><font color="#B22222"> * flow_sequence        ::= FLOW-SEQUENCE-START</font>
+<a name="line31"> 31: </a><font color="#B22222"> *                          (flow_sequence_entry FLOW-ENTRY)*</font>
+<a name="line32"> 32: </a><font color="#B22222"> *                          flow_sequence_entry?</font>
+<a name="line33"> 33: </a><font color="#B22222"> *                          FLOW-SEQUENCE-END</font>
+<a name="line34"> 34: </a><font color="#B22222"> * flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line35"> 35: </a><font color="#B22222"> * flow_mapping         ::= FLOW-MAPPING-START</font>
+<a name="line36"> 36: </a><font color="#B22222"> *                          (flow_mapping_entry FLOW-ENTRY)*</font>
+<a name="line37"> 37: </a><font color="#B22222"> *                          flow_mapping_entry?</font>
+<a name="line38"> 38: </a><font color="#B22222"> *                          FLOW-MAPPING-END</font>
+<a name="line39"> 39: </a><font color="#B22222"> * flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line40"> 40: </a><font color="#B22222"> */</font>
+
+<a name="line42"> 42: </a><font color="#A020F0">#include </font><font color="#666666">"yaml_private.h"</font><font color="#A020F0"></font>
+
+<a name="line44"> 44: </a><font color="#B22222">/*</font>
+<a name="line45"> 45: </a><font color="#B22222"> * Peek the next token in the token queue.</font>
+<a name="line46"> 46: </a><font color="#B22222"> */</font>
+
+<a name="line48"> 48: </a><strong><font color="#228B22">#define PEEK_TOKEN(parser)                                                      \</font></strong>
+<a name="line49"> 49: </a><strong><font color="#228B22">    ((parser-&gt;token_available || yaml_parser_fetch_more_tokens(parser)) ?       \</font></strong>
+<a name="line50"> 50: </a><strong><font color="#228B22">        parser-&gt;tokens.head : NULL)</font></strong>
+
+<a name="line52"> 52: </a><font color="#B22222">/*</font>
+<a name="line53"> 53: </a><font color="#B22222"> * Remove the next token from the queue (must be called after PEEK_TOKEN).</font>
+<a name="line54"> 54: </a><font color="#B22222"> */</font>
+
+<a name="line56"> 56: </a><strong><font color="#228B22">#define SKIP_TOKEN(parser)                                                      \</font></strong>
+<a name="line57"> 57: </a><strong><font color="#228B22">    (parser-&gt;token_available = 0,                                               \</font></strong>
+<a name="line58"> 58: </a><strong><font color="#228B22">     parser-&gt;tokens_parsed ++,                                                  \</font></strong>
+<a name="line59"> 59: </a><strong><font color="#228B22">     parser-&gt;stream_end_produced =                                              \</font></strong>
+<a name="line60"> 60: </a><strong><font color="#228B22">        (parser-&gt;tokens.head-&gt;type == YAML_STREAM_END_TOKEN),                   \</font></strong>
+<a name="line61"> 61: </a><strong><font color="#228B22">     parser-&gt;tokens.head ++)</font></strong>
+
+<a name="line63"> 63: </a><font color="#B22222">/*</font>
+<a name="line64"> 64: </a><font color="#B22222"> * Public API declarations.</font>
+<a name="line65"> 65: </a><font color="#B22222"> */</font>
+
+<a name="line67"> 67: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line68"> 68: </a><strong><font color="#4169E1">yaml_parser_parse(yaml_parser_t *parser, yaml_event_t *event)</font></strong>;
+
+<a name="line70"> 70: </a><font color="#B22222">/*</font>
+<a name="line71"> 71: </a><font color="#B22222"> * Error handling.</font>
+<a name="line72"> 72: </a><font color="#B22222"> */</font>
+
+<a name="line74"> 74: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line75"> 75: </a><strong><font color="#4169E1">yaml_parser_set_parser_error(yaml_parser_t *parser,</font></strong>
+<a name="line76"> 76: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>;
+
+<a name="line78"> 78: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line79"> 79: </a><strong><font color="#4169E1">yaml_parser_set_parser_error_context(yaml_parser_t *parser,</font></strong>
+<a name="line80"> 80: </a><strong><font color="#4169E1">        const char *context, yaml_mark_t context_mark,</font></strong>
+<a name="line81"> 81: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>;
+
+<a name="line83"> 83: </a><font color="#B22222">/*</font>
+<a name="line84"> 84: </a><font color="#B22222"> * State functions.</font>
+<a name="line85"> 85: </a><font color="#B22222"> */</font>
+
+<a name="line87"> 87: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line88"> 88: </a><strong><font color="#4169E1">yaml_parser_state_machine(yaml_parser_t *parser, yaml_event_t *event)</font></strong>;
+
+<a name="line90"> 90: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line91"> 91: </a><strong><font color="#4169E1">yaml_parser_parse_stream_start(yaml_parser_t *parser, yaml_event_t *event)</font></strong>;
+
+<a name="line93"> 93: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line94"> 94: </a><strong><font color="#4169E1">yaml_parser_parse_document_start(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line95"> 95: </a><strong><font color="#4169E1">        int implicit)</font></strong>;
+
+<a name="line97"> 97: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line98"> 98: </a><strong><font color="#4169E1">yaml_parser_parse_document_content(yaml_parser_t *parser, yaml_event_t *event)</font></strong>;
+
+<a name="line100">100: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line101">101: </a><strong><font color="#4169E1">yaml_parser_parse_document_end(yaml_parser_t *parser, yaml_event_t *event)</font></strong>;
+
+<a name="line103">103: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line104">104: </a><strong><font color="#4169E1">yaml_parser_parse_node(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line105">105: </a><strong><font color="#4169E1">        int block, int indentless_sequence)</font></strong>;
+
+<a name="line107">107: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line108">108: </a><strong><font color="#4169E1">yaml_parser_parse_block_sequence_entry(yaml_parser_t *parser,</font></strong>
+<a name="line109">109: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>;
+
+<a name="line111">111: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line112">112: </a><strong><font color="#4169E1">yaml_parser_parse_indentless_sequence_entry(yaml_parser_t *parser,</font></strong>
+<a name="line113">113: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>;
+
+<a name="line115">115: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line116">116: </a><strong><font color="#4169E1">yaml_parser_parse_block_mapping_key(yaml_parser_t *parser,</font></strong>
+<a name="line117">117: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>;
+
+<a name="line119">119: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line120">120: </a><strong><font color="#4169E1">yaml_parser_parse_block_mapping_value(yaml_parser_t *parser,</font></strong>
+<a name="line121">121: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>;
+
+<a name="line123">123: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line124">124: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry(yaml_parser_t *parser,</font></strong>
+<a name="line125">125: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>;
+
+<a name="line127">127: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line128">128: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry_mapping_key(yaml_parser_t *parser,</font></strong>
+<a name="line129">129: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>;
+
+<a name="line131">131: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line132">132: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry_mapping_value(yaml_parser_t *parser,</font></strong>
+<a name="line133">133: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>;
+
+<a name="line135">135: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line136">136: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry_mapping_end(yaml_parser_t *parser,</font></strong>
+<a name="line137">137: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>;
+
+<a name="line139">139: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line140">140: </a><strong><font color="#4169E1">yaml_parser_parse_flow_mapping_key(yaml_parser_t *parser,</font></strong>
+<a name="line141">141: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>;
+
+<a name="line143">143: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line144">144: </a><strong><font color="#4169E1">yaml_parser_parse_flow_mapping_value(yaml_parser_t *parser,</font></strong>
+<a name="line145">145: </a><strong><font color="#4169E1">        yaml_event_t *event, int empty)</font></strong>;
+
+<a name="line147">147: </a><font color="#B22222">/*</font>
+<a name="line148">148: </a><font color="#B22222"> * Utility functions.</font>
+<a name="line149">149: </a><font color="#B22222"> */</font>
+
+<a name="line151">151: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line152">152: </a><strong><font color="#4169E1">yaml_parser_process_empty_scalar(yaml_parser_t *parser,</font></strong>
+<a name="line153">153: </a><strong><font color="#4169E1">        yaml_event_t *event, yaml_mark_t mark)</font></strong>;
+
+<a name="line155">155: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line156">156: </a><strong><font color="#4169E1">yaml_parser_process_directives(yaml_parser_t *parser,</font></strong>
+<a name="line157">157: </a><strong><font color="#4169E1">        yaml_version_directive_t **version_directive_ref,</font></strong>
+<a name="line158">158: </a><strong><font color="#4169E1">        yaml_tag_directive_t **tag_directives_start_ref,</font></strong>
+<a name="line159">159: </a><strong><font color="#4169E1">        yaml_tag_directive_t **tag_directives_end_ref)</font></strong>;
+
+<a name="line161">161: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line162">162: </a><strong><font color="#4169E1">yaml_parser_append_tag_directive(yaml_parser_t *parser,</font></strong>
+<a name="line163">163: </a><strong><font color="#4169E1">        yaml_tag_directive_t value, int allow_duplicates, yaml_mark_t mark)</font></strong>;
+
+<a name="line165">165: </a><font color="#B22222">/*</font>
+<a name="line166">166: </a><font color="#B22222"> * Get the next event.</font>
+<a name="line167">167: </a><font color="#B22222"> */</font>
+
+<a name="line169">169: </a><strong><font color="#4169E1"><a name="AML_DECLARE"></a>YAML_DECLARE(int)</font></strong>
+<a name="line170">170: </a><strong><font color="#4169E1">yaml_parser_parse(yaml_parser_t *parser, yaml_event_t *event)</font></strong>
+<a name="line171">171: </a>{
+<a name="line172">172: </a>    assert(parser);     <font color="#B22222">/* Non-NULL parser object is expected. */</font>
+<a name="line173">173: </a>    assert(event);      <font color="#B22222">/* Non-NULL event object is expected. */</font>
+
+<a name="line175">175: </a>    <font color="#B22222">/* Erase the event object. */</font>
+
+<a name="line177">177: </a>    memset(event, 0, <font color="#4169E1">sizeof</font>(yaml_event_t));
+
+<a name="line179">179: </a>    <font color="#B22222">/* No events after the end of the stream or error. */</font>
+
+<a name="line181">181: </a>    <font color="#4169E1">if</font> (parser-&gt;stream_end_produced || parser-&gt;error ||
+<a name="line182">182: </a>            parser-&gt;state == YAML_PARSE_END_STATE) {
+<a name="line183">183: </a>        <font color="#4169E1">return</font> 1;
+<a name="line184">184: </a>    }
+
+<a name="line186">186: </a>    <font color="#B22222">/* Generate the next event. */</font>
+
+<a name="line188">188: </a>    <font color="#4169E1">return</font> yaml_parser_state_machine(parser, event);
+<a name="line189">189: </a>}
+
+<a name="line191">191: </a><font color="#B22222">/*</font>
+<a name="line192">192: </a><font color="#B22222"> * Set parser error.</font>
+<a name="line193">193: </a><font color="#B22222"> */</font>
+
+<a name="line195">195: </a><strong><font color="#4169E1"><a name="yaml_parser_set_parser_error"></a>static int</font></strong>
+<a name="line196">196: </a><strong><font color="#4169E1">yaml_parser_set_parser_error(yaml_parser_t *parser,</font></strong>
+<a name="line197">197: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>
+<a name="line198">198: </a>{
+<a name="line199">199: </a>    parser-&gt;error = YAML_PARSER_ERROR;
+<a name="line200">200: </a>    parser-&gt;problem = problem;
+<a name="line201">201: </a>    parser-&gt;problem_mark = problem_mark;
+
+<a name="line203">203: </a>    <font color="#4169E1">return</font> 0;
+<a name="line204">204: </a>}
+
+<a name="line206">206: </a><strong><font color="#4169E1"><a name="yaml_parser_set_parser_error_context"></a>static int</font></strong>
+<a name="line207">207: </a><strong><font color="#4169E1">yaml_parser_set_parser_error_context(yaml_parser_t *parser,</font></strong>
+<a name="line208">208: </a><strong><font color="#4169E1">        const char *context, yaml_mark_t context_mark,</font></strong>
+<a name="line209">209: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>
+<a name="line210">210: </a>{
+<a name="line211">211: </a>    parser-&gt;error = YAML_PARSER_ERROR;
+<a name="line212">212: </a>    parser-&gt;context = context;
+<a name="line213">213: </a>    parser-&gt;context_mark = context_mark;
+<a name="line214">214: </a>    parser-&gt;problem = problem;
+<a name="line215">215: </a>    parser-&gt;problem_mark = problem_mark;
+
+<a name="line217">217: </a>    <font color="#4169E1">return</font> 0;
+<a name="line218">218: </a>}
+
+
+<a name="line221">221: </a><font color="#B22222">/*</font>
+<a name="line222">222: </a><font color="#B22222"> * State dispatcher.</font>
+<a name="line223">223: </a><font color="#B22222"> */</font>
+
+<a name="line225">225: </a><strong><font color="#4169E1"><a name="yaml_parser_state_machine"></a>static int</font></strong>
+<a name="line226">226: </a><strong><font color="#4169E1">yaml_parser_state_machine(yaml_parser_t *parser, yaml_event_t *event)</font></strong>
+<a name="line227">227: </a>{
+<a name="line228">228: </a>    <font color="#4169E1">switch</font> (parser-&gt;state)
+<a name="line229">229: </a>    {
+<a name="line230">230: </a>        <font color="#4169E1">case</font> YAML_PARSE_STREAM_START_STATE:
+<a name="line231">231: </a>            <font color="#4169E1">return</font> yaml_parser_parse_stream_start(parser, event);
+
+<a name="line233">233: </a>        <font color="#4169E1">case</font> YAML_PARSE_IMPLICIT_DOCUMENT_START_STATE:
+<a name="line234">234: </a>            <font color="#4169E1">return</font> yaml_parser_parse_document_start(parser, event, 1);
+
+<a name="line236">236: </a>        <font color="#4169E1">case</font> YAML_PARSE_DOCUMENT_START_STATE:
+<a name="line237">237: </a>            <font color="#4169E1">return</font> yaml_parser_parse_document_start(parser, event, 0);
+
+<a name="line239">239: </a>        <font color="#4169E1">case</font> YAML_PARSE_DOCUMENT_CONTENT_STATE:
+<a name="line240">240: </a>            <font color="#4169E1">return</font> yaml_parser_parse_document_content(parser, event);
+
+<a name="line242">242: </a>        <font color="#4169E1">case</font> YAML_PARSE_DOCUMENT_END_STATE:
+<a name="line243">243: </a>            <font color="#4169E1">return</font> yaml_parser_parse_document_end(parser, event);
+
+<a name="line245">245: </a>        <font color="#4169E1">case</font> YAML_PARSE_BLOCK_NODE_STATE:
+<a name="line246">246: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 1, 0);
+
+<a name="line248">248: </a>        <font color="#4169E1">case</font> YAML_PARSE_BLOCK_NODE_OR_INDENTLESS_SEQUENCE_STATE:
+<a name="line249">249: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 1, 1);
+
+<a name="line251">251: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_NODE_STATE:
+<a name="line252">252: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 0, 0);
+
+<a name="line254">254: </a>        <font color="#4169E1">case</font> YAML_PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE:
+<a name="line255">255: </a>            <font color="#4169E1">return</font> yaml_parser_parse_block_sequence_entry(parser, event, 1);
+
+<a name="line257">257: </a>        <font color="#4169E1">case</font> YAML_PARSE_BLOCK_SEQUENCE_ENTRY_STATE:
+<a name="line258">258: </a>            <font color="#4169E1">return</font> yaml_parser_parse_block_sequence_entry(parser, event, 0);
+
+<a name="line260">260: </a>        <font color="#4169E1">case</font> YAML_PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE:
+<a name="line261">261: </a>            <font color="#4169E1">return</font> yaml_parser_parse_indentless_sequence_entry(parser, event);
+
+<a name="line263">263: </a>        <font color="#4169E1">case</font> YAML_PARSE_BLOCK_MAPPING_FIRST_KEY_STATE:
+<a name="line264">264: </a>            <font color="#4169E1">return</font> yaml_parser_parse_block_mapping_key(parser, event, 1);
+
+<a name="line266">266: </a>        <font color="#4169E1">case</font> YAML_PARSE_BLOCK_MAPPING_KEY_STATE:
+<a name="line267">267: </a>            <font color="#4169E1">return</font> yaml_parser_parse_block_mapping_key(parser, event, 0);
+
+<a name="line269">269: </a>        <font color="#4169E1">case</font> YAML_PARSE_BLOCK_MAPPING_VALUE_STATE:
+<a name="line270">270: </a>            <font color="#4169E1">return</font> yaml_parser_parse_block_mapping_value(parser, event);
+
+<a name="line272">272: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE:
+<a name="line273">273: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_sequence_entry(parser, event, 1);
+
+<a name="line275">275: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_SEQUENCE_ENTRY_STATE:
+<a name="line276">276: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_sequence_entry(parser, event, 0);
+
+<a name="line278">278: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE:
+<a name="line279">279: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_sequence_entry_mapping_key(parser, event);
+
+<a name="line281">281: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE:
+<a name="line282">282: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_sequence_entry_mapping_value(parser, event);
+
+<a name="line284">284: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE:
+<a name="line285">285: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_sequence_entry_mapping_end(parser, event);
+
+<a name="line287">287: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_MAPPING_FIRST_KEY_STATE:
+<a name="line288">288: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_mapping_key(parser, event, 1);
+
+<a name="line290">290: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_MAPPING_KEY_STATE:
+<a name="line291">291: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_mapping_key(parser, event, 0);
+
+<a name="line293">293: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_MAPPING_VALUE_STATE:
+<a name="line294">294: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_mapping_value(parser, event, 0);
+
+<a name="line296">296: </a>        <font color="#4169E1">case</font> YAML_PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE:
+<a name="line297">297: </a>            <font color="#4169E1">return</font> yaml_parser_parse_flow_mapping_value(parser, event, 1);
+
+<a name="line299">299: </a>        <font color="#4169E1">default</font>:
+<a name="line300">300: </a>            assert(1);      <font color="#B22222">/* Invalid state. */</font>
+<a name="line301">301: </a>    }
+
+<a name="line303">303: </a>    <font color="#4169E1">return</font> 0;
+<a name="line304">304: </a>}
+
+<a name="line306">306: </a><font color="#B22222">/*</font>
+<a name="line307">307: </a><font color="#B22222"> * Parse the production:</font>
+<a name="line308">308: </a><font color="#B22222"> * stream   ::= STREAM-START implicit_document? explicit_document* STREAM-END</font>
+<a name="line309">309: </a><font color="#B22222"> *              ************</font>
+<a name="line310">310: </a><font color="#B22222"> */</font>
+
+<a name="line312">312: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_stream_start"></a>static int</font></strong>
+<a name="line313">313: </a><strong><font color="#4169E1">yaml_parser_parse_stream_start(yaml_parser_t *parser, yaml_event_t *event)</font></strong>
+<a name="line314">314: </a>{
+<a name="line315">315: </a>    yaml_token_t *token;
+
+<a name="line317">317: </a>    token = PEEK_TOKEN(parser);
+<a name="line318">318: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line320">320: </a>    <font color="#4169E1">if</font> (token-&gt;type != YAML_STREAM_START_TOKEN) {
+<a name="line321">321: </a>        <font color="#4169E1">return</font> yaml_parser_set_parser_error(parser,
+<a name="line322">322: </a>                <font color="#666666">"did not find expected &lt;stream-start&gt;"</font>, token-&gt;start_mark);
+<a name="line323">323: </a>    }
+
+<a name="line325">325: </a>    parser-&gt;state = YAML_PARSE_IMPLICIT_DOCUMENT_START_STATE;
+<a name="line326">326: </a>    STREAM_START_EVENT_INIT(*event, token-&gt;data.stream_start.encoding,
+<a name="line327">327: </a>            token-&gt;start_mark, token-&gt;start_mark);
+<a name="line328">328: </a>    SKIP_TOKEN(parser);
+
+<a name="line330">330: </a>    <font color="#4169E1">return</font> 1;
+<a name="line331">331: </a>}
+
+<a name="line333">333: </a><font color="#B22222">/*</font>
+<a name="line334">334: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line335">335: </a><font color="#B22222"> * implicit_document    ::= block_node DOCUMENT-END*</font>
+<a name="line336">336: </a><font color="#B22222"> *                          *</font>
+<a name="line337">337: </a><font color="#B22222"> * explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*</font>
+<a name="line338">338: </a><font color="#B22222"> *                          *************************</font>
+<a name="line339">339: </a><font color="#B22222"> */</font>
+
+<a name="line341">341: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_document_start"></a>static int</font></strong>
+<a name="line342">342: </a><strong><font color="#4169E1">yaml_parser_parse_document_start(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line343">343: </a><strong><font color="#4169E1">        int implicit)</font></strong>
+<a name="line344">344: </a>{
+<a name="line345">345: </a>    yaml_token_t *token;
+<a name="line346">346: </a>    yaml_version_directive_t *version_directive = NULL;
+<a name="line347">347: </a>    <font color="#4169E1">struct</font> {
+<a name="line348">348: </a>        yaml_tag_directive_t *start;
+<a name="line349">349: </a>        yaml_tag_directive_t *end;
+<a name="line350">350: </a>    } tag_directives = { NULL, NULL };
+
+<a name="line352">352: </a>    token = PEEK_TOKEN(parser);
+<a name="line353">353: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line355">355: </a>    <font color="#B22222">/* Parse extra document end indicators. */</font>
+
+<a name="line357">357: </a>    <font color="#4169E1">if</font> (!implicit)
+<a name="line358">358: </a>    {
+<a name="line359">359: </a>        <font color="#4169E1">while</font> (token-&gt;type == YAML_DOCUMENT_END_TOKEN) {
+<a name="line360">360: </a>            SKIP_TOKEN(parser);
+<a name="line361">361: </a>            token = PEEK_TOKEN(parser);
+<a name="line362">362: </a>            <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line363">363: </a>        }
+<a name="line364">364: </a>    }
+
+<a name="line366">366: </a>    <font color="#B22222">/* Parse an implicit document. */</font>
+
+<a name="line368">368: </a>    <font color="#4169E1">if</font> (implicit &amp;&amp; token-&gt;type != YAML_VERSION_DIRECTIVE_TOKEN &amp;&amp;
+<a name="line369">369: </a>            token-&gt;type != YAML_TAG_DIRECTIVE_TOKEN &amp;&amp;
+<a name="line370">370: </a>            token-&gt;type != YAML_DOCUMENT_START_TOKEN &amp;&amp;
+<a name="line371">371: </a>            token-&gt;type != YAML_STREAM_END_TOKEN)
+<a name="line372">372: </a>    {
+<a name="line373">373: </a>        <font color="#4169E1">if</font> (!yaml_parser_process_directives(parser, NULL, NULL, NULL))
+<a name="line374">374: </a>            <font color="#4169E1">return</font> 0;
+<a name="line375">375: </a>        <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states, YAML_PARSE_DOCUMENT_END_STATE))
+<a name="line376">376: </a>            <font color="#4169E1">return</font> 0;
+<a name="line377">377: </a>        parser-&gt;state = YAML_PARSE_BLOCK_NODE_STATE;
+<a name="line378">378: </a>        DOCUMENT_START_EVENT_INIT(*event, NULL, NULL, NULL, 1,
+<a name="line379">379: </a>                token-&gt;start_mark, token-&gt;start_mark);
+<a name="line380">380: </a>        <font color="#4169E1">return</font> 1;
+<a name="line381">381: </a>    }
+
+<a name="line383">383: </a>    <font color="#B22222">/* Parse an explicit document. */</font>
+
+<a name="line385">385: </a>    <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type != YAML_STREAM_END_TOKEN)
+<a name="line386">386: </a>    {
+<a name="line387">387: </a>        yaml_mark_t start_mark, end_mark;
+<a name="line388">388: </a>        start_mark = token-&gt;start_mark;
+<a name="line389">389: </a>        <font color="#4169E1">if</font> (!yaml_parser_process_directives(parser, &amp;version_directive,
+<a name="line390">390: </a>                    &amp;tag_directives.start, &amp;tag_directives.end))
+<a name="line391">391: </a>            <font color="#4169E1">return</font> 0;
+<a name="line392">392: </a>        token = PEEK_TOKEN(parser);
+<a name="line393">393: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">goto</font> error;
+<a name="line394">394: </a>        <font color="#4169E1">if</font> (token-&gt;type != YAML_DOCUMENT_START_TOKEN) {
+<a name="line395">395: </a>            yaml_parser_set_parser_error(parser,
+<a name="line396">396: </a>                    <font color="#666666">"did not find expected &lt;document start&gt;"</font>, token-&gt;start_mark);
+<a name="line397">397: </a>            <font color="#4169E1">goto</font> error;
+<a name="line398">398: </a>        }
+<a name="line399">399: </a>        <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states, YAML_PARSE_DOCUMENT_END_STATE))
+<a name="line400">400: </a>            <font color="#4169E1">goto</font> error;
+<a name="line401">401: </a>        parser-&gt;state = YAML_PARSE_DOCUMENT_CONTENT_STATE;
+<a name="line402">402: </a>        end_mark = token-&gt;end_mark;
+<a name="line403">403: </a>        DOCUMENT_START_EVENT_INIT(*event, version_directive,
+<a name="line404">404: </a>                tag_directives.start, tag_directives.end, 0,
+<a name="line405">405: </a>                start_mark, end_mark);
+<a name="line406">406: </a>        SKIP_TOKEN(parser);
+<a name="line407">407: </a>        version_directive = NULL;
+<a name="line408">408: </a>        tag_directives.start = tag_directives.end = NULL;
+<a name="line409">409: </a>        <font color="#4169E1">return</font> 1;
+<a name="line410">410: </a>    }
+
+<a name="line412">412: </a>    <font color="#B22222">/* Parse the stream end. */</font>
+
+<a name="line414">414: </a>    <font color="#4169E1">else</font>
+<a name="line415">415: </a>    {
+<a name="line416">416: </a>        parser-&gt;state = YAML_PARSE_END_STATE;
+<a name="line417">417: </a>        STREAM_END_EVENT_INIT(*event, token-&gt;start_mark, token-&gt;end_mark);
+<a name="line418">418: </a>        SKIP_TOKEN(parser);
+<a name="line419">419: </a>        <font color="#4169E1">return</font> 1;
+<a name="line420">420: </a>    }
+
+<a name="line422">422: </a>error:
+<a name="line423">423: </a>    yaml_free(version_directive);
+<a name="line424">424: </a>    <font color="#4169E1">while</font> (tag_directives.start != tag_directives.end) {
+<a name="line425">425: </a>        yaml_free(tag_directives.end[-1].handle);
+<a name="line426">426: </a>        yaml_free(tag_directives.end[-1].prefix);
+<a name="line427">427: </a>        tag_directives.end --;
+<a name="line428">428: </a>    }
+<a name="line429">429: </a>    yaml_free(tag_directives.start);
+<a name="line430">430: </a>    <font color="#4169E1">return</font> 0;
+<a name="line431">431: </a>}
+
+<a name="line433">433: </a><font color="#B22222">/*</font>
+<a name="line434">434: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line435">435: </a><font color="#B22222"> * explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*</font>
+<a name="line436">436: </a><font color="#B22222"> *                                                    ***********</font>
+<a name="line437">437: </a><font color="#B22222"> */</font>
+
+<a name="line439">439: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_document_content"></a>static int</font></strong>
+<a name="line440">440: </a><strong><font color="#4169E1">yaml_parser_parse_document_content(yaml_parser_t *parser, yaml_event_t *event)</font></strong>
+<a name="line441">441: </a>{
+<a name="line442">442: </a>    yaml_token_t *token;
+
+<a name="line444">444: </a>    token = PEEK_TOKEN(parser);
+<a name="line445">445: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line447">447: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_VERSION_DIRECTIVE_TOKEN ||
+<a name="line448">448: </a>            token-&gt;type == YAML_TAG_DIRECTIVE_TOKEN ||
+<a name="line449">449: </a>            token-&gt;type == YAML_DOCUMENT_START_TOKEN ||
+<a name="line450">450: </a>            token-&gt;type == YAML_DOCUMENT_END_TOKEN ||
+<a name="line451">451: </a>            token-&gt;type == YAML_STREAM_END_TOKEN) {
+<a name="line452">452: </a>        parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line453">453: </a>        <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event,
+<a name="line454">454: </a>                token-&gt;start_mark);
+<a name="line455">455: </a>    }
+<a name="line456">456: </a>    <font color="#4169E1">else</font> {
+<a name="line457">457: </a>        <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 1, 0);
+<a name="line458">458: </a>    }
+<a name="line459">459: </a>}
+
+<a name="line461">461: </a><font color="#B22222">/*</font>
+<a name="line462">462: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line463">463: </a><font color="#B22222"> * implicit_document    ::= block_node DOCUMENT-END*</font>
+<a name="line464">464: </a><font color="#B22222"> *                                     *************</font>
+<a name="line465">465: </a><font color="#B22222"> * explicit_document    ::= DIRECTIVE* DOCUMENT-START block_node? DOCUMENT-END*</font>
+<a name="line466">466: </a><font color="#B22222"> *                                                                *************</font>
+<a name="line467">467: </a><font color="#B22222"> */</font>
+
+<a name="line469">469: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_document_end"></a>static int</font></strong>
+<a name="line470">470: </a><strong><font color="#4169E1">yaml_parser_parse_document_end(yaml_parser_t *parser, yaml_event_t *event)</font></strong>
+<a name="line471">471: </a>{
+<a name="line472">472: </a>    yaml_token_t *token;
+<a name="line473">473: </a>    yaml_mark_t start_mark, end_mark;
+<a name="line474">474: </a>    int implicit = 1;
+
+<a name="line476">476: </a>    token = PEEK_TOKEN(parser);
+<a name="line477">477: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line479">479: </a>    start_mark = end_mark = token-&gt;start_mark;
+
+<a name="line481">481: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_DOCUMENT_END_TOKEN) {
+<a name="line482">482: </a>        end_mark = token-&gt;end_mark;
+<a name="line483">483: </a>        SKIP_TOKEN(parser);
+<a name="line484">484: </a>        implicit = 0;
+<a name="line485">485: </a>    }
+
+<a name="line487">487: </a>    <font color="#4169E1">while</font> (!STACK_EMPTY(parser, parser-&gt;tag_directives)) {
+<a name="line488">488: </a>        yaml_tag_directive_t tag_directive = POP(parser, parser-&gt;tag_directives);
+<a name="line489">489: </a>        yaml_free(tag_directive.handle);
+<a name="line490">490: </a>        yaml_free(tag_directive.prefix);
+<a name="line491">491: </a>    }
+
+<a name="line493">493: </a>    parser-&gt;state = YAML_PARSE_DOCUMENT_START_STATE;
+<a name="line494">494: </a>    DOCUMENT_END_EVENT_INIT(*event, implicit, start_mark, end_mark);
+
+<a name="line496">496: </a>    <font color="#4169E1">return</font> 1;
+<a name="line497">497: </a>}
+
+<a name="line499">499: </a><font color="#B22222">/*</font>
+<a name="line500">500: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line501">501: </a><font color="#B22222"> * block_node_or_indentless_sequence    ::=</font>
+<a name="line502">502: </a><font color="#B22222"> *                          ALIAS</font>
+<a name="line503">503: </a><font color="#B22222"> *                          *****</font>
+<a name="line504">504: </a><font color="#B22222"> *                          | properties (block_content | indentless_block_sequence)?</font>
+<a name="line505">505: </a><font color="#B22222"> *                            **********  *</font>
+<a name="line506">506: </a><font color="#B22222"> *                          | block_content | indentless_block_sequence</font>
+<a name="line507">507: </a><font color="#B22222"> *                            *</font>
+<a name="line508">508: </a><font color="#B22222"> * block_node           ::= ALIAS</font>
+<a name="line509">509: </a><font color="#B22222"> *                          *****</font>
+<a name="line510">510: </a><font color="#B22222"> *                          | properties block_content?</font>
+<a name="line511">511: </a><font color="#B22222"> *                            ********** *</font>
+<a name="line512">512: </a><font color="#B22222"> *                          | block_content</font>
+<a name="line513">513: </a><font color="#B22222"> *                            *</font>
+<a name="line514">514: </a><font color="#B22222"> * flow_node            ::= ALIAS</font>
+<a name="line515">515: </a><font color="#B22222"> *                          *****</font>
+<a name="line516">516: </a><font color="#B22222"> *                          | properties flow_content?</font>
+<a name="line517">517: </a><font color="#B22222"> *                            ********** *</font>
+<a name="line518">518: </a><font color="#B22222"> *                          | flow_content</font>
+<a name="line519">519: </a><font color="#B22222"> *                            *</font>
+<a name="line520">520: </a><font color="#B22222"> * properties           ::= TAG ANCHOR? | ANCHOR TAG?</font>
+<a name="line521">521: </a><font color="#B22222"> *                          *************************</font>
+<a name="line522">522: </a><font color="#B22222"> * block_content        ::= block_collection | flow_collection | SCALAR</font>
+<a name="line523">523: </a><font color="#B22222"> *                                                               ******</font>
+<a name="line524">524: </a><font color="#B22222"> * flow_content         ::= flow_collection | SCALAR</font>
+<a name="line525">525: </a><font color="#B22222"> *                                            ******</font>
+<a name="line526">526: </a><font color="#B22222"> */</font>
+
+<a name="line528">528: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_node"></a>static int</font></strong>
+<a name="line529">529: </a><strong><font color="#4169E1">yaml_parser_parse_node(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line530">530: </a><strong><font color="#4169E1">        int block, int indentless_sequence)</font></strong>
+<a name="line531">531: </a>{
+<a name="line532">532: </a>    yaml_token_t *token;
+<a name="line533">533: </a>    yaml_char_t *anchor = NULL;
+<a name="line534">534: </a>    yaml_char_t *tag_handle = NULL;
+<a name="line535">535: </a>    yaml_char_t *tag_suffix = NULL;
+<a name="line536">536: </a>    yaml_char_t *tag = NULL;
+<a name="line537">537: </a>    yaml_mark_t start_mark, end_mark, tag_mark;
+<a name="line538">538: </a>    int implicit;
+
+<a name="line540">540: </a>    token = PEEK_TOKEN(parser);
+<a name="line541">541: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line543">543: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_ALIAS_TOKEN)
+<a name="line544">544: </a>    {
+<a name="line545">545: </a>        parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line546">546: </a>        ALIAS_EVENT_INIT(*event, token-&gt;data.alias.value,
+<a name="line547">547: </a>                token-&gt;start_mark, token-&gt;end_mark);
+<a name="line548">548: </a>        SKIP_TOKEN(parser);
+<a name="line549">549: </a>        <font color="#4169E1">return</font> 1;
+<a name="line550">550: </a>    }
+
+<a name="line552">552: </a>    <font color="#4169E1">else</font>
+<a name="line553">553: </a>    {
+<a name="line554">554: </a>        start_mark = end_mark = token-&gt;start_mark;
+
+<a name="line556">556: </a>        <font color="#4169E1">if</font> (token-&gt;type == YAML_ANCHOR_TOKEN)
+<a name="line557">557: </a>        {
+<a name="line558">558: </a>            anchor = token-&gt;data.anchor.value;
+<a name="line559">559: </a>            start_mark = token-&gt;start_mark;
+<a name="line560">560: </a>            end_mark = token-&gt;end_mark;
+<a name="line561">561: </a>            SKIP_TOKEN(parser);
+<a name="line562">562: </a>            token = PEEK_TOKEN(parser);
+<a name="line563">563: </a>            <font color="#4169E1">if</font> (!token) <font color="#4169E1">goto</font> error;
+<a name="line564">564: </a>            <font color="#4169E1">if</font> (token-&gt;type == YAML_TAG_TOKEN)
+<a name="line565">565: </a>            {
+<a name="line566">566: </a>                tag_handle = token-&gt;data.tag.handle;
+<a name="line567">567: </a>                tag_suffix = token-&gt;data.tag.suffix;
+<a name="line568">568: </a>                tag_mark = token-&gt;start_mark;
+<a name="line569">569: </a>                end_mark = token-&gt;end_mark;
+<a name="line570">570: </a>                SKIP_TOKEN(parser);
+<a name="line571">571: </a>                token = PEEK_TOKEN(parser);
+<a name="line572">572: </a>                <font color="#4169E1">if</font> (!token) <font color="#4169E1">goto</font> error;
+<a name="line573">573: </a>            }
+<a name="line574">574: </a>        }
+<a name="line575">575: </a>        <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type == YAML_TAG_TOKEN)
+<a name="line576">576: </a>        {
+<a name="line577">577: </a>            tag_handle = token-&gt;data.tag.handle;
+<a name="line578">578: </a>            tag_suffix = token-&gt;data.tag.suffix;
+<a name="line579">579: </a>            start_mark = tag_mark = token-&gt;start_mark;
+<a name="line580">580: </a>            end_mark = token-&gt;end_mark;
+<a name="line581">581: </a>            SKIP_TOKEN(parser);
+<a name="line582">582: </a>            token = PEEK_TOKEN(parser);
+<a name="line583">583: </a>            <font color="#4169E1">if</font> (!token) <font color="#4169E1">goto</font> error;
+<a name="line584">584: </a>            <font color="#4169E1">if</font> (token-&gt;type == YAML_ANCHOR_TOKEN)
+<a name="line585">585: </a>            {
+<a name="line586">586: </a>                anchor = token-&gt;data.anchor.value;
+<a name="line587">587: </a>                end_mark = token-&gt;end_mark;
+<a name="line588">588: </a>                SKIP_TOKEN(parser);
+<a name="line589">589: </a>                token = PEEK_TOKEN(parser);
+<a name="line590">590: </a>                <font color="#4169E1">if</font> (!token) <font color="#4169E1">goto</font> error;
+<a name="line591">591: </a>            }
+<a name="line592">592: </a>        }
+
+<a name="line594">594: </a>        <font color="#4169E1">if</font> (tag_handle) {
+<a name="line595">595: </a>            <font color="#4169E1">if</font> (!*tag_handle) {
+<a name="line596">596: </a>                tag = tag_suffix;
+<a name="line597">597: </a>                yaml_free(tag_handle);
+<a name="line598">598: </a>                tag_handle = tag_suffix = NULL;
+<a name="line599">599: </a>            }
+<a name="line600">600: </a>            <font color="#4169E1">else</font> {
+<a name="line601">601: </a>                yaml_tag_directive_t *tag_directive;
+<a name="line602">602: </a>                <font color="#4169E1">for</font> (tag_directive = parser-&gt;tag_directives.start;
+<a name="line603">603: </a>                        tag_directive != parser-&gt;tag_directives.top;
+<a name="line604">604: </a>                        tag_directive ++) {
+<a name="line605">605: </a>                    <font color="#4169E1">if</font> (strcmp((char *)tag_directive-&gt;handle, (char *)tag_handle) == 0) {
+<a name="line606">606: </a>                        size_t prefix_len = strlen((char *)tag_directive-&gt;prefix);
+<a name="line607">607: </a>                        size_t suffix_len = strlen((char *)tag_suffix);
+<a name="line608">608: </a>                        tag = YAML_MALLOC(prefix_len+suffix_len+1);
+<a name="line609">609: </a>                        <font color="#4169E1">if</font> (!tag) {
+<a name="line610">610: </a>                            parser-&gt;error = YAML_MEMORY_ERROR;
+<a name="line611">611: </a>                            <font color="#4169E1">goto</font> error;
+<a name="line612">612: </a>                        }
+<a name="line613">613: </a>                        memcpy(tag, tag_directive-&gt;prefix, prefix_len);
+<a name="line614">614: </a>                        memcpy(tag+prefix_len, tag_suffix, suffix_len);
+<a name="line615">615: </a>                        tag[prefix_len+suffix_len] = '\0';
+<a name="line616">616: </a>                        yaml_free(tag_handle);
+<a name="line617">617: </a>                        yaml_free(tag_suffix);
+<a name="line618">618: </a>                        tag_handle = tag_suffix = NULL;
+<a name="line619">619: </a>                        <font color="#4169E1">break</font>;
+<a name="line620">620: </a>                    }
+<a name="line621">621: </a>                }
+<a name="line622">622: </a>                <font color="#4169E1">if</font> (!tag) {
+<a name="line623">623: </a>                    yaml_parser_set_parser_error_context(parser,
+<a name="line624">624: </a>                            <font color="#666666">"while parsing a node"</font>, start_mark,
+<a name="line625">625: </a>                            <font color="#666666">"found undefined tag handle"</font>, tag_mark);
+<a name="line626">626: </a>                    <font color="#4169E1">goto</font> error;
+<a name="line627">627: </a>                }
+<a name="line628">628: </a>            }
+<a name="line629">629: </a>        }
+
+<a name="line631">631: </a>        implicit = (!tag || !*tag);
+<a name="line632">632: </a>        <font color="#4169E1">if</font> (indentless_sequence &amp;&amp; token-&gt;type == YAML_BLOCK_ENTRY_TOKEN) {
+<a name="line633">633: </a>            end_mark = token-&gt;end_mark;
+<a name="line634">634: </a>            parser-&gt;state = YAML_PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE;
+<a name="line635">635: </a>            SEQUENCE_START_EVENT_INIT(*event, anchor, tag, implicit,
+<a name="line636">636: </a>                    YAML_BLOCK_SEQUENCE_STYLE, start_mark, end_mark);
+<a name="line637">637: </a>            <font color="#4169E1">return</font> 1;
+<a name="line638">638: </a>        }
+<a name="line639">639: </a>        <font color="#4169E1">else</font> {
+<a name="line640">640: </a>            <font color="#4169E1">if</font> (token-&gt;type == YAML_SCALAR_TOKEN) {
+<a name="line641">641: </a>                int plain_implicit = 0;
+<a name="line642">642: </a>                int quoted_implicit = 0;
+<a name="line643">643: </a>                end_mark = token-&gt;end_mark;
+<a name="line644">644: </a>                <font color="#4169E1">if</font> ((token-&gt;data.scalar.style == YAML_PLAIN_SCALAR_STYLE &amp;&amp; !tag)
+<a name="line645">645: </a>                        || (tag &amp;&amp; strcmp((char *)tag, <font color="#666666">"!"</font>) == 0)) {
+<a name="line646">646: </a>                    plain_implicit = 1;
+<a name="line647">647: </a>                }
+<a name="line648">648: </a>                <font color="#4169E1">else</font> <font color="#4169E1">if</font> (!tag) {
+<a name="line649">649: </a>                    quoted_implicit = 1;
+<a name="line650">650: </a>                }
+<a name="line651">651: </a>                parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line652">652: </a>                SCALAR_EVENT_INIT(*event, anchor, tag,
+<a name="line653">653: </a>                        token-&gt;data.scalar.value, token-&gt;data.scalar.length,
+<a name="line654">654: </a>                        plain_implicit, quoted_implicit,
+<a name="line655">655: </a>                        token-&gt;data.scalar.style, start_mark, end_mark);
+<a name="line656">656: </a>                SKIP_TOKEN(parser);
+<a name="line657">657: </a>                <font color="#4169E1">return</font> 1;
+<a name="line658">658: </a>            }
+<a name="line659">659: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type == YAML_FLOW_SEQUENCE_START_TOKEN) {
+<a name="line660">660: </a>                end_mark = token-&gt;end_mark;
+<a name="line661">661: </a>                parser-&gt;state = YAML_PARSE_FLOW_SEQUENCE_FIRST_ENTRY_STATE;
+<a name="line662">662: </a>                SEQUENCE_START_EVENT_INIT(*event, anchor, tag, implicit,
+<a name="line663">663: </a>                        YAML_FLOW_SEQUENCE_STYLE, start_mark, end_mark);
+<a name="line664">664: </a>                <font color="#4169E1">return</font> 1;
+<a name="line665">665: </a>            }
+<a name="line666">666: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type == YAML_FLOW_MAPPING_START_TOKEN) {
+<a name="line667">667: </a>                end_mark = token-&gt;end_mark;
+<a name="line668">668: </a>                parser-&gt;state = YAML_PARSE_FLOW_MAPPING_FIRST_KEY_STATE;
+<a name="line669">669: </a>                MAPPING_START_EVENT_INIT(*event, anchor, tag, implicit,
+<a name="line670">670: </a>                        YAML_FLOW_MAPPING_STYLE, start_mark, end_mark);
+<a name="line671">671: </a>                <font color="#4169E1">return</font> 1;
+<a name="line672">672: </a>            }
+<a name="line673">673: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (block &amp;&amp; token-&gt;type == YAML_BLOCK_SEQUENCE_START_TOKEN) {
+<a name="line674">674: </a>                end_mark = token-&gt;end_mark;
+<a name="line675">675: </a>                parser-&gt;state = YAML_PARSE_BLOCK_SEQUENCE_FIRST_ENTRY_STATE;
+<a name="line676">676: </a>                SEQUENCE_START_EVENT_INIT(*event, anchor, tag, implicit,
+<a name="line677">677: </a>                        YAML_BLOCK_SEQUENCE_STYLE, start_mark, end_mark);
+<a name="line678">678: </a>                <font color="#4169E1">return</font> 1;
+<a name="line679">679: </a>            }
+<a name="line680">680: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (block &amp;&amp; token-&gt;type == YAML_BLOCK_MAPPING_START_TOKEN) {
+<a name="line681">681: </a>                end_mark = token-&gt;end_mark;
+<a name="line682">682: </a>                parser-&gt;state = YAML_PARSE_BLOCK_MAPPING_FIRST_KEY_STATE;
+<a name="line683">683: </a>                MAPPING_START_EVENT_INIT(*event, anchor, tag, implicit,
+<a name="line684">684: </a>                        YAML_BLOCK_MAPPING_STYLE, start_mark, end_mark);
+<a name="line685">685: </a>                <font color="#4169E1">return</font> 1;
+<a name="line686">686: </a>            }
+<a name="line687">687: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (anchor || tag) {
+<a name="line688">688: </a>                yaml_char_t *value = YAML_MALLOC(1);
+<a name="line689">689: </a>                <font color="#4169E1">if</font> (!value) {
+<a name="line690">690: </a>                    parser-&gt;error = YAML_MEMORY_ERROR;
+<a name="line691">691: </a>                    <font color="#4169E1">goto</font> error;
+<a name="line692">692: </a>                }
+<a name="line693">693: </a>                value[0] = '\0';
+<a name="line694">694: </a>                parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line695">695: </a>                SCALAR_EVENT_INIT(*event, anchor, tag, value, 0,
+<a name="line696">696: </a>                        implicit, 0, YAML_PLAIN_SCALAR_STYLE,
+<a name="line697">697: </a>                        start_mark, end_mark);
+<a name="line698">698: </a>                <font color="#4169E1">return</font> 1;
+<a name="line699">699: </a>            }
+<a name="line700">700: </a>            <font color="#4169E1">else</font> {
+<a name="line701">701: </a>                yaml_parser_set_parser_error_context(parser,
+<a name="line702">702: </a>                        (block ? <font color="#666666">"while parsing a block node"</font>
+<a name="line703">703: </a>                         : <font color="#666666">"while parsing a flow node"</font>), start_mark,
+<a name="line704">704: </a>                        <font color="#666666">"did not find expected node content"</font>, token-&gt;start_mark);
+<a name="line705">705: </a>                <font color="#4169E1">goto</font> error;
+<a name="line706">706: </a>            }
+<a name="line707">707: </a>        }
+<a name="line708">708: </a>    }
+
+<a name="line710">710: </a>error:
+<a name="line711">711: </a>    yaml_free(anchor);
+<a name="line712">712: </a>    yaml_free(tag_handle);
+<a name="line713">713: </a>    yaml_free(tag_suffix);
+<a name="line714">714: </a>    yaml_free(tag);
+
+<a name="line716">716: </a>    <font color="#4169E1">return</font> 0;
+<a name="line717">717: </a>}
+
+<a name="line719">719: </a><font color="#B22222">/*</font>
+<a name="line720">720: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line721">721: </a><font color="#B22222"> * block_sequence ::= BLOCK-SEQUENCE-START (BLOCK-ENTRY block_node?)* BLOCK-END</font>
+<a name="line722">722: </a><font color="#B22222"> *                    ********************  *********** *             *********</font>
+<a name="line723">723: </a><font color="#B22222"> */</font>
+
+<a name="line725">725: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_block_sequence_entry"></a>static int</font></strong>
+<a name="line726">726: </a><strong><font color="#4169E1">yaml_parser_parse_block_sequence_entry(yaml_parser_t *parser,</font></strong>
+<a name="line727">727: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>
+<a name="line728">728: </a>{
+<a name="line729">729: </a>    yaml_token_t *token;
+
+<a name="line731">731: </a>    <font color="#4169E1">if</font> (first) {
+<a name="line732">732: </a>        token = PEEK_TOKEN(parser);
+<a name="line733">733: </a>        <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;marks, token-&gt;start_mark))
+<a name="line734">734: </a>            <font color="#4169E1">return</font> 0;
+<a name="line735">735: </a>        SKIP_TOKEN(parser);
+<a name="line736">736: </a>    }
+
+<a name="line738">738: </a>    token = PEEK_TOKEN(parser);
+<a name="line739">739: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line741">741: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_BLOCK_ENTRY_TOKEN)
+<a name="line742">742: </a>    {
+<a name="line743">743: </a>        yaml_mark_t mark = token-&gt;end_mark;
+<a name="line744">744: </a>        SKIP_TOKEN(parser);
+<a name="line745">745: </a>        token = PEEK_TOKEN(parser);
+<a name="line746">746: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line747">747: </a>        <font color="#4169E1">if</font> (token-&gt;type != YAML_BLOCK_ENTRY_TOKEN &amp;&amp;
+<a name="line748">748: </a>                token-&gt;type != YAML_BLOCK_END_TOKEN) {
+<a name="line749">749: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line750">750: </a>                        YAML_PARSE_BLOCK_SEQUENCE_ENTRY_STATE))
+<a name="line751">751: </a>                <font color="#4169E1">return</font> 0;
+<a name="line752">752: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 1, 0);
+<a name="line753">753: </a>        }
+<a name="line754">754: </a>        <font color="#4169E1">else</font> {
+<a name="line755">755: </a>            parser-&gt;state = YAML_PARSE_BLOCK_SEQUENCE_ENTRY_STATE;
+<a name="line756">756: </a>            <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, mark);
+<a name="line757">757: </a>        }
+<a name="line758">758: </a>    }
+
+<a name="line760">760: </a>    <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type == YAML_BLOCK_END_TOKEN)
+<a name="line761">761: </a>    {
+<a name="line762">762: </a>        parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line763">763: </a>        (void)POP(parser, parser-&gt;marks);
+<a name="line764">764: </a>        SEQUENCE_END_EVENT_INIT(*event, token-&gt;start_mark, token-&gt;end_mark);
+<a name="line765">765: </a>        SKIP_TOKEN(parser);
+<a name="line766">766: </a>        <font color="#4169E1">return</font> 1;
+<a name="line767">767: </a>    }
+
+<a name="line769">769: </a>    <font color="#4169E1">else</font>
+<a name="line770">770: </a>    {
+<a name="line771">771: </a>        <font color="#4169E1">return</font> yaml_parser_set_parser_error_context(parser,
+<a name="line772">772: </a>                <font color="#666666">"while parsing a block collection"</font>, POP(parser, parser-&gt;marks),
+<a name="line773">773: </a>                <font color="#666666">"did not find expected '-' indicator"</font>, token-&gt;start_mark);
+<a name="line774">774: </a>    }
+<a name="line775">775: </a>}
+
+<a name="line777">777: </a><font color="#B22222">/*</font>
+<a name="line778">778: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line779">779: </a><font color="#B22222"> * indentless_sequence  ::= (BLOCK-ENTRY block_node?)+</font>
+<a name="line780">780: </a><font color="#B22222"> *                           *********** *</font>
+<a name="line781">781: </a><font color="#B22222"> */</font>
+
+<a name="line783">783: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_indentless_sequence_entry"></a>static int</font></strong>
+<a name="line784">784: </a><strong><font color="#4169E1">yaml_parser_parse_indentless_sequence_entry(yaml_parser_t *parser,</font></strong>
+<a name="line785">785: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>
+<a name="line786">786: </a>{
+<a name="line787">787: </a>    yaml_token_t *token;
+
+<a name="line789">789: </a>    token = PEEK_TOKEN(parser);
+<a name="line790">790: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line792">792: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_BLOCK_ENTRY_TOKEN)
+<a name="line793">793: </a>    {
+<a name="line794">794: </a>        yaml_mark_t mark = token-&gt;end_mark;
+<a name="line795">795: </a>        SKIP_TOKEN(parser);
+<a name="line796">796: </a>        token = PEEK_TOKEN(parser);
+<a name="line797">797: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line798">798: </a>        <font color="#4169E1">if</font> (token-&gt;type != YAML_BLOCK_ENTRY_TOKEN &amp;&amp;
+<a name="line799">799: </a>                token-&gt;type != YAML_KEY_TOKEN &amp;&amp;
+<a name="line800">800: </a>                token-&gt;type != YAML_VALUE_TOKEN &amp;&amp;
+<a name="line801">801: </a>                token-&gt;type != YAML_BLOCK_END_TOKEN) {
+<a name="line802">802: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line803">803: </a>                        YAML_PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE))
+<a name="line804">804: </a>                <font color="#4169E1">return</font> 0;
+<a name="line805">805: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 1, 0);
+<a name="line806">806: </a>        }
+<a name="line807">807: </a>        <font color="#4169E1">else</font> {
+<a name="line808">808: </a>            parser-&gt;state = YAML_PARSE_INDENTLESS_SEQUENCE_ENTRY_STATE;
+<a name="line809">809: </a>            <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, mark);
+<a name="line810">810: </a>        }
+<a name="line811">811: </a>    }
+
+<a name="line813">813: </a>    <font color="#4169E1">else</font>
+<a name="line814">814: </a>    {
+<a name="line815">815: </a>        parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line816">816: </a>        SEQUENCE_END_EVENT_INIT(*event, token-&gt;start_mark, token-&gt;start_mark);
+<a name="line817">817: </a>        <font color="#4169E1">return</font> 1;
+<a name="line818">818: </a>    }
+<a name="line819">819: </a>}
+
+<a name="line821">821: </a><font color="#B22222">/*</font>
+<a name="line822">822: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line823">823: </a><font color="#B22222"> * block_mapping        ::= BLOCK-MAPPING_START</font>
+<a name="line824">824: </a><font color="#B22222"> *                          *******************</font>
+<a name="line825">825: </a><font color="#B22222"> *                          ((KEY block_node_or_indentless_sequence?)?</font>
+<a name="line826">826: </a><font color="#B22222"> *                            *** *</font>
+<a name="line827">827: </a><font color="#B22222"> *                          (VALUE block_node_or_indentless_sequence?)?)*</font>
+<a name="line828">828: </a><font color="#B22222"> *</font>
+<a name="line829">829: </a><font color="#B22222"> *                          BLOCK-END</font>
+<a name="line830">830: </a><font color="#B22222"> *                          *********</font>
+<a name="line831">831: </a><font color="#B22222"> */</font>
+
+<a name="line833">833: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_block_mapping_key"></a>static int</font></strong>
+<a name="line834">834: </a><strong><font color="#4169E1">yaml_parser_parse_block_mapping_key(yaml_parser_t *parser,</font></strong>
+<a name="line835">835: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>
+<a name="line836">836: </a>{
+<a name="line837">837: </a>    yaml_token_t *token;
+
+<a name="line839">839: </a>    <font color="#4169E1">if</font> (first) {
+<a name="line840">840: </a>        token = PEEK_TOKEN(parser);
+<a name="line841">841: </a>        <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;marks, token-&gt;start_mark))
+<a name="line842">842: </a>            <font color="#4169E1">return</font> 0;
+<a name="line843">843: </a>        SKIP_TOKEN(parser);
+<a name="line844">844: </a>    }
+
+<a name="line846">846: </a>    token = PEEK_TOKEN(parser);
+<a name="line847">847: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line849">849: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_KEY_TOKEN)
+<a name="line850">850: </a>    {
+<a name="line851">851: </a>        yaml_mark_t mark = token-&gt;end_mark;
+<a name="line852">852: </a>        SKIP_TOKEN(parser);
+<a name="line853">853: </a>        token = PEEK_TOKEN(parser);
+<a name="line854">854: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line855">855: </a>        <font color="#4169E1">if</font> (token-&gt;type != YAML_KEY_TOKEN &amp;&amp;
+<a name="line856">856: </a>                token-&gt;type != YAML_VALUE_TOKEN &amp;&amp;
+<a name="line857">857: </a>                token-&gt;type != YAML_BLOCK_END_TOKEN) {
+<a name="line858">858: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line859">859: </a>                        YAML_PARSE_BLOCK_MAPPING_VALUE_STATE))
+<a name="line860">860: </a>                <font color="#4169E1">return</font> 0;
+<a name="line861">861: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 1, 1);
+<a name="line862">862: </a>        }
+<a name="line863">863: </a>        <font color="#4169E1">else</font> {
+<a name="line864">864: </a>            parser-&gt;state = YAML_PARSE_BLOCK_MAPPING_VALUE_STATE;
+<a name="line865">865: </a>            <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, mark);
+<a name="line866">866: </a>        }
+<a name="line867">867: </a>    }
+
+<a name="line869">869: </a>    <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type == YAML_BLOCK_END_TOKEN)
+<a name="line870">870: </a>    {
+<a name="line871">871: </a>        parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line872">872: </a>        (void)POP(parser, parser-&gt;marks);
+<a name="line873">873: </a>        MAPPING_END_EVENT_INIT(*event, token-&gt;start_mark, token-&gt;end_mark);
+<a name="line874">874: </a>        SKIP_TOKEN(parser);
+<a name="line875">875: </a>        <font color="#4169E1">return</font> 1;
+<a name="line876">876: </a>    }
+
+<a name="line878">878: </a>    <font color="#4169E1">else</font>
+<a name="line879">879: </a>    {
+<a name="line880">880: </a>        <font color="#4169E1">return</font> yaml_parser_set_parser_error_context(parser,
+<a name="line881">881: </a>                <font color="#666666">"while parsing a block mapping"</font>, POP(parser, parser-&gt;marks),
+<a name="line882">882: </a>                <font color="#666666">"did not find expected key"</font>, token-&gt;start_mark);
+<a name="line883">883: </a>    }
+<a name="line884">884: </a>}
+
+<a name="line886">886: </a><font color="#B22222">/*</font>
+<a name="line887">887: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line888">888: </a><font color="#B22222"> * block_mapping        ::= BLOCK-MAPPING_START</font>
+<a name="line889">889: </a><font color="#B22222"> *</font>
+<a name="line890">890: </a><font color="#B22222"> *                          ((KEY block_node_or_indentless_sequence?)?</font>
+<a name="line891">891: </a><font color="#B22222"> *</font>
+<a name="line892">892: </a><font color="#B22222"> *                          (VALUE block_node_or_indentless_sequence?)?)*</font>
+<a name="line893">893: </a><font color="#B22222"> *                           ***** *</font>
+<a name="line894">894: </a><font color="#B22222"> *                          BLOCK-END</font>
+<a name="line895">895: </a><font color="#B22222"> *</font>
+<a name="line896">896: </a><font color="#B22222"> */</font>
+
+<a name="line898">898: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_block_mapping_value"></a>static int</font></strong>
+<a name="line899">899: </a><strong><font color="#4169E1">yaml_parser_parse_block_mapping_value(yaml_parser_t *parser,</font></strong>
+<a name="line900">900: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>
+<a name="line901">901: </a>{
+<a name="line902">902: </a>    yaml_token_t *token;
+
+<a name="line904">904: </a>    token = PEEK_TOKEN(parser);
+<a name="line905">905: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line907">907: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_VALUE_TOKEN)
+<a name="line908">908: </a>    {
+<a name="line909">909: </a>        yaml_mark_t mark = token-&gt;end_mark;
+<a name="line910">910: </a>        SKIP_TOKEN(parser);
+<a name="line911">911: </a>        token = PEEK_TOKEN(parser);
+<a name="line912">912: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line913">913: </a>        <font color="#4169E1">if</font> (token-&gt;type != YAML_KEY_TOKEN &amp;&amp;
+<a name="line914">914: </a>                token-&gt;type != YAML_VALUE_TOKEN &amp;&amp;
+<a name="line915">915: </a>                token-&gt;type != YAML_BLOCK_END_TOKEN) {
+<a name="line916">916: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line917">917: </a>                        YAML_PARSE_BLOCK_MAPPING_KEY_STATE))
+<a name="line918">918: </a>                <font color="#4169E1">return</font> 0;
+<a name="line919">919: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 1, 1);
+<a name="line920">920: </a>        }
+<a name="line921">921: </a>        <font color="#4169E1">else</font> {
+<a name="line922">922: </a>            parser-&gt;state = YAML_PARSE_BLOCK_MAPPING_KEY_STATE;
+<a name="line923">923: </a>            <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, mark);
+<a name="line924">924: </a>        }
+<a name="line925">925: </a>    }
+
+<a name="line927">927: </a>    <font color="#4169E1">else</font>
+<a name="line928">928: </a>    {
+<a name="line929">929: </a>        parser-&gt;state = YAML_PARSE_BLOCK_MAPPING_KEY_STATE;
+<a name="line930">930: </a>        <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, token-&gt;start_mark);
+<a name="line931">931: </a>    }
+<a name="line932">932: </a>}
+
+<a name="line934">934: </a><font color="#B22222">/*</font>
+<a name="line935">935: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line936">936: </a><font color="#B22222"> * flow_sequence        ::= FLOW-SEQUENCE-START</font>
+<a name="line937">937: </a><font color="#B22222"> *                          *******************</font>
+<a name="line938">938: </a><font color="#B22222"> *                          (flow_sequence_entry FLOW-ENTRY)*</font>
+<a name="line939">939: </a><font color="#B22222"> *                           *                   **********</font>
+<a name="line940">940: </a><font color="#B22222"> *                          flow_sequence_entry?</font>
+<a name="line941">941: </a><font color="#B22222"> *                          *</font>
+<a name="line942">942: </a><font color="#B22222"> *                          FLOW-SEQUENCE-END</font>
+<a name="line943">943: </a><font color="#B22222"> *                          *****************</font>
+<a name="line944">944: </a><font color="#B22222"> * flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line945">945: </a><font color="#B22222"> *                          *</font>
+<a name="line946">946: </a><font color="#B22222"> */</font>
+
+<a name="line948">948: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_flow_sequence_entry"></a>static int</font></strong>
+<a name="line949">949: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry(yaml_parser_t *parser,</font></strong>
+<a name="line950">950: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>
+<a name="line951">951: </a>{
+<a name="line952">952: </a>    yaml_token_t *token;
+
+<a name="line954">954: </a>    <font color="#4169E1">if</font> (first) {
+<a name="line955">955: </a>        token = PEEK_TOKEN(parser);
+<a name="line956">956: </a>        <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;marks, token-&gt;start_mark))
+<a name="line957">957: </a>            <font color="#4169E1">return</font> 0;
+<a name="line958">958: </a>        SKIP_TOKEN(parser);
+<a name="line959">959: </a>    }
+
+<a name="line961">961: </a>    token = PEEK_TOKEN(parser);
+<a name="line962">962: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line964">964: </a>    <font color="#4169E1">if</font> (token-&gt;type != YAML_FLOW_SEQUENCE_END_TOKEN)
+<a name="line965">965: </a>    {
+<a name="line966">966: </a>        <font color="#4169E1">if</font> (!first) {
+<a name="line967">967: </a>            <font color="#4169E1">if</font> (token-&gt;type == YAML_FLOW_ENTRY_TOKEN) {
+<a name="line968">968: </a>                SKIP_TOKEN(parser);
+<a name="line969">969: </a>                token = PEEK_TOKEN(parser);
+<a name="line970">970: </a>                <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line971">971: </a>            }
+<a name="line972">972: </a>            <font color="#4169E1">else</font> {
+<a name="line973">973: </a>                <font color="#4169E1">return</font> yaml_parser_set_parser_error_context(parser,
+<a name="line974">974: </a>                        <font color="#666666">"while parsing a flow sequence"</font>, POP(parser, parser-&gt;marks),
+<a name="line975">975: </a>                        <font color="#666666">"did not find expected ',' or ']'"</font>, token-&gt;start_mark);
+<a name="line976">976: </a>            }
+<a name="line977">977: </a>        }
+
+<a name="line979">979: </a>        <font color="#4169E1">if</font> (token-&gt;type == YAML_KEY_TOKEN) {
+<a name="line980">980: </a>            parser-&gt;state = YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE;
+<a name="line981">981: </a>            MAPPING_START_EVENT_INIT(*event, NULL, NULL,
+<a name="line982">982: </a>                    1, YAML_FLOW_MAPPING_STYLE,
+<a name="line983">983: </a>                    token-&gt;start_mark, token-&gt;end_mark);
+<a name="line984">984: </a>            SKIP_TOKEN(parser);
+<a name="line985">985: </a>            <font color="#4169E1">return</font> 1;
+<a name="line986">986: </a>        }
+
+<a name="line988">988: </a>        <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type != YAML_FLOW_SEQUENCE_END_TOKEN) {
+<a name="line989">989: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line990">990: </a>                        YAML_PARSE_FLOW_SEQUENCE_ENTRY_STATE))
+<a name="line991">991: </a>                <font color="#4169E1">return</font> 0;
+<a name="line992">992: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 0, 0);
+<a name="line993">993: </a>        }
+<a name="line994">994: </a>    }
+
+<a name="line996">996: </a>    parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line997">997: </a>    (void)POP(parser, parser-&gt;marks);
+<a name="line998">998: </a>    SEQUENCE_END_EVENT_INIT(*event, token-&gt;start_mark, token-&gt;end_mark);
+<a name="line999">999: </a>    SKIP_TOKEN(parser);
+<a name="line1000">1000: </a>    <font color="#4169E1">return</font> 1;
+<a name="line1001">1001: </a>}
+
+<a name="line1003">1003: </a><font color="#B22222">/*</font>
+<a name="line1004">1004: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line1005">1005: </a><font color="#B22222"> * flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line1006">1006: </a><font color="#B22222"> *                                      *** *</font>
+<a name="line1007">1007: </a><font color="#B22222"> */</font>
+
+<a name="line1009">1009: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_flow_sequence_entry_mapping_key"></a>static int</font></strong>
+<a name="line1010">1010: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry_mapping_key(yaml_parser_t *parser,</font></strong>
+<a name="line1011">1011: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>
+<a name="line1012">1012: </a>{
+<a name="line1013">1013: </a>    yaml_token_t *token;
+
+<a name="line1015">1015: </a>    token = PEEK_TOKEN(parser);
+<a name="line1016">1016: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line1018">1018: </a>    <font color="#4169E1">if</font> (token-&gt;type != YAML_VALUE_TOKEN &amp;&amp; token-&gt;type != YAML_FLOW_ENTRY_TOKEN
+<a name="line1019">1019: </a>            &amp;&amp; token-&gt;type != YAML_FLOW_SEQUENCE_END_TOKEN) {
+<a name="line1020">1020: </a>        <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line1021">1021: </a>                    YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE))
+<a name="line1022">1022: </a>            <font color="#4169E1">return</font> 0;
+<a name="line1023">1023: </a>        <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 0, 0);
+<a name="line1024">1024: </a>    }
+<a name="line1025">1025: </a>    <font color="#4169E1">else</font> {
+<a name="line1026">1026: </a>        yaml_mark_t mark = token-&gt;end_mark;
+<a name="line1027">1027: </a>        SKIP_TOKEN(parser);
+<a name="line1028">1028: </a>        parser-&gt;state = YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE;
+<a name="line1029">1029: </a>        <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, mark);
+<a name="line1030">1030: </a>    }
+<a name="line1031">1031: </a>}
+
+<a name="line1033">1033: </a><font color="#B22222">/*</font>
+<a name="line1034">1034: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line1035">1035: </a><font color="#B22222"> * flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line1036">1036: </a><font color="#B22222"> *                                                      ***** *</font>
+<a name="line1037">1037: </a><font color="#B22222"> */</font>
+
+<a name="line1039">1039: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_flow_sequence_entry_mapping_value"></a>static int</font></strong>
+<a name="line1040">1040: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry_mapping_value(yaml_parser_t *parser,</font></strong>
+<a name="line1041">1041: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>
+<a name="line1042">1042: </a>{
+<a name="line1043">1043: </a>    yaml_token_t *token;
+
+<a name="line1045">1045: </a>    token = PEEK_TOKEN(parser);
+<a name="line1046">1046: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line1048">1048: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_VALUE_TOKEN) {
+<a name="line1049">1049: </a>        SKIP_TOKEN(parser);
+<a name="line1050">1050: </a>        token = PEEK_TOKEN(parser);
+<a name="line1051">1051: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line1052">1052: </a>        <font color="#4169E1">if</font> (token-&gt;type != YAML_FLOW_ENTRY_TOKEN
+<a name="line1053">1053: </a>                &amp;&amp; token-&gt;type != YAML_FLOW_SEQUENCE_END_TOKEN) {
+<a name="line1054">1054: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line1055">1055: </a>                        YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE))
+<a name="line1056">1056: </a>                <font color="#4169E1">return</font> 0;
+<a name="line1057">1057: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 0, 0);
+<a name="line1058">1058: </a>        }
+<a name="line1059">1059: </a>    }
+<a name="line1060">1060: </a>    parser-&gt;state = YAML_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_END_STATE;
+<a name="line1061">1061: </a>    <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, token-&gt;start_mark);
+<a name="line1062">1062: </a>}
+
+<a name="line1064">1064: </a><font color="#B22222">/*</font>
+<a name="line1065">1065: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line1066">1066: </a><font color="#B22222"> * flow_sequence_entry  ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line1067">1067: </a><font color="#B22222"> *                                                                      *</font>
+<a name="line1068">1068: </a><font color="#B22222"> */</font>
+
+<a name="line1070">1070: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_flow_sequence_entry_mapping_end"></a>static int</font></strong>
+<a name="line1071">1071: </a><strong><font color="#4169E1">yaml_parser_parse_flow_sequence_entry_mapping_end(yaml_parser_t *parser,</font></strong>
+<a name="line1072">1072: </a><strong><font color="#4169E1">        yaml_event_t *event)</font></strong>
+<a name="line1073">1073: </a>{
+<a name="line1074">1074: </a>    yaml_token_t *token;
+
+<a name="line1076">1076: </a>    token = PEEK_TOKEN(parser);
+<a name="line1077">1077: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line1079">1079: </a>    parser-&gt;state = YAML_PARSE_FLOW_SEQUENCE_ENTRY_STATE;
+
+<a name="line1081">1081: </a>    MAPPING_END_EVENT_INIT(*event, token-&gt;start_mark, token-&gt;start_mark);
+<a name="line1082">1082: </a>    <font color="#4169E1">return</font> 1;
+<a name="line1083">1083: </a>}
+
+<a name="line1085">1085: </a><font color="#B22222">/*</font>
+<a name="line1086">1086: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line1087">1087: </a><font color="#B22222"> * flow_mapping         ::= FLOW-MAPPING-START</font>
+<a name="line1088">1088: </a><font color="#B22222"> *                          ******************</font>
+<a name="line1089">1089: </a><font color="#B22222"> *                          (flow_mapping_entry FLOW-ENTRY)*</font>
+<a name="line1090">1090: </a><font color="#B22222"> *                           *                  **********</font>
+<a name="line1091">1091: </a><font color="#B22222"> *                          flow_mapping_entry?</font>
+<a name="line1092">1092: </a><font color="#B22222"> *                          ******************</font>
+<a name="line1093">1093: </a><font color="#B22222"> *                          FLOW-MAPPING-END</font>
+<a name="line1094">1094: </a><font color="#B22222"> *                          ****************</font>
+<a name="line1095">1095: </a><font color="#B22222"> * flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line1096">1096: </a><font color="#B22222"> *                          *           *** *</font>
+<a name="line1097">1097: </a><font color="#B22222"> */</font>
+
+<a name="line1099">1099: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_flow_mapping_key"></a>static int</font></strong>
+<a name="line1100">1100: </a><strong><font color="#4169E1">yaml_parser_parse_flow_mapping_key(yaml_parser_t *parser,</font></strong>
+<a name="line1101">1101: </a><strong><font color="#4169E1">        yaml_event_t *event, int first)</font></strong>
+<a name="line1102">1102: </a>{
+<a name="line1103">1103: </a>    yaml_token_t *token;
+
+<a name="line1105">1105: </a>    <font color="#4169E1">if</font> (first) {
+<a name="line1106">1106: </a>        token = PEEK_TOKEN(parser);
+<a name="line1107">1107: </a>        <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;marks, token-&gt;start_mark))
+<a name="line1108">1108: </a>            <font color="#4169E1">return</font> 0;
+<a name="line1109">1109: </a>        SKIP_TOKEN(parser);
+<a name="line1110">1110: </a>    }
+
+<a name="line1112">1112: </a>    token = PEEK_TOKEN(parser);
+<a name="line1113">1113: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line1115">1115: </a>    <font color="#4169E1">if</font> (token-&gt;type != YAML_FLOW_MAPPING_END_TOKEN)
+<a name="line1116">1116: </a>    {
+<a name="line1117">1117: </a>        <font color="#4169E1">if</font> (!first) {
+<a name="line1118">1118: </a>            <font color="#4169E1">if</font> (token-&gt;type == YAML_FLOW_ENTRY_TOKEN) {
+<a name="line1119">1119: </a>                SKIP_TOKEN(parser);
+<a name="line1120">1120: </a>                token = PEEK_TOKEN(parser);
+<a name="line1121">1121: </a>                <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line1122">1122: </a>            }
+<a name="line1123">1123: </a>            <font color="#4169E1">else</font> {
+<a name="line1124">1124: </a>                <font color="#4169E1">return</font> yaml_parser_set_parser_error_context(parser,
+<a name="line1125">1125: </a>                        <font color="#666666">"while parsing a flow mapping"</font>, POP(parser, parser-&gt;marks),
+<a name="line1126">1126: </a>                        <font color="#666666">"did not find expected ',' or '}'"</font>, token-&gt;start_mark);
+<a name="line1127">1127: </a>            }
+<a name="line1128">1128: </a>        }
+
+<a name="line1130">1130: </a>        <font color="#4169E1">if</font> (token-&gt;type == YAML_KEY_TOKEN) {
+<a name="line1131">1131: </a>            SKIP_TOKEN(parser);
+<a name="line1132">1132: </a>            token = PEEK_TOKEN(parser);
+<a name="line1133">1133: </a>            <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line1134">1134: </a>            <font color="#4169E1">if</font> (token-&gt;type != YAML_VALUE_TOKEN
+<a name="line1135">1135: </a>                    &amp;&amp; token-&gt;type != YAML_FLOW_ENTRY_TOKEN
+<a name="line1136">1136: </a>                    &amp;&amp; token-&gt;type != YAML_FLOW_MAPPING_END_TOKEN) {
+<a name="line1137">1137: </a>                <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line1138">1138: </a>                            YAML_PARSE_FLOW_MAPPING_VALUE_STATE))
+<a name="line1139">1139: </a>                    <font color="#4169E1">return</font> 0;
+<a name="line1140">1140: </a>                <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 0, 0);
+<a name="line1141">1141: </a>            }
+<a name="line1142">1142: </a>            <font color="#4169E1">else</font> {
+<a name="line1143">1143: </a>                parser-&gt;state = YAML_PARSE_FLOW_MAPPING_VALUE_STATE;
+<a name="line1144">1144: </a>                <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event,
+<a name="line1145">1145: </a>                        token-&gt;start_mark);
+<a name="line1146">1146: </a>            }
+<a name="line1147">1147: </a>        }
+<a name="line1148">1148: </a>        <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type != YAML_FLOW_MAPPING_END_TOKEN) {
+<a name="line1149">1149: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line1150">1150: </a>                        YAML_PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE))
+<a name="line1151">1151: </a>                <font color="#4169E1">return</font> 0;
+<a name="line1152">1152: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 0, 0);
+<a name="line1153">1153: </a>        }
+<a name="line1154">1154: </a>    }
+
+<a name="line1156">1156: </a>    parser-&gt;state = POP(parser, parser-&gt;states);
+<a name="line1157">1157: </a>    (void)POP(parser, parser-&gt;marks);
+<a name="line1158">1158: </a>    MAPPING_END_EVENT_INIT(*event, token-&gt;start_mark, token-&gt;end_mark);
+<a name="line1159">1159: </a>    SKIP_TOKEN(parser);
+<a name="line1160">1160: </a>    <font color="#4169E1">return</font> 1;
+<a name="line1161">1161: </a>}
+
+<a name="line1163">1163: </a><font color="#B22222">/*</font>
+<a name="line1164">1164: </a><font color="#B22222"> * Parse the productions:</font>
+<a name="line1165">1165: </a><font color="#B22222"> * flow_mapping_entry   ::= flow_node | KEY flow_node? (VALUE flow_node?)?</font>
+<a name="line1166">1166: </a><font color="#B22222"> *                                   *                  ***** *</font>
+<a name="line1167">1167: </a><font color="#B22222"> */</font>
+
+<a name="line1169">1169: </a><strong><font color="#4169E1"><a name="yaml_parser_parse_flow_mapping_value"></a>static int</font></strong>
+<a name="line1170">1170: </a><strong><font color="#4169E1">yaml_parser_parse_flow_mapping_value(yaml_parser_t *parser,</font></strong>
+<a name="line1171">1171: </a><strong><font color="#4169E1">        yaml_event_t *event, int empty)</font></strong>
+<a name="line1172">1172: </a>{
+<a name="line1173">1173: </a>    yaml_token_t *token;
+
+<a name="line1175">1175: </a>    token = PEEK_TOKEN(parser);
+<a name="line1176">1176: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+
+<a name="line1178">1178: </a>    <font color="#4169E1">if</font> (empty) {
+<a name="line1179">1179: </a>        parser-&gt;state = YAML_PARSE_FLOW_MAPPING_KEY_STATE;
+<a name="line1180">1180: </a>        <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event,
+<a name="line1181">1181: </a>                token-&gt;start_mark);
+<a name="line1182">1182: </a>    }
+
+<a name="line1184">1184: </a>    <font color="#4169E1">if</font> (token-&gt;type == YAML_VALUE_TOKEN) {
+<a name="line1185">1185: </a>        SKIP_TOKEN(parser);
+<a name="line1186">1186: </a>        token = PEEK_TOKEN(parser);
+<a name="line1187">1187: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">return</font> 0;
+<a name="line1188">1188: </a>        <font color="#4169E1">if</font> (token-&gt;type != YAML_FLOW_ENTRY_TOKEN
+<a name="line1189">1189: </a>                &amp;&amp; token-&gt;type != YAML_FLOW_MAPPING_END_TOKEN) {
+<a name="line1190">1190: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;states,
+<a name="line1191">1191: </a>                        YAML_PARSE_FLOW_MAPPING_KEY_STATE))
+<a name="line1192">1192: </a>                <font color="#4169E1">return</font> 0;
+<a name="line1193">1193: </a>            <font color="#4169E1">return</font> yaml_parser_parse_node(parser, event, 0, 0);
+<a name="line1194">1194: </a>        }
+<a name="line1195">1195: </a>    }
+
+<a name="line1197">1197: </a>    parser-&gt;state = YAML_PARSE_FLOW_MAPPING_KEY_STATE;
+<a name="line1198">1198: </a>    <font color="#4169E1">return</font> yaml_parser_process_empty_scalar(parser, event, token-&gt;start_mark);
+<a name="line1199">1199: </a>}
+
+<a name="line1201">1201: </a><font color="#B22222">/*</font>
+<a name="line1202">1202: </a><font color="#B22222"> * Generate an empty scalar event.</font>
+<a name="line1203">1203: </a><font color="#B22222"> */</font>
+
+<a name="line1205">1205: </a><strong><font color="#4169E1"><a name="yaml_parser_process_empty_scalar"></a>static int</font></strong>
+<a name="line1206">1206: </a><strong><font color="#4169E1">yaml_parser_process_empty_scalar(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line1207">1207: </a><strong><font color="#4169E1">        yaml_mark_t mark)</font></strong>
+<a name="line1208">1208: </a>{
+<a name="line1209">1209: </a>    yaml_char_t *value;
+
+<a name="line1211">1211: </a>    value = YAML_MALLOC(1);
+<a name="line1212">1212: </a>    <font color="#4169E1">if</font> (!value) {
+<a name="line1213">1213: </a>        parser-&gt;error = YAML_MEMORY_ERROR;
+<a name="line1214">1214: </a>        <font color="#4169E1">return</font> 0;
+<a name="line1215">1215: </a>    }
+<a name="line1216">1216: </a>    value[0] = '\0';
+
+<a name="line1218">1218: </a>    SCALAR_EVENT_INIT(*event, NULL, NULL, value, 0,
+<a name="line1219">1219: </a>            1, 0, YAML_PLAIN_SCALAR_STYLE, mark, mark);
+
+<a name="line1221">1221: </a>    <font color="#4169E1">return</font> 1;
+<a name="line1222">1222: </a>}
+
+<a name="line1224">1224: </a><font color="#B22222">/*</font>
+<a name="line1225">1225: </a><font color="#B22222"> * Parse directives.</font>
+<a name="line1226">1226: </a><font color="#B22222"> */</font>
+
+<a name="line1228">1228: </a><strong><font color="#4169E1"><a name="yaml_parser_process_directives"></a>static int</font></strong>
+<a name="line1229">1229: </a><strong><font color="#4169E1">yaml_parser_process_directives(yaml_parser_t *parser,</font></strong>
+<a name="line1230">1230: </a><strong><font color="#4169E1">        yaml_version_directive_t **version_directive_ref,</font></strong>
+<a name="line1231">1231: </a><strong><font color="#4169E1">        yaml_tag_directive_t **tag_directives_start_ref,</font></strong>
+<a name="line1232">1232: </a><strong><font color="#4169E1">        yaml_tag_directive_t **tag_directives_end_ref)</font></strong>
+<a name="line1233">1233: </a>{
+<a name="line1234">1234: </a>    yaml_tag_directive_t default_tag_directives[] = {
+<a name="line1235">1235: </a>        {(yaml_char_t *)<font color="#666666">"!"</font>, (yaml_char_t *)<font color="#666666">"!"</font>},
+<a name="line1236">1236: </a>        {(yaml_char_t *)<font color="#666666">"!!"</font>, (yaml_char_t *)<font color="#666666">"tag:yaml.org,2002:"</font>},
+<a name="line1237">1237: </a>        {NULL, NULL}
+<a name="line1238">1238: </a>    };
+<a name="line1239">1239: </a>    yaml_tag_directive_t *default_tag_directive;
+<a name="line1240">1240: </a>    yaml_version_directive_t *version_directive = NULL;
+<a name="line1241">1241: </a>    <font color="#4169E1">struct</font> {
+<a name="line1242">1242: </a>        yaml_tag_directive_t *start;
+<a name="line1243">1243: </a>        yaml_tag_directive_t *end;
+<a name="line1244">1244: </a>        yaml_tag_directive_t *top;
+<a name="line1245">1245: </a>    } tag_directives = { NULL, NULL, NULL };
+<a name="line1246">1246: </a>    yaml_token_t *token;
+
+<a name="line1248">1248: </a>    <font color="#4169E1">if</font> (!STACK_INIT(parser, tag_directives, yaml_tag_directive_t*))
+<a name="line1249">1249: </a>        <font color="#4169E1">goto</font> error;
+
+<a name="line1251">1251: </a>    token = PEEK_TOKEN(parser);
+<a name="line1252">1252: </a>    <font color="#4169E1">if</font> (!token) <font color="#4169E1">goto</font> error;
+
+<a name="line1254">1254: </a>    <font color="#4169E1">while</font> (token-&gt;type == YAML_VERSION_DIRECTIVE_TOKEN ||
+<a name="line1255">1255: </a>            token-&gt;type == YAML_TAG_DIRECTIVE_TOKEN)
+<a name="line1256">1256: </a>    {
+<a name="line1257">1257: </a>        <font color="#4169E1">if</font> (token-&gt;type == YAML_VERSION_DIRECTIVE_TOKEN) {
+<a name="line1258">1258: </a>            <font color="#4169E1">if</font> (version_directive) {
+<a name="line1259">1259: </a>                yaml_parser_set_parser_error(parser,
+<a name="line1260">1260: </a>                        <font color="#666666">"found duplicate %YAML directive"</font>, token-&gt;start_mark);
+<a name="line1261">1261: </a>                <font color="#4169E1">goto</font> error;
+<a name="line1262">1262: </a>            }
+<a name="line1263">1263: </a>            <font color="#4169E1">if</font> (token-&gt;data.version_directive.major != 1
+<a name="line1264">1264: </a>                    || (
+<a name="line1265">1265: </a>                        token-&gt;data.version_directive.minor != 1
+<a name="line1266">1266: </a>                        &amp;&amp; token-&gt;data.version_directive.minor != 2
+<a name="line1267">1267: </a>                    )) {
+<a name="line1268">1268: </a>                yaml_parser_set_parser_error(parser,
+<a name="line1269">1269: </a>                        <font color="#666666">"found incompatible YAML document"</font>, token-&gt;start_mark);
+<a name="line1270">1270: </a>                <font color="#4169E1">goto</font> error;
+<a name="line1271">1271: </a>            }
+<a name="line1272">1272: </a>            version_directive = YAML_MALLOC_STATIC(yaml_version_directive_t);
+<a name="line1273">1273: </a>            <font color="#4169E1">if</font> (!version_directive) {
+<a name="line1274">1274: </a>                parser-&gt;error = YAML_MEMORY_ERROR;
+<a name="line1275">1275: </a>                <font color="#4169E1">goto</font> error;
+<a name="line1276">1276: </a>            }
+<a name="line1277">1277: </a>            version_directive-&gt;major = token-&gt;data.version_directive.major;
+<a name="line1278">1278: </a>            version_directive-&gt;minor = token-&gt;data.version_directive.minor;
+<a name="line1279">1279: </a>        }
+
+<a name="line1281">1281: </a>        <font color="#4169E1">else</font> <font color="#4169E1">if</font> (token-&gt;type == YAML_TAG_DIRECTIVE_TOKEN) {
+<a name="line1282">1282: </a>            yaml_tag_directive_t value;
+<a name="line1283">1283: </a>            value.handle = token-&gt;data.tag_directive.handle;
+<a name="line1284">1284: </a>            value.prefix = token-&gt;data.tag_directive.prefix;
+
+<a name="line1286">1286: </a>            <font color="#4169E1">if</font> (!yaml_parser_append_tag_directive(parser, value, 0,
+<a name="line1287">1287: </a>                        token-&gt;start_mark))
+<a name="line1288">1288: </a>                <font color="#4169E1">goto</font> error;
+<a name="line1289">1289: </a>            <font color="#4169E1">if</font> (!PUSH(parser, tag_directives, value))
+<a name="line1290">1290: </a>                <font color="#4169E1">goto</font> error;
+<a name="line1291">1291: </a>        }
+
+<a name="line1293">1293: </a>        SKIP_TOKEN(parser);
+<a name="line1294">1294: </a>        token = PEEK_TOKEN(parser);
+<a name="line1295">1295: </a>        <font color="#4169E1">if</font> (!token) <font color="#4169E1">goto</font> error;
+<a name="line1296">1296: </a>    }
+
+<a name="line1298">1298: </a>    <font color="#4169E1">for</font> (default_tag_directive = default_tag_directives;
+<a name="line1299">1299: </a>            default_tag_directive-&gt;handle; default_tag_directive++) {
+<a name="line1300">1300: </a>        <font color="#4169E1">if</font> (!yaml_parser_append_tag_directive(parser, *default_tag_directive, 1,
+<a name="line1301">1301: </a>                    token-&gt;start_mark))
+<a name="line1302">1302: </a>            <font color="#4169E1">goto</font> error;
+<a name="line1303">1303: </a>    }
+
+<a name="line1305">1305: </a>    <font color="#4169E1">if</font> (version_directive_ref) *version_directive_ref = version_directive;
+<a name="line1306">1306: </a>    <font color="#4169E1">if</font> (tag_directives_start_ref) {
+<a name="line1307">1307: </a>        <font color="#4169E1">if</font> (STACK_EMPTY(parser, tag_directives)) {
+<a name="line1308">1308: </a>            *tag_directives_start_ref = *tag_directives_end_ref = NULL;
+<a name="line1309">1309: </a>            STACK_DEL(parser, tag_directives);
+<a name="line1310">1310: </a>        }
+<a name="line1311">1311: </a>        <font color="#4169E1">else</font> {
+<a name="line1312">1312: </a>            *tag_directives_start_ref = tag_directives.start;
+<a name="line1313">1313: </a>            *tag_directives_end_ref = tag_directives.top;
+<a name="line1314">1314: </a>        }
+<a name="line1315">1315: </a>    }
+<a name="line1316">1316: </a>    <font color="#4169E1">else</font> {
+<a name="line1317">1317: </a>        STACK_DEL(parser, tag_directives);
+<a name="line1318">1318: </a>    }
+
+<a name="line1320">1320: </a>    <font color="#4169E1">if</font> (!version_directive_ref)
+<a name="line1321">1321: </a>        yaml_free(version_directive);
+<a name="line1322">1322: </a>    <font color="#4169E1">return</font> 1;
+
+<a name="line1324">1324: </a>error:
+<a name="line1325">1325: </a>    yaml_free(version_directive);
+<a name="line1326">1326: </a>    <font color="#4169E1">while</font> (!STACK_EMPTY(parser, tag_directives)) {
+<a name="line1327">1327: </a>        yaml_tag_directive_t tag_directive = POP(parser, tag_directives);
+<a name="line1328">1328: </a>        yaml_free(tag_directive.handle);
+<a name="line1329">1329: </a>        yaml_free(tag_directive.prefix);
+<a name="line1330">1330: </a>    }
+<a name="line1331">1331: </a>    STACK_DEL(parser, tag_directives);
+<a name="line1332">1332: </a>    <font color="#4169E1">return</font> 0;
+<a name="line1333">1333: </a>}
+
+<a name="line1335">1335: </a><font color="#B22222">/*</font>
+<a name="line1336">1336: </a><font color="#B22222"> * Append a tag directive to the directives stack.</font>
+<a name="line1337">1337: </a><font color="#B22222"> */</font>
+
+<a name="line1339">1339: </a><strong><font color="#4169E1"><a name="yaml_parser_append_tag_directive"></a>static int</font></strong>
+<a name="line1340">1340: </a><strong><font color="#4169E1">yaml_parser_append_tag_directive(yaml_parser_t *parser,</font></strong>
+<a name="line1341">1341: </a><strong><font color="#4169E1">        yaml_tag_directive_t value, int allow_duplicates, yaml_mark_t mark)</font></strong>
+<a name="line1342">1342: </a>{
+<a name="line1343">1343: </a>    yaml_tag_directive_t *tag_directive;
+<a name="line1344">1344: </a>    yaml_tag_directive_t copy = { NULL, NULL };
+
+<a name="line1346">1346: </a>    <font color="#4169E1">for</font> (tag_directive = parser-&gt;tag_directives.start;
+<a name="line1347">1347: </a>            tag_directive != parser-&gt;tag_directives.top; tag_directive ++) {
+<a name="line1348">1348: </a>        <font color="#4169E1">if</font> (strcmp((char *)value.handle, (char *)tag_directive-&gt;handle) == 0) {
+<a name="line1349">1349: </a>            <font color="#4169E1">if</font> (allow_duplicates)
+<a name="line1350">1350: </a>                <font color="#4169E1">return</font> 1;
+<a name="line1351">1351: </a>            <font color="#4169E1">return</font> yaml_parser_set_parser_error(parser,
+<a name="line1352">1352: </a>                    <font color="#666666">"found duplicate %TAG directive"</font>, mark);
+<a name="line1353">1353: </a>        }
+<a name="line1354">1354: </a>    }
+
+<a name="line1356">1356: </a>    copy.handle = yaml_strdup(value.handle);
+<a name="line1357">1357: </a>    copy.prefix = yaml_strdup(value.prefix);
+<a name="line1358">1358: </a>    <font color="#4169E1">if</font> (!copy.handle || !copy.prefix) {
+<a name="line1359">1359: </a>        parser-&gt;error = YAML_MEMORY_ERROR;
+<a name="line1360">1360: </a>        <font color="#4169E1">goto</font> error;
+<a name="line1361">1361: </a>    }
+
+<a name="line1363">1363: </a>    <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;tag_directives, copy))
+<a name="line1364">1364: </a>        <font color="#4169E1">goto</font> error;
+
+<a name="line1366">1366: </a>    <font color="#4169E1">return</font> 1;
+
+<a name="line1368">1368: </a>error:
+<a name="line1369">1369: </a>    yaml_free(copy.handle);
+<a name="line1370">1370: </a>    yaml_free(copy.prefix);
+<a name="line1371">1371: </a>    <font color="#4169E1">return</font> 0;
+<a name="line1372">1372: </a>}
+
+</pre>
+</body>
+
+</html>
+

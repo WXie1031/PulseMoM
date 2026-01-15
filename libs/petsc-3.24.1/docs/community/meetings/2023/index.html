@@ -1,0 +1,1508 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>2023 Annual PETSc Meeting &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../../../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../../../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../../../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'community/meetings/2023/index';</script>
+    <link rel="icon" href="../../../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../../../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">2023 Annual...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="annual-petsc-meeting">
+<span id="meeting"></span><h1>2023 Annual PETSc Meeting<a class="headerlink" href="#annual-petsc-meeting" title="Link to this heading">#</a></h1>
+<a class="reference internal image-reference" href="https://petsc.gitlab.io/annual-meetings/2023/GroupPhoto.jpg"><img alt="PETSc User Meeting 2023 group photo (Hermann Hall, 06/06/2023)" src="https://petsc.gitlab.io/annual-meetings/2023/GroupPhoto.jpg" style="width: 800px;" />
+</a>
+<p>June 5-7, 2023, at the <a class="reference external" href="https://www.iit.edu/event-services/meeting-spaces/hermann-hall-conference-center">Hermann Hall Conference Center</a>
+in the Hermann Ballroom (when you enter the Hermann Hall building through the main entrance walk straight back to the rear of the building and take a right)
+(3241 South Federal Street, Chicago, IL)
+on the campus of <a class="reference external" href="https://www.iit.edu">The Illinois Institute of Technology (IIT)</a> in Chicago.
+Easy access from the hotels via the Chicago Elevated <a class="reference external" href="https://www.transitchicago.com/greenline">Green</a> or <a class="reference external" href="https://www.transitchicago.com/redline">Red</a> Lines.
+<a class="reference external" href="https://www.iit.edu/cbsc/parking/visitor-and-event-parking">Parking use B5 (32nd &amp; Federal St.)</a>.</p>
+<p>Please test for Covid before attending the meeting and
+mask while traveling to the meeting.</p>
+<p>In addition to a newbie user tutorial and a <a class="reference internal" href="#newbie-developer-workshop"><span class="std std-ref">Newbie Developer Workshop</span></a>, the meeting will include a “speed dating” session where users can ask questions of developers (and each other) about technical details of their particular simulations. Finally, the meeting will be interspersed with mini-tutorials that will dive into particular aspects of PETSc that users may not be familiar with.</p>
+<section id="meeting-times">
+<h2>Meeting times<a class="headerlink" href="#meeting-times" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Monday, June 5: 1 pm to 5:30 pm</p></li>
+<li><p>Tuesday, June 6: 10:15 am to 5:30 pm</p></li>
+<li><p>Wednesday, June 7: 9 am to 3 pm</p></li>
+</ul>
+<p>PETSc newbie user lightning tutorial:</p>
+<ul class="simple">
+<li><p>Monday, June 5: 10 am to 12 pm</p></li>
+</ul>
+<p>PETSc <a class="reference internal" href="#newbie-developer-workshop"><span class="std std-ref">Newbie Developer Workshop</span></a></p>
+<ul class="simple">
+<li><p>Tuesday, June 6: 9 am to 10 am</p></li>
+</ul>
+</section>
+<section id="registration">
+<h2>Registration<a class="headerlink" href="#registration" title="Link to this heading">#</a></h2>
+<p>Please register at <a class="reference external" href="https://www.eventbrite.com/e/petsc-2023-user-meeting-tickets-494165441137">EventBrite</a> to save your seat. 100-dollar registration fee for breaks and lunches; this can be skipped if you cannot afford it.</p>
+</section>
+<section id="submit-a-presentation">
+<h2>Submit a presentation<a class="headerlink" href="#submit-a-presentation" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://docs.google.com/forms/d/e/1FAIpQLSesh47RGVb9YD9F1qu4obXSe1X6fn7vVmjewllePBDxBItfOw/viewform">Submit an abstract</a> by May 1st (but preferably now) to be included in the schedule. We welcome talks from all perspectives, including those who</p>
+<ul class="simple">
+<li><p>contribute to PETSc,</p></li>
+<li><p>use PETSc in their applications or libraries,</p></li>
+<li><p>develop the libraries and packages <a class="reference external" href="https://petsc.org/release/install/external_software/">called from PETSc</a>, and even</p></li>
+<li><p>those who are curious about using PETSc in their applications.</p></li>
+</ul>
+</section>
+<section id="suggested-hotels">
+<h2>Suggested hotels<a class="headerlink" href="#suggested-hotels" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://www.iit.edu/procurement-services/purchasing/preferred-and-contract-vendors/hotels">Receive IIT hotel discounts.</a></p></li>
+<li><p>More Expensive</p>
+<ul>
+<li><p><a class="reference external" href="https://www.hilton.com/en/hotels/chichhh-hilton-chicago/?SEO_id=GMB-AMER-HI-CHICHHH&amp;amp;y_source=1_NzIxNzU2LTcxNS1sb2NhdGlvbi53ZWJzaXRl">Hilton Chicago</a> 720 S Michigan Ave, Chicago</p></li>
+<li><p><a class="reference external" href="https://www.choicehotels.com/illinois/chicago/ascend-hotels/il480">Hotel Blake, an Ascend Hotel Collection Member</a> 500 S Dearborn St, Chicago, IL 60605</p></li>
+<li><p><a class="reference external" href="https://www.marriott.com/en-us/hotels/chiab-the-blackstone-autograph-collection/overview/?scid=f2ae0541-1279-4f24-b197-a979c79310b0">The Blackstone, Autograph Collection</a> 636 South Michigan Avenue Lobby Entrance On, E Balbo Dr, Chicago</p></li>
+</ul>
+</li>
+<li><p>Inexpensive</p>
+<ul>
+<li><p><a class="reference external" href="https://www.wyndhamhotels.com/travelodge/chicago-illinois/travelodge-hotel-downtown-chicago/overview?CID=LC:TL::GGL:RIO:National:10073&amp;amp;iata=00093796">Travelodge by Wyndham Downtown Chicago</a> 65 E Harrison St, Chicago</p></li>
+<li><p><a class="reference external" href="https://www.congressplazahotel.com/?utm_source=local-directories&amp;amp;utm_medium=organic&amp;amp;utm_campaign=travelclick-localconnect">The Congress Plaza Hotel &amp; Convention Center</a> 520 S Michigan Ave, Chicago</p></li>
+<li><p><a class="reference external" href="https://www.hilton.com/en/hotels/chidlgi-hilton-garden-inn-chicago-downtown-south-loop/?SEO_id=GMB-AMER-GI-CHIDLGI&amp;amp;y_source=1_MTI2NDg5NzktNzE1LWxvY2F0aW9uLndlYnNpdGU%3D">Hilton Garden Inn Chicago Downtown South Loop</a> 55 E 11th St, Chicago</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="agenda">
+<h2>Agenda<a class="headerlink" href="#agenda" title="Link to this heading">#</a></h2>
+<section id="monday-june-5">
+<h3>Monday, June 5<a class="headerlink" href="#monday-june-5" title="Link to this heading">#</a></h3>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Time</p></th>
+<th class="head"><p>Title</p></th>
+<th class="head"><p>Speaker</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>10:00 am</p></td>
+<td><p>Newbie tutorial (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/tutorials/petsc_annual_meeting_2023_tutorial.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/rm34jR-p0xk">Video</a>)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>11:30 am</p></td>
+<td><p>Follow-up questions and meetings</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>12:00 am</p></td>
+<td><p><strong>Lunch</strong> for tutorial attendees and early arrivees</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>1:00 pm</p></td>
+<td><p>Some thoughts on the future of PETSc (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/BarrySmith.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/vqx6b3Hg_6k">Video</a>)</p></td>
+<td><p>[Barry Smith]</p></td>
+</tr>
+<tr class="row-even"><td><p>1:30 pm</p></td>
+<td><p>A new nonhydrostatic capability for MPAS-Ocean (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/SaraCalandrini.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/pca0jT86qxU">Video</a>)</p></td>
+<td><p>[Sara Calandrini]</p></td>
+</tr>
+<tr class="row-odd"><td><p>2:00 pm</p></td>
+<td><p>MultiFlow: A coupled balanced-force framework to solve multiphase flows in arbitrary domains (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/BerendvanWachem.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/obdKq9SBpfw">Video</a>)</p></td>
+<td><p>[Berend van Wachem]</p></td>
+</tr>
+<tr class="row-even"><td><p>2:30 pm</p></td>
+<td><p>Mini tutorial: PETSc and PyTorch interoperability (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/HongZhangMr.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/r_icrhAbmSQ">Video</a>, <a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/HongZhangMr.ipynb">IPython code</a>)</p></td>
+<td><p>[Hong Zhang (Mr.)]</p></td>
+</tr>
+<tr class="row-odd"><td><p>2:45 pm</p></td>
+<td><p><strong>Coffee Break</strong></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>3:00 pm</p></td>
+<td><p>Towards enabling digital twins capabilities for a cloud chamber (slides and video unavailable)</p></td>
+<td><p>[Vanessa Lopez-Marrero]</p></td>
+</tr>
+<tr class="row-odd"><td><p>3:30 pm</p></td>
+<td><p>PETSc ROCKS (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/DavidMay.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/0BplD93cSe8">Video</a>)</p></td>
+<td><p>[David May]</p></td>
+</tr>
+<tr class="row-even"><td><p>4:00 pm</p></td>
+<td><p>Software Development and Deployment Including PETSc (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/TimSteinhoff.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/vENWhqp7XlI">Video</a>)</p></td>
+<td><p>[Tim Steinhoff]</p></td>
+</tr>
+<tr class="row-odd"><td><p>4:30 pm</p></td>
+<td><p>Multiscale, Multiphysics Simulation Through Application Composition Using MOOSE (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/DerekGaston.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/aHL4FIu_q6k">Video</a>)</p></td>
+<td><p>[Derek Gaston]</p></td>
+</tr>
+<tr class="row-even"><td><p>5:00 pm</p></td>
+<td><p>PETSc Newton Trust-Region for Simulating Large-scale Engineered Subsurface Systems with PFLOTRAN (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/HeehoPark.pdf">Slides</a>)</p></td>
+<td><p>[Heeho Park]</p></td>
+</tr>
+<tr class="row-odd"><td><p>5:30 pm</p></td>
+<td><p>End of first day</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="tuesday-june-6">
+<h3>Tuesday, June 6<a class="headerlink" href="#tuesday-june-6" title="Link to this heading">#</a></h3>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Time</p></th>
+<th class="head"><p>Title</p></th>
+<th class="head"><p>Speaker</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p></p></td>
+<td><p></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>9:00 am</p></td>
+<td><p>Newbie Developer Workshop (optional)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>10:00 am</p></td>
+<td><p><strong>Coffee Break</strong></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>10:15 am</p></td>
+<td><p>Experiences in solving nonlinear eigenvalue problems with SLEPc (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/JoseERoman.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/2qhtMsvYw4o">Video</a>)</p></td>
+<td><p>[Jose E. Roman]</p></td>
+</tr>
+<tr class="row-even"><td><p>10:45 am</p></td>
+<td><p>MPI Multiply Threads (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/HuiZhou.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/plfB7XVoqSQ">Video</a>)</p></td>
+<td><p>[Hui Zhou]</p></td>
+</tr>
+<tr class="row-odd"><td><p>11:15 am</p></td>
+<td><p>Mini tutorial: PETSc on the GPU (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/JunchaoZhang.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/8tmswLh3ez0">Video</a>)</p></td>
+<td><p>[Junchao Zhang]</p></td>
+</tr>
+<tr class="row-even"><td><p>11:30 am</p></td>
+<td><p>AMD GPU benchmarking, documentation, and roadmap (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/JustinChang.pdf">Slides</a>, video unavailable)</p></td>
+<td><p>[Justin Chang]</p></td>
+</tr>
+<tr class="row-odd"><td><p>12:00 pm</p></td>
+<td><p><strong>Lunch</strong></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>1:00 pm</p></td>
+<td><p>Mini tutorial: petsc4py (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/StefanoZampini.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/hhe0Se4pkSg">Video</a>)</p></td>
+<td><p>[Stefano Zampini]</p></td>
+</tr>
+<tr class="row-odd"><td><p>1:15 pm</p></td>
+<td><p>Transparent Asynchronous Compute Made Easy With PETSc (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/JacobFaibussowitsch.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/IbjboeTYuAE">Video</a>)</p></td>
+<td><p>[Jacob Faibussowitsch]</p></td>
+</tr>
+<tr class="row-even"><td><p>1:45 pm</p></td>
+<td><p>Using Kokkos Ecosystem with PETSc on modern architectures (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/LucBerger-Vergiat.pdf">Slides</a>)</p></td>
+<td><p>[Luc Berger-Vergiat]</p></td>
+</tr>
+<tr class="row-odd"><td><p>2:15 pm</p></td>
+<td><p>Intel oneAPI Math Kernel Library, what’s new and what’s next? (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/SpencerPatty.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/Baz4GVp4gQc">Video</a>)</p></td>
+<td><p>[Spencer Patty]</p></td>
+</tr>
+<tr class="row-even"><td><p>2:45 pm</p></td>
+<td><p>Mini tutorial: DMPlex (<a class="reference external" href="https://youtu.be/jURFyoONRko">Video</a>, slides unavailable)</p></td>
+<td><p>[Matt Knepley]</p></td>
+</tr>
+<tr class="row-odd"><td><p>3:00 pm</p></td>
+<td><p><strong>Coffee Break</strong></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>3:15 pm</p></td>
+<td><p>Scalable cloud-native thermo-mechanical solvers using PETSc (slides and video unavailable)</p></td>
+<td><p>[Ashish Patel]</p></td>
+</tr>
+<tr class="row-odd"><td><p>3:45 pm</p></td>
+<td><p>A mimetic finite difference based quasi-static magnetohydrodynamic solver for force-free plasmas in tokamak disruptions (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/ZakariaeJorti.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/k8PozEb4q40">Video</a>)</p></td>
+<td><p>[Zakariae Jorti]</p></td>
+</tr>
+<tr class="row-even"><td><p>4:15 pm</p></td>
+<td><p>High-order FEM implementation in AMReX using PETSc (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/AlexGrant.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/0L9boKxXPmA">Video</a>)</p></td>
+<td><p>[Alex Grant]</p></td>
+</tr>
+<tr class="row-odd"><td><p>4:45 pm</p></td>
+<td><p>An Immersed Boundary method for Elastic Bodies Using PETSc (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/MohamadIbrahimCheikh.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/e101L03bO8A">Video</a>)</p></td>
+<td><p>[Mohamad Ibrahim Cheikh]</p></td>
+</tr>
+<tr class="row-even"><td><p>5:15 pm</p></td>
+<td><p>Mini tutorial: DMNetwork (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/HongZhangMs.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/heWln8ZIrHc">Video</a>)</p></td>
+<td><p>[Hong Zhang (Ms.)]</p></td>
+</tr>
+<tr class="row-odd"><td><p>5:30 pm</p></td>
+<td><p>End of second day</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="wednesday-june-7">
+<h3>Wednesday, June 7<a class="headerlink" href="#wednesday-june-7" title="Link to this heading">#</a></h3>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Time</p></th>
+<th class="head"><p>Title</p></th>
+<th class="head"><p>Speaker</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>9:00 am</p></td>
+<td><p>XGCm: An Unstructured Mesh Gyrokinetic Particle-in-cell Code for Exascale Fusion Plasma Simulations (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/ChonglinZhang.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/sGP_9JStYR8">Video</a>)</p></td>
+<td><p>[Chonglin Zhang]</p></td>
+</tr>
+<tr class="row-odd"><td><p>9:30 am</p></td>
+<td><p>PETSc-PIC: A Structure-Preserving Particle-In-Cell Method for Electrostatic Solves (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/DanielFinn.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/b-V_j4Vs2OA">Video</a>)</p></td>
+<td><p>[Daniel Finn]</p></td>
+</tr>
+<tr class="row-even"><td><p>9:57 am</p></td>
+<td><p>Landau Collisions in the Particle Basis with PETSc-PIC (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/JosephPusztay.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/b-V_j4Vs2OA?t=1200">Video</a>)</p></td>
+<td><p>[Joseph Pusztay]</p></td>
+</tr>
+<tr class="row-odd"><td><p>10:15 am</p></td>
+<td><p><strong>Coffee Break</strong></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>10:30 am</p></td>
+<td><p>Mini tutorial: DMSwarm (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/JosephPusztayDMSwarm.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/FaAVV8-lnZI">Video</a>)</p></td>
+<td><p>[Joseph Pusztay*][joseph pusztay*]</p></td>
+</tr>
+<tr class="row-odd"><td><p>10:45 am</p></td>
+<td><p>Scalable Riemann Solvers with the Discontinuous Galerkin Method for Hyperbolic Network Simulation (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/AidanHamilton.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/Ys0CZLha1pA">Video</a>)</p></td>
+<td><p>[Aidan Hamilton]</p></td>
+</tr>
+<tr class="row-even"><td><p>11:15 am</p></td>
+<td><p>Numerical upscaling of network models using PETSc (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/MariaVasilyeva.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/Br-9WgvPG7Q">Video</a>)</p></td>
+<td><p>[Maria Vasilyeva]</p></td>
+</tr>
+<tr class="row-odd"><td><p>11:45 am</p></td>
+<td><p>Mini tutorial: TaoADMM (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/HansolSuh.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/8WvZ9ggB3x0">Video</a>)</p></td>
+<td><p>[Hansol Suh]</p></td>
+</tr>
+<tr class="row-even"><td><p>12:00 am</p></td>
+<td><p><strong>Lunch</strong></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p>1:00 pm</p></td>
+<td><p>PETSc in the Ionosphere (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/MattYoung.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/hS3nOmX_g8I">Video</a>)</p></td>
+<td><p>[Matt Young]</p></td>
+</tr>
+<tr class="row-even"><td><p>1:30 pm</p></td>
+<td><p>From the trenches: porting mef90 (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/BlaiseBourdin.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/mfdmVbHsYK0">Video</a>)</p></td>
+<td><p>[Blaise Bourdin]</p></td>
+</tr>
+<tr class="row-odd"><td><p>2:00 pm</p></td>
+<td><p>PERMON library for quadratic programming (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/JakubKruzik.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/2dC_NkGBBnE">Video</a>)</p></td>
+<td><p>[Jakub Kruzik]</p></td>
+</tr>
+<tr class="row-even"><td><p>2:22 pm</p></td>
+<td><p>Distributed Machine Learning for Natural Hazard Applications Using PERMON (<a class="reference external" href="https://petsc.gitlab.io/annual-meetings/2023/slides/MarekPecha.pdf">Slides</a>, <a class="reference external" href="https://youtu.be/2dC_NkGBBnE?t=1194">Video</a>)</p></td>
+<td><p>[Marek Pecha]</p></td>
+</tr>
+<tr class="row-odd"><td><p>2:45 pm</p></td>
+<td><p>Wrap up</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p>3:00 pm</p></td>
+<td><p>End of meeting</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="newbie-developer-workshop">
+<span id="id1"></span><h2>Newbie Developer Workshop<a class="headerlink" href="#newbie-developer-workshop" title="Link to this heading">#</a></h2>
+<p>Tuesday, June 6, at 9 am. Some of the topics to be covered.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../../../developers/index.html#ind-developers"><span class="std std-ref">Exploring the developer documentation</span></a></p></li>
+<li><p><a class="reference internal" href="../../../developers/communication.html#petsc-developers-communication-channels"><span class="std std-ref">PETSc Developers Communication Channels</span></a></p></li>
+<li><p><a class="reference internal" href="../../../developers/contributing/developingmr.html#sec-integration-branches"><span class="std std-ref">PETSc Git branch organization</span></a></p></li>
+<li><p><a class="reference internal" href="../../../developers/contributing/index.html#ch-contributing"><span class="std std-ref">Contributing to PETSc</span></a></p>
+<ul>
+<li><p><a class="reference internal" href="../../../developers/contributing/developingmr.html#ch-developingmr"><span class="std std-ref">Starting a merge request (MR)</span></a></p></li>
+<li><p><a class="reference internal" href="../../../developers/contributing/submittingmr.html#ch-submittingmr"><span class="std std-ref">Submitting and monitoring a MR</span></a></p></li>
+<li><p><a class="reference internal" href="../../../developers/contributing/pipelines.html#pipelines"><span class="std std-ref">GitLab CI pipelines</span></a></p></li>
+<li><p><a class="reference internal" href="../../../developers/style.html#style"><span class="std std-ref">PETSc style guide</span></a></p></li>
+</ul>
+</li>
+<li><p>Reviewing someone else’s MR</p></li>
+<li><p>Adding new Fortran and Python function bindings</p></li>
+<li><p>PETSc’s</p>
+<ul>
+<li><p><a class="reference internal" href="../../../developers/buildsystem.html#ch-buildsystem"><span class="std std-ref">configure system</span></a></p></li>
+<li><p>compiler system, and</p></li>
+<li><p><a class="reference internal" href="../../../developers/testing.html#test-harness"><span class="std std-ref">testing system including the GitLab CI</span></a></p></li>
+</ul>
+</li>
+<li><p>Any other topics requested by potential contributors</p></li>
+</ul>
+</section>
+<section id="abstracts">
+<h2>Abstracts<a class="headerlink" href="#abstracts" title="Link to this heading">#</a></h2>
+<aside class="topic" id="luc-berger-vergiat">
+<p class="topic-title"><strong>Using Kokkos Ecosystem with PETSc on modern architectures</strong></p>
+<p><strong>Luc Berger-Vergiat</strong></p>
+<p>Sandia National Laboratories</p>
+<p>Supercomputers increasingly rely on GPUs to achieve high
+throughput while maintaining a reasonable power consumption. Consequently,
+scientific applications are adapting to this new environment, and new
+algorithms are designed to leverage the high concurrency of GPUs. In this
+presentation, I will show how the Kokkos Ecosystem can help alleviate some
+of the difficulties associated with support for multiple CPU/GPU
+architectures. I will also show some results using the Kokkos and Kokkos
+kernels libraries with PETSc on modern architectures.</p>
+</aside>
+<aside class="topic" id="blaise-bourdin">
+<p class="topic-title"><strong>From the trenches: porting mef90</strong></p>
+<p><strong>Blaise Bourdin</strong></p>
+<p>McMaster University</p>
+<p>mef90 is a distributed three-dimensional unstructured finite-element
+implementation of various phase-field models of fracture. In this talk,
+I will share the experience gained while porting mef90 from PETSc 3.3 to 3.18.</p>
+</aside>
+<aside class="topic" id="sara-calandrini">
+<p class="topic-title"><strong>A new non-hydrostatic capability for MPAS-Ocean</strong></p>
+<p><strong>Sara Calandrini</strong></p>
+<p>, Darren Engwirda, Luke Van Roekel</p>
+<p>Los Alamos National Laboratory</p>
+<p>The Model for Prediction Across Scales-Ocean (MPAS-Ocean) is an
+open-source, global ocean model and is one component within the Department
+of Energy’s E3SM framework, which includes atmosphere, sea ice, and
+land-ice models. In this work, a new formulation for the ocean model is
+presented that solves the non-hydrostatic, incompressible Boussinesq
+equations on unstructured meshes. The introduction of this non-hydrostatic
+capability is necessary for the representation of fine-scale dynamical
+processes, including resolution of internal wave dynamics and large eddy
+simulations. Compared to the standard hydrostatic formulation,
+a non-hydrostatic pressure solver and a vertical momentum equation are
+added, where the PETSc (Portable Extensible Toolkit for Scientific
+Computation) library is used for the inversion of a large sparse system for
+the nonhydrostatic pressure. Numerical results comparing the solutions of
+the hydrostatic and non-hydrostatic models are presented, and the parallel
+efficiency and accuracy of the time-stepper are evaluated.</p>
+</aside>
+<aside class="topic" id="justin-chang">
+<p class="topic-title"><strong>AMD GPU benchmarking, documentation, and roadmap</strong></p>
+<p><strong>Justin Chang</strong></p>
+<p>AMD Inc.</p>
+<p>This talk comprises three parts. First, we present an overview of some
+relatively new training documentation like the “AMD lab notes” to enable
+current and potential users of AMD GPUs into getting the best experience
+out of their applications or algorithms. Second, we briefly discuss
+implementation details regarding the PETSc HIP backend introduced into the
+PETSc library late last year and present some performance benchmarking data
+on some of the AMD hardware. Lastly, we give a preview of the upcoming
+MI300 series APU and how software developers can prepare to leverage this
+new type of accelerator.</p>
+</aside>
+<aside class="topic" id="mohamad-ibrahim-cheikh">
+<p class="topic-title"><strong>An Immersed Boundary method for Elastic Bodies Using PETSc</strong></p>
+<p><strong>Mohamad Ibrahim Cheikh</strong></p>
+<p>, Konstantin Doubrovinski</p>
+<p>Doubrovinski Lab, The University of Texas Southwestern Medical Center</p>
+<p>This study presents a parallel implementation of an immersed boundary
+method code using the PETSc distributed memory module. This work aims to simulate a complex developmental process that occurs in the
+early stages of embryonic development, which involves the transformation of
+the embryo into a multilayered and multidimensional structure. To
+accomplish this, the researchers used the PETSc parallel module to solve
+a linear system for the Eulerian fluid dynamics while simultaneously
+coupling it with a deforming Lagrangian elastic body to model the
+deformable embryonic tissue. This approach allows for a detailed simulation
+of the interaction between the fluid and the tissue, which is critical for
+accurately modeling the developmental process. Overall, this work
+highlights the potential of the immersed boundary method and parallel
+computing techniques for simulating complex physical phenomena.</p>
+</aside>
+<aside class="topic" id="jacob-faibussowitsch">
+<p class="topic-title"><strong>Transparent Asynchronous Compute Made Easy With PETSc</strong></p>
+<p><strong>Jacob Faibussowitch</strong></p>
+<p>Argonne National Laboratory</p>
+<p>Asynchronous GPU computing has historically been difficult to integrate scalably at the library level. We provide an update on recent work
+implementing a fully asynchronous framework in PETSc. We give detailed
+performance comparisons and provide a demo to showcase the proposed model’s effectiveness
+and ease of use.</p>
+</aside>
+<aside class="topic" id="daniel-finn">
+<p class="topic-title"><strong>PETSc-PIC: A Structure-Preserving Particle-In-Cell Method for Electrostatic Solves</strong></p>
+<p><strong>Daniel Finn</strong></p>
+<p>University at Buffalo</p>
+<p>Numerical solutions to the Vlasov-Poisson equations have important
+applications in the fields of plasma physics, solar physics, and cosmology.
+The goal of this research is to develop a structure-preserving,
+electrostatic and gravitational Vlasov-Poisson(-Landau) model using the
+Portable, Extensible Toolkit for Scientific Computation (PETSc) and study
+the presence of Landau damping in a variety of systems, such as
+thermonuclear fusion reactors and galactic dynamics. The PETSc
+Particle-In-Cell (PETSc-PIC) model is a highly scalable,
+structure-preserving PIC method with multigrid capabilities. In the PIC
+method, a hybrid discretization is constructed with a grid of finitely
+supported basis functions to represent the electric, magnetic, and/or
+gravitational fields, and a distribution of delta functions to represent
+the particle field. Collisions are added to the formulation using
+a particle-basis Landau collision operator recently added to the PETSc
+library.</p>
+</aside>
+<aside class="topic" id="derek-gaston">
+<p class="topic-title"><strong>Multiscale, Multiphysics Simulation Through Application Composition Using MOOSE</strong></p>
+<p><strong>Derek Gaston</strong></p>
+<p>Idaho National Laboratory</p>
+<p>Eight years ago, at the PETSc 20 meeting, I introduced the idea of
+“Simplifying Multiphysics Through Application Composition” – the idea
+that physics applications can be built in such a way that they can
+instantly be combined to tackle complicated multiphysics problems.
+This talk will serve as an update on those plans. I will detail the
+evolution of that idea, how we’re using it in practice, how well it’s
+working, and where we’re going next. Motivating examples will be drawn
+from nuclear engineering, and practical aspects, such as testing, will
+be explored.</p>
+</aside>
+<aside class="topic" id="alex-grant">
+<p class="topic-title"><strong>High-order FEM implementation in AMReX using PETSc</strong></p>
+<p><strong>Alex Grant</strong></p>
+<p>, Karthik Chockalingam, Xiaohu Guo</p>
+<p>Science and Technology Facilities Council (STFC), UK</p>
+<p>AMReX is a C++ block-structured framework for adaptive mesh refinement,
+typically used for finite difference or finite volume codes. We describe
+a first attempt at a finite element implementation in AMReX using PETSc.
+AMReX splits the domain of uniform elements into rectangular boxes at each
+refinement level, with higher levels overlapping rather than replacing
+lower levels and with each level solved independently. AMReX boxes can be
+cell-centered or nodal; we use cell centered boxes to represent the geometry
+and mesh and nodal boxes to identify nodes to constrain and store results
+for visualization. We convert AMReX’s independent spatial indices into
+a single global index, then use MATMPIAIJ to assemble the system matrix per
+refinement level. In an unstructured grid, isoparametric mapping is
+required for each element; using a structured grid avoids both this
+and indirect addressing, which provides significant potential performance
+advantages. We have solved time-dependent parabolic equations and seen
+performance gains compared to unstructured finite elements. Further
+developments will include arbitrary higher-order schemes and
+multi-level hp refinement with arbitrary hanging nodes. PETSc uses AMReX
+domain decomposition to partition the matrix and right-hand vectors. For
+each higher level, not all of the domain will be refined, but AMReX’s
+indices cover the whole space - this poses an indexing challenge and can
+lead to over-allocation of memory. It is still to be explored whether DM
+data structures would provide a benefit over MATMPIAIJ.</p>
+</aside>
+<aside class="topic" id="aidan-hamilton">
+<p class="topic-title"><strong>Scalable Riemann Solvers with the Discontinuous Galerkin Method for Hyperbolic Network Simulation</strong></p>
+<p><strong>Aidan Hamilton</strong></p>
+<p>, Jing-Mei Qiu, Hong Zhang</p>
+<p>University of Delaware</p>
+<p>We develop highly efficient and effective computational algorithms
+and simulation tools for fluid simulations on a network. The mathematical
+models are a set of hyperbolic conservation laws on the edges of a network, as
+well as coupling conditions on junctions of a network. For example, the
+shallow water system, together with flux balance and continuity conditions
+at river intersections, model water flows on a river network. The
+computationally accurate and robust discontinuous Galerkin methods,
+coupled with explicit strong-stability preserving Runge-Kutta methods, are
+implemented for simulations on network edges. Meanwhile, linear and
+nonlinear scalable Riemann solvers are being developed and implemented at
+network vertices. These network simulations result in tools built using
+PETSc and DMNetwork software libraries for the scientific community in
+general. Simulation results of a shallow water system on a Mississippi
+river network with over one billion network variables are performed on an
+extreme- scale computer using up to 8,192 processors with an optimal
+parallel efficiency. Further potential applications include traffic flow
+simulations on a highway network and blood flow simulations on an arterial
+network, among many others</p>
+</aside>
+<aside class="topic" id="zakariae-jorti">
+<p class="topic-title"><strong>A mimetic finite difference based quasi-static magnetohydrodynamic solver for force-free plasmas in tokamak disruptions</strong></p>
+<p><strong>Zakariae Jorti</strong></p>
+<p>, Qi Tang, Konstantin Lipnikov, Xianzhu Tang</p>
+<p>Los Alamos National Laboratory</p>
+<p>Force-free plasmas are a good approximation in the low-beta case, where the
+plasma pressure is tiny compared with the magnetic pressure. On time scales
+long compared with the transit time of Alfvén waves, the evolution of
+a force-free plasma is most efficiently described by a quasi-static
+magnetohydrodynamic (MHD) model, which ignores the plasma inertia. In this
+work, we consider a regularized quasi-static MHD model for force-free
+plasmas in tokamak disruptions and propose a mimetic finite difference
+(MFD) algorithm, which is targeted at applications such as the cold
+vertical displacement event (VDE) of a major disruption in an ITER-like
+tokamak reactor. In the case of whole device modeling, we further consider
+the two sub-domains of the plasma region and wall region and their coupling
+through an interface condition. We develop a parallel, fully implicit, and
+scalable MFD solver based on PETSc and its DMStag data structure to discretize the five-field quasi-static perpendicular plasma dynamics
+model on a 3D structured mesh. The MFD spatial discretization is coupled
+with a fully implicit DIRK scheme. The full algorithm exactly preserves the
+divergence-free condition of the magnetic field under a generalized Ohm’s
+law. The preconditioner employed is a four-level fieldsplit preconditioner,
+created by combining separate preconditioners for individual
+fields, that calls multigrid or direct solvers for sub-blocks or exact
+factorization on the separate fields. The numerical results confirm the
+divergence-free constraint is strongly satisfied and demonstrate the
+performance of the fieldsplit preconditioner and overall algorithm. The
+simulation of ITER VDE cases over the actual plasma current diffusion time
+is also presented.</p>
+</aside>
+<aside class="topic" id="jakub-kruzik">
+<p class="topic-title"><strong>PERMON library for quadratic programming</strong></p>
+<p><strong>Jakub Kruzik</strong></p>
+<p>, Marek Pecha, David Horak</p>
+<p>VSB - Technical University of Ostrava, Czechia</p>
+<p>PERMON (Parallel, Efficient, Robust, Modular, Object-oriented, Numerical)
+is a library based on PETSc for solving quadratic programming (QP)
+problems. We will present PERMON usage on our implementation of the FETI
+(finite element tearing and interconnecting) method. This FETI
+implementation involves a chain of QP transformations, such as
+dualization, which simplifies a given QP. We will also discuss some useful
+options, like viewing Karush-Kuhn-Tucker (optimality) conditions for each
+QP in the chain. Finally, we will showcase some QP applications solved by
+PERMON, such as the solution of contact problems for hydro-mechanical
+problems with discrete fracture networks or the solution of support vector
+machines using the PermonSVM module.</p>
+</aside>
+<aside class="topic" id="vanessa-lopez-marrero">
+<p class="topic-title"><strong>Towards enabling digital twins capabilities for a cloud chamber</strong></p>
+<p><strong>Vanessa Lopez-Marrero</strong></p>
+<p>, Kwangmin Yu, Tao Zhang, Mohammad Atif, Abdullah Al Muti Sharfuddin, Fan Yang, Yangang Liu, Meifeng Lin, Foluso Ladeinde, Lingda Li</p>
+<p>Brookhaven National Laboratory</p>
+<p>Particle-resolved direct numerical simulations (PR-DNS), which resolve not
+only the smallest turbulent eddies but also track the development and
+the motion of individual particles, are an essential tool for studying
+aerosol-cloud-turbulence interactions. For instance, PR-DNS may complement
+experimental facilities designed to study key physical processes in
+a controlled environment and therefore serve as digital twins for such
+cloud chambers. In this talk, we will present our ongoing work aimed at
+enabling the use of PR-DNS for this purpose. We will describe the physical
+model used, which consists of a set of fluid dynamics equations for
+air velocity, temperature, and humidity coupled with a set of equations
+for particle (i.e., droplet) growth/tracing. The numerical method used to
+solve the model, which employs PETSc solvers in its implementation, will be
+discussed, as well as our current efforts to assess performance and
+scalability of the numerical solver.</p>
+</aside>
+<aside class="topic" id="david-may">
+<p class="topic-title"><strong>PETSc ROCKS</strong></p>
+<p><strong>David May</strong></p>
+<p>University of California, San Diego</p>
+<p>The field of Geodynamics is concerned with understanding
+the deformation history of the solid Earth over millions to billions of
+year time scales. The infeasibility of extracting a spatially and
+temporally complete geological record based on rocks that are currently
+exposed at the surface of the Earth compels many geodynamists to employ
+computational simulations of geological processes.</p>
+<p>In this presentation I will discuss several geodynamic software packages
+which utilize PETSc. I intend to highlight how PETSc has played an
+important role in enabling and advancing state-of-the-art in geodynamic
+software. I will also summarize my own experiences and observations of how
+geodynamic-specific functionality has driven the
+development of new general-purpose PETSc functionality.</p>
+</aside>
+<aside class="topic" id="heeho-park">
+<p class="topic-title"><strong>PETSc Newton Trust-Region for Simulating Large-scale Engineered Subsurface Systems with PFLOTRAN</strong></p>
+<p><strong>Heeho Park</strong></p>
+<p>, Glenn Hammond, Albert Valocchi</p>
+<p>Sandia National Laboratories</p>
+<p>Modeling large-scale engineered subsurface systems entails significant
+additional numerical challenges. For nuclear waste repository, the
+challenges arise from: (a) the need to accurately represent both the waste
+form processes and shafts, tunnel, and barriers at the small spatial scale
+and the large-scale transport processes throughout geological formations;
+(b) the strong contrast in material properties such as porosity and
+permeability, and the nonlinear constitutive relations for multiphase flow;
+(c) the decay of high level nuclear wastes cause nearby water to boil off
+into steam leading to dry-out. These can lead to an ill-conditioned
+Jacobian matrix and non-convergence with Newton’s method due to
+discontinuous nonlinearity in constitutive models.</p>
+<p>We apply the open-source simulator PFLOTRAN which employs a FV
+discretization and uses the PETSc parallel framework. We implement within
+PETSc the general-purpose nonlinear solver, Newton trust-region dogleg
+Cauchy (NTRDC) and Newton trust-region (NTR) to demonstrate the
+effectiveness of these advanced solvers. The results demonstrate speed-up
+compared to the default solvers of PETSc and complete simulations that were
+never completed with them.</p>
+<p>SNL is managed and operated by NTESS under DOE NNSA contract DE-NA0003525.</p>
+</aside>
+<aside class="topic" id="ashish-patel">
+<p class="topic-title"><strong>Scalable cloud-native thermo-mechanical solvers using PETSc</strong></p>
+<p><strong>Ashish Patel</strong></p>
+<p>, Jeremy Theler, Francesc Levrero-Florencio, Nabil Abboud, Mohammad Sarraf Joshaghani, Scott McClennan</p>
+<p>Ansys, Inc.</p>
+<p>This talk presents how the Ansys OnScale team uses PETSc to
+develop finite element-based thermo-mechanical solvers for scalable
+nonlinear simulations on the cloud. We will first provide an overview of
+features available in the solver and then discuss how some of the PETSc
+objects, like DMPlex and TS, have helped us speed up our development
+process. We will also talk about the workarounds we have incorporated to
+address the current limitations of some of the functions from DMPlex for
+our use cases involving multi-point constraints and curved elements.
+Finally, we demonstrate how PETSc’s linear solvers scale on multi-node
+cloud instances.</p>
+</aside>
+<aside class="topic" id="spencer-patty">
+<p class="topic-title"><strong>Intel oneAPI Math Kernel Library, what’s new and what’s next?</strong></p>
+<p><strong>Spencer Patty</strong></p>
+<p>Intel Corporation</p>
+<p>This talk provides an overview of Intel® oneAPI Math Kernel Library (oneMKL)
+product and software for supporting optimized math routines for both Intel
+CPUs and GPUs. Given that PETSc already utilizes several BLAS/LAPACK/Sparse
+BLAS routines from oneMKL for Intel CPU and as part of the Aurora project
+with Argonne, we discuss the use of OpenMP offload APIs for Intel GPUs.
+We explore software and hardware improvements for better sparse linear
+algebra performance and have an informal discussion of how to further
+support the PETSc community.</p>
+</aside>
+<aside class="topic" id="marek-pecha">
+<p class="topic-title"><strong>Distributed Machine Learning for Natural Hazard Applications Using PERMON</strong></p>
+<p><strong>Marek Pecha</strong></p>
+<p>, David Horak, Richard Tran Mills, Zachary Langford</p>
+<p>VSB – Technical University of Ostrava, Czechia</p>
+<p>We will present a software solution for distributed machine learning
+supporting computation on multiple GPUs running on the top of the PETSc
+framework, which we will demonstrate in applications related to natural
+hazard localizations and detections employing supervised uncertainties
+modeling. It is called PERMON and is designed for convex optimization
+using quadratic programming, and its extension PermonSVM implements
+maximal-margin classifier approaches associated with support vector
+machines (SVMs). Although deep learning (DL) is getting popular in recent
+years, SVMs are still applicable. However, unlike DL, the SVM approach requires
+additional feature engineering or feature selection. We will present our
+workflow and show how to achieve reasonable models for the application
+related to wildfire localization in Alaska.</p>
+</aside>
+<aside class="topic" id="joseph-pusztay">
+<p class="topic-title"><strong>Landau Collisions in the Particle Basis with PETSc-PIC</strong></p>
+<p><strong>Joseph Pusztay</strong></p>
+<p>, Matt Knepley, Mark Adams</p>
+<p>University at Buffalo</p>
+<p>The kinetic description of plasma encompasses the fine scale interaction of
+the various bodies that it is comprised of, and applies to a litany of
+experiments ranging from the laboratory magnetically confined fusion
+plasma, to the scale of the solar corona. Of great import to these
+descriptions are collisions in the grazing limit, which transfer momentum
+between components of the plasma. Until recently, these have best been
+described conservatively by finite element discretizations of the Landau
+collision integral. In recent years a particle discretization has been
+proven to preserve the appropriate eigenfunctions of the system, as well as
+physically relevant quantities. I present here the recent work on a purely
+particle discretized Landau collision operator which preserves mass,
+momentum, and energy, with associated accuracy benchmarks in PETSc.</p>
+</aside>
+<aside class="topic" id="jose-e-roman">
+<p class="topic-title"><strong>Experiences in solving nonlinear eigenvalue problems with SLEPc</strong></p>
+<p><strong>Jose E. Roman</strong></p>
+<p>Universitat Politècnica de València</p>
+<p>One of the unique features of SLEPc is the module for the general nonlinear
+eigenvalue problem (NEP), where we want to compute a few eigenvalues and
+corresponding eigenvectors of a large-scale parameter-dependent matrix
+T(lambda). In this talk, we will illustrate the use of NEP in the context
+of two applications, one of them coming from the characterization of
+resonances in nanophotonic devices, and the other one from a problem in
+aeroacoustics.</p>
+</aside>
+<aside class="topic" id="barry-smith">
+<p class="topic-title"><strong>Some thoughts on the future of PETSc</strong>:</p>
+<p><strong>Barry Smith</strong></p>
+<p>Flatiron Institute</p>
+<p>How will PETSc evolve and grow in the future? How can PETSc algorithms and
+simulations be integrated into the emerging world of machine learning and
+deep neural networks? I will provide an informal discussion of these topics
+and my thoughts.</p>
+</aside>
+<aside class="topic" id="tim-steinhoff">
+<p class="topic-title"><strong>Software Development and Deployment Including PETSc</strong></p>
+<p><strong>Tim Steinhoff</strong></p>
+<p>, Volker Jacht</p>
+<p>Gesellschaft für Anlagen- und Reaktorsicherheit (GRS), Germany</p>
+<p>Once it is decided that PETSc shall handle certain numerical subtasks in
+your software the question may arise about how to smoothly incorporate PETSc
+into the overall software development and deployment processes. In this
+talk, we present our approach how to handle such a situation for the code
+family AC2 which is developed and distributed by GRS. AC2 is used to
+simulate the behavior of nuclear reactors during operation, transients,
+design basis and beyond design basis accidents up to radioactive releases
+to the environment. The talk addresses our experiences, what challenges had
+to be overcome, and how we make use of GitLab, CMake, and Docker techniques
+to establish clean incorporation of PETSc into our software development
+cycle.</p>
+</aside>
+<aside class="topic" id="hansol-suh">
+<p class="topic-title"><strong>TaoADMM</strong></p>
+<p><strong>Hansol Suh</strong></p>
+<p>Argonne National Laboratory</p>
+<p>In this tutorial, we will be giving an introduction to ADMM algorithm on
+TAO. It will include walking through ADMM algorithm with some real-life
+example, and tips on setting up the framework to solve ADMM on PETSc/TAO.</p>
+</aside>
+<aside class="topic" id="maria-vasilyeva">
+<p class="topic-title"><strong>Numerical upscaling of network models using PETSc</strong></p>
+<p><strong>Maria Vasilyeva</strong></p>
+<p>Texas A&amp;M University-Corpus Christi</p>
+<p>Multiphysics models on large networks are used in many applications, for
+example, pore network models in reservoir simulation, epidemiological
+models of disease spread, ecological models on multispecies interaction,
+medical applications such as multiscale multidimensional simulations of
+blood flow, etc. This work presents the construction of the numerical
+upscaling and multiscale method for network models. An accurate
+coarse-scale approximation is generated by solving local problems in
+sub-networks. Numerical implementation of the network model is performed
+based on the PETSc DMNetwork framework. Results are presented for square
+and random heterogeneous networks generated by OpenPNM.</p>
+</aside>
+<aside class="topic" id="berend-van-wachem">
+<p class="topic-title"><strong>MultiFlow: A coupled balanced-force framework to solve multiphase flows in arbitrary domains</strong></p>
+<p><strong>Berend van Wachem</strong></p>
+<p>, Fabien Evrard</p>
+<p>University of Magdeburg, Germany</p>
+<p>Since 2000, we have been working on a finite-volume numerical framework
+“MultiFlow ” to predict multiphase flows in arbitrary domains by solving
+various flavors of the incompressible and compressible Navier-Stokes
+equations using PETSc. This framework enables the simulation of creeping,
+laminar and turbulent flows with droplets and/or particles at various
+scales. It relies on a collocated variable arrangement of the unknown
+variables and momentum-weighted-interpolation to determine the fluxes at
+the cell faces to couple velocity and pressure. To maximize robustness, the
+governing flow equations are solved in a coupled fashion, i.e., as part of
+a single equation system involving all flow variables. Various modules are
+available within the code in addition to its core flow solver, allowing it to
+model interfacial and particulate flows at various flow regimes and scales.
+The framework heavily relies on the PETSc library not only to solve the
+system of governing equations but also for the handling of unknown
+variables, parallelization of the computational domain, and exchange of
+data over processor boundaries. We are now in the 3rd generation of our
+code, currently using a combination of DMDA, and DMPlex with DMForest/p4est
+frameworks to allow for the adaptive octree refinement of the
+computational mesh. In this contribution, we will present the details of
+the discretization and the parallel implementation of our framework and
+describe its interconnection with the PETSc library. We will then present
+some applications of our framework, simulating multiphase flows at various
+scales, flows regimes, and resolutions. During this contribution, we will
+also discuss our framework’s challenges and future objectives.</p>
+</aside>
+<aside class="topic" id="matt-young">
+<p class="topic-title"><strong>PETSc in the Ionosphere</strong></p>
+<p><strong>Matt Young</strong></p>
+<p>University of New Hampshire</p>
+<p>A planet’s ionosphere is the region of its atmosphere where a fraction
+of the constituent atoms or molecules have separated into positive ions and
+electrons. Earth’s ionosphere extends from roughly 85 km during the day
+(higher at night) to the edge of space. This partially ionized regime
+exhibits collective behavior and supports electromagnetic phenomena that do
+not exist in the neutral (i.e., unionized) atmosphere. Furthermore, the
+abundance of neutral atoms and molecules leads to phenomena that do not
+exist in the fully ionized space environment. In a relatively narrow
+altitude range of Earth’s ionosphere called the “E region”, electrons
+behave as typical charged particles – moving in response to combined
+electric and magnetic fields – while ions collide too frequently with
+neutral molecules to respond to the magnetic field. This difference leads
+to the Farley-Buneman instability when the local electric field is strong
+enough. The Farley-Buneman instability regularly produces irregularities in
+the charged-particle densities that are strong enough to reflect radio
+signals. Recent research suggests that fully developed turbulent
+structures can disrupt GPS communication.</p>
+<p>The Electrostatic Parallel Particle-in-Cell (EPPIC) numerical simulation
+self-consistently models instability growth and evolution in the E-region
+ionosphere. The simulation includes a hybrid mode that treats electrons as
+a fluid and treats ions as particles. The particular fluid electron model
+requires the solution of an elliptic partial differential equation for the
+electrostatic potential at each time step, which we represent as a linear
+system that the simulation solves with PETSc. This presentation will
+describe the original development of the 2D hybrid simulation, previous
+results, recent efforts to extend to 3D, and implications for modeling GPS
+scintillation.</p>
+<p>The Electrostatic Parallel Particle-in-Cell (EPPIC) numerical simulation
+self-consistently models instability growth and evolution in the E-region
+ionosphere. The simulation includes a hybrid mode that treats electrons as
+a fluid and treats ions as particles. The particular fluid electron model
+requires the solution of an elliptic partial differential equation for the
+electrostatic potential at each time step, which we represent as a linear
+system that the simulation solves with PETSc. This presentation will describe
+the original development of the 2D hybrid simulation, previous results, recently
+efforts to extend to 3D, and implications to modeling GPS scintillation.</p>
+</aside>
+<aside class="topic" id="chonglin-zhang">
+<p class="topic-title"><strong>XGCm: An Unstructured Mesh Gyrokinetic Particle-in-cell Code for Exascale Fusion Plasma Simulations</strong></p>
+<p><strong>Chonglin Zhang</strong></p>
+<p>, Cameron W. Smith, Mark S. Shephard</p>
+<p>Rensselaer Polytechnic Institute (RPI)</p>
+<p>We report the development of XGCm, a new distributed unstructured mesh
+gyrokinetic particle-in-cell (PIC) code, short for x-point included
+gyrokinetic code mesh-based. The code adopts the physical algorithms of the
+well-established XGC code. It is intended as a testbed for experimenting
+with new numerical and computational algorithms, which can eventually be
+adopted in XGC and other PIC codes. XGCm is developed on top of several
+open-source libraries, including Kokkos, PETSc, Omega, and PUMIPic. Omega
+and PUMIPic rely on Kokkos to interact with the GPU accelerator, while
+PETSc solves the gyrokinetic Poisson equation on either CPU or GPU. We
+first discuss the numerical algorithms of our mesh-centric approach for
+performing PIC calculations. We then present a code validation study using
+the cyclone base case with ion temperature gradient turbulence (case 5 from
+Burckel, etc. Journal of Physics: Conference Series 260, 2010, 012006).
+Finally, we discuss the performance of XGCm and present weak scaling
+results using up to the full system (27,648 GPUs) of the Oak Ridge National
+Laboratory’s Summit supercomputer. Overall, XGCm executes all PIC
+operations on the GPU accelerators and exhibits good performance and
+portability.</p>
+</aside>
+<aside class="topic" id="hong-zhang-ms">
+<p class="topic-title"><strong>PETSc DMNetwork: A Library for Scalable Network PDE-Based Multiphysics Simulation</strong></p>
+<p><strong>Hong Zhang (Ms.)</strong></p>
+<p>Argonne National Laboratory, Illinois Institute of Technology</p>
+<p>We present DMNetwork, a high-level set of routines included in the PETSc
+library for the simulation of multiphysics phenomena over large-scale
+networked systems. The library aims at applications with networked
+structures like those in electrical, water, and traffic
+distribution systems. DMNetwork provides data and topology management,
+parallelization for multiphysics systems over a network, and hierarchical
+and composable solvers to exploit the problem structure. DMNetwork eases
+the simulation development cycle by providing the necessary infrastructure
+to define and query the network components through simple abstractions.</p>
+</aside>
+<aside class="topic" id="hui-zhou">
+<p class="topic-title"><strong>MPI Multiply Threads</strong></p>
+<p><strong>Hui Zhou</strong></p>
+<p>Argonne National Laboratory</p>
+<p>In the traditional MPI+Thread programming paradigm, MPI and OpenMP each
+form their own parallelization. MPI is unaware of the thread
+context. The requirement of thread safety and message ordering forces MPI
+library to blindly add critical sections, unnecessarily serializing the
+code. On the other hand, OpenMP cannot use MPI for inter-thread
+communications. Developers often need hand-roll algorithms for
+collective operations and non-blocking synchronizations.</p>
+<p>MPICH recently added a few extensions to address the root issues in
+MPI+Thread. The first extension, MPIX stream, allows applications to
+explicitly pass the thread context into MPI. The second extension, thread
+communicator, allows individual threads in an OpenMP parallel region to use
+MPI for inter-thread communications. In particular, this allows an OpenMP
+program to use PETSc within a parallel region.</p>
+<p>Instead of MPI+Thread, we refer to this new pattern as MPI x Thread.</p>
+</aside>
+<aside class="topic" id="junchao-zhang">
+<p class="topic-title"><strong>PETSc on the GPU</strong></p>
+<p><strong>Junchao Zhang</strong></p>
+<p>Argonne National Laboratory</p>
+<p>In this mini-tutorial, we will briefly introduce the GPU backends of PETSc and how to configure, build, run
+and profile PETSc on GPUs. We also talk about how to port your PETSc code to GPUs.</p>
+</aside>
+<aside class="topic" id="hong-zhang-mr">
+<p class="topic-title"><strong>PETSc and PyTorch Interoperability</strong></p>
+<p><strong>Hong Zhang (Mr.)</strong></p>
+<p>Argonne National Laboratory</p>
+<p>In this mini-tutorial, we will introduce: How to convert between PETSc vectors/matrices and PyTorch tensors;
+How to generate Jacobian or action of Jacobian with PyTorch and use it in PETSc; How to use PETSc and PyTorch
+for solving ODEs and training neural ODEs.</p>
+</aside>
+<aside class="topic" id="stefano-zampini">
+<p class="topic-title"><strong>petsc4py</strong></p>
+<p><strong>Stefano Zampini</strong></p>
+<p>King Abdullah University of Science and Technology (KAUST)</p>
+<p>In this mini-tutorial, we will introduce the Python binding of PETSc.</p>
+</aside>
+<aside class="topic" id="matt-knepley">
+<p class="topic-title"><strong>DMPlex</strong></p>
+<p><strong>Matt Knepley</strong></p>
+<p>University at Buffalo</p>
+<p>In this mini-tutorial, we will introduce the DMPlex class in PETSc.</p>
+</aside>
+<aside class="topic" id="id2">
+<p class="topic-title"><strong>DMSwarm</strong></p>
+<p><strong>Joseph Pusztay</strong></p>
+<p>University at Buffalo</p>
+<p>In this mini-tutorial, we will introduce the DMSwarm class in PETSc.</p>
+</aside>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#meeting-times">Meeting times</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#registration">Registration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submit-a-presentation">Submit a presentation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#suggested-hotels">Suggested hotels</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#agenda">Agenda</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#monday-june-5">Monday, June 5</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tuesday-june-6">Tuesday, June 6</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wednesday-june-7">Wednesday, June 7</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#newbie-developer-workshop">Newbie Developer Workshop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#abstracts">Abstracts</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/community/meetings/2023/index.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../../../_sources/community/meetings/2023/index.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

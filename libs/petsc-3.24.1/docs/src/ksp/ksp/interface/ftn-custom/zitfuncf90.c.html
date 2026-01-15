@@ -1,0 +1,37 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/interface/ftn-custom/zitfuncf90.c">Actual source code: zitfuncf90.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define kspgetresidualhistory_ KSPGETRESIDUALHISTORY</font></strong>
+<a name="line6">  6: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define kspgetresidualhistory_ kspgetresidualhistory</font></strong>
+<a name="line8">  8: </a><font color="#A020F0">#endif</font>
+
+<a name="line10"> 10: </a><strong><font color="#4169E1"><a name="kspgetresidualhistory_"></a>PETSC_EXTERN void kspgetresidualhistory_(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> *ksp, F90Array1d *indices, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line11"> 11: </a>{
+<a name="line12"> 12: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> const *hist;
+<a name="line13"> 13: </a>  *ierr = <a href="../../../../../manualpages/KSP/KSPGetResidualHistory.html">KSPGetResidualHistory</a>(*ksp, &amp;hist, n);
+<a name="line14"> 14: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line15"> 15: </a>  *ierr = F90Array1dCreate((void *)hist, <a href="../../../../../manualpages/Sys/MPIU_REAL.html">MPIU_REAL</a>, 1, *n, indices PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line16"> 16: </a>}
+
+<a name="line18"> 18: </a><strong><font color="#4169E1"><a name="ksprestoreresidualhistory_"></a>PETSC_EXTERN void ksprestoreresidualhistory_(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> *ksp, F90Array1d *indices, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *n, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line19"> 19: </a>{
+<a name="line20"> 20: </a>  *ierr = F90Array1dDestroy(indices, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line21"> 21: </a>}
+</pre>
+</body>
+
+</html>
+

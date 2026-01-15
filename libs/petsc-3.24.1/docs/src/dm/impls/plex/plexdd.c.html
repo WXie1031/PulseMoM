@@ -1,0 +1,392 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/plex/plexdd.c">Actual source code: plexdd.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:47+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/dmpleximpl.h.html">&lt;petsc/private/dmpleximpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/dmlabelimpl.h.html">&lt;petsc/private/dmlabelimpl.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/sectionimpl.h.html">&lt;petsc/private/sectionimpl.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petsc/private/sfimpl.h.html">&lt;petsc/private/sfimpl.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#4169E1"><a name="DMTransferMaterialParameters"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMTransferMaterialParameters(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a> sf, <a href="../../../../manualpages/DM/DM.html">DM</a> odm)</font></strong>
+<a name="line7">  7: </a>{
+<a name="line8">  8: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> A;
+
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line11"> 11: </a>  <font color="#B22222">/* TODO handle regions? */</font>
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetAuxiliaryVec.html">DMGetAuxiliaryVec</a>(dm, NULL, 0, 0, &amp;A));
+<a name="line13"> 13: </a>  <font color="#4169E1">if</font> (A) {
+<a name="line14"> 14: </a>    <a href="../../../../manualpages/DM/DM.html">DM</a>           dmAux, ocdm, odmAux;
+<a name="line15"> 15: </a>    <a href="../../../../manualpages/Vec/Vec.html">Vec</a>          oA, oAt;
+<a name="line16"> 16: </a>    <a href="../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> sec, osec;
+
+<a name="line18"> 18: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/VecGetDM.html">VecGetDM</a>(A, &amp;dmAux));
+<a name="line19"> 19: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMClone.html">DMClone</a>(odm, &amp;odmAux));
+<a name="line20"> 20: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetCoordinateDM.html">DMGetCoordinateDM</a>(odm, &amp;ocdm));
+<a name="line21"> 21: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetCoordinateDM.html">DMSetCoordinateDM</a>(odmAux, ocdm));
+<a name="line22"> 22: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMCopyDisc.html">DMCopyDisc</a>(dmAux, odmAux));
+
+<a name="line24"> 24: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dmAux, &amp;sec));
+<a name="line25"> 25: </a>    <font color="#4169E1">if</font> (sf) {
+<a name="line26"> 26: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionCreate.html">PetscSectionCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)sec), &amp;osec));
+<a name="line27"> 27: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreate.html">VecCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;oAt));
+<a name="line28"> 28: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexDistributeField.html">DMPlexDistributeField</a>(dmAux, sf, sec, A, osec, oAt));
+<a name="line29"> 29: </a>    } <font color="#4169E1">else</font> {
+<a name="line30"> 30: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)sec));
+<a name="line31"> 31: </a>      osec = sec;
+<a name="line32"> 32: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A));
+<a name="line33"> 33: </a>      oAt = A;
+<a name="line34"> 34: </a>    }
+<a name="line35"> 35: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetLocalSection.html">DMSetLocalSection</a>(odmAux, osec));
+<a name="line36"> 36: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionDestroy.html">PetscSectionDestroy</a>(&amp;osec));
+<a name="line37"> 37: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMCreateLocalVector.html">DMCreateLocalVector</a>(odmAux, &amp;oA));
+<a name="line38"> 38: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(&amp;odmAux));
+<a name="line39"> 39: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(oAt, oA));
+<a name="line40"> 40: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;oAt));
+<a name="line41"> 41: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetAuxiliaryVec.html">DMSetAuxiliaryVec</a>(odm, NULL, 0, 0, oA));
+<a name="line42"> 42: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;oA));
+<a name="line43"> 43: </a>  }
+<a name="line44"> 44: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line45"> 45: </a>}
+
+<a name="line47"> 47: </a><strong><font color="#4169E1"><a name="DMCreateDomainDecomposition_Plex"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMCreateDomainDecomposition_Plex(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *nsub, char ***names, <a href="../../../../manualpages/IS/IS.html">IS</a> **innerises, <a href="../../../../manualpages/IS/IS.html">IS</a> **outerises, <a href="../../../../manualpages/DM/DM.html">DM</a> **dms)</font></strong>
+<a name="line48"> 48: </a>{
+<a name="line49"> 49: </a>  <a href="../../../../manualpages/DM/DM.html">DM</a>           odm;
+<a name="line50"> 50: </a>  <a href="../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a>      migrationSF = NULL, sectionSF;
+<a name="line51"> 51: </a>  <a href="../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> sec, tsec, ogsec, olsec;
+<a name="line52"> 52: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     n, mh, ddovl = 0, pStart, pEnd, ni, no, nl;
+<a name="line53"> 53: </a>  <a href="../../../../manualpages/DT/PetscDS.html">PetscDS</a>      ds;
+<a name="line54"> 54: </a>  <a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a>      label;
+<a name="line55"> 55: </a>  const char  *oname = <font color="#666666">"__internal_plex_dd_ovl_"</font>;
+<a name="line56"> 56: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>           gi_is, li_is, go_is, gl_is, ll_is;
+<a name="line57"> 57: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>           gis, lis;
+<a name="line58"> 58: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     rst, ren, c, *gidxs, *lidxs, *tidxs;
+<a name="line59"> 59: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>          gvec;
+
+<a name="line61"> 61: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line62"> 62: </a>  n = 1;
+<a name="line63"> 63: </a>  <font color="#4169E1">if</font> (nsub) *nsub = n;
+<a name="line64"> 64: </a>  <font color="#4169E1">if</font> (names) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(n, names));
+<a name="line65"> 65: </a>  <font color="#4169E1">if</font> (innerises) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(n, innerises));
+<a name="line66"> 66: </a>  <font color="#4169E1">if</font> (outerises) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(n, outerises));
+<a name="line67"> 67: </a>  <font color="#4169E1">if</font> (dms) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(n, dms));
+
+<a name="line69"> 69: </a>  <a href="../../../../manualpages/Sys/PetscObjectOptionsBegin.html">PetscObjectOptionsBegin</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm);
+<a name="line70"> 70: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsBoundedInt.html">PetscOptionsBoundedInt</a>(<font color="#666666">"-dm_plex_dd_overlap"</font>, <font color="#666666">"The size of the overlap halo for the subdomains"</font>, <font color="#666666">"<a href="../../../../manualpages/DM/DMCreateDomainDecomposition.html">DMCreateDomainDecomposition</a>"</font>, ddovl, &amp;ddovl, NULL, 0));
+<a name="line71"> 71: </a>  <a href="../../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+
+<a name="line73"> 73: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(dm, NULL, <font color="#666666">"-dm_plex_dd_dm_view"</font>));
+<a name="line74"> 74: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMPlexDistributeOverlap_Internal(dm, ddovl + 1, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, oname, &amp;migrationSF, &amp;odm));
+<a name="line75"> 75: </a>  <font color="#4169E1">if</font> (!odm) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMClone.html">DMClone</a>(dm, &amp;odm));
+<a name="line76"> 76: </a>  <font color="#4169E1">if</font> (migrationSF) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFViewFromOptions.html">PetscSFViewFromOptions</a>(migrationSF, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"-dm_plex_dd_sf_view"</font>));
+
+<a name="line78"> 78: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetMaxProjectionHeight.html">DMPlexGetMaxProjectionHeight</a>(dm, &amp;mh));
+<a name="line79"> 79: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexSetMaxProjectionHeight.html">DMPlexSetMaxProjectionHeight</a>(odm, mh));
+
+<a name="line81"> 81: </a>  <font color="#B22222">/* share discretization */</font>
+<a name="line82"> 82: </a>  <font color="#B22222">/* TODO Labels for regions may need to updated,</font>
+<a name="line83"> 83: </a><font color="#B22222">     now it uses the original ones, not the ones for the odm.</font>
+<a name="line84"> 84: </a><font color="#B22222">     Not sure what to do here */</font>
+<a name="line85"> 85: </a>  <font color="#B22222">/* <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMCopyDisc.html">DMCopyDisc</a>(dm, odm)); */</font>
+<a name="line86"> 86: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetDS.html">DMGetDS</a>(odm, &amp;ds));
+<a name="line87"> 87: </a>  <font color="#4169E1">if</font> (!ds) {
+<a name="line88"> 88: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;sec));
+<a name="line89"> 89: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionCreate.html">PetscSectionCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm), &amp;tsec));
+<a name="line90"> 90: </a>    <font color="#4169E1">if</font> (migrationSF) {
+<a name="line91"> 91: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFDistributeSection.html">PetscSFDistributeSection</a>(migrationSF, sec, NULL, tsec));
+<a name="line92"> 92: </a>    } <font color="#4169E1">else</font> {
+<a name="line93"> 93: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionCopy.html">PetscSectionCopy</a>(sec, tsec));
+<a name="line94"> 94: </a>    }
+<a name="line95"> 95: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetLocalSection.html">DMSetLocalSection</a>(dm, tsec));
+<a name="line96"> 96: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionDestroy.html">PetscSectionDestroy</a>(&amp;tsec));
+<a name="line97"> 97: </a>  }
+<a name="line98"> 98: </a>  <font color="#B22222">/* TODO: what if these values changes? add to some <a href="../../../../manualpages/DM/DM.html">DM</a> hook? */</font>
+<a name="line99"> 99: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMTransferMaterialParameters(dm, migrationSF, odm));
+
+<a name="line101">101: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(odm, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"-dm_plex_dd_overlap_dm_view"</font>));
+<a name="line102">102: </a><font color="#A020F0">#if 0</font>
+<a name="line103">103: </a>  {
+<a name="line104">104: </a>    <a href="../../../../manualpages/DM/DM.html">DM</a>              seqdm;
+<a name="line105">105: </a>    <a href="../../../../manualpages/Vec/Vec.html">Vec</a>             val;
+<a name="line106">106: </a>    <a href="../../../../manualpages/IS/IS.html">IS</a>              is;
+<a name="line107">107: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        vStart, vEnd;
+<a name="line108">108: </a>    const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *vnum;
+<a name="line109">109: </a>    char            name[256];
+<a name="line110">110: </a>    <a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>     viewer;
+
+<a name="line112">112: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMPlexDistributeOverlap_Internal(dm, 0, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"local_mesh"</font>, NULL, &amp;seqdm));
+<a name="line113">113: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(name, <font color="#4169E1">sizeof</font>(name), <font color="#666666">"local_mesh_%d.vtu"</font>, PetscGlobalRank));
+<a name="line114">114: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerVTKOpen.html">PetscViewerVTKOpen</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)seqdm), name, <a href="../../../../manualpages/Sys/PetscFileMode.html">FILE_MODE_WRITE</a>, &amp;viewer));
+<a name="line115">115: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLabel.html">DMGetLabel</a>(seqdm, <font color="#666666">"local_mesh"</font>, &amp;label));
+<a name="line116">116: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexLabelComplete.html">DMPlexLabelComplete</a>(seqdm, label));
+<a name="line117">117: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexCreateLabelField.html">DMPlexCreateLabelField</a>(seqdm, label, &amp;val));
+<a name="line118">118: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecView.html">VecView</a>(val, viewer));
+<a name="line119">119: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;val));
+<a name="line120">120: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(&amp;viewer));
+
+<a name="line122">122: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(name, <font color="#4169E1">sizeof</font>(name), <font color="#666666">"asm_vertices_%d.vtu"</font>, PetscGlobalRank));
+<a name="line123">123: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerVTKOpen.html">PetscViewerVTKOpen</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)seqdm), name, <a href="../../../../manualpages/Sys/PetscFileMode.html">FILE_MODE_WRITE</a>, &amp;viewer));
+<a name="line124">124: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMCreateLabel.html">DMCreateLabel</a>(seqdm, <font color="#666666">"asm_vertices"</font>));
+<a name="line125">125: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLabel.html">DMGetLabel</a>(seqdm, <font color="#666666">"asm_vertices"</font>, &amp;label));
+<a name="line126">126: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetVertexNumbering.html">DMPlexGetVertexNumbering</a>(dm, &amp;is));
+<a name="line127">127: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetDepthStratum.html">DMPlexGetDepthStratum</a>(dm, 0, &amp;vStart, &amp;vEnd));
+<a name="line128">128: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(is, &amp;vnum));
+<a name="line129">129: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> v = 0; v &lt; vEnd - vStart; v++) {
+<a name="line130">130: </a>      <font color="#4169E1">if</font> (vnum[v] &lt; 0) <font color="#4169E1">continue</font>;
+<a name="line131">131: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMLabel/DMLabelSetValue.html">DMLabelSetValue</a>(label, v + vStart, 1));
+<a name="line132">132: </a>    }
+<a name="line133">133: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexCreateLabelField.html">DMPlexCreateLabelField</a>(seqdm, label, &amp;val));
+<a name="line134">134: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecView.html">VecView</a>(val, viewer));
+<a name="line135">135: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;val));
+<a name="line136">136: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(is, &amp;vnum));
+<a name="line137">137: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(&amp;viewer));
+
+<a name="line139">139: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(&amp;seqdm));
+<a name="line140">140: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(name, <font color="#4169E1">sizeof</font>(name), <font color="#666666">"ovl_mesh_%d.vtu"</font>, PetscGlobalRank));
+<a name="line141">141: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerVTKOpen.html">PetscViewerVTKOpen</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm), name, <a href="../../../../manualpages/Sys/PetscFileMode.html">FILE_MODE_WRITE</a>, &amp;viewer));
+<a name="line142">142: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMView.html">DMView</a>(odm, viewer));
+<a name="line143">143: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(&amp;viewer));
+<a name="line144">144: </a>  }
+<a name="line145">145: </a><font color="#A020F0">#endif</font>
+
+<a name="line147">147: </a>  <font color="#B22222">/* propagate original global ordering to overlapping <a href="../../../../manualpages/DM/DM.html">DM</a> */</font>
+<a name="line148">148: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetSectionSF.html">DMGetSectionSF</a>(dm, &amp;sectionSF));
+<a name="line149">149: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;sec));
+<a name="line150">150: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionGetStorageSize.html">PetscSectionGetStorageSize</a>(sec, &amp;nl));
+<a name="line151">151: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(dm, &amp;gvec));
+<a name="line152">152: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecGetOwnershipRange.html">VecGetOwnershipRange</a>(gvec, &amp;rst, &amp;ren));
+<a name="line153">153: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(dm, &amp;gvec));
+<a name="line154">154: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateStride.html">ISCreateStride</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, ren - rst, rst, 1, &amp;gi_is)); <font color="#B22222">/* non-overlapping dofs */</font>
+<a name="line155">155: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(nl, &amp;lidxs));
+<a name="line156">156: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; nl; i++) lidxs[i] = -1;
+<a name="line157">157: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(gi_is, (const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;gidxs));
+<a name="line158">158: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFBcastBegin.html">PetscSFBcastBegin</a>(sectionSF, <a href="../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, gidxs, lidxs, MPI_REPLACE));
+<a name="line159">159: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFBcastEnd.html">PetscSFBcastEnd</a>(sectionSF, <a href="../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, gidxs, lidxs, MPI_REPLACE));
+<a name="line160">160: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(gi_is, (const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;gidxs));
+<a name="line161">161: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateGeneral.html">ISCreateGeneral</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), nl, lidxs, <a href="../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>, &amp;lis));
+<a name="line162">162: </a>  <font color="#4169E1">if</font> (migrationSF) {
+<a name="line163">163: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionCreate.html">PetscSectionCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm), &amp;tsec));
+<a name="line164">164: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexDistributeFieldIS.html">DMPlexDistributeFieldIS</a>(dm, migrationSF, sec, lis, tsec, &amp;gis));
+<a name="line165">165: </a>  } <font color="#4169E1">else</font> {
+<a name="line166">166: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)lis));
+<a name="line167">167: </a>    gis  = lis;
+<a name="line168">168: </a>    tsec = NULL;
+<a name="line169">169: </a>  }
+<a name="line170">170: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionDestroy.html">PetscSectionDestroy</a>(&amp;tsec));
+<a name="line171">171: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;lis));
+<a name="line172">172: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFDestroy.html">PetscSFDestroy</a>(&amp;migrationSF));
+
+<a name="line174">174: </a>  <font color="#B22222">/* make dofs on the overlap boundary (not the global boundary) constrained */</font>
+<a name="line175">175: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLabel.html">DMGetLabel</a>(odm, oname, &amp;label));
+<a name="line176">176: </a>  <font color="#4169E1">if</font> (label) {
+<a name="line177">177: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexLabelComplete.html">DMPlexLabelComplete</a>(odm, label));
+<a name="line178">178: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(odm, &amp;tsec));
+<a name="line179">179: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionGetChart.html">PetscSectionGetChart</a>(tsec, &amp;pStart, &amp;pEnd));
+<a name="line180">180: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMLabel/DMLabelCreateIndex.html">DMLabelCreateIndex</a>(label, pStart, pEnd));
+<a name="line181">181: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionCreate.html">PetscSectionCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)tsec), &amp;sec));
+<a name="line182">182: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscSectionCopy_Internal(tsec, sec, label-&gt;bt));
+<a name="line183">183: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetLocalSection.html">DMSetLocalSection</a>(odm, sec));
+<a name="line184">184: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionDestroy.html">PetscSectionDestroy</a>(&amp;sec));
+<a name="line185">185: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMRemoveLabel.html">DMRemoveLabel</a>(odm, oname, NULL));
+<a name="line186">186: </a>  } <font color="#4169E1">else</font> { <font color="#B22222">/* sequential case */</font>
+<a name="line187">187: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;sec));
+<a name="line188">188: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetLocalSection.html">DMSetLocalSection</a>(odm, sec));
+<a name="line189">189: </a>  }
+
+<a name="line191">191: </a>  <font color="#B22222">/* Create index sets for dofs in the overlap dm */</font>
+<a name="line192">192: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetSectionSF.html">DMGetSectionSF</a>(odm, &amp;sectionSF));
+<a name="line193">193: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(odm, &amp;olsec));
+<a name="line194">194: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetGlobalSection.html">DMGetGlobalSection</a>(odm, &amp;ogsec));
+<a name="line195">195: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionViewFromOptions.html">PetscSectionViewFromOptions</a>(ogsec, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"-dm_plex_dd_overlap_gsection_view"</font>));
+<a name="line196">196: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionViewFromOptions.html">PetscSectionViewFromOptions</a>(olsec, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"-dm_plex_dd_overlap_lsection_view"</font>));
+<a name="line197">197: </a>  ni = ren - rst;
+<a name="line198">198: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionGetConstrainedStorageSize.html">PetscSectionGetConstrainedStorageSize</a>(ogsec, &amp;no)); <font color="#B22222">/* dofs in the overlap */</font>
+<a name="line199">199: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionGetStorageSize.html">PetscSectionGetStorageSize</a>(olsec, &amp;nl));            <font color="#B22222">/* local dofs in the overlap */</font>
+<a name="line200">200: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(no, &amp;gidxs));
+<a name="line201">201: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(gis, (const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;lidxs));
+<a name="line202">202: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFReduceBegin.html">PetscSFReduceBegin</a>(sectionSF, <a href="../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, lidxs, gidxs, MPI_REPLACE));
+<a name="line203">203: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFReduceEnd.html">PetscSFReduceEnd</a>(sectionSF, <a href="../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, lidxs, gidxs, MPI_REPLACE));
+<a name="line204">204: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(gis, (const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;lidxs));
+
+<a name="line206">206: </a>  <font color="#B22222">/* non-overlapping dofs */</font>
+<a name="line207">207: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(no, &amp;lidxs));
+<a name="line208">208: </a>  c = 0;
+<a name="line209">209: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; no; i++) {
+<a name="line210">210: </a>    <font color="#4169E1">if</font> (gidxs[i] &gt;= rst &amp;&amp; gidxs[i] &lt; ren) lidxs[c++] = i;
+<a name="line211">211: </a>  }
+<a name="line212">212: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(c == ni, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"%"</font> PetscInt_FMT <font color="#666666">" != %"</font> PetscInt_FMT, c, ni);
+<a name="line213">213: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateGeneral.html">ISCreateGeneral</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm), ni, lidxs, <a href="../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>, &amp;li_is));
+
+<a name="line215">215: </a>  <font color="#B22222">/* global dofs in the overlap */</font>
+<a name="line216">216: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateGeneral.html">ISCreateGeneral</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), no, gidxs, <a href="../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>, &amp;go_is));
+<a name="line217">217: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISViewFromOptions.html">ISViewFromOptions</a>(go_is, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"-dm_plex_dd_overlap_gois_view"</font>));
+<a name="line218">218: </a>  <font color="#B22222">/* <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateStride.html">ISCreateStride</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm), no, 0, 1, &amp;lo_is)); */</font>
+
+<a name="line220">220: </a>  <font color="#B22222">/* local dofs of the overlapping subdomain (we actually need only dofs on the boundary of the subdomain) */</font>
+<a name="line221">221: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(nl, &amp;lidxs));
+<a name="line222">222: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(nl, &amp;gidxs));
+<a name="line223">223: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(gis, (const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;tidxs));
+<a name="line224">224: </a>  c = 0;
+<a name="line225">225: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; nl; i++) {
+<a name="line226">226: </a>    <font color="#4169E1">if</font> (tidxs[i] &lt; 0) <font color="#4169E1">continue</font>;
+<a name="line227">227: </a>    lidxs[c] = i;
+<a name="line228">228: </a>    gidxs[c] = tidxs[i];
+<a name="line229">229: </a>    c++;
+<a name="line230">230: </a>  }
+<a name="line231">231: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(gis, (const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;tidxs));
+<a name="line232">232: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateGeneral.html">ISCreateGeneral</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), c, gidxs, <a href="../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>, &amp;gl_is));
+<a name="line233">233: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateGeneral.html">ISCreateGeneral</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm), c, lidxs, <a href="../../../../manualpages/Sys/PetscCopyMode.html">PETSC_OWN_POINTER</a>, &amp;ll_is));
+<a name="line234">234: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISViewFromOptions.html">ISViewFromOptions</a>(gl_is, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"-dm_plex_dd_overlap_glis_view"</font>));
+
+<a name="line236">236: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectCompose.html">PetscObjectCompose</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm, <font color="#666666">"__Plex_DD_IS_gi"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)gi_is));
+<a name="line237">237: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectCompose.html">PetscObjectCompose</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm, <font color="#666666">"__Plex_DD_IS_li"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)li_is));
+<a name="line238">238: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectCompose.html">PetscObjectCompose</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm, <font color="#666666">"__Plex_DD_IS_go"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)go_is));
+<a name="line239">239: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectCompose.html">PetscObjectCompose</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm, <font color="#666666">"__Plex_DD_IS_gl"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)gl_is));
+<a name="line240">240: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectCompose.html">PetscObjectCompose</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm, <font color="#666666">"__Plex_DD_IS_ll"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ll_is));
+
+<a name="line242">242: </a>  <font color="#4169E1">if</font> (innerises) (*innerises)[0] = gi_is;
+<a name="line243">243: </a>  <font color="#4169E1">else</font> <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;gi_is));
+<a name="line244">244: </a>  <font color="#4169E1">if</font> (outerises) (*outerises)[0] = go_is;
+<a name="line245">245: </a>  <font color="#4169E1">else</font> <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;go_is));
+<a name="line246">246: </a>  <font color="#4169E1">if</font> (dms) (*dms)[0] = odm;
+<a name="line247">247: </a>  <font color="#4169E1">else</font> <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(&amp;odm));
+<a name="line248">248: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;li_is));
+<a name="line249">249: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;gl_is));
+<a name="line250">250: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;ll_is));
+<a name="line251">251: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;gis));
+<a name="line252">252: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line253">253: </a>}
+
+<a name="line255">255: </a><strong><font color="#4169E1"><a name="DMCreateDomainDecompositionScatters_Plex"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMCreateDomainDecompositionScatters_Plex(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../../manualpages/DM/DM.html">DM</a> *subdms, <a href="../../../../manualpages/PetscSF/VecScatter.html">VecScatter</a> **iscat, <a href="../../../../manualpages/PetscSF/VecScatter.html">VecScatter</a> **oscat, <a href="../../../../manualpages/PetscSF/VecScatter.html">VecScatter</a> **lscat)</font></strong>
+<a name="line256">256: </a>{
+<a name="line257">257: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> gvec, svec, lvec;
+<a name="line258">258: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>  gi_is, li_is, go_is, gl_is, ll_is;
+
+<a name="line260">260: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line261">261: </a>  <font color="#4169E1">if</font> (iscat) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(n, iscat));
+<a name="line262">262: </a>  <font color="#4169E1">if</font> (oscat) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(n, oscat));
+<a name="line263">263: </a>  <font color="#4169E1">if</font> (lscat) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(n, lscat));
+
+<a name="line265">265: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(dm, &amp;gvec));
+<a name="line266">266: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; n; i++) {
+<a name="line267">267: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetGlobalVector.html">DMGetGlobalVector</a>(subdms[i], &amp;svec));
+<a name="line268">268: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalVector.html">DMGetLocalVector</a>(subdms[i], &amp;lvec));
+<a name="line269">269: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)subdms[i], <font color="#666666">"__Plex_DD_IS_gi"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;gi_is));
+<a name="line270">270: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)subdms[i], <font color="#666666">"__Plex_DD_IS_li"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;li_is));
+<a name="line271">271: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)subdms[i], <font color="#666666">"__Plex_DD_IS_go"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;go_is));
+<a name="line272">272: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)subdms[i], <font color="#666666">"__Plex_DD_IS_gl"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;gl_is));
+<a name="line273">273: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)subdms[i], <font color="#666666">"__Plex_DD_IS_ll"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;ll_is));
+<a name="line274">274: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(gi_is, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"SubDM not obtained from <a href="../../../../manualpages/DM/DMCreateDomainDecomposition.html">DMCreateDomainDecomposition</a>"</font>);
+<a name="line275">275: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(li_is, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"SubDM not obtained from <a href="../../../../manualpages/DM/DMCreateDomainDecomposition.html">DMCreateDomainDecomposition</a>"</font>);
+<a name="line276">276: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(go_is, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"SubDM not obtained from <a href="../../../../manualpages/DM/DMCreateDomainDecomposition.html">DMCreateDomainDecomposition</a>"</font>);
+<a name="line277">277: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(gl_is, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"SubDM not obtained from <a href="../../../../manualpages/DM/DMCreateDomainDecomposition.html">DMCreateDomainDecomposition</a>"</font>);
+<a name="line278">278: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ll_is, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"SubDM not obtained from <a href="../../../../manualpages/DM/DMCreateDomainDecomposition.html">DMCreateDomainDecomposition</a>"</font>);
+<a name="line279">279: </a>    <font color="#4169E1">if</font> (iscat) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecScatterCreate.html">VecScatterCreate</a>(gvec, gi_is, svec, li_is, &amp;(*iscat)[i]));
+<a name="line280">280: </a>    <font color="#4169E1">if</font> (oscat) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecScatterCreate.html">VecScatterCreate</a>(gvec, go_is, svec, NULL, &amp;(*oscat)[i]));
+<a name="line281">281: </a>    <font color="#4169E1">if</font> (lscat) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecScatterCreate.html">VecScatterCreate</a>(gvec, gl_is, lvec, ll_is, &amp;(*lscat)[i]));
+<a name="line282">282: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(subdms[i], &amp;svec));
+<a name="line283">283: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMRestoreLocalVector.html">DMRestoreLocalVector</a>(subdms[i], &amp;lvec));
+<a name="line284">284: </a>  }
+<a name="line285">285: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMRestoreGlobalVector.html">DMRestoreGlobalVector</a>(dm, &amp;gvec));
+<a name="line286">286: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line287">287: </a>}
+
+<a name="line289">289: </a><font color="#B22222">/*</font>
+<a name="line290">290: </a><font color="#B22222">     DMCreateNeumannOverlap_Plex - Generates an <a href="../../../../manualpages/IS/IS.html">IS</a>, an unassembled (Neumann) <a href="../../../../manualpages/Mat/Mat.html">Mat</a>, a setup function, and the corresponding context to be used by <a href="../../../../manualpages/PC/PCHPDDM.html">PCHPDDM</a>.</font>
+
+<a name="line292">292: </a><font color="#B22222">   Input Parameter:</font>
+<a name="line293">293: </a><font color="#B22222">.     dm - preconditioner context</font>
+
+<a name="line295">295: </a><font color="#B22222">   Output Parameters:</font>
+<a name="line296">296: </a><font color="#B22222">+     ovl - index set of overlapping subdomains</font>
+<a name="line297">297: </a><font color="#B22222">.     J - unassembled (Neumann) local matrix</font>
+<a name="line298">298: </a><font color="#B22222">.     setup - function for generating the matrix</font>
+<a name="line299">299: </a><font color="#B22222">-     setup_ctx - context for setup</font>
+
+<a name="line301">301: </a><font color="#B22222">   Options Database Keys:</font>
+<a name="line302">302: </a><font color="#B22222">+   -dm_plex_view_neumann_original - view the <a href="../../../../manualpages/DM/DM.html">DM</a> without overlap</font>
+<a name="line303">303: </a><font color="#B22222">-   -dm_plex_view_neumann_overlap - view the <a href="../../../../manualpages/DM/DM.html">DM</a> with overlap as needed by <a href="../../../../manualpages/PC/PCHPDDM.html">PCHPDDM</a></font>
+
+<a name="line305">305: </a><font color="#B22222">   Level: advanced</font>
+
+<a name="line307">307: </a><font color="#B22222">.seealso: `<a href="../../../../manualpages/DM/DMCreate.html">DMCreate</a>()`, `<a href="../../../../manualpages/DM/DM.html">DM</a>`, `<a href="../../../../manualpages/Mat/MATIS.html">MATIS</a>`, `<a href="../../../../manualpages/PC/PCHPDDM.html">PCHPDDM</a>`, `<a href="../../../../manualpages/PC/PCHPDDMSetAuxiliaryMat.html">PCHPDDMSetAuxiliaryMat</a>()`</font>
+<a name="line308">308: </a><font color="#B22222">*/</font>
+<a name="line309">309: </a><strong><font color="#4169E1"><a name="DMCreateNeumannOverlap_Plex"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMCreateNeumannOverlap_Plex(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/IS/IS.html">IS</a> *ovl, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *J, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (**setup)(<a href="../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../../manualpages/IS/IS.html">IS</a>, void *), void **setup_ctx)</font></strong>
+<a name="line310">310: </a>{
+<a name="line311">311: </a>  <a href="../../../../manualpages/DM/DM.html">DM</a>                     odm;
+<a name="line312">312: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                    pJ;
+<a name="line313">313: </a>  <a href="../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a>                sf = NULL;
+<a name="line314">314: </a>  <a href="../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a>           sec, osec;
+<a name="line315">315: </a>  <a href="../../../../manualpages/IS/ISLocalToGlobalMapping.html">ISLocalToGlobalMapping</a> l2g;
+<a name="line316">316: </a>  const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        *idxs;
+<a name="line317">317: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>               n, mh;
+
+<a name="line319">319: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line320">320: </a>  *setup     = NULL;
+<a name="line321">321: </a>  *setup_ctx = NULL;
+<a name="line322">322: </a>  *ovl       = NULL;
+<a name="line323">323: </a>  *J         = NULL;
+
+<a name="line325">325: </a>  <font color="#B22222">/* Overlapped mesh</font>
+<a name="line326">326: </a><font color="#B22222">     overlap is a little more generous, since it is not computed starting from the owned (Dirichlet) points, but from the locally owned cells */</font>
+<a name="line327">327: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexDistributeOverlap.html">DMPlexDistributeOverlap</a>(dm, 1, &amp;sf, &amp;odm));
+<a name="line328">328: </a>  <font color="#4169E1">if</font> (!odm) {
+<a name="line329">329: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFDestroy.html">PetscSFDestroy</a>(&amp;sf));
+<a name="line330">330: </a>    <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line331">331: </a>  }
+
+<a name="line333">333: </a>  <font color="#B22222">/* share discretization */</font>
+<a name="line334">334: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;sec));
+<a name="line335">335: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionCreate.html">PetscSectionCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)sec), &amp;osec));
+<a name="line336">336: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFDistributeSection.html">PetscSFDistributeSection</a>(sf, sec, NULL, osec));
+<a name="line337">337: </a>  <font color="#B22222">/* what to do here? using both is fine? */</font>
+<a name="line338">338: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetLocalSection.html">DMSetLocalSection</a>(odm, osec));
+<a name="line339">339: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMCopyDisc.html">DMCopyDisc</a>(dm, odm));
+<a name="line340">340: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetMaxProjectionHeight.html">DMPlexGetMaxProjectionHeight</a>(dm, &amp;mh));
+<a name="line341">341: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexSetMaxProjectionHeight.html">DMPlexSetMaxProjectionHeight</a>(odm, mh));
+<a name="line342">342: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionDestroy.html">PetscSectionDestroy</a>(&amp;osec));
+
+<a name="line344">344: </a>  <font color="#B22222">/* material parameters */</font>
+<a name="line345">345: </a>  <font color="#B22222">/* TODO: what if these values changes? add to some <a href="../../../../manualpages/DM/DM.html">DM</a> hook? */</font>
+<a name="line346">346: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMTransferMaterialParameters(dm, sf, odm));
+<a name="line347">347: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSF/PetscSFDestroy.html">PetscSFDestroy</a>(&amp;sf));
+
+<a name="line349">349: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(dm, NULL, <font color="#666666">"-dm_plex_view_neumann_original"</font>));
+<a name="line350">350: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm, <font color="#666666">"OVL"</font>));
+<a name="line351">351: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(odm, NULL, <font color="#666666">"-dm_plex_view_neumann_overlap"</font>));
+
+<a name="line353">353: </a>  <font color="#B22222">/* <a href="../../../../manualpages/Mat/MATIS.html">MATIS</a> for the overlap region</font>
+<a name="line354">354: </a><font color="#B22222">     the HPDDM interface wants local matrices,</font>
+<a name="line355">355: </a><font color="#B22222">     we attach the global <a href="../../../../manualpages/Mat/MATIS.html">MATIS</a> to the overlap <a href="../../../../manualpages/IS/IS.html">IS</a>,</font>
+<a name="line356">356: </a><font color="#B22222">     since we need it to do assembly */</font>
+<a name="line357">357: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMSetMatType.html">DMSetMatType</a>(odm, <a href="../../../../manualpages/Mat/MATIS.html">MATIS</a>));
+<a name="line358">358: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMCreateMatrix.html">DMCreateMatrix</a>(odm, &amp;pJ));
+<a name="line359">359: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatISGetLocalMat.html">MatISGetLocalMat</a>(pJ, J));
+<a name="line360">360: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*J));
+
+<a name="line362">362: </a>  <font color="#B22222">/* overlap <a href="../../../../manualpages/IS/IS.html">IS</a> */</font>
+<a name="line363">363: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatISGetLocalToGlobalMapping.html">MatISGetLocalToGlobalMapping</a>(pJ, &amp;l2g, NULL));
+<a name="line364">364: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISLocalToGlobalMappingGetSize.html">ISLocalToGlobalMappingGetSize</a>(l2g, &amp;n));
+<a name="line365">365: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISLocalToGlobalMappingGetIndices.html">ISLocalToGlobalMappingGetIndices</a>(l2g, &amp;idxs));
+<a name="line366">366: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateGeneral.html">ISCreateGeneral</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)odm), n, idxs, <a href="../../../../manualpages/Sys/PetscCopyMode.html">PETSC_COPY_VALUES</a>, ovl));
+<a name="line367">367: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISLocalToGlobalMappingRestoreIndices.html">ISLocalToGlobalMappingRestoreIndices</a>(l2g, &amp;idxs));
+<a name="line368">368: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectCompose.html">PetscObjectCompose</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ovl, <font color="#666666">"_DM_Overlap_HPDDM_MATIS"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pJ));
+<a name="line369">369: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(&amp;odm));
+<a name="line370">370: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;pJ));
+
+<a name="line372">372: </a>  <font color="#B22222">/* special purpose setup function (composed in <a href="../../../../manualpages/SNES/DMPlexSetSNESLocalFEM.html">DMPlexSetSNESLocalFEM</a>) */</font>
+<a name="line373">373: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectQueryFunction.html">PetscObjectQueryFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"MatComputeNeumannOverlap_C"</font>, setup));
+<a name="line374">374: </a>  <font color="#4169E1">if</font> (*setup) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectCompose.html">PetscObjectCompose</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*ovl, <font color="#666666">"_DM_Original_HPDDM"</font>, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm));
+<a name="line375">375: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line376">376: </a>}
+</pre>
+</body>
+
+</html>
+

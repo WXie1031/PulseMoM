@@ -1,0 +1,77 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/tao/unconstrained/impls/bmrm/bmrm.h">Actual source code: bmrm.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:14+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/taoimpl.h.html">&lt;petsc/private/taoimpl.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petscmath.h.html">&lt;petscmath.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#228B22">#define BMRM_INFTY 1e30 </font><font color="#B22222">/* single precision: ~\pm 10^{38.53}; <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> precision: ~\pm 10^{308.25} */</font><font color="#228B22"></font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">#define ALPHA_MIN  1e-10</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">#define ALPHA_MAX  1e10</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">#define EPS_SV     1e-15</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">#define EPS        1e-20</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">#define TOL_LAM    1e-15</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">#define TOL_R      1e-10</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">#define INCRE_DIM  1000</font></strong>
+
+<a name="line15"> 15: </a><font color="#B22222">/* Context for BMRM solver */</font>
+<a name="line16"> 16: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/PetscSF/VecScatter.html">VecScatter</a> scatter; <font color="#B22222">/* Scatter context  */</font>
+<a name="line18"> 18: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>        local_w;
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>  lambda;
+<a name="line20"> 20: </a>} TAO_BMRM;
+
+<a name="line22"> 22: </a><font color="#4169E1"><a name="Vec_Chain"></a>typedef struct Vec_Chain </font>{
+<a name="line23"> 23: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>               V;
+<a name="line24"> 24: </a>  <font color="#4169E1">struct Vec_Chain</font> *next;
+<a name="line25"> 25: </a>} Vec_Chain;
+
+<a name="line27"> 27: </a><font color="#B22222">/* Context for Dai-Fletcher solver */</font>
+<a name="line28"> 28: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line29"> 29: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   maxProjIter;
+<a name="line30"> 30: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   maxPGMIter;
+<a name="line31"> 31: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  *ipt, *ipt2, *uv;
+<a name="line32"> 32: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *g, *y, *tempv, *d, *Qd, *t, *xplus, *tplus, *sk, *yk;
+
+<a name="line34"> 34: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim;
+
+<a name="line36"> 36: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> cur_num_cp;
+
+<a name="line38"> 38: </a>  <font color="#B22222">/* Variables (i.e. Lagrangian multipliers) */</font>
+<a name="line39"> 39: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x;
+
+<a name="line41"> 41: </a>  <font color="#B22222">/* Linear part of the objective function  */</font>
+<a name="line42"> 42: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *f;
+
+<a name="line44"> 44: </a>  <font color="#B22222">/* Hessian of the QP */</font>
+<a name="line45"> 45: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> **Q;
+
+<a name="line47"> 47: </a>  <font color="#B22222">/* Constraint matrix  */</font>
+<a name="line48"> 48: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *a;
+
+<a name="line50"> 50: </a>  <font color="#B22222">/* RHS of the equality constraint */</font>
+<a name="line51"> 51: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> b;
+
+<a name="line53"> 53: </a>  <font color="#B22222">/* Lower bound vector for the variables */</font>
+<a name="line54"> 54: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *l;
+
+<a name="line56"> 56: </a>  <font color="#B22222">/* Upper bound vector for the variables */</font>
+<a name="line57"> 57: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *u;
+
+<a name="line59"> 59: </a>  <font color="#B22222">/* Tolerance for optimization error */</font>
+<a name="line60"> 60: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> tol;
+<a name="line61"> 61: </a>} TAO_DF;
+</pre>
+</body>
+
+</html>
+

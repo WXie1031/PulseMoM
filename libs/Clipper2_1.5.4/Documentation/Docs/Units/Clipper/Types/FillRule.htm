@@ -1,0 +1,37 @@
+<html>
+<head>
+  <title>FillRule</title><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shCore.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushDelphi.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCpp.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCSharp.js"></script><link rel="stylesheet" type="text/css" href="../../../../Styles/default.css"/><link rel="stylesheet" type="text/css" href="../../../../Menu/menu.css"/><link rel="stylesheet" type="text/css" href="../../../../CodeScripts/SyntaxHighlighter/styles/shCoreDefault.css"/><link rel="stylesheet" type="text/css" href="../../../../CodeScripts/SyntaxHighlighter/styles/shThemeDefault.css"/><meta name="viewport" content="width=device-width, initial-scale=1.0"><script type="text/javascript" src="../../../../Menu/menu.js"></script><script type="text/javascript" src="../../../../CodeScripts/bootstrap.js"></script>
+</head>
+<body bgcolor="#FFFFFF">
+  <div class="menu" id="menu"><a class="ancestor" href="../../../_Body.htm">Index</a><a class="ancestor" href="../_Body.htm">Clipper</a><span class="active">FillRule</span>
+  </div><br><br>
+
+  <h1>FillRule</h1>
+  <p class="Decl"><span class="Language">Delphi</span> <b>type</b> TFillRule = (EvenOdd, NonZero, Positive, Negative);</p>
+  <p class="Decl"><span class="Language">C++</span> <b>enum</b> FillRule {EvenOdd, NonZero, Positive, Negative};</p>
+  <p class="Decl"><span class="Language">C#&nbsp;</span> <b>public enum</b> FillRule {EvenOdd, NonZero, Positive, Negative};</p><br class="half">
+  <p> Complex polygons are defined by one or more closed paths that set both outer and inner polygon boundaries. But only portions of these paths (or 'contours') may be setting polygon boundaries, so crossing a path may or may not mean entering or exiting a 'filled' polygon region. For this reason complex polygons require <em>filling rules</em> that define which polygon sub-regions will be considered inside a given polygon, and which sub-regions will not.<br><br> The Clipper Library supports 4 filling rules: Even-Odd, Non-Zero, Positive and Negative. These rules are base on the <b>winding numbers</b> (see below) of each polygon sub-region, which in turn are based on the <b>orientation</b> of each path. Orientation is determined by the order in which vertices are declared during path construction, and whether these vertices progress roughly clockwise or counter-clockwise.<br><br> <img src="../../../../Images/fillrule0.svg" align="absmiddle"> Winding numbers for polygon sub-regions can be derived using the following algorithm: <ol>
+      <li>From a point that's outside a given polygon, draw an imaginary line through the polygon.</li>
+      <li>Starting with a winding number of zero, and beginning at the start of this imaginary line, follow the line as it crosses the polygon.</li>
+      <li>For each polygon contour that you cross, increment the winding number if the line is heading right to left (relative to your imaginary line), otherwise decrement the winding number.</li>
+      <li>And as you enter each polygon sub-region, allocate to it the current winding number.</li>
+    </ol> </p>
+  <p> <img src="../../../../Images/fillrule1.svg"> <img src="../../../../Images/fillrule2.svg"> <img src="../../../../Images/fillrule3.svg"><br> <b>Filling Rules:</b> 
+    <ul>
+      <li><b>Even-Odd</b>: Only odd numbered sub-regions are filled</li>
+      <li><b>Non-Zero</b>: Only non-zero sub-regions are filled</li>
+      <li><b>Positive</b>: Only sub-regions with winding counts &gt; 0 are filled</li>
+      <li><b>Negative</b>: Only sub-regions with winding counts &lt; 0 are filled</li>
+    </ul> </p>
+  <p> <img src="../../../../Images/evenodd.svg"> <img src="../../../../Images/nonzero.svg"> <img src="../../../../Images/positive.svg"> <img src="../../../../Images/negative.svg"><br><br> By far the most widely used fill rules are Even-Odd and Non-Zero. Most graphics rendering libraries (<a href="http://www.antigrain.com/__code/include/agg_basics.h.html#filling_rule_e">AGG</a>, <a href="http://developer.android.com/reference/android/graphics/Path.FillType.html">Android Graphics</a>, <a href="http://cairographics.org/manual/cairo-cairo-t.html#cairo-fill-rule-t">Cairo</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms534120(v=vs.85).aspx">GDI+</a>, <a href="http://www.glprogramming.com/red/chapter11.html">OpenGL</a>, <a href="http://developer.apple.com/library/ios/#documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/dq_paths/dq_paths.html#//apple_ref/doc/uid/TP30001066-CH211-TPXREF101">Quartz 2D</a> etc) and vector graphics storage formats (<a href="http://www.w3.org/TR/SVG/painting.html#FillRuleProperty">SVG</a>, Postscript, <a href="http://www.adobe.com/devnet-apps/photoshop/fileformatashtml/PhotoshopFileFormats.htm#50577409_17587">Photoshop</a> etc) support both these rules. However some libraries (eg Java's <a href="https://docs.oracle.com/javase/8/docs/api/java/awt/Graphics.html">Graphics2D</a>) only support EvenOdd filling. <em>Android Graphics</em> and <em>OpenGL</em> are the only libraries that I'm aware of that support filling rules other than EvenOdd and NonZero.<br><br> <b>Additional notes:</b> 
+    <ul>
+      <li>Reversing a polygon's path will reverse its orientation, as will inverting the Y-axis in which it's displayed. Yet reversing orientation won't affect winding number odd-ness or even-ness, or whether it's zero. It will only change the winding number's <em>sign</em> (ie from positive to negative and vice-versa).</li>
+      <li>Only clipping functions require filling rules together with path definitions. Polygon filling has no bearing on polygon offsetting.</li>
+    </ul> </p>
+  <p>     </p>
+  <h2 id="Auto-SeeAlso">See Also</h2>
+  <p class="Body"><a href="../Functions/Difference.htm">Difference</a>, <a href="../Functions/Intersect.htm">Intersect</a>, <a href="../Functions/Union.htm">Union</a>, <a href="../Functions/XOR.htm">XOR</a></p>
+  <p class="Copyright" id="auto"> <br><br> Copyright &#169; 2010-2024 Angus Johnson &#160; - &#160; Clipper2 1.5.2 &#160; - &#160; Help file built on 3 Mar 2025<br><br> </p>
+
+</body>
+</html>

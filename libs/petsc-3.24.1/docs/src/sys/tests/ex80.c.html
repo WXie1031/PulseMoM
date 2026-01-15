@@ -1,0 +1,69 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tests/ex80.c">Actual source code: ex80.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:11+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Tests <a href="../../../manualpages/Log/PetscLogView.html">PetscLogView</a>() called from different places.\n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../include/petscvec.h.html">&lt;petscvec.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **args)</font></strong>
+<a name="line7">  7: </a>{
+<a name="line8">  8: </a>  <a href="../../../manualpages/Vec/Vec.html">Vec</a>         vec;
+<a name="line9">  9: </a>  <a href="../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer[2];
+<a name="line10"> 10: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>   flg = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line12"> 12: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;args, NULL, help));
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogDefaultBegin.html">PetscLogDefaultBegin</a>());
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerCreate.html">PetscViewerCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, viewer));
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerCreate.html">PetscViewerCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, viewer + 1));
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(viewer + 1));
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerSetType.html">PetscViewerSetType</a>(viewer[0], <a href="../../../manualpages/Viewer/PETSCVIEWERASCII.html">PETSCVIEWERASCII</a>));
+<a name="line19"> 19: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetBool.html">PetscOptionsGetBool</a>(NULL, NULL, <font color="#666666">"-with_vec"</font>, &amp;flg, NULL));
+<a name="line20"> 20: </a>  <font color="#4169E1">if</font> (flg) {
+<a name="line21"> 21: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecCreate.html">VecCreate</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, &amp;vec));
+<a name="line22"> 22: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;vec));
+<a name="line23"> 23: </a>  }
+<a name="line24"> 24: </a>  flg = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line25"> 25: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetBool.html">PetscOptionsGetBool</a>(NULL, NULL, <font color="#666666">"-with_options"</font>, &amp;flg, NULL));
+<a name="line26"> 26: </a>  <font color="#4169E1">if</font> (!flg) {
+<a name="line27"> 27: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogView.html">PetscLogView</a>(viewer[0]));
+<a name="line28"> 28: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogView.html">PetscLogView</a>(viewer[0]));
+<a name="line29"> 29: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogView.html">PetscLogView</a>(viewer[0]));
+<a name="line30"> 30: </a>  } <font color="#4169E1">else</font> {
+<a name="line31"> 31: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogViewFromOptions.html">PetscLogViewFromOptions</a>());
+<a name="line32"> 32: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogViewFromOptions.html">PetscLogViewFromOptions</a>());
+<a name="line33"> 33: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogViewFromOptions.html">PetscLogViewFromOptions</a>());
+<a name="line34"> 34: </a>  }
+<a name="line35"> 35: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(viewer));
+<a name="line36"> 36: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line37"> 37: </a>  <font color="#4169E1">return</font> 0;
+<a name="line38"> 38: </a>}
+
+<a name="line40"> 40: </a><font color="#B22222">/*TEST</font>
+
+<a name="line42"> 42: </a><font color="#B22222">  testset:</font>
+<a name="line43"> 43: </a><font color="#B22222">    requires: defined(PETSC_USE_LOG)</font>
+<a name="line44"> 44: </a><font color="#B22222">    nsize: 1</font>
+<a name="line45"> 45: </a><font color="#B22222">    temporaries: default.log flamegraph.log</font>
+<a name="line46"> 46: </a><font color="#B22222">    filter: grep Viewer | uniq</font>
+<a name="line47"> 47: </a><font color="#B22222">    test:</font>
+<a name="line48"> 48: </a><font color="#B22222">      args: -log_view ascii,:flamegraph.log:ascii_flamegraph,:default.log -with_vec {{false true}shared output}</font>
+<a name="line49"> 49: </a><font color="#B22222">  # test:</font>
+<a name="line50"> 50: </a><font color="#B22222">  #   TODO: broken (wrong count when <a href="../../../manualpages/Log/PetscLogViewFromOptions.html">PetscLogViewFromOptions</a>() is called by the user)</font>
+<a name="line51"> 51: </a><font color="#B22222">  #   args: -log_view ascii,:flamegraph.log:ascii_flamegraph,:default.log -with_vec {{false true}shared output} -with_options</font>
+
+<a name="line53"> 53: </a><font color="#B22222"> TEST*/</font>
+</pre>
+</body>
+
+</html>
+

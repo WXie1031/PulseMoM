@@ -1,0 +1,231 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/pc/impls/shell/ftn-custom/zshellpcf.c">Actual source code: zshellpcf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:56+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscpc.h.html">&lt;petscpc.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define pcshellsetapply_               PCSHELLSETAPPLY</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define pcshellsetapplysymmetricleft_  PCSHELLSETAPPLYSYMMETRICLEFT</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define pcshellsetapplysymmetricright_ PCSHELLSETAPPLYSYMMETRICRIGHT</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define pcshellsetapplyba_             PCSHELLSETAPPLYBA</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define pcshellsetapplyrichardson_     PCSHELLSETAPPLYRICHARDSON</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define pcshellsetapplytranspose_      PCSHELLSETAPPLYTRANSPOSE</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define pcshellsetsetup_               PCSHELLSETSETUP</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define pcshellsetdestroy_             PCSHELLSETDESTROY</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  #define pcshellsetpresolve_            PCSHELLSETPRESOLVE</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  #define pcshellsetpostsolve_           PCSHELLSETPOSTSOLVE</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  #define pcshellsetview_                PCSHELLSETVIEW</font></strong>
+<a name="line17"> 17: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line18"> 18: </a><strong><font color="#228B22">  #define pcshellsetapply_               pcshellsetapply</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  #define pcshellsetapplysymmetricleft_  pcshellsetapplysymmetricleft</font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">  #define pcshellsetapplysymmetricright_ pcshellsetapplysymmetricright</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  #define pcshellsetapplyba_             pcshellsetapplyba</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">  #define pcshellsetapplyrichardson_     pcshellsetapplyrichardson</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">  #define pcshellsetapplytranspose_      pcshellsetapplytranspose</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">  #define pcshellsetsetup_               pcshellsetsetup</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">  #define pcshellsetdestroy_             pcshellsetdestroy</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">  #define pcshellsetpresolve_            pcshellsetpresolve</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">  #define pcshellsetpostsolve_           pcshellsetpostsolve</font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">  #define pcshellsetview_                pcshellsetview</font></strong>
+<a name="line29"> 29: </a><font color="#A020F0">#endif</font>
+
+<a name="line31"> 31: </a><font color="#B22222">/* These are not extern C because they are passed into non-extern C user level functions */</font>
+<a name="line32"> 32: </a><strong><font color="#4169E1"><a name="ourshellapply"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellapply(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line33"> 33: </a>{
+<a name="line34"> 34: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[0]))(&amp;pc, &amp;x, &amp;y, &amp;ierr));
+<a name="line35"> 35: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line36"> 36: </a>}
+
+<a name="line38"> 38: </a><strong><font color="#4169E1"><a name="ourshellapplysymmetricleft"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellapplysymmetricleft(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line39"> 39: </a>{
+<a name="line40"> 40: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[9]))(&amp;pc, &amp;x, &amp;y, &amp;ierr));
+<a name="line41"> 41: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line42"> 42: </a>}
+
+<a name="line44"> 44: </a><strong><font color="#4169E1"><a name="ourshellapplysymmetricright"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellapplysymmetricright(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line45"> 45: </a>{
+<a name="line46"> 46: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[10]))(&amp;pc, &amp;x, &amp;y, &amp;ierr));
+<a name="line47"> 47: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line48"> 48: </a>}
+
+<a name="line50"> 50: </a><strong><font color="#4169E1"><a name="ourshellapplyctx"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellapplyctx(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line51"> 51: </a>{
+<a name="line52"> 52: </a>  void *ctx;
+<a name="line53"> 53: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/PC/PCShellGetContext.html">PCShellGetContext</a>(pc, &amp;ctx));
+<a name="line54"> 54: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[0]))(&amp;pc, ctx, &amp;x, &amp;y, &amp;ierr));
+<a name="line55"> 55: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line56"> 56: </a>}
+
+<a name="line58"> 58: </a><strong><font color="#4169E1"><a name="ourshellapplyba"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellapplyba(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/PC/PCSide.html">PCSide</a> side, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> work)</font></strong>
+<a name="line59"> 59: </a>{
+<a name="line60"> 60: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/PC/PCSide.html">PCSide</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[1]))(&amp;pc, &amp;side, &amp;x, &amp;y, &amp;work, &amp;ierr));
+<a name="line61"> 61: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line62"> 62: </a>}
+
+<a name="line64"> 64: </a><strong><font color="#4169E1"><a name="ourapplyrichardson"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourapplyrichardson(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> w, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> rtol, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> abstol, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> dtol, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> m, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> guesszero, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *outits, <a href="../../../../../../manualpages/PC/PCRichardsonConvergedReason.html">PCRichardsonConvergedReason</a> *reason)</font></strong>
+<a name="line65"> 65: </a>{
+<a name="line66"> 66: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/PC/PCRichardsonConvergedReason.html">PCRichardsonConvergedReason</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[2]))(&amp;pc, &amp;x, &amp;y, &amp;w, &amp;rtol, &amp;abstol, &amp;dtol, &amp;m, &amp;guesszero, outits, reason, &amp;ierr));
+<a name="line67"> 67: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line68"> 68: </a>}
+
+<a name="line70"> 70: </a><strong><font color="#4169E1"><a name="ourshellapplytranspose"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellapplytranspose(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line71"> 71: </a>{
+<a name="line72"> 72: </a>  PetscCallFortranVoidFunction((*(void (*)(void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[3]))(&amp;pc, &amp;x, &amp;y, &amp;ierr));
+<a name="line73"> 73: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line74"> 74: </a>}
+
+<a name="line76"> 76: </a><strong><font color="#4169E1"><a name="ourshellsetup"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellsetup(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line77"> 77: </a>{
+<a name="line78"> 78: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[4]))(&amp;pc, &amp;ierr));
+<a name="line79"> 79: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line80"> 80: </a>}
+
+<a name="line82"> 82: </a><strong><font color="#4169E1"><a name="ourshellsetupctx"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellsetupctx(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line83"> 83: </a>{
+<a name="line84"> 84: </a>  void *ctx;
+<a name="line85"> 85: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/PC/PCShellGetContext.html">PCShellGetContext</a>(pc, &amp;ctx));
+<a name="line86"> 86: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, void *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[4]))(&amp;pc, ctx, &amp;ierr));
+<a name="line87"> 87: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line88"> 88: </a>}
+
+<a name="line90"> 90: </a><strong><font color="#4169E1"><a name="ourshelldestroy"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshelldestroy(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line91"> 91: </a>{
+<a name="line92"> 92: </a>  PetscCallFortranVoidFunction((*(void (*)(void *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[5]))(&amp;pc, &amp;ierr));
+<a name="line93"> 93: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line94"> 94: </a>}
+
+<a name="line96"> 96: </a><strong><font color="#4169E1"><a name="ourshellpresolve"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellpresolve(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line97"> 97: </a>{
+<a name="line98"> 98: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[6]))(&amp;pc, &amp;ksp, &amp;x, &amp;y, &amp;ierr));
+<a name="line99"> 99: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line100">100: </a>}
+
+<a name="line102">102: </a><strong><font color="#4169E1"><a name="ourshellpostsolve"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellpostsolve(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line103">103: </a>{
+<a name="line104">104: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[7]))(&amp;pc, &amp;ksp, &amp;x, &amp;y, &amp;ierr));
+<a name="line105">105: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line106">106: </a>}
+
+<a name="line108">108: </a><strong><font color="#4169E1"><a name="ourshellview"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourshellview(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> view)</font></strong>
+<a name="line109">109: </a>{
+<a name="line110">110: </a>  PetscCallFortranVoidFunction((*(void (*)(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *, <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc)-&gt;fortran_func_pointers[8]))(&amp;pc, &amp;view, &amp;ierr));
+<a name="line111">111: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line112">112: </a>}
+
+<a name="line114">114: </a><strong><font color="#4169E1"><a name="pcshellsetapply_"></a>PETSC_EXTERN void pcshellsetapply_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*apply)(void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line115">115: </a>{
+<a name="line116">116: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line117">117: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[0] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)apply;
+
+<a name="line119">119: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetApply.html">PCShellSetApply</a>(*pc, ourshellapply);
+<a name="line120">120: </a>}
+
+<a name="line122">122: </a><strong><font color="#4169E1"><a name="pcshellsetapplysymmetricleft_"></a>PETSC_EXTERN void pcshellsetapplysymmetricleft_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*apply)(void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line123">123: </a>{
+<a name="line124">124: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line125">125: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[9] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)apply;
+
+<a name="line127">127: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetApplySymmetricLeft.html">PCShellSetApplySymmetricLeft</a>(*pc, ourshellapplysymmetricleft);
+<a name="line128">128: </a>}
+
+<a name="line130">130: </a><strong><font color="#4169E1"><a name="pcshellsetapplysymmetricright_"></a>PETSC_EXTERN void pcshellsetapplysymmetricright_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*apply)(void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line131">131: </a>{
+<a name="line132">132: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line133">133: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[10] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)apply;
+
+<a name="line135">135: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetApplySymmetricRight.html">PCShellSetApplySymmetricRight</a>(*pc, ourshellapplysymmetricright);
+<a name="line136">136: </a>}
+
+<a name="line138">138: </a><strong><font color="#4169E1"><a name="pcshellsetapplyctx_"></a>PETSC_EXTERN void pcshellsetapplyctx_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*apply)(void *, void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line139">139: </a>{
+<a name="line140">140: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line141">141: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[0] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)apply;
+
+<a name="line143">143: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetApply.html">PCShellSetApply</a>(*pc, ourshellapplyctx);
+<a name="line144">144: </a>}
+
+<a name="line146">146: </a><strong><font color="#4169E1"><a name="pcshellsetapplyba_"></a>PETSC_EXTERN void pcshellsetapplyba_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*apply)(void *, <a href="../../../../../../manualpages/PC/PCSide.html">PCSide</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line147">147: </a>{
+<a name="line148">148: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line149">149: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[1] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)apply;
+
+<a name="line151">151: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetApplyBA.html">PCShellSetApplyBA</a>(*pc, ourshellapplyba);
+<a name="line152">152: </a>}
+
+<a name="line154">154: </a><strong><font color="#4169E1"><a name="pcshellsetapplyrichardson_"></a>PETSC_EXTERN void pcshellsetapplyrichardson_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*apply)(void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/PC/PCRichardsonConvergedReason.html">PCRichardsonConvergedReason</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line155">155: </a>{
+<a name="line156">156: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line157">157: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[2] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)apply;
+<a name="line158">158: </a>  *ierr                                        = <a href="../../../../../../manualpages/PC/PCShellSetApplyRichardson.html">PCShellSetApplyRichardson</a>(*pc, ourapplyrichardson);
+<a name="line159">159: </a>}
+
+<a name="line161">161: </a><strong><font color="#4169E1"><a name="pcshellsetapplytranspose_"></a>PETSC_EXTERN void pcshellsetapplytranspose_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*applytranspose)(void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line162">162: </a>{
+<a name="line163">163: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line164">164: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[3] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)applytranspose;
+
+<a name="line166">166: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetApplyTranspose.html">PCShellSetApplyTranspose</a>(*pc, ourshellapplytranspose);
+<a name="line167">167: </a>}
+
+<a name="line169">169: </a><strong><font color="#4169E1"><a name="pcshellsetsetupctx_"></a>PETSC_EXTERN void pcshellsetsetupctx_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*setup)(void *, void *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line170">170: </a>{
+<a name="line171">171: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line172">172: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[4] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)setup;
+
+<a name="line174">174: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetSetUp.html">PCShellSetSetUp</a>(*pc, ourshellsetupctx);
+<a name="line175">175: </a>}
+
+<a name="line177">177: </a><strong><font color="#4169E1"><a name="pcshellsetsetup_"></a>PETSC_EXTERN void pcshellsetsetup_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*setup)(void *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line178">178: </a>{
+<a name="line179">179: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line180">180: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[4] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)setup;
+
+<a name="line182">182: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetSetUp.html">PCShellSetSetUp</a>(*pc, ourshellsetup);
+<a name="line183">183: </a>}
+
+<a name="line185">185: </a><strong><font color="#4169E1"><a name="pcshellsetdestroy_"></a>PETSC_EXTERN void pcshellsetdestroy_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*setup)(void *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line186">186: </a>{
+<a name="line187">187: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line188">188: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[5] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)setup;
+
+<a name="line190">190: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetDestroy.html">PCShellSetDestroy</a>(*pc, ourshelldestroy);
+<a name="line191">191: </a>}
+
+<a name="line193">193: </a><strong><font color="#4169E1"><a name="pcshellsetpresolve_"></a>PETSC_EXTERN void pcshellsetpresolve_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*presolve)(void *, void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line194">194: </a>{
+<a name="line195">195: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line196">196: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[6] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)presolve;
+
+<a name="line198">198: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetPreSolve.html">PCShellSetPreSolve</a>(*pc, ourshellpresolve);
+<a name="line199">199: </a>}
+
+<a name="line201">201: </a><strong><font color="#4169E1"><a name="pcshellsetpostsolve_"></a>PETSC_EXTERN void pcshellsetpostsolve_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*postsolve)(void *, void *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line202">202: </a>{
+<a name="line203">203: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line204">204: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[7] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)postsolve;
+
+<a name="line206">206: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetPostSolve.html">PCShellSetPostSolve</a>(*pc, ourshellpostsolve);
+<a name="line207">207: </a>}
+
+<a name="line209">209: </a><strong><font color="#4169E1"><a name="pcshellsetview_"></a>PETSC_EXTERN void pcshellsetview_(<a href="../../../../../../manualpages/PC/PC.html">PC</a> *pc, void (*view)(void *, <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line210">210: </a>{
+<a name="line211">211: </a>  PetscObjectAllocateFortranPointers(*pc, 11);
+<a name="line212">212: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*pc)-&gt;fortran_func_pointers[8] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)view;
+
+<a name="line214">214: </a>  *ierr = <a href="../../../../../../manualpages/PC/PCShellSetView.html">PCShellSetView</a>(*pc, ourshellview);
+<a name="line215">215: </a>}
+</pre>
+</body>
+
+</html>
+

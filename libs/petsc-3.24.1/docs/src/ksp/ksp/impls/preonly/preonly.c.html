@@ -1,0 +1,162 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/impls/preonly/preonly.c">Actual source code: preonly.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/kspimpl.h.html">&lt;petsc/private/kspimpl.h&gt;</A>
+
+<a name="line3">  3: </a><strong><font color="#4169E1"><a name="KSPSetUp_PREONLY"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPSetUp_PREONLY(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line4">  4: </a>{
+<a name="line5">  5: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line6">  6: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line7">  7: </a>}
+
+<a name="line9">  9: </a><strong><font color="#4169E1"><a name="KSPSolve_PREONLY"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPSolve_PREONLY(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line10"> 10: </a>{
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>      norm;
+<a name="line12"> 12: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      flg;
+<a name="line13"> 13: </a>  <a href="../../../../../manualpages/PC/PCFailedReason.html">PCFailedReason</a> pcreason;
+
+<a name="line15"> 15: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line16"> 16: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCGetDiagonalScale.html">PCGetDiagonalScale</a>(ksp-&gt;pc, &amp;flg));
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!flg, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Krylov method %s does not support diagonal scaling"</font>, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp)-&gt;type_name);
+<a name="line18"> 18: </a>  <font color="#4169E1">if</font> (!ksp-&gt;guess_zero) {
+<a name="line19"> 19: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectTypeCompareAny.html">PetscObjectTypeCompareAny</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp-&gt;pc, &amp;flg, <a href="../../../../../manualpages/PC/PCREDISTRIBUTE.html">PCREDISTRIBUTE</a>, <a href="../../../../../manualpages/PC/PCMPI.html">PCMPI</a>, <font color="#666666">""</font>));
+<a name="line20"> 20: </a>    <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(flg, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> of type preonly (application of preconditioner only) doesn't make sense with nonzero initial guess you probably want a <a href="../../../../../manualpages/KSP/KSP.html">KSP</a> of type Richardson"</font>);
+<a name="line21"> 21: </a>  }
+<a name="line22"> 22: </a>  ksp-&gt;its = 0;
+<a name="line23"> 23: </a>  <font color="#4169E1">if</font> (ksp-&gt;numbermonitors) {
+<a name="line24"> 24: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(ksp-&gt;vec_rhs, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;norm));
+<a name="line25"> 25: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPMonitor.html">KSPMonitor</a>(ksp, 0, norm));
+<a name="line26"> 26: </a>  }
+<a name="line27"> 27: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSP_PCApply(ksp, ksp-&gt;vec_rhs, ksp-&gt;vec_sol));
+<a name="line28"> 28: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCReduceFailedReason.html">PCReduceFailedReason</a>(ksp-&gt;pc));
+<a name="line29"> 29: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCGetFailedReason.html">PCGetFailedReason</a>(ksp-&gt;pc, &amp;pcreason));
+<a name="line30"> 30: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecFlag.html">VecFlag</a>(ksp-&gt;vec_sol, pcreason));
+<a name="line31"> 31: </a>  <font color="#4169E1">if</font> (pcreason) {
+<a name="line32"> 32: </a>    <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!ksp-&gt;errorifnotconverged, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_NOT_CONVERGED</a>, <font color="#666666">"<a href="../../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a> has not converged with <a href="../../../../../manualpages/PC/PCFailedReason.html">PCFailedReason</a> %s"</font>, PCFailedReasons[pcreason]);
+<a name="line33"> 33: </a>    ksp-&gt;reason = <a href="../../../../../manualpages/KSP/KSP_DIVERGED_PC_FAILED.html">KSP_DIVERGED_PC_FAILED</a>;
+<a name="line34"> 34: </a>  } <font color="#4169E1">else</font> {
+<a name="line35"> 35: </a>    ksp-&gt;its    = 1;
+<a name="line36"> 36: </a>    ksp-&gt;reason = <a href="../../../../../manualpages/KSP/KSP_CONVERGED_ITS.html">KSP_CONVERGED_ITS</a>;
+<a name="line37"> 37: </a>  }
+<a name="line38"> 38: </a>  <font color="#4169E1">if</font> (ksp-&gt;numbermonitors) {
+<a name="line39"> 39: </a>    <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> v;
+<a name="line40"> 40: </a>    <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A;
+
+<a name="line42"> 42: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(ksp-&gt;vec_rhs, &amp;v));
+<a name="line43"> 43: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCGetOperators.html">PCGetOperators</a>(ksp-&gt;pc, &amp;A, NULL));
+<a name="line44"> 44: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSP_MatMult(ksp, A, ksp-&gt;vec_sol, v));
+<a name="line45"> 45: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecAYPX.html">VecAYPX</a>(v, -1.0, ksp-&gt;vec_rhs));
+<a name="line46"> 46: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(v, <a href="../../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;norm));
+<a name="line47"> 47: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;v));
+<a name="line48"> 48: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPMonitor.html">KSPMonitor</a>(ksp, 1, norm));
+<a name="line49"> 49: </a>  }
+<a name="line50"> 50: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line51"> 51: </a>}
+
+<a name="line53"> 53: </a><strong><font color="#4169E1"><a name="KSPMatSolve_PREONLY"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPMatSolve_PREONLY(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> X)</font></strong>
+<a name="line54"> 54: </a>{
+<a name="line55"> 55: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      diagonalscale;
+<a name="line56"> 56: </a>  <a href="../../../../../manualpages/PC/PCFailedReason.html">PCFailedReason</a> pcreason;
+
+<a name="line58"> 58: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line59"> 59: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCGetDiagonalScale.html">PCGetDiagonalScale</a>(ksp-&gt;pc, &amp;diagonalscale));
+<a name="line60"> 60: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!diagonalscale, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Krylov method %s does not support diagonal scaling"</font>, ((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp)-&gt;type_name);
+<a name="line61"> 61: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ksp-&gt;guess_zero, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"Running <a href="../../../../../manualpages/KSP/KSP.html">KSP</a> of preonly doesn't make sense with nonzero initial guess you probably want a <a href="../../../../../manualpages/KSP/KSP.html">KSP</a> type of Richardson"</font>);
+<a name="line62"> 62: </a>  ksp-&gt;its = 0;
+<a name="line63"> 63: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(KSP_PCMatApply(ksp, B, X));
+<a name="line64"> 64: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PC/PCGetFailedReason.html">PCGetFailedReason</a>(ksp-&gt;pc, &amp;pcreason));
+<a name="line65"> 65: </a>  <font color="#B22222">/* Note: only some ranks may have this set; this may lead to problems if the caller assumes ksp-&gt;reason is set on all processes or just uses the result */</font>
+<a name="line66"> 66: </a>  <font color="#4169E1">if</font> (pcreason) {
+<a name="line67"> 67: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSetInf(X));
+<a name="line68"> 68: </a>    ksp-&gt;reason = <a href="../../../../../manualpages/KSP/KSP_DIVERGED_PC_FAILED.html">KSP_DIVERGED_PC_FAILED</a>;
+<a name="line69"> 69: </a>  } <font color="#4169E1">else</font> {
+<a name="line70"> 70: </a>    ksp-&gt;its    = 1;
+<a name="line71"> 71: </a>    ksp-&gt;reason = <a href="../../../../../manualpages/KSP/KSP_CONVERGED_ITS.html">KSP_CONVERGED_ITS</a>;
+<a name="line72"> 72: </a>  }
+<a name="line73"> 73: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line74"> 74: </a>}
+
+<a name="line76"> 76: </a><font color="#B22222">/*MC</font>
+<a name="line77"> 77: </a><font color="#B22222">   <a href="../../../../../manualpages/KSP/KSPNONE.html">KSPNONE</a> - An alias for `<a href="../../../../../manualpages/KSP/KSPPREONLY.html">KSPPREONLY</a>`</font>
+
+<a name="line79"> 79: </a><font color="#B22222">   Options Database Key:</font>
+<a name="line80"> 80: </a><font color="#B22222">.   -ksp_type none - use a single application of the preconditioner only</font>
+
+<a name="line82"> 82: </a><font color="#B22222">   Level: beginner</font>
+
+<a name="line84"> 84: </a><font color="#B22222">   Note:</font>
+<a name="line85"> 85: </a><font color="#B22222">   See `<a href="../../../../../manualpages/KSP/KSPPREONLY.html">KSPPREONLY</a>` for more details</font>
+
+<a name="line87"> 87: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>()`, `<a href="../../../../../manualpages/KSP/KSPSetType.html">KSPSetType</a>()`, `<a href="../../../../../manualpages/KSP/KSPType.html">KSPType</a>`, `<a href="../../../../../manualpages/KSP/KSPPREONLY.html">KSPPREONLY</a>`, `<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>`, `<a href="../../../../../manualpages/KSP/KSPRICHARDSON.html">KSPRICHARDSON</a>`, `<a href="../../../../../manualpages/KSP/KSPCHEBYSHEV.html">KSPCHEBYSHEV</a>`, `<a href="../../../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>()`, `<a href="../../../../../manualpages/KSP/KSPSetInitialGuessNonzero.html">KSPSetInitialGuessNonzero</a>()`,</font>
+<a name="line88"> 88: </a><font color="#B22222">          `<a href="../../../../../manualpages/PC/PCREDISTRIBUTE.html">PCREDISTRIBUTE</a>`, `<a href="../../../../../manualpages/PC/PCRedistributeGetKSP.html">PCRedistributeGetKSP</a>()`, `<a href="../../../../../manualpages/KSP/KSPPREONLY.html">KSPPREONLY</a>`</font>
+<a name="line89"> 89: </a><font color="#B22222">M*/</font>
+
+<a name="line91"> 91: </a><font color="#B22222">/*MC</font>
+<a name="line92"> 92: </a><font color="#B22222">   <a href="../../../../../manualpages/KSP/KSPPREONLY.html">KSPPREONLY</a> - This implements a method that applies ONLY the preconditioner exactly once.</font>
+
+<a name="line94"> 94: </a><font color="#B22222">   It is commonly used with the direct solver preconditioners like `<a href="../../../../../manualpages/PC/PCLU.html">PCLU</a>` and `<a href="../../../../../manualpages/PC/PCCHOLESKY.html">PCCHOLESKY</a>`, but it may also be used when a single iteration of the</font>
+<a name="line95"> 95: </a><font color="#B22222">   preconditioner is needed for smoothing in multigrid, `<a href="../../../../../manualpages/PC/PCMG.html">PCMG</a>` or `<a href="../../../../../manualpages/PC/PCGAMG.html">PCGAMG</a>` or within some other nested linear solve such as `<a href="../../../../../manualpages/PC/PCFIELDSPLIT.html">PCFIELDSPLIT</a>` or `<a href="../../../../../manualpages/PC/PCBJACOBI.html">PCBJACOBI</a>`.</font>
+
+<a name="line97"> 97: </a><font color="#B22222">   There is an alias of this with the name `<a href="../../../../../manualpages/KSP/KSPNONE.html">KSPNONE</a>`.</font>
+
+<a name="line99"> 99: </a><font color="#B22222">   Options Database Key:</font>
+<a name="line100">100: </a><font color="#B22222">.   -ksp_type preonly - use a single application of the preconditioner only</font>
+
+<a name="line102">102: </a><font color="#B22222">   Level: beginner</font>
+
+<a name="line104">104: </a><font color="#B22222">   Notes:</font>
+<a name="line105">105: </a><font color="#B22222">   Since this does not involve an iteration the basic `<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>` parameters such as tolerances and maximum iteration counts</font>
+<a name="line106">106: </a><font color="#B22222">   do not apply</font>
+
+<a name="line108">108: </a><font color="#B22222">   To apply the preconditioner multiple times in a simple iteration use `<a href="../../../../../manualpages/KSP/KSPRICHARDSON.html">KSPRICHARDSON</a>`</font>
+
+<a name="line110">110: </a><font color="#B22222">   This `<a href="../../../../../manualpages/KSP/KSPType.html">KSPType</a>` cannot be used with the flag `-ksp_initial_guess_nonzero` or the call `<a href="../../../../../manualpages/KSP/KSPSetInitialGuessNonzero.html">KSPSetInitialGuessNonzero</a>()` since it simply applies</font>
+<a name="line111">111: </a><font color="#B22222">   the preconditioner to the given right-hand side during `<a href="../../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>()`. Except when the</font>
+<a name="line112">112: </a><font color="#B22222">   `<a href="../../../../../manualpages/PC/PCType.html">PCType</a>` is `<a href="../../../../../manualpages/PC/PCREDISTRIBUTE.html">PCREDISTRIBUTE</a>`; in that situation pass the nonzero initial guess flag with `-ksp_initial_guess_nonzero` or `<a href="../../../../../manualpages/KSP/KSPSetInitialGuessNonzero.html">KSPSetInitialGuessNonzero</a>()`</font>
+<a name="line113">113: </a><font color="#B22222">   both to the outer `<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>` (which is `<a href="../../../../../manualpages/KSP/KSPPREONLY.html">KSPPREONLY</a>`) and the inner `<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>` object obtained with `<a href="../../../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>()` followed by `PCRedistributedGetKSP()`</font>
+<a name="line114">114: </a><font color="#B22222">   followed by `<a href="../../../../../manualpages/KSP/KSPSetInitialGuessNonzero.html">KSPSetInitialGuessNonzero</a>()` or the option  `-redistribute_ksp_initial_guess_nonzero`.</font>
+
+<a name="line116">116: </a><font color="#B22222">   Developer Note:</font>
+<a name="line117">117: </a><font color="#B22222">   Even though this method does not use any norms, the user is allowed to set the `<a href="../../../../../manualpages/KSP/KSPNormType.html">KSPNormType</a>` to any value.</font>
+<a name="line118">118: </a><font color="#B22222">   This is so the users does not have to change `<a href="../../../../../manualpages/KSP/KSPNormType.html">KSPNormType</a>` options when they switch from other `<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>` methods to this one.</font>
+
+<a name="line120">120: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>()`, `<a href="../../../../../manualpages/KSP/KSPSetType.html">KSPSetType</a>()`, `<a href="../../../../../manualpages/KSP/KSPType.html">KSPType</a>`, `<a href="../../../../../manualpages/KSP/KSP.html">KSP</a>`, `<a href="../../../../../manualpages/KSP/KSPRICHARDSON.html">KSPRICHARDSON</a>`, `<a href="../../../../../manualpages/KSP/KSPCHEBYSHEV.html">KSPCHEBYSHEV</a>`, `<a href="../../../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>()`, `<a href="../../../../../manualpages/KSP/KSPSetInitialGuessNonzero.html">KSPSetInitialGuessNonzero</a>()`,</font>
+<a name="line121">121: </a><font color="#B22222">          `<a href="../../../../../manualpages/PC/PCREDISTRIBUTE.html">PCREDISTRIBUTE</a>`, `<a href="../../../../../manualpages/PC/PCRedistributeGetKSP.html">PCRedistributeGetKSP</a>()`, `<a href="../../../../../manualpages/KSP/KSPNONE.html">KSPNONE</a>`</font>
+<a name="line122">122: </a><font color="#B22222">M*/</font>
+
+<a name="line124">124: </a><strong><font color="#4169E1"><a name="KSPCreate_PREONLY"></a>PETSC_EXTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> KSPCreate_PREONLY(<a href="../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line125">125: </a>{
+<a name="line126">126: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line127">127: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_NONE.html">KSP_NORM_NONE</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_LEFT</a>, 3));
+<a name="line128">128: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_NONE.html">KSP_NORM_NONE</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_RIGHT</a>, 2));
+<a name="line129">129: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_PRECONDITIONED.html">KSP_NORM_PRECONDITIONED</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_LEFT</a>, 2));
+<a name="line130">130: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_PRECONDITIONED.html">KSP_NORM_PRECONDITIONED</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_RIGHT</a>, 2));
+<a name="line131">131: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_UNPRECONDITIONED.html">KSP_NORM_UNPRECONDITIONED</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_LEFT</a>, 2));
+<a name="line132">132: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_UNPRECONDITIONED.html">KSP_NORM_UNPRECONDITIONED</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_RIGHT</a>, 2));
+<a name="line133">133: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/KSP/KSPSetSupportedNorm.html">KSPSetSupportedNorm</a>(ksp, <a href="../../../../../manualpages/KSP/KSP_NORM_NATURAL.html">KSP_NORM_NATURAL</a>, <a href="../../../../../manualpages/PC/PCSide.html">PC_LEFT</a>, 2));
+
+<a name="line135">135: </a>  ksp-&gt;data                = NULL;
+<a name="line136">136: </a>  ksp-&gt;ops-&gt;setup          = KSPSetUp_PREONLY;
+<a name="line137">137: </a>  ksp-&gt;ops-&gt;solve          = KSPSolve_PREONLY;
+<a name="line138">138: </a>  ksp-&gt;ops-&gt;matsolve       = KSPMatSolve_PREONLY;
+<a name="line139">139: </a>  ksp-&gt;ops-&gt;destroy        = KSPDestroyDefault;
+<a name="line140">140: </a>  ksp-&gt;ops-&gt;buildsolution  = KSPBuildSolutionDefault;
+<a name="line141">141: </a>  ksp-&gt;ops-&gt;buildresidual  = <a href="../../../../../manualpages/KSP/KSPBuildResidualDefault.html">KSPBuildResidualDefault</a>;
+<a name="line142">142: </a>  ksp-&gt;ops-&gt;setfromoptions = NULL;
+<a name="line143">143: </a>  ksp-&gt;ops-&gt;view           = NULL;
+<a name="line144">144: </a>  ksp-&gt;guess_not_read      = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>; <font color="#B22222">// A <a href="../../../../../manualpages/KSP/KSP.html">KSP</a> of preonly never needs to zero the input x since <a href="../../../../../manualpages/PC/PC.html">PC</a> do not use an initial guess</font>
+<a name="line145">145: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line146">146: </a>}
+</pre>
+</body>
+
+</html>
+

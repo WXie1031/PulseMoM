@@ -1,0 +1,224 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/plex/tutorials/ex18.c">Actual source code: ex18.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:50+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#include </font><font color="#666666">"petscsys.h"</font><font color="#A020F0"></font>
+<a name="line2">  2: </a>static const char help[] = <font color="#666666">"Test of PETSc/CAD Shape Modification Technology"</font>;
+
+<a name="line4">  4: </a>#include <A href="../../../../include/petscdmplexegads.h.html">&lt;petscdmplexegads.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../include/petsc/private/hashmapi.h.html">&lt;petsc/private/hashmapi.h&gt;</A>
+
+<a name="line7">  7: </a><strong><font color="#4169E1"><a name="surfArea"></a>static <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> surfArea(<a href="../../../../../manualpages/DM/DM.html">DM</a> dm)</font></strong>
+<a name="line8">  8: </a>{
+<a name="line9">  9: </a>  <a href="../../../../../manualpages/DM/DMLabel.html">DMLabel</a>     bodyLabel, faceLabel;
+<a name="line10"> 10: </a>  double      surfaceArea = 0., volume = 0.;
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   vol, centroid[3], normal[3];
+<a name="line12"> 12: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    dim, cStart, cEnd, fStart, fEnd;
+<a name="line13"> 13: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    bodyID, faceID;
+<a name="line14"> 14: </a>  <a href="../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>    comm;
+<a name="line15"> 15: </a>  const char *name;
+
+<a name="line17"> 17: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line18"> 18: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectGetComm.html">PetscObjectGetComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, &amp;comm));
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectGetName.html">PetscObjectGetName</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, &amp;name));
+<a name="line20"> 20: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMGetDimension.html">DMGetDimension</a>(dm, &amp;dim));
+<a name="line21"> 21: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"    dim = %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, dim));
+<a name="line22"> 22: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMGetLabel.html">DMGetLabel</a>(dm, <font color="#666666">"EGADS Body ID"</font>, &amp;bodyLabel));
+<a name="line23"> 23: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMGetLabel.html">DMGetLabel</a>(dm, <font color="#666666">"EGADS Face ID"</font>, &amp;faceLabel));
+<a name="line24"> 24: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMGetCoordinatesLocalSetUp.html">DMGetCoordinatesLocalSetUp</a>(dm));
+
+<a name="line26"> 26: </a>  <font color="#4169E1">if</font> (dim == 2) {
+<a name="line27"> 27: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGetHeightStratum.html">DMPlexGetHeightStratum</a>(dm, 0, &amp;cStart, &amp;cEnd));
+<a name="line28"> 28: </a>    <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = cStart; ii &lt; cEnd; ++ii) {
+<a name="line29"> 29: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMLabel/DMLabelGetValue.html">DMLabelGetValue</a>(faceLabel, ii, &amp;faceID));
+<a name="line30"> 30: </a>      <font color="#4169E1">if</font> (faceID &gt;= 0) {
+<a name="line31"> 31: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexComputeCellGeometryFVM.html">DMPlexComputeCellGeometryFVM</a>(dm, ii, &amp;vol, centroid, normal));
+<a name="line32"> 32: </a>        surfaceArea += vol;
+<a name="line33"> 33: </a>      }
+<a name="line34"> 34: </a>    }
+<a name="line35"> 35: </a>  }
+
+<a name="line37"> 37: </a>  <font color="#4169E1">if</font> (dim == 3) {
+<a name="line38"> 38: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGetHeightStratum.html">DMPlexGetHeightStratum</a>(dm, 1, &amp;fStart, &amp;fEnd));
+<a name="line39"> 39: </a>    <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = fStart; ii &lt; fEnd; ++ii) {
+<a name="line40"> 40: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMLabel/DMLabelGetValue.html">DMLabelGetValue</a>(faceLabel, ii, &amp;faceID));
+<a name="line41"> 41: </a>      <font color="#4169E1">if</font> (faceID &gt;= 0) {
+<a name="line42"> 42: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexComputeCellGeometryFVM.html">DMPlexComputeCellGeometryFVM</a>(dm, ii, &amp;vol, centroid, normal));
+<a name="line43"> 43: </a>        surfaceArea += vol;
+<a name="line44"> 44: </a>      }
+<a name="line45"> 45: </a>    }
+
+<a name="line47"> 47: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGetHeightStratum.html">DMPlexGetHeightStratum</a>(dm, 0, &amp;cStart, &amp;cEnd));
+<a name="line48"> 48: </a>    <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = cStart; ii &lt; cEnd; ++ii) {
+<a name="line49"> 49: </a>      <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMLabel/DMLabelGetValue.html">DMLabelGetValue</a>(bodyLabel, ii, &amp;bodyID));
+<a name="line50"> 50: </a>      <font color="#4169E1">if</font> (bodyID &gt;= 0) {
+<a name="line51"> 51: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexComputeCellGeometryFVM.html">DMPlexComputeCellGeometryFVM</a>(dm, ii, &amp;vol, centroid, normal));
+<a name="line52"> 52: </a>        volume += vol;
+<a name="line53"> 53: </a>      }
+<a name="line54"> 54: </a>    }
+<a name="line55"> 55: </a>  }
+
+<a name="line57"> 57: </a>  <font color="#4169E1">if</font> (dim == 2) {
+<a name="line58"> 58: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"%s Surface Area = %.6e \n\n"</font>, name, (double)surfaceArea));
+<a name="line59"> 59: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (dim == 3) {
+<a name="line60"> 60: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"%s Volume = %.6e \n"</font>, name, (double)volume));
+<a name="line61"> 61: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(comm, <font color="#666666">"%s Surface Area = %.6e \n\n"</font>, name, (double)surfaceArea));
+<a name="line62"> 62: </a>  }
+<a name="line63"> 63: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line64"> 64: </a>}
+
+<a name="line66"> 66: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char *argv[])</font></strong>
+<a name="line67"> 67: </a>{
+<a name="line68"> 68: </a>  <font color="#B22222">/* EGADSlite variables */</font>
+<a name="line69"> 69: </a>  PetscGeom model, *bodies, *fobjs;
+<a name="line70"> 70: </a>  int       Nb, Nf, id;
+<a name="line71"> 71: </a>  <font color="#B22222">/* PETSc variables */</font>
+<a name="line72"> 72: </a>  <a href="../../../../../manualpages/DM/DM.html">DM</a>             dm;
+<a name="line73"> 73: </a>  <a href="../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>       comm;
+<a name="line74"> 74: </a>  <a href="../../../../../manualpages/Sys/PetscContainer.html">PetscContainer</a> modelObj, cpHashTableObj, wHashTableObj, cpCoordDataLengthObj, wDataLengthObj;
+<a name="line75"> 75: </a>  <a href="../../../../../manualpages/Vec/Vec.html">Vec</a>            cntrlPtCoordsVec, cntrlPtWeightsVec;
+<a name="line76"> 76: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>   *cpCoordData, *wData;
+<a name="line77"> 77: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       cpCoordDataLength, wDataLength;
+<a name="line78"> 78: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      *cpCoordDataLengthPtr, *wDataLengthPtr;
+<a name="line79"> 79: </a>  <a href="../../../../../manualpages/PetscH/PetscHMapI.html">PetscHMapI</a>     cpHashTable, wHashTable;
+<a name="line80"> 80: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       Nr = 2;
+
+<a name="line82"> 82: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line83"> 83: </a>  comm = <a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>;
+<a name="line84"> 84: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMCreate.html">DMCreate</a>(<a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;dm));
+<a name="line85"> 85: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMSetType.html">DMSetType</a>(dm, <a href="../../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>));
+<a name="line86"> 86: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexDistributeSetDefault.html">DMPlexDistributeSetDefault</a>(dm, <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line87"> 87: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMSetFromOptions.html">DMSetFromOptions</a>(dm));
+
+<a name="line89"> 89: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Original Surface"</font>));
+<a name="line90"> 90: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(dm, NULL, <font color="#666666">"-dm_view"</font>));
+<a name="line91"> 91: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(surfArea(dm));
+
+<a name="line93"> 93: </a>  <font color="#B22222">// Expose Geometry Definition Data and Calculate Surface Gradients</font>
+<a name="line94"> 94: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGeomDataAndGrads.html">DMPlexGeomDataAndGrads</a>(dm, <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+
+<a name="line96"> 96: </a>  <font color="#B22222">// Get Attached EGADS model</font>
+<a name="line97"> 97: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"EGADS Model"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;modelObj));
+<a name="line98"> 98: </a>  <font color="#4169E1">if</font> (!modelObj) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"EGADSlite Model"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;modelObj));
+
+<a name="line100">100: </a>  <font color="#B22222">// Get attached EGADS model (pointer)</font>
+<a name="line101">101: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscContainerGetPointer.html">PetscContainerGetPointer</a>(modelObj, (void **)&amp;model));
+
+<a name="line103">103: </a>  <font color="#B22222">// Look to see if <a href="../../../../../manualpages/DM/DM.html">DM</a> has Container for Geometry Control Point Data</font>
+<a name="line104">104: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Control Point Hash Table"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;cpHashTableObj));
+<a name="line105">105: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Control Point Coordinates"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;cntrlPtCoordsVec));
+<a name="line106">106: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Control Point Coordinate Data Length"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;cpCoordDataLengthObj));
+<a name="line107">107: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Control Point Weights Hash Table"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;wHashTableObj));
+<a name="line108">108: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Control Point Weight Data"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;cntrlPtWeightsVec));
+<a name="line109">109: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Control Point Weight Data Length"</font>, (<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;wDataLengthObj));
+
+<a name="line111">111: </a>  <font color="#B22222">// Get attached EGADS model Control Point and Weights Hash Tables and Data Arrays (pointer)</font>
+<a name="line112">112: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscContainerGetPointer.html">PetscContainerGetPointer</a>(cpHashTableObj, (void **)&amp;cpHashTable));
+<a name="line113">113: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecGetArrayWrite.html">VecGetArrayWrite</a>(cntrlPtCoordsVec, &amp;cpCoordData));
+<a name="line114">114: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscContainerGetPointer.html">PetscContainerGetPointer</a>(cpCoordDataLengthObj, (void **)&amp;cpCoordDataLengthPtr));
+<a name="line115">115: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscContainerGetPointer.html">PetscContainerGetPointer</a>(wHashTableObj, (void **)&amp;wHashTable));
+<a name="line116">116: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecGetArrayWrite.html">VecGetArrayWrite</a>(cntrlPtWeightsVec, &amp;wData));
+<a name="line117">117: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscContainerGetPointer.html">PetscContainerGetPointer</a>(wDataLengthObj, (void **)&amp;wDataLengthPtr));
+
+<a name="line119">119: </a>  cpCoordDataLength = *cpCoordDataLengthPtr;
+<a name="line120">120: </a>  wDataLength       = *wDataLengthPtr;
+<a name="line121">121: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(cpCoordDataLength &amp;&amp; wDataLength, <a href="../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Data sizes must be positive"</font>);
+
+<a name="line123">123: </a>  <font color="#B22222">// Get the number of bodies and body objects in the model</font>
+<a name="line124">124: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGetGeomModelBodies.html">DMPlexGetGeomModelBodies</a>(dm, &amp;bodies, &amp;Nb));
+
+<a name="line126">126: </a>  <font color="#B22222">// Get all FACES of the Body</font>
+<a name="line127">127: </a>  PetscGeom body = bodies[0];
+<a name="line128">128: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGetGeomModelBodyFaces.html">DMPlexGetGeomModelBodyFaces</a>(dm, body, &amp;fobjs, &amp;Nf));
+
+<a name="line130">130: </a>  <font color="#B22222">// Update Control Point and Weight definitions for each surface</font>
+<a name="line131">131: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> jj = 0; jj &lt; Nf; ++jj) {
+<a name="line132">132: </a>    PetscGeom face         = fobjs[jj];
+<a name="line133">133: </a>    <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  numCntrlPnts = 0;
+
+<a name="line135">135: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGetGeomID.html">DMPlexGetGeomID</a>(dm, body, face, &amp;id));
+<a name="line136">136: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexGetGeomFaceNumOfControlPoints.html">DMPlexGetGeomFaceNumOfControlPoints</a>(dm, face, &amp;numCntrlPnts));
+
+<a name="line138">138: </a>    <font color="#B22222">// Update Control Points</font>
+<a name="line139">139: </a>    PetscHashIter CPiter, Witer;
+<a name="line140">140: </a>    <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>     CPfound, Wfound;
+<a name="line141">141: </a>    <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      faceCPStartRow, faceWStartRow;
+
+<a name="line143">143: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscH/PetscHMapIFind.html">PetscHMapIFind</a>(cpHashTable, id, &amp;CPiter, &amp;CPfound));
+<a name="line144">144: </a>    <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(CPfound, comm, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"FACE ID not found in Control Point Hash Table"</font>);
+<a name="line145">145: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscH/PetscHMapIGet.html">PetscHMapIGet</a>(cpHashTable, id, &amp;faceCPStartRow));
+
+<a name="line147">147: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscH/PetscHMapIFind.html">PetscHMapIFind</a>(wHashTable, id, &amp;Witer, &amp;Wfound));
+<a name="line148">148: </a>    <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(Wfound, comm, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"FACE ID not found in Control Point Weights Hash Table"</font>);
+<a name="line149">149: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscH/PetscHMapIGet.html">PetscHMapIGet</a>(wHashTable, id, &amp;faceWStartRow));
+
+<a name="line151">151: </a>    <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = 0; ii &lt; numCntrlPnts; ++ii) {
+<a name="line152">152: </a>      <font color="#4169E1">if</font> (ii == 4) {
+<a name="line153">153: </a>        <font color="#B22222">// Update Control Points - Change the location of the center control point of the faces</font>
+<a name="line154">154: </a>        <font color="#B22222">// Note :: Modification geometry requires knowledge of how the geometry is defined.</font>
+<a name="line155">155: </a>        cpCoordData[faceCPStartRow + (3 * ii) + 0] = 2.0 * cpCoordData[faceCPStartRow + (3 * ii) + 0];
+<a name="line156">156: </a>        cpCoordData[faceCPStartRow + (3 * ii) + 1] = 2.0 * cpCoordData[faceCPStartRow + (3 * ii) + 1];
+<a name="line157">157: </a>        cpCoordData[faceCPStartRow + (3 * ii) + 2] = 2.0 * cpCoordData[faceCPStartRow + (3 * ii) + 2];
+<a name="line158">158: </a>      } <font color="#4169E1">else</font> {
+<a name="line159">159: </a>        <font color="#B22222">// Do Nothing</font>
+<a name="line160">160: </a>        <font color="#B22222">// Note: Could use section the change location of other face control points.</font>
+<a name="line161">161: </a>      }
+<a name="line162">162: </a>    }
+<a name="line163">163: </a>  }
+<a name="line164">164: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexFreeGeomObject.html">DMPlexFreeGeomObject</a>(dm, fobjs));
+
+<a name="line166">166: </a>  <font color="#B22222">// Modify Control Points of Geometry</font>
+<a name="line167">167: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, <font color="#666666">"Modified Surface"</font>));
+<a name="line168">168: </a>  <font color="#B22222">// TODO Wrap EG_saveModel() in a Plex viewer to manage file access</font>
+<a name="line169">169: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexModifyGeomModel.html">DMPlexModifyGeomModel</a>(dm, comm, cpCoordData, wData, <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, <font color="#666666">"newModel.stp"</font>));
+<a name="line170">170: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecRestoreArrayWrite.html">VecRestoreArrayWrite</a>(cntrlPtCoordsVec, &amp;cpCoordData));
+<a name="line171">171: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Vec/VecRestoreArrayWrite.html">VecRestoreArrayWrite</a>(cntrlPtWeightsVec, &amp;wData));
+
+<a name="line173">173: </a>  <font color="#B22222">// Inflate Mesh to Geometry</font>
+<a name="line174">174: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DMPlex/DMPlexInflateToGeomModel.html">DMPlexInflateToGeomModel</a>(dm, <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line175">175: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(surfArea(dm));
+
+<a name="line177">177: </a>  <font color="#B22222">// Output .hdf5 file</font>
+<a name="line178">178: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(dm, NULL, <font color="#666666">"-dm_view"</font>));
+
+<a name="line180">180: </a>  <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> r = 0; r &lt; Nr; ++r) {
+<a name="line181">181: </a>    char name[PETSC_MAX_PATH_LEN];
+
+<a name="line183">183: </a>    <font color="#B22222">// Perform refinement on the Mesh attached to the new geometry</font>
+<a name="line184">184: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMSetFromOptions.html">DMSetFromOptions</a>(dm));
+<a name="line185">185: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(name, PETSC_MAX_PATH_LEN, <font color="#666666">"Modified Surface refinement %"</font> PetscInt_FMT, r));
+<a name="line186">186: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm, name));
+<a name="line187">187: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a>(dm, NULL, <font color="#666666">"-dm_view"</font>));
+<a name="line188">188: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(surfArea(dm));
+<a name="line189">189: </a>  }
+
+<a name="line191">191: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(&amp;dm));
+<a name="line192">192: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line193">193: </a>  <font color="#4169E1">return</font> 0;
+<a name="line194">194: </a>}
+
+<a name="line196">196: </a><font color="#B22222">/*TEST</font>
+<a name="line197">197: </a><font color="#B22222">  build:</font>
+<a name="line198">198: </a><font color="#B22222">    requires: egads</font>
+
+<a name="line200">200: </a><font color="#B22222">  # Use -dm_view hdf5:mesh_shapeMod_sphere.h5 to view the mesh</font>
+<a name="line201">201: </a><font color="#B22222">  test:</font>
+<a name="line202">202: </a><font color="#B22222">    suffix: sphere_shapeMod</font>
+<a name="line203">203: </a><font color="#B22222">    requires: datafilespath</font>
+<a name="line204">204: </a><font color="#B22222">    temporaries: newModel.stp</font>
+<a name="line205">205: </a><font color="#B22222">    args: -dm_plex_filename ${DATAFILESPATH}/meshes/cad/sphere_example.stp \</font>
+<a name="line206">206: </a><font color="#B22222">          -dm_refine -dm_plex_geom_print_model 1 -dm_plex_geom_shape_opt 1</font>
+
+<a name="line208">208: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

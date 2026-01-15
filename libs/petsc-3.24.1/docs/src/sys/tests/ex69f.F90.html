@@ -1,0 +1,102 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tests/ex69f.F90">Actual source code: ex69f.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:12+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>program ex69F90
+
+<a name="line3">  3: </a>!   Demonstrates two issues
+<a name="line4">  4: </a>!
+<a name="line5">  5: </a>!   A) How using mpiexec to start up a program can dramatically change
+<a name="line6">  6: </a>!      the OpenMP thread binding/mapping resulting in poor performance
+<a name="line7">  7: </a>!
+<a name="line8">  8: </a>!      Set the environmental variable with, <font color="#4169E1">for</font> example,
+<a name="line9">  9: </a>!        export OMP_NUM_THREADS=4
+<a name="line10"> 10: </a>!      Run this example on one MPI process three ways
+<a name="line11"> 11: </a>!        ./ex69f
+<a name="line12"> 12: </a>!        mpiexec -n 1 ./ex69f
+<a name="line13"> 13: </a>!        mpiexec --bind-to numa -n 1 ./ex69f
+<a name="line14"> 14: </a>!
+<a name="line15"> 15: </a>!      You may get very different wall clock times
+<a name="line16"> 16: </a>!      It seems some mpiexec implementations change the thread binding/mapping that results with
+<a name="line17"> 17: </a>!      OpenMP so all the threads are run on a single core
+<a name="line18"> 18: </a>!
+<a name="line19"> 19: </a>!      The same differences occur without the <a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>() call indicating
+<a name="line20"> 20: </a>!      the binding change is done by the mpiexec, not the <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Init.html#MPI_Init">MPI_Init</a>()
+<a name="line21"> 21: </a>!
+<a name="line22"> 22: </a>!   B) How cpu_time() may give unexpected results, much larger than expected,
+<a name="line23"> 23: </a>!      even <font color="#4169E1">for</font> code portions with no OpenMP
+<a name="line24"> 24: </a>!
+<a name="line25"> 25: </a>!      Note the CPU time <font color="#4169E1">for</font> output of the second loop, it should equal the wallclock time
+<a name="line26"> 26: </a>!      since the loop is not run in parallel (with OpenMP) but instead it may be listed as
+<a name="line27"> 27: </a>!      many times higher
+<a name="line28"> 28: </a>!
+<a name="line29"> 29: </a>!     $ OMP_NUM_THREADS=8 ./ex69f (ifort compiler)
+<a name="line30"> 30: </a>!       CPU time reported by cpu_time()              1.66649300000000
+<a name="line31"> 31: </a>!       Wall clock time reported by system_clock()   0.273980000000000
+<a name="line32"> 32: </a>!       Wall clock time reported by omp_get_wtime()  0.273979902267456
+<a name="line33"> 33: </a>!
+<a name="line34"> 34: </a><font color="#A020F0">#include &lt;petsc/finclude/petscsys.h&gt;</font>
+<a name="line35"> 35: </a>  use petsc
+<a name="line36"> 36: </a>  implicit none
+
+<a name="line38"> 38: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr
+<a name="line39"> 39: </a>  double precision cputime_start, cputime_end, wtime_start, wtime_end, omp_get_wtime
+<a name="line40"> 40: </a>  integer(kind=8) systime_start, systime_end, systime_rate
+<a name="line41"> 41: </a>  double precision x(100)
+<a name="line42"> 42: </a>  integer i, maxthreads, omp_get_max_threads
+
+<a name="line44"> 44: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(ierr))
+<a name="line45"> 45: </a>  call system_clock(systime_start, systime_rate)
+<a name="line46"> 46: </a>  wtime_start = omp_get_wtime()
+<a name="line47"> 47: </a>  call cpu_time(cputime_start)
+<a name="line48"> 48: </a>!$OMP PARALLEL DO
+<a name="line49"> 49: </a>  <font color="#4169E1">do</font> i = 1, 100
+<a name="line50"> 50: </a>    x(i) = exp(3.0d0*i)
+<a name="line51"> 51: </a>  end <font color="#4169E1">do</font>
+<a name="line52"> 52: </a>  call cpu_time(cputime_end)
+<a name="line53"> 53: </a>  call system_clock(systime_end, systime_rate)
+<a name="line54"> 54: </a>  wtime_end = omp_get_wtime()
+<a name="line55"> 55: </a>  print *, 'CPU time reported by cpu_time()            ', cputime_end - cputime_start
+<a name="line56"> 56: </a>  print *, 'Wall clock time reported by system_clock() ', real(systime_end - systime_start, kind=8)/real(systime_rate, kind=8)
+<a name="line57"> 57: </a>  print *, 'Wall clock time reported by omp_get_wtime()', wtime_end - wtime_start
+<a name="line58"> 58: </a>  print *, 'Value of x(22)', x(22)
+<a name="line59"> 59: </a>!$ maxthreads = omp_get_max_threads()
+<a name="line60"> 60: </a>  print *, 'Number of threads set', maxthreads
+
+<a name="line62"> 62: </a>  call system_clock(systime_start, systime_rate)
+<a name="line63"> 63: </a>  wtime_start = omp_get_wtime()
+<a name="line64"> 64: </a>  call cpu_time(cputime_start)
+<a name="line65"> 65: </a>  <font color="#4169E1">do</font> i = 1, 100
+<a name="line66"> 66: </a>    x(i) = exp(3.0d0*i)
+<a name="line67"> 67: </a>  end <font color="#4169E1">do</font>
+<a name="line68"> 68: </a>  call cpu_time(cputime_end)
+<a name="line69"> 69: </a>  call system_clock(systime_end, systime_rate)
+<a name="line70"> 70: </a>  wtime_end = omp_get_wtime()
+<a name="line71"> 71: </a>  print *, 'CPU time reported by cpu_time()            ', cputime_end - cputime_start
+<a name="line72"> 72: </a>  print *, 'Wall clock time reported by system_clock() ', real(systime_end - systime_start, kind=8)/real(systime_rate, kind=8)
+<a name="line73"> 73: </a>  print *, 'Wall clock time reported by omp_get_wtime()', wtime_end - wtime_start
+<a name="line74"> 74: </a>  print *, 'Value of x(22)', x(22)
+<a name="line75"> 75: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>(ierr))
+<a name="line76"> 76: </a>end program ex69F90
+
+<a name="line78"> 78: </a>!<font color="#B22222">/*TEST</font>
+<a name="line79"> 79: </a><font color="#B22222">!</font>
+<a name="line80"> 80: </a><font color="#B22222">!   build:</font>
+<a name="line81"> 81: </a><font color="#B22222">!     requires: openmp</font>
+<a name="line82"> 82: </a><font color="#B22222">!</font>
+<a name="line83"> 83: </a><font color="#B22222">!   test:</font>
+<a name="line84"> 84: </a><font color="#B22222">!     filter: grep -v "Number of threads"</font>
+<a name="line85"> 85: </a><font color="#B22222">!</font>
+<a name="line86"> 86: </a><font color="#B22222">!TEST*/</font>
+</pre>
+</body>
+
+</html>
+

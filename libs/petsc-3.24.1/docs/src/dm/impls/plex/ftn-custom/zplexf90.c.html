@@ -1,0 +1,270 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/plex/ftn-custom/zplexf90.c">Actual source code: zplexf90.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:48+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscdmplex.h.html">&lt;petscdmplex.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define dmplexgetcone_                  DMPLEXGETCONE</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define dmplexrestorecone_              DMPLEXRESTORECONE</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define dmplexgetconeorientation_       DMPLEXGETCONEORIENTATION</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define dmplexrestoreconeorientation_   DMPLEXRESTORECONEORIENTATION</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define dmplexgetsupport_               DMPLEXGETSUPPORT</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define dmplexrestoresupport_           DMPLEXRESTORESUPPORT</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define dmplexgettransitiveclosure_     DMPLEXGETTRANSITIVECLOSURE</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define dmplexrestoretransitiveclosure_ DMPLEXRESTORETRANSITIVECLOSURE</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define dmplexvecgetclosure_            DMPLEXVECGETCLOSURE</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  #define dmplexvecrestoreclosure_        DMPLEXVECRESTORECLOSURE</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  #define dmplexvecsetclosure_            DMPLEXVECSETCLOSURE</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  #define dmplexmatsetclosure_            DMPLEXMATSETCLOSURE</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  #define dmplexgetclosureindices_        DMPLEXGETCLOSUREINDICES</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  #define dmplexrestoreclosureindices_    DMPLEXRESTORECLOSUREINDICES</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  #define dmplexgetjoin_                  DMPLEXGETJOIN</font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">  #define dmplexgetfulljoin_              DMPLEXGETFULLJOIN</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  #define dmplexrestorejoin_              DMPLEXRESTOREJOIN</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">  #define dmplexgetmeet_                  DMPLEXGETMEET</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">  #define dmplexgetfullmeet_              DMPLEXGETFULLMEET</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">  #define dmplexrestoremeet_              DMPLEXRESTOREMEET</font></strong>
+<a name="line25"> 25: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line26"> 26: </a><strong><font color="#228B22">  #define dmplexgetcone_                  dmplexgetcone</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">  #define dmplexrestorecone_              dmplexrestorecone</font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">  #define dmplexgetconeorientation_       dmplexgetconeorientation</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">  #define dmplexrestoreconeorientation_   dmplexrestoreconeorientation</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">  #define dmplexgetsupport_               dmplexgetsupport</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">  #define dmplexrestoresupport_           dmplexrestoresupport</font></strong>
+<a name="line32"> 32: </a><strong><font color="#228B22">  #define dmplexgettransitiveclosure_     dmplexgettransitiveclosure</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  #define dmplexrestoretransitiveclosure_ dmplexrestoretransitiveclosure</font></strong>
+<a name="line34"> 34: </a><strong><font color="#228B22">  #define dmplexvecgetclosure_            dmplexvecgetclosure</font></strong>
+<a name="line35"> 35: </a><strong><font color="#228B22">  #define dmplexvecrestoreclosure_        dmplexvecrestoreclosure</font></strong>
+<a name="line36"> 36: </a><strong><font color="#228B22">  #define dmplexvecsetclosure_            dmplexvecsetclosure</font></strong>
+<a name="line37"> 37: </a><strong><font color="#228B22">  #define dmplexmatsetclosure_            dmplexmatsetclosure</font></strong>
+<a name="line38"> 38: </a><strong><font color="#228B22">  #define dmplexgetclosureindices_        dmplexgetclosureindices</font></strong>
+<a name="line39"> 39: </a><strong><font color="#228B22">  #define dmplexrestoreclosureindices_    dmplexrestoreclosureindices</font></strong>
+<a name="line40"> 40: </a><strong><font color="#228B22">  #define dmplexgetjoin_                  dmplexgetjoin</font></strong>
+<a name="line41"> 41: </a><strong><font color="#228B22">  #define dmplexgetfulljoin_              dmplexgetfulljoin</font></strong>
+<a name="line42"> 42: </a><strong><font color="#228B22">  #define dmplexrestorejoin_              dmplexrestorejoin</font></strong>
+<a name="line43"> 43: </a><strong><font color="#228B22">  #define dmplexgetmeet_                  dmplexgetmeet</font></strong>
+<a name="line44"> 44: </a><strong><font color="#228B22">  #define dmplexgetfullmeet_              dmplexgetfullmeet</font></strong>
+<a name="line45"> 45: </a><strong><font color="#228B22">  #define dmplexrestoremeet_              dmplexrestoremeet</font></strong>
+<a name="line46"> 46: </a><font color="#A020F0">#endif</font>
+
+<a name="line48"> 48: </a><strong><font color="#4169E1"><a name="dmplexgetcone_"></a>PETSC_EXTERN void dmplexgetcone_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line49"> 49: </a>{
+<a name="line50"> 50: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *v;
+<a name="line51"> 51: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        n;
+
+<a name="line53"> 53: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetConeSize.html">DMPlexGetConeSize</a>(*dm, *p, &amp;n);
+<a name="line54"> 54: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line55"> 55: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetCone.html">DMPlexGetCone</a>(*dm, *p, &amp;v);
+<a name="line56"> 56: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line57"> 57: </a>  *ierr = F90Array1dCreate((void *)v, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line58"> 58: </a>}
+
+<a name="line60"> 60: </a><strong><font color="#4169E1"><a name="dmplexrestorecone_"></a>PETSC_EXTERN void dmplexrestorecone_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line61"> 61: </a>{
+<a name="line62"> 62: </a>  *ierr = F90Array1dDestroy(ptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line63"> 63: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line64"> 64: </a>}
+
+<a name="line66"> 66: </a><strong><font color="#4169E1"><a name="dmplexgetconeorientation_"></a>PETSC_EXTERN void dmplexgetconeorientation_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line67"> 67: </a>{
+<a name="line68"> 68: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *v;
+<a name="line69"> 69: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        n;
+
+<a name="line71"> 71: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetConeSize.html">DMPlexGetConeSize</a>(*dm, *p, &amp;n);
+<a name="line72"> 72: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line73"> 73: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetConeOrientation.html">DMPlexGetConeOrientation</a>(*dm, *p, &amp;v);
+<a name="line74"> 74: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line75"> 75: </a>  *ierr = F90Array1dCreate((void *)v, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line76"> 76: </a>}
+
+<a name="line78"> 78: </a><strong><font color="#4169E1"><a name="dmplexrestoreconeorientation_"></a>PETSC_EXTERN void dmplexrestoreconeorientation_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line79"> 79: </a>{
+<a name="line80"> 80: </a>  *ierr = F90Array1dDestroy(ptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line81"> 81: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line82"> 82: </a>}
+
+<a name="line84"> 84: </a><strong><font color="#4169E1"><a name="dmplexgetsupport_"></a>PETSC_EXTERN void dmplexgetsupport_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line85"> 85: </a>{
+<a name="line86"> 86: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *v;
+<a name="line87"> 87: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        n;
+
+<a name="line89"> 89: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetSupportSize.html">DMPlexGetSupportSize</a>(*dm, *p, &amp;n);
+<a name="line90"> 90: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line91"> 91: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetSupport.html">DMPlexGetSupport</a>(*dm, *p, &amp;v);
+<a name="line92"> 92: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line93"> 93: </a>  *ierr = F90Array1dCreate((void *)v, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line94"> 94: </a>}
+
+<a name="line96"> 96: </a><strong><font color="#4169E1"><a name="dmplexrestoresupport_"></a>PETSC_EXTERN void dmplexrestoresupport_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line97"> 97: </a>{
+<a name="line98"> 98: </a>  *ierr = F90Array1dDestroy(ptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line99"> 99: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line100">100: </a>}
+
+<a name="line102">102: </a><strong><font color="#4169E1"><a name="dmplexgettransitiveclosure_"></a>PETSC_EXTERN void dmplexgettransitiveclosure_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *useCone, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line103">103: </a>{
+<a name="line104">104: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *v = NULL;
+<a name="line105">105: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  n;
+
+<a name="line107">107: </a>  CHKFORTRANNULL(N);
+<a name="line108">108: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetTransitiveClosure.html">DMPlexGetTransitiveClosure</a>(*dm, *p, *useCone, &amp;n, &amp;v);
+<a name="line109">109: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line110">110: </a>  *ierr = F90Array1dCreate((void *)v, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n * 2, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line111">111: </a>  <font color="#4169E1">if</font> (N) *N = n;
+<a name="line112">112: </a>}
+
+<a name="line114">114: </a><strong><font color="#4169E1"><a name="dmplexrestoretransitiveclosure_"></a>PETSC_EXTERN void dmplexrestoretransitiveclosure_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *p, <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *useCone, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line115">115: </a>{
+<a name="line116">116: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *array;
+
+<a name="line118">118: </a>  *ierr = F90Array1dAccess(ptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, (void **)&amp;array PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line119">119: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line120">120: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexRestoreTransitiveClosure.html">DMPlexRestoreTransitiveClosure</a>(*dm, *p, *useCone, NULL, &amp;array);
+<a name="line121">121: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line122">122: </a>  *ierr = F90Array1dDestroy(ptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line123">123: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line124">124: </a>}
+
+<a name="line126">126: </a><strong><font color="#4169E1"><a name="dmplexvecgetclosure_"></a>PETSC_EXTERN void dmplexvecgetclosure_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> *section, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *x, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *point, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line127">127: </a>{
+<a name="line128">128: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *v = NULL;
+<a name="line129">129: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     n;
+
+<a name="line131">131: </a>  CHKFORTRANNULL(N);
+<a name="line132">132: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexVecGetClosure.html">DMPlexVecGetClosure</a>(*dm, *section, *x, *point, &amp;n, &amp;v);
+<a name="line133">133: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line134">134: </a>  *ierr = F90Array1dCreate((void *)v, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, 1, n, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line135">135: </a>  <font color="#4169E1">if</font> (N) *N = n;
+<a name="line136">136: </a>}
+
+<a name="line138">138: </a><strong><font color="#4169E1"><a name="dmplexvecrestoreclosure_"></a>PETSC_EXTERN void dmplexvecrestoreclosure_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> *section, <a href="../../../../../manualpages/Vec/Vec.html">Vec</a> *v, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *point, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line139">139: </a>{
+<a name="line140">140: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *array;
+
+<a name="line142">142: </a>  *ierr = F90Array1dAccess(ptr, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;array PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line143">143: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line144">144: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexVecRestoreClosure.html">DMPlexVecRestoreClosure</a>(*dm, *section, *v, *point, NULL, &amp;array);
+<a name="line145">145: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line146">146: </a>  *ierr = F90Array1dDestroy(ptr, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line147">147: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line148">148: </a>}
+
+<a name="line150">150: </a><strong><font color="#4169E1"><a name="dmplexgetclosureindices_"></a>PETSC_EXTERN void dmplexgetclosureindices_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> *section, <a href="../../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> *idxSection, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *point, <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *useClPerm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numIndices, F90Array1d *idxPtr, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *outOffsets, F90Array1d *valPtr, int *ierr PETSC_F90_2PTR_PROTO(idxPtrd) PETSC_F90_2PTR_PROTO(valPtrd))</font></strong>
+<a name="line151">151: </a>{
+<a name="line152">152: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *indices;
+<a name="line153">153: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *values;
+
+<a name="line155">155: </a>  CHKFORTRANNULL(outOffsets);
+<a name="line156">156: </a>  <font color="#4169E1">if</font> (FORTRANNULLSCALARPOINTER(valPtr)) *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetClosureIndices.html">DMPlexGetClosureIndices</a>(*dm, *section, *idxSection, *point, *useClPerm, numIndices, &amp;indices, outOffsets, NULL);
+<a name="line157">157: </a>  <font color="#4169E1">else</font> *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetClosureIndices.html">DMPlexGetClosureIndices</a>(*dm, *section, *idxSection, *point, *useClPerm, numIndices, &amp;indices, outOffsets, &amp;values);
+<a name="line158">158: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line159">159: </a>  *ierr = F90Array1dCreate((void *)indices, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, *numIndices, idxPtr PETSC_F90_2PTR_PARAM(idxPtrd));
+<a name="line160">160: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line161">161: </a>  <font color="#4169E1">if</font> (FORTRANNULLSCALARPOINTER(valPtr)) *ierr = F90Array1dCreate((void *)values, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, 1, *numIndices, valPtr PETSC_F90_2PTR_PARAM(valPtrd));
+<a name="line162">162: </a>}
+
+<a name="line164">164: </a><strong><font color="#4169E1"><a name="dmplexrestoreclosureindices_"></a>PETSC_EXTERN void dmplexrestoreclosureindices_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> *section, <a href="../../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> *idxSection, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *point, <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *useClPerm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numIndices, F90Array1d *idxPtr, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *outOffsets, F90Array1d *valPtr, int *ierr PETSC_F90_2PTR_PROTO(idxPtrd) PETSC_F90_2PTR_PROTO(valPtrd))</font></strong>
+<a name="line165">165: </a>{
+<a name="line166">166: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *indices;
+<a name="line167">167: </a>  <a href="../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *values = NULL;
+
+<a name="line169">169: </a>  CHKFORTRANNULL(outOffsets);
+<a name="line170">170: </a>  *ierr = F90Array1dAccess(idxPtr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, (void **)&amp;indices PETSC_F90_2PTR_PARAM(idxPtrd));
+<a name="line171">171: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line172">172: </a>  <font color="#4169E1">if</font> (!FORTRANNULLSCALARPOINTER(valPtr)) {
+<a name="line173">173: </a>    *ierr = F90Array1dAccess(valPtr, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, (void **)&amp;values PETSC_F90_2PTR_PARAM(valPtrd));
+<a name="line174">174: </a>    <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line175">175: </a>    *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexRestoreClosureIndices.html">DMPlexRestoreClosureIndices</a>(*dm, *section, *idxSection, *point, *useClPerm, numIndices, &amp;indices, outOffsets, &amp;values);
+<a name="line176">176: </a>  } <font color="#4169E1">else</font> *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexRestoreClosureIndices.html">DMPlexRestoreClosureIndices</a>(*dm, *section, *idxSection, *point, *useClPerm, numIndices, &amp;indices, outOffsets, NULL);
+<a name="line177">177: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line178">178: </a>  *ierr = F90Array1dDestroy(idxPtr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(idxPtrd));
+<a name="line179">179: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line180">180: </a>  <font color="#4169E1">if</font> (!FORTRANNULLSCALARPOINTER(valPtr)) *ierr = F90Array1dDestroy(valPtr, <a href="../../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a> PETSC_F90_2PTR_PARAM(valPtrd));
+<a name="line181">181: </a>}
+
+<a name="line183">183: </a><strong><font color="#4169E1"><a name="dmplexgetjoin_"></a>PETSC_EXTERN void dmplexgetjoin_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numPoints, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *points, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *cptr, int *ierr PETSC_F90_2PTR_PROTO(cptrd))</font></strong>
+<a name="line184">184: </a>{
+<a name="line185">185: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *coveredPoints;
+<a name="line186">186: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        n;
+
+<a name="line188">188: </a>  CHKFORTRANNULL(N);
+<a name="line189">189: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetJoin.html">DMPlexGetJoin</a>(*dm, *numPoints, points, &amp;n, &amp;coveredPoints);
+<a name="line190">190: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line191">191: </a>  *ierr = F90Array1dCreate((void *)coveredPoints, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n, cptr PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line192">192: </a>  <font color="#4169E1">if</font> (N) *N = n;
+<a name="line193">193: </a>}
+
+<a name="line195">195: </a><strong><font color="#4169E1"><a name="dmplexgetfulljoin_"></a>PETSC_EXTERN void dmplexgetfulljoin_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numPoints, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *points, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *cptr, int *ierr PETSC_F90_2PTR_PROTO(cptrd))</font></strong>
+<a name="line196">196: </a>{
+<a name="line197">197: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *coveredPoints;
+<a name="line198">198: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        n;
+
+<a name="line200">200: </a>  CHKFORTRANNULL(N);
+<a name="line201">201: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetFullJoin.html">DMPlexGetFullJoin</a>(*dm, *numPoints, points, &amp;n, &amp;coveredPoints);
+<a name="line202">202: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line203">203: </a>  *ierr = F90Array1dCreate((void *)coveredPoints, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n, cptr PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line204">204: </a>  <font color="#4169E1">if</font> (N) *N = n;
+<a name="line205">205: </a>}
+
+<a name="line207">207: </a><strong><font color="#4169E1"><a name="dmplexrestorejoin_"></a>PETSC_EXTERN void dmplexrestorejoin_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numPoints, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *points, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *cptr, int *ierr PETSC_F90_2PTR_PROTO(cptrd))</font></strong>
+<a name="line208">208: </a>{
+<a name="line209">209: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *coveredPoints;
+
+<a name="line211">211: </a>  *ierr = F90Array1dAccess(cptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, (void **)&amp;coveredPoints PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line212">212: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line213">213: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexRestoreJoin.html">DMPlexRestoreJoin</a>(*dm, 0, NULL, NULL, (const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;coveredPoints);
+<a name="line214">214: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line215">215: </a>  *ierr = F90Array1dDestroy(cptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line216">216: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line217">217: </a>}
+
+<a name="line219">219: </a><strong><font color="#4169E1"><a name="dmplexgetmeet_"></a>PETSC_EXTERN void dmplexgetmeet_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numPoints, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *points, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *cptr, int *ierr PETSC_F90_2PTR_PROTO(cptrd))</font></strong>
+<a name="line220">220: </a>{
+<a name="line221">221: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *coveredPoints;
+<a name="line222">222: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        n;
+
+<a name="line224">224: </a>  CHKFORTRANNULL(N);
+<a name="line225">225: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetMeet.html">DMPlexGetMeet</a>(*dm, *numPoints, points, &amp;n, &amp;coveredPoints);
+<a name="line226">226: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line227">227: </a>  *ierr = F90Array1dCreate((void *)coveredPoints, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n, cptr PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line228">228: </a>  <font color="#4169E1">if</font> (N) *N = n;
+<a name="line229">229: </a>}
+
+<a name="line231">231: </a><strong><font color="#4169E1"><a name="dmplexgetfullmeet_"></a>PETSC_EXTERN void dmplexgetfullmeet_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numPoints, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *points, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *cptr, int *ierr PETSC_F90_2PTR_PROTO(cptrd))</font></strong>
+<a name="line232">232: </a>{
+<a name="line233">233: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *coveredPoints;
+<a name="line234">234: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        n;
+
+<a name="line236">236: </a>  CHKFORTRANNULL(N);
+<a name="line237">237: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line238">238: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexGetFullMeet.html">DMPlexGetFullMeet</a>(*dm, *numPoints, points, &amp;n, &amp;coveredPoints);
+<a name="line239">239: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line240">240: </a>  *ierr = F90Array1dCreate((void *)coveredPoints, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, n, cptr PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line241">241: </a>  <font color="#4169E1">if</font> (N) *N = n;
+<a name="line242">242: </a>}
+
+<a name="line244">244: </a><strong><font color="#4169E1"><a name="dmplexrestoremeet_"></a>PETSC_EXTERN void dmplexrestoremeet_(<a href="../../../../../manualpages/DM/DM.html">DM</a> *dm, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *numPoints, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *points, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *cptr, int *ierr PETSC_F90_2PTR_PROTO(cptrd))</font></strong>
+<a name="line245">245: </a>{
+<a name="line246">246: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *coveredPoints;
+
+<a name="line248">248: </a>  *ierr = F90Array1dAccess(cptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, (void **)&amp;coveredPoints PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line249">249: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line250">250: </a>  *ierr = <a href="../../../../../manualpages/DMPlex/DMPlexRestoreMeet.html">DMPlexRestoreMeet</a>(*dm, 0, NULL, NULL, (const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **)&amp;coveredPoints);
+<a name="line251">251: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line252">252: </a>  *ierr = F90Array1dDestroy(cptr, <a href="../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(cptrd));
+<a name="line253">253: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line254">254: </a>}
+</pre>
+</body>
+
+</html>
+

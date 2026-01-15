@@ -1,0 +1,152 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/logging/handler/impls/legacy/loglegacy.c">Actual source code: loglegacy.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/loghandlerimpl.h.html">&lt;petsc/private/loghandlerimpl.h&gt;</A>
+
+<a name="line3">  3: </a><font color="#4169E1">typedef struct _n_PetscLogHandler_Legacy *PetscLogHandler_Legacy;</font>
+<a name="line4">  4: </a><font color="#4169E1"><a name="_n_PetscLogHandler_Legacy"></a>struct _n_PetscLogHandler_Legacy </font>{
+<a name="line5">  5: </a>  <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPLB)(<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>, int, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>);
+<a name="line6">  6: </a>  <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPLE)(<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>, int, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>);
+<a name="line7">  7: </a>  <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPHC)(<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>);
+<a name="line8">  8: </a>  <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPHD)(<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>);
+<a name="line9">  9: </a>};
+
+<a name="line11"> 11: </a><strong><font color="#4169E1"><a name="PetscLogHandlerEventBegin_Legacy"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerEventBegin_Legacy(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> e, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o1, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o2, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o3, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o4)</font></strong>
+<a name="line12"> 12: </a>{
+<a name="line13"> 13: </a>  PetscLogHandler_Legacy legacy = (PetscLogHandler_Legacy)handler-&gt;data;
+
+<a name="line15"> 15: </a>  <font color="#4169E1">return</font> (*legacy-&gt;PetscLogPLB)(e, 0, o1, o2, o3, o4);
+<a name="line16"> 16: </a>}
+
+<a name="line18"> 18: </a><strong><font color="#4169E1"><a name="PetscLogHandlerEventEnd_Legacy"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerEventEnd_Legacy(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> e, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o1, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o2, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o3, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o4)</font></strong>
+<a name="line19"> 19: </a>{
+<a name="line20"> 20: </a>  PetscLogHandler_Legacy legacy = (PetscLogHandler_Legacy)handler-&gt;data;
+
+<a name="line22"> 22: </a>  <font color="#4169E1">return</font> (*legacy-&gt;PetscLogPLE)(e, 0, o1, o2, o3, o4);
+<a name="line23"> 23: </a>}
+
+<a name="line25"> 25: </a><strong><font color="#4169E1"><a name="PetscLogHandlerObjectCreate_Legacy"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerObjectCreate_Legacy(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o)</font></strong>
+<a name="line26"> 26: </a>{
+<a name="line27"> 27: </a>  PetscLogHandler_Legacy legacy = (PetscLogHandler_Legacy)handler-&gt;data;
+
+<a name="line29"> 29: </a>  <font color="#4169E1">return</font> (*legacy-&gt;PetscLogPHC)(o);
+<a name="line30"> 30: </a>}
+
+<a name="line32"> 32: </a><strong><font color="#4169E1"><a name="PetscLogHandlerObjectDestroy_Legacy"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerObjectDestroy_Legacy(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o)</font></strong>
+<a name="line33"> 33: </a>{
+<a name="line34"> 34: </a>  PetscLogHandler_Legacy legacy = (PetscLogHandler_Legacy)handler-&gt;data;
+
+<a name="line36"> 36: </a>  <font color="#4169E1">return</font> (*legacy-&gt;PetscLogPHD)(o);
+<a name="line37"> 37: </a>}
+
+<a name="line39"> 39: </a><strong><font color="#4169E1"><a name="PetscLogHandlerDestroy_Legacy"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerDestroy_Legacy(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler)</font></strong>
+<a name="line40"> 40: </a>{
+<a name="line41"> 41: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line42"> 42: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(handler-&gt;data));
+<a name="line43"> 43: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line44"> 44: </a>}
+
+<a name="line46"> 46: </a><font color="#B22222">/*MC</font>
+<a name="line47"> 47: </a><font color="#B22222">  <a href="../../../../../../manualpages/Log/PETSCLOGHANDLERLEGACY.html">PETSCLOGHANDLERLEGACY</a> - <a href="../../../../../../manualpages/Log/PETSCLOGHANDLERLEGACY.html">PETSCLOGHANDLERLEGACY</a> = "legacy" -  A</font>
+<a name="line48"> 48: </a><font color="#B22222">  `<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>` that can be constructed from the callbacks used in</font>
+<a name="line49"> 49: </a><font color="#B22222">  `<a href="../../../../../../manualpages/Log/PetscLogSet.html">PetscLogSet</a>()`.  A log handler of this type is created and started by</font>
+<a name="line50"> 50: </a><font color="#B22222">  `<a href="../../../../../../manualpages/Log/PetscLogLegacyCallbacksBegin.html">PetscLogLegacyCallbacksBegin</a>()`.</font>
+
+<a name="line52"> 52: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line54"> 54: </a><font color="#B22222">.seealso: [](ch_profiling), `<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`, `<a href="../../../../../../manualpages/Log/PetscLogHandlerCreateLegacy.html">PetscLogHandlerCreateLegacy</a>()`</font>
+<a name="line55"> 55: </a><font color="#B22222">M*/</font>
+
+<a name="line57"> 57: </a><strong><font color="#4169E1"><a name="PetscLogHandlerCreate_Legacy"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_Legacy(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler)</font></strong>
+<a name="line58"> 58: </a>{
+<a name="line59"> 59: </a>  PetscLogHandler_Legacy legacy;
+
+<a name="line61"> 61: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line62"> 62: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;legacy));
+<a name="line63"> 63: </a>  handler-&gt;data         = (void *)legacy;
+<a name="line64"> 64: </a>  handler-&gt;ops-&gt;destroy = PetscLogHandlerDestroy_Legacy;
+<a name="line65"> 65: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line66"> 66: </a>}
+
+<a name="line68"> 68: </a><font color="#B22222">/*@C</font>
+<a name="line69"> 69: </a><font color="#B22222">  <a href="../../../../../../manualpages/Log/PetscLogHandlerCreateLegacy.html">PetscLogHandlerCreateLegacy</a> - Create a `<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>` from callbacks matching PETSc's legacy log handler callbacks</font>
+
+<a name="line71"> 71: </a><font color="#B22222">  Collective</font>
+
+<a name="line73"> 73: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line74"> 74: </a><font color="#B22222">+ comm        - an MPI communicator</font>
+<a name="line75"> 75: </a><font color="#B22222">. PetscLogPLB - a function to call during `<a href="../../../../../../manualpages/Log/PetscLogHandlerEventBegin.html">PetscLogHandlerEventBegin</a>()` (or `NULL`)</font>
+<a name="line76"> 76: </a><font color="#B22222">. PetscLogPLE - a function to call during `<a href="../../../../../../manualpages/Log/PetscLogHandlerEventEnd.html">PetscLogHandlerEventEnd</a>()` (or `NULL`)</font>
+<a name="line77"> 77: </a><font color="#B22222">. PetscLogPHC - a function to call during `<a href="../../../../../../manualpages/Log/PetscLogHandlerObjectCreate.html">PetscLogHandlerObjectCreate</a>()` (or `NULL`)</font>
+<a name="line78"> 78: </a><font color="#B22222">- PetscLogPHD - a function to call during `<a href="../../../../../../manualpages/Log/PetscLogHandlerObjectDestroy.html">PetscLogHandlerObjectDestroy</a>()` (or `NULL`)</font>
+
+<a name="line80"> 80: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line81"> 81: </a><font color="#B22222">. handler - a `<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`</font>
+
+<a name="line83"> 83: </a><font color="#B22222">  Calling sequence of `PetscLogPLB`:</font>
+<a name="line84"> 84: </a><font color="#B22222">+ e  - a `<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>` that is beginning</font>
+<a name="line85"> 85: </a><font color="#B22222">. _i - deprecated, unused</font>
+<a name="line86"> 86: </a><font color="#B22222">. o1 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+<a name="line87"> 87: </a><font color="#B22222">. o2 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+<a name="line88"> 88: </a><font color="#B22222">. o3 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+<a name="line89"> 89: </a><font color="#B22222">- o4 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+
+<a name="line91"> 91: </a><font color="#B22222">  Calling sequence of `PetscLogPLE`:</font>
+<a name="line92"> 92: </a><font color="#B22222">+ e  - a `<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>` that is beginning</font>
+<a name="line93"> 93: </a><font color="#B22222">. _i - deprecated, unused</font>
+<a name="line94"> 94: </a><font color="#B22222">. o1 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+<a name="line95"> 95: </a><font color="#B22222">. o2 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+<a name="line96"> 96: </a><font color="#B22222">. o3 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+<a name="line97"> 97: </a><font color="#B22222">- o4 - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` associated with `e` (or `NULL`)</font>
+
+<a name="line99"> 99: </a><font color="#B22222">  Calling sequence of `PetscLogPHC`:</font>
+<a name="line100">100: </a><font color="#B22222">. o - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` that has just been created</font>
+
+<a name="line102">102: </a><font color="#B22222">  Calling sequence of `PetscLogPHD`:</font>
+<a name="line103">103: </a><font color="#B22222">. o - a `<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>` that is about to be destroyed</font>
+
+<a name="line105">105: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line107">107: </a><font color="#B22222">  Notes:</font>
+<a name="line108">108: </a><font color="#B22222">  This is for transitioning from the deprecated function `<a href="../../../../../../manualpages/Log/PetscLogSet.html">PetscLogSet</a>()` and should not be used in new code.</font>
+
+<a name="line110">110: </a><font color="#B22222">  `<a href="../../../../../../manualpages/Log/PetscLogLegacyCallbacksBegin.html">PetscLogLegacyCallbacksBegin</a>()`, which calls this function, creates and starts (`<a href="../../../../../../manualpages/Log/PetscLogHandlerStart.html">PetscLogHandlerStart</a>()`) a log handler,</font>
+<a name="line111">111: </a><font color="#B22222">  should be used in almost all cases.</font>
+
+<a name="line113">113: </a><font color="#B22222">.seealso: [](ch_profiling)</font>
+<a name="line114">114: </a><font color="#B22222">@*/</font>
+<a name="line115">115: </a><strong><font color="#4169E1"><a name="PetscLogHandlerCreateLegacy"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../../manualpages/Log/PetscLogHandlerCreateLegacy.html">PetscLogHandlerCreateLegacy</a>(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPLB)(<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> e, int _i, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o1, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o2, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o3, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o4), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPLE)(<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> e, int _i, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o1, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o2, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o3, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o4), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPHC)(<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*PetscLogPHD)(<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o), <a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> *handler)</font></strong>
+<a name="line116">116: </a>{
+<a name="line117">117: </a>  PetscLogHandler_Legacy legacy;
+<a name="line118">118: </a>  <a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>        h;
+
+<a name="line120">120: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line121">121: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogHandlerCreate.html">PetscLogHandlerCreate</a>(comm, handler));
+<a name="line122">122: </a>  h = *handler;
+<a name="line123">123: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogHandlerSetType.html">PetscLogHandlerSetType</a>(h, <a href="../../../../../../manualpages/Log/PETSCLOGHANDLERLEGACY.html">PETSCLOGHANDLERLEGACY</a>));
+<a name="line124">124: </a>  legacy = (PetscLogHandler_Legacy)h-&gt;data;
+
+<a name="line126">126: </a>  legacy-&gt;PetscLogPLB = PetscLogPLB;
+<a name="line127">127: </a>  legacy-&gt;PetscLogPLE = PetscLogPLE;
+<a name="line128">128: </a>  legacy-&gt;PetscLogPHC = PetscLogPHC;
+<a name="line129">129: </a>  legacy-&gt;PetscLogPHD = PetscLogPHD;
+
+<a name="line131">131: </a>  h-&gt;ops-&gt;eventbegin    = PetscLogPLB ? PetscLogHandlerEventBegin_Legacy : NULL;
+<a name="line132">132: </a>  h-&gt;ops-&gt;eventend      = PetscLogPLE ? PetscLogHandlerEventEnd_Legacy : NULL;
+<a name="line133">133: </a>  h-&gt;ops-&gt;objectcreate  = PetscLogPHC ? PetscLogHandlerObjectCreate_Legacy : NULL;
+<a name="line134">134: </a>  h-&gt;ops-&gt;objectdestroy = PetscLogPHD ? PetscLogHandlerObjectDestroy_Legacy : NULL;
+<a name="line135">135: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line136">136: </a>}
+</pre>
+</body>
+
+</html>
+

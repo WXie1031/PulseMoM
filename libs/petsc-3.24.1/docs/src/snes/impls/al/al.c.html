@@ -1,0 +1,663 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/snes/impls/al/al.c">Actual source code: al.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:05+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../src/snes/impls/al/alimpl.h.html">&lt;../src/snes/impls/al/alimpl.h&gt;</A>
+
+<a name="line3">  3: </a><font color="#B22222">/*</font>
+<a name="line4">  4: </a><font color="#B22222">     This file implements a truncated Newton method with arc length continuation,</font>
+<a name="line5">  5: </a><font color="#B22222">     for solving a system of nonlinear equations, using the <a href="../../../../manualpages/KSP/KSP.html">KSP</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>,</font>
+<a name="line6">  6: </a><font color="#B22222">     and <a href="../../../../manualpages/Mat/Mat.html">Mat</a> interfaces for linear solvers, vectors, and matrices,</font>
+<a name="line7">  7: </a><font color="#B22222">     respectively.</font>
+<a name="line8">  8: </a><font color="#B22222">*/</font>
+
+<a name="line10"> 10: </a>const char NewtonALExactCitation[]   = <font color="#666666">"@article{Ritto-CorreaCamotim2008,\n"</font>
+<a name="line11"> 11: </a>                                       <font color="#666666">"  title={On the arc-length and other quadratic control methods: Established, less known and new implementation procedures},\n"</font>
+<a name="line12"> 12: </a>                                       <font color="#666666">"  volume={86},\n"</font>
+<a name="line13"> 13: </a>                                       <font color="#666666">"  ISSN={0045-7949},\n"</font>
+<a name="line14"> 14: </a>                                       <font color="#666666">"  DOI={10.1016/j.compstruc.2007.08.003},\n"</font>
+<a name="line15"> 15: </a>                                       <font color="#666666">"  number={11},\n"</font>
+<a name="line16"> 16: </a>                                       <font color="#666666">"  journal={Computers &amp; Structures},\n"</font>
+<a name="line17"> 17: </a>                                       <font color="#666666">"  author={Ritto-Corr{\\^{e}}a, Manuel and Camotim, Dinar},\n"</font>
+<a name="line18"> 18: </a>                                       <font color="#666666">"  year={2008},\n"</font>
+<a name="line19"> 19: </a>                                       <font color="#666666">"  month=jun,\n"</font>
+<a name="line20"> 20: </a>                                       <font color="#666666">"  pages={1353-1368},\n"</font>
+<a name="line21"> 21: </a>                                       <font color="#666666">"}\n"</font>;
+<a name="line22"> 22: </a><a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>  NewtonALExactCitationSet  = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line23"> 23: </a>const char NewtonALNormalCitation[]  = <font color="#666666">"@article{LeonPaulinoPereiraMenezesLages_2011,\n"</font>
+<a name="line24"> 24: </a>                                       <font color="#666666">"  title={A Unified Library of Nonlinear Solution Schemes},\n"</font>
+<a name="line25"> 25: </a>                                       <font color="#666666">"  volume={64},\n"</font>
+<a name="line26"> 26: </a>                                       <font color="#666666">"  ISSN={0003-6900, 2379-0407},\n"</font>
+<a name="line27"> 27: </a>                                       <font color="#666666">"  DOI={10.1115/1.4006992},\n"</font>
+<a name="line28"> 28: </a>                                       <font color="#666666">"  number={4},\n"</font>
+<a name="line29"> 29: </a>                                       <font color="#666666">"  journal={Applied Mechanics Reviews},\n"</font>
+<a name="line30"> 30: </a>                                       <font color="#666666">"  author={Leon, Sofie E. and Paulino, Glaucio H. and Pereira, Anderson and Menezes, Ivan F. M. and Lages, Eduardo N.},\n"</font>
+<a name="line31"> 31: </a>                                       <font color="#666666">"  year={2011},\n"</font>
+<a name="line32"> 32: </a>                                       <font color="#666666">"  month=jul,\n"</font>
+<a name="line33"> 33: </a>                                       <font color="#666666">"  pages={040803},\n"</font>
+<a name="line34"> 34: </a>                                       <font color="#666666">"  language={en}\n"</font>
+<a name="line35"> 35: </a>                                       <font color="#666666">"}\n"</font>;
+<a name="line36"> 36: </a><a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>  NewtonALNormalCitationSet = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line38"> 38: </a>const char *const SNESNewtonALCorrectionTypes[] = {<font color="#666666">"EXACT"</font>, <font color="#666666">"NORMAL"</font>, <font color="#666666">"<a href="../../../../manualpages/SNES/SNESNewtonALCorrectionType.html">SNESNewtonALCorrectionType</a>"</font>, <font color="#666666">"SNES_NEWTONAL_CORRECTION_"</font>, NULL};
+
+<a name="line40"> 40: </a><strong><font color="#4169E1"><a name="SNESNewtonALCheckArcLength"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESNewtonALCheckArcLength(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> XStep, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> lambdaStep, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> stepSize)</font></strong>
+<a name="line41"> 41: </a>{
+<a name="line42"> 42: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>      arcLength, arcLengthError;
+<a name="line43"> 43: </a>  SNES_NEWTONAL *al = (SNES_NEWTONAL *)snes-&gt;data;
+
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line46"> 46: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(XStep, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;arcLength));
+<a name="line47"> 47: </a>  arcLength      = PetscSqrtReal(<a href="../../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(arcLength) + al-&gt;psisq * lambdaStep * lambdaStep);
+<a name="line48"> 48: </a>  arcLengthError = <a href="../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(arcLength - stepSize);
+
+<a name="line50"> 50: </a>  <font color="#4169E1">if</font> (arcLengthError &gt; <a href="../../../../manualpages/Sys/PETSC_SQRT_MACHINE_EPSILON.html">PETSC_SQRT_MACHINE_EPSILON</a>) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(snes, <font color="#666666">"Arc length differs from specified step size: computed=%18.16e, expected=%18.16e, error=%18.16e \n"</font>, (double)arcLength, (double)stepSize, (double)arcLengthError));
+<a name="line51"> 51: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line52"> 52: </a>}
+
+<a name="line54"> 54: </a><font color="#B22222">/* stable implementation of roots of a*x^2 + b*x + c = 0 */</font>
+<a name="line55"> 55: </a><strong><font color="#4169E1"><a name="PetscQuadraticRoots"></a>static inline void PetscQuadraticRoots(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> a, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> b, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> c, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *xm, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *xp)</font></strong>
+<a name="line56"> 56: </a>{
+<a name="line57"> 57: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> temp = -0.5 * (b + PetscCopysignReal(1.0, b) * PetscSqrtReal(b * b - 4 * a * c));
+<a name="line58"> 58: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> x1   = temp / a;
+<a name="line59"> 59: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> x2   = c / temp;
+<a name="line60"> 60: </a>  *xm            = <a href="../../../../manualpages/Sys/PetscMin.html">PetscMin</a>(x1, x2);
+<a name="line61"> 61: </a>  *xp            = <a href="../../../../manualpages/Sys/PetscMax.html">PetscMax</a>(x1, x2);
+<a name="line62"> 62: </a>}
+
+<a name="line64"> 64: </a><strong><font color="#4169E1"><a name="SNESNewtonALSetCorrectionType_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESNewtonALSetCorrectionType_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/SNES/SNESNewtonALCorrectionType.html">SNESNewtonALCorrectionType</a> ctype)</font></strong>
+<a name="line65"> 65: </a>{
+<a name="line66"> 66: </a>  SNES_NEWTONAL *al = (SNES_NEWTONAL *)snes-&gt;data;
+
+<a name="line68"> 68: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line69"> 69: </a>  al-&gt;correction_type = ctype;
+<a name="line70"> 70: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line71"> 71: </a>}
+
+<a name="line73"> 73: </a><font color="#B22222">/*@</font>
+<a name="line74"> 74: </a><font color="#B22222">  <a href="../../../../manualpages/SNES/SNESNewtonALSetCorrectionType.html">SNESNewtonALSetCorrectionType</a> - Set the type of correction to use in the arc-length continuation method.</font>
+
+<a name="line76"> 76: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line78"> 78: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line79"> 79: </a><font color="#B22222">+ snes  - the nonlinear solver object</font>
+<a name="line80"> 80: </a><font color="#B22222">- ctype - the type of correction to use</font>
+
+<a name="line82"> 82: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line83"> 83: </a><font color="#B22222">. -snes_newtonal_correction_type &lt;type&gt; - Set the type of correction to use; use -help for a list of available types</font>
+
+<a name="line85"> 85: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line87"> 87: </a><font color="#B22222">.seealso: [](ch_snes), `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>`, `<a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a>`, `<a href="../../../../manualpages/SNES/SNESNewtonALCorrectionType.html">SNESNewtonALCorrectionType</a>`</font>
+<a name="line88"> 88: </a><font color="#B22222">@*/</font>
+<a name="line89"> 89: </a><strong><font color="#4169E1"><a name="SNESNewtonALSetCorrectionType"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/SNES/SNESNewtonALSetCorrectionType.html">SNESNewtonALSetCorrectionType</a>(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/SNES/SNESNewtonALCorrectionType.html">SNESNewtonALCorrectionType</a> ctype)</font></strong>
+<a name="line90"> 90: </a>{
+<a name="line91"> 91: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line94"> 94: </a>  <a href="../../../../manualpages/Sys/PetscTryMethod.html">PetscTryMethod</a>(snes, <font color="#666666">"SNESNewtonALSetCorrectionType_C"</font>, (<a href="../../../../manualpages/SNES/SNES.html">SNES</a>, <a href="../../../../manualpages/SNES/SNESNewtonALCorrectionType.html">SNESNewtonALCorrectionType</a>), (snes, ctype));
+<a name="line95"> 95: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line96"> 96: </a>}
+
+<a name="line98"> 98: </a><strong><font color="#4169E1"><a name="SNESNewtonALSetFunction_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESNewtonALSetFunction_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a> *func, void *ctx)</font></strong>
+<a name="line99"> 99: </a>{
+<a name="line100">100: </a>  SNES_NEWTONAL *al = (SNES_NEWTONAL *)snes-&gt;data;
+
+<a name="line102">102: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line103">103: </a>  al-&gt;computealfunction = func;
+<a name="line104">104: </a>  al-&gt;alctx             = ctx;
+<a name="line105">105: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line106">106: </a>}
+
+<a name="line108">108: </a><font color="#B22222">/*@C</font>
+<a name="line109">109: </a><font color="#B22222">  <a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a> - Sets a user function that is called at each function evaluation to</font>
+<a name="line110">110: </a><font color="#B22222">  compute the tangent load vector for the arc-length continuation method.</font>
+
+<a name="line112">112: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line114">114: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line115">115: </a><font color="#B22222">+ snes - the nonlinear solver object</font>
+<a name="line116">116: </a><font color="#B22222">. func - [optional] tangent load function evaluation routine, see `<a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a>` for the calling sequence. `U` is the current solution vector, `Q` is the output tangent load vector</font>
+<a name="line117">117: </a><font color="#B22222">- ctx  - [optional] user-defined context for private data for the function evaluation routine (may be `NULL`)</font>
+
+<a name="line119">119: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line121">121: </a><font color="#B22222">  Notes:</font>
+<a name="line122">122: </a><font color="#B22222">  If the current value of the load parameter is needed in `func`, it can be obtained with `<a href="../../../../manualpages/SNES/SNESNewtonALGetLoadParameter.html">SNESNewtonALGetLoadParameter</a>()`.</font>
+
+<a name="line124">124: </a><font color="#B22222">  The tangent load vector is the partial derivative of external load with respect to the load parameter.</font>
+<a name="line125">125: </a><font color="#B22222">  In the case of proportional loading, the tangent load vector is the full external load vector at the end of the load step.</font>
+
+<a name="line127">127: </a><font color="#B22222">.seealso: [](ch_snes), `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>`, `<a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a>`, `<a href="../../../../manualpages/SNES/SNESNewtonALGetFunction.html">SNESNewtonALGetFunction</a>()`, `<a href="../../../../manualpages/SNES/SNESNewtonALGetLoadParameter.html">SNESNewtonALGetLoadParameter</a>()`</font>
+<a name="line128">128: </a><font color="#B22222">@*/</font>
+<a name="line129">129: </a><strong><font color="#4169E1"><a name="SNESNewtonALSetFunction"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a> *func, void *ctx)</font></strong>
+<a name="line130">130: </a>{
+<a name="line131">131: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line133">133: </a>  <a href="../../../../manualpages/Sys/PetscTryMethod.html">PetscTryMethod</a>(snes, <font color="#666666">"SNESNewtonALSetFunction_C"</font>, (<a href="../../../../manualpages/SNES/SNES.html">SNES</a>, <a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a> *, void *), (snes, func, ctx));
+<a name="line134">134: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line135">135: </a>}
+
+<a name="line137">137: </a><strong><font color="#4169E1"><a name="SNESNewtonALGetFunction_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESNewtonALGetFunction_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a> **func, void **ctx)</font></strong>
+<a name="line138">138: </a>{
+<a name="line139">139: </a>  SNES_NEWTONAL *al = (SNES_NEWTONAL *)snes-&gt;data;
+
+<a name="line141">141: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line142">142: </a>  <font color="#4169E1">if</font> (func) *func = al-&gt;computealfunction;
+<a name="line143">143: </a>  <font color="#4169E1">if</font> (ctx) *ctx = al-&gt;alctx;
+<a name="line144">144: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line145">145: </a>}
+
+<a name="line147">147: </a><font color="#B22222">/*@C</font>
+<a name="line148">148: </a><font color="#B22222">  <a href="../../../../manualpages/SNES/SNESNewtonALGetFunction.html">SNESNewtonALGetFunction</a> - Get the user function and context set with `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>`</font>
+
+<a name="line150">150: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line152">152: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line153">153: </a><font color="#B22222">+ snes - the nonlinear solver object</font>
+<a name="line154">154: </a><font color="#B22222">. func - [optional] tangent load function evaluation routine, see `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()` for the call sequence</font>
+<a name="line155">155: </a><font color="#B22222">- ctx  - [optional] user-defined context for private data for the function evaluation routine (may be `NULL`)</font>
+
+<a name="line157">157: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line159">159: </a><font color="#B22222">.seealso: [](ch_snes), `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>`, `<a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a>`, `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()`</font>
+<a name="line160">160: </a><font color="#B22222">@*/</font>
+<a name="line161">161: </a><strong><font color="#4169E1"><a name="SNESNewtonALGetFunction"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/SNES/SNESNewtonALGetFunction.html">SNESNewtonALGetFunction</a>(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a> **func, void **ctx)</font></strong>
+<a name="line162">162: </a>{
+<a name="line163">163: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line165">165: </a>  <a href="../../../../manualpages/Sys/PetscUseMethod.html">PetscUseMethod</a>(snes, <font color="#666666">"SNESNewtonALGetFunction_C"</font>, (<a href="../../../../manualpages/SNES/SNES.html">SNES</a>, <a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a> **, void **), (snes, func, ctx));
+<a name="line166">166: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line167">167: </a>}
+
+<a name="line169">169: </a><strong><font color="#4169E1"><a name="SNESNewtonALGetLoadParameter_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESNewtonALGetLoadParameter_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *lambda)</font></strong>
+<a name="line170">170: </a>{
+<a name="line171">171: </a>  SNES_NEWTONAL *al;
+
+<a name="line173">173: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginHot.html">PetscFunctionBeginHot</a>;
+<a name="line174">174: </a>  al      = (SNES_NEWTONAL *)snes-&gt;data;
+<a name="line175">175: </a>  *lambda = al-&gt;lambda;
+<a name="line176">176: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line177">177: </a>}
+
+<a name="line179">179: </a><font color="#B22222">/*@C</font>
+<a name="line180">180: </a><font color="#B22222">  <a href="../../../../manualpages/SNES/SNESNewtonALGetLoadParameter.html">SNESNewtonALGetLoadParameter</a> - Get the value of the load parameter `lambda` for the arc-length continuation method.</font>
+
+<a name="line182">182: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line184">184: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line185">185: </a><font color="#B22222">. snes - the nonlinear solver object</font>
+
+<a name="line187">187: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line188">188: </a><font color="#B22222">. lambda - the arc-length parameter</font>
+
+<a name="line190">190: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line192">192: </a><font color="#B22222">  Notes:</font>
+<a name="line193">193: </a><font color="#B22222">  This function should be used in the functions provided to `<a href="../../../../manualpages/SNES/SNESSetFunction.html">SNESSetFunction</a>()` and `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()`</font>
+<a name="line194">194: </a><font color="#B22222">  to compute the residual and tangent load vectors for a given value of `lambda` (0 &lt;= lambda &lt;= 1).</font>
+
+<a name="line196">196: </a><font color="#B22222">  Usually, `lambda` is used to scale the external force vector in the residual function, i.e. proportional loading,</font>
+<a name="line197">197: </a><font color="#B22222">  in which case the tangent load vector is the full external force vector.</font>
+
+<a name="line199">199: </a><font color="#B22222">.seealso: [](ch_snes), `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>`, `<a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a>`, `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()`</font>
+<a name="line200">200: </a><font color="#B22222">@*/</font>
+<a name="line201">201: </a><strong><font color="#4169E1"><a name="SNESNewtonALGetLoadParameter"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/SNES/SNESNewtonALGetLoadParameter.html">SNESNewtonALGetLoadParameter</a>(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *lambda)</font></strong>
+<a name="line202">202: </a>{
+<a name="line203">203: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginHot.html">PetscFunctionBeginHot</a>;
+<a name="line205">205: </a>  PetscAssertPointer(lambda, 2);
+<a name="line206">206: </a>  <a href="../../../../manualpages/Sys/PetscUseMethod.html">PetscUseMethod</a>(snes, <font color="#666666">"SNESNewtonALGetLoadParameter_C"</font>, (<a href="../../../../manualpages/SNES/SNES.html">SNES</a>, <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *), (snes, lambda));
+<a name="line207">207: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line208">208: </a>}
+
+<a name="line210">210: </a><strong><font color="#4169E1"><a name="SNESNewtonALComputeFunction_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESNewtonALComputeFunction_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> Q)</font></strong>
+<a name="line211">211: </a>{
+<a name="line212">212: </a>  void           *ctx               = NULL;
+<a name="line213">213: </a>  <a href="../../../../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a> *computealfunction = NULL;
+<a name="line214">214: </a>  SNES_NEWTONAL  *al;
+
+<a name="line216">216: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line217">217: </a>  al = (SNES_NEWTONAL *)snes-&gt;data;
+<a name="line218">218: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESNewtonALGetFunction.html">SNESNewtonALGetFunction</a>(snes, &amp;computealfunction, &amp;ctx));
+
+<a name="line220">220: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecZeroEntries.html">VecZeroEntries</a>(Q));
+<a name="line221">221: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(computealfunction || (snes-&gt;vec_rhs &amp;&amp; al-&gt;scale_rhs), <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"No tangent load function or rhs vector has been set"</font>);
+<a name="line222">222: </a>  <font color="#4169E1">if</font> (computealfunction) {
+<a name="line223">223: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecLockReadPush.html">VecLockReadPush</a>(X));
+<a name="line224">224: </a>    <a href="../../../../manualpages/Sys/PetscCallBack.html">PetscCallBack</a>(<font color="#666666">"<a href="../../../../manualpages/SNES/SNES.html">SNES</a> callback NewtonAL tangent load function"</font>, (*computealfunction)(snes, X, Q, ctx));
+<a name="line225">225: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecLockReadPop.html">VecLockReadPop</a>(X));
+<a name="line226">226: </a>  }
+<a name="line227">227: </a>  <font color="#4169E1">if</font> (al-&gt;scale_rhs &amp;&amp; snes-&gt;vec_rhs) {
+<a name="line228">228: </a>    <font color="#B22222">/* Save original RHS vector values, then scale `snes-&gt;vec_rhs` by load parameter */</font>
+<a name="line229">229: </a>    <font color="#4169E1">if</font> (!al-&gt;vec_rhs_orig) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(snes-&gt;vec_rhs, &amp;al-&gt;vec_rhs_orig));
+<a name="line230">230: </a>    <font color="#4169E1">if</font> (!al-&gt;copied_rhs) {
+<a name="line231">231: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(snes-&gt;vec_rhs, al-&gt;vec_rhs_orig));
+<a name="line232">232: </a>      al-&gt;copied_rhs = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line233">233: </a>    }
+<a name="line234">234: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAXPBY.html">VecAXPBY</a>(snes-&gt;vec_rhs, al-&gt;lambda, 0.0, al-&gt;vec_rhs_orig));
+<a name="line235">235: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(Q, 1, al-&gt;vec_rhs_orig));
+<a name="line236">236: </a>  }
+<a name="line237">237: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line238">238: </a>}
+
+<a name="line240">240: </a><font color="#B22222">/*@C</font>
+<a name="line241">241: </a><font color="#B22222">  <a href="../../../../manualpages/SNES/SNESNewtonALComputeFunction.html">SNESNewtonALComputeFunction</a> - Calls the function that has been set with `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()`.</font>
+
+<a name="line243">243: </a><font color="#B22222">  Collective</font>
+
+<a name="line245">245: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line246">246: </a><font color="#B22222">+ snes - the `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>` context</font>
+<a name="line247">247: </a><font color="#B22222">- X    - input vector</font>
+
+<a name="line249">249: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line250">250: </a><font color="#B22222">. Q - tangent load vector, as set by `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()`</font>
+
+<a name="line252">252: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line254">254: </a><font color="#B22222">  Note:</font>
+<a name="line255">255: </a><font color="#B22222">  `<a href="../../../../manualpages/SNES/SNESNewtonALComputeFunction.html">SNESNewtonALComputeFunction</a>()` is typically used within nonlinear solvers</font>
+<a name="line256">256: </a><font color="#B22222">  implementations, so users would not generally call this routine themselves.</font>
+
+<a name="line258">258: </a><font color="#B22222">.seealso: [](ch_snes), `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>`, `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()`, `<a href="../../../../manualpages/SNES/SNESNewtonALGetFunction.html">SNESNewtonALGetFunction</a>()`</font>
+<a name="line259">259: </a><font color="#B22222">@*/</font>
+<a name="line260">260: </a><strong><font color="#4169E1"><a name="SNESNewtonALComputeFunction"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/SNES/SNESNewtonALComputeFunction.html">SNESNewtonALComputeFunction</a>(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> X, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> Q)</font></strong>
+<a name="line261">261: </a>{
+<a name="line262">262: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line266">266: </a>  PetscCheckSameComm(snes, 1, X, 2);
+<a name="line267">267: </a>  PetscCheckSameComm(snes, 1, Q, 3);
+<a name="line268">268: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecValidValues_Internal(X, 2, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line269">269: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(SNES_NewtonALEval, snes, X, Q, 0));
+<a name="line270">270: </a>  <a href="../../../../manualpages/Sys/PetscTryMethod.html">PetscTryMethod</a>(snes, <font color="#666666">"SNESNewtonALComputeFunction_C"</font>, (<a href="../../../../manualpages/SNES/SNES.html">SNES</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>), (snes, X, Q));
+<a name="line271">271: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(SNES_NewtonALEval, snes, X, Q, 0));
+<a name="line272">272: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line273">273: </a>}
+
+<a name="line275">275: </a><font color="#B22222">/*</font>
+<a name="line276">276: </a><font color="#B22222">  SNESSolve_NEWTONAL - Solves a nonlinear system with Newton's method with arc length continuation.</font>
+
+<a name="line278">278: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line279">279: </a><font color="#B22222">. snes - the `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>` context</font>
+
+<a name="line281">281: </a><font color="#B22222">  Application Interface Routine: <a href="../../../../manualpages/SNES/SNESSolve.html">SNESSolve</a>()</font>
+<a name="line282">282: </a><font color="#B22222">*/</font>
+<a name="line283">283: </a><strong><font color="#4169E1"><a name="SNESSolve_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESSolve_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes)</font></strong>
+<a name="line284">284: </a>{
+<a name="line285">285: </a>  SNES_NEWTONAL *data = (SNES_NEWTONAL *)snes-&gt;data;
+<a name="line286">286: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       maxits, maxincs, lits;
+<a name="line287">287: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>      fnorm, xnorm, ynorm, stepSize;
+<a name="line288">288: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>            DeltaX, deltaX, X, R, Q, deltaX_Q, deltaX_R;
+
+<a name="line290">290: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line291">291: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!snes-&gt;xl &amp;&amp; !snes-&gt;xu &amp;&amp; !snes-&gt;ops-&gt;computevariablebounds, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"<a href="../../../../manualpages/SNES/SNES.html">SNES</a> solver %s does not support bounds"</font>, ((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes)-&gt;type_name);
+
+<a name="line293">293: </a>  <font color="#B22222">/* Register citations */</font>
+<a name="line294">294: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCitationsRegister.html">PetscCitationsRegister</a>(SNESCitation, &amp;SNEScite));
+<a name="line295">295: </a>  <font color="#4169E1">if</font> (data-&gt;correction_type == SNES_NEWTONAL_CORRECTION_EXACT) {
+<a name="line296">296: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCitationsRegister.html">PetscCitationsRegister</a>(NewtonALExactCitation, &amp;NewtonALExactCitationSet));
+<a name="line297">297: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (data-&gt;correction_type == SNES_NEWTONAL_CORRECTION_NORMAL) {
+<a name="line298">298: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCitationsRegister.html">PetscCitationsRegister</a>(NewtonALNormalCitation, &amp;NewtonALNormalCitationSet));
+<a name="line299">299: </a>  }
+
+<a name="line301">301: </a>  data-&gt;copied_rhs             = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line302">302: </a>  data-&gt;lambda_update          = 0.0;
+<a name="line303">303: </a>  data-&gt;lambda                 = 0.0;
+<a name="line304">304: </a>  snes-&gt;numFailures            = 0;
+<a name="line305">305: </a>  snes-&gt;numLinearSolveFailures = 0;
+<a name="line306">306: </a>  snes-&gt;reason                 = <a href="../../../../manualpages/SNES/SNESConvergedReason.html">SNES_CONVERGED_ITERATING</a>;
+<a name="line307">307: </a>  snes-&gt;iter                   = 0;
+
+<a name="line309">309: </a>  maxits   = snes-&gt;max_its;                <font color="#B22222">/* maximum number of iterations */</font>
+<a name="line310">310: </a>  maxincs  = data-&gt;max_continuation_steps; <font color="#B22222">/* maximum number of increments */</font>
+<a name="line311">311: </a>  X        = snes-&gt;vec_sol;                <font color="#B22222">/* solution vector */</font>
+<a name="line312">312: </a>  R        = snes-&gt;vec_func;               <font color="#B22222">/* residual vector */</font>
+<a name="line313">313: </a>  Q        = snes-&gt;work[0];                <font color="#B22222">/* tangent load vector */</font>
+<a name="line314">314: </a>  deltaX_Q = snes-&gt;work[1];                <font color="#B22222">/* variation of X with respect to lambda */</font>
+<a name="line315">315: </a>  deltaX_R = snes-&gt;work[2];                <font color="#B22222">/* linearized error correction */</font>
+<a name="line316">316: </a>  DeltaX   = snes-&gt;work[3];                <font color="#B22222">/* step from equilibrium */</font>
+<a name="line317">317: </a>  deltaX   = snes-&gt;vec_sol_update;         <font color="#B22222">/* full newton step */</font>
+<a name="line318">318: </a>  stepSize = data-&gt;step_size;              <font color="#B22222">/* initial step size */</font>
+
+<a name="line320">320: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecZeroEntries.html">VecZeroEntries</a>(DeltaX));
+
+<a name="line322">322: </a>  <font color="#B22222">/* set snes-&gt;max_its for convergence test */</font>
+<a name="line323">323: </a>  snes-&gt;max_its = maxits * maxincs;
+
+<a name="line325">325: </a>  <font color="#B22222">/* main incremental-iterative loop */</font>
+<a name="line326">326: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; maxincs || maxincs &lt; 0; i++) {
+<a name="line327">327: </a>    <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> deltaLambda;
+
+<a name="line329">329: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSAWsTakeAccess.html">PetscObjectSAWsTakeAccess</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes));
+<a name="line330">330: </a>    snes-&gt;norm = 0.0;
+<a name="line331">331: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSAWsGrantAccess.html">PetscObjectSAWsGrantAccess</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes));
+<a name="line332">332: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESNewtonALComputeFunction.html">SNESNewtonALComputeFunction</a>(snes, X, Q));
+<a name="line333">333: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESComputeFunction.html">SNESComputeFunction</a>(snes, X, R));
+<a name="line334">334: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(R, 1, Q));           <font color="#B22222">/* R &lt;- R + Q */</font>
+<a name="line335">335: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(R, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;fnorm)); <font color="#B22222">/* fnorm &lt;- ||R|| */</font>
+<a name="line336">336: </a>    SNESCheckFunctionNorm(snes, fnorm);
+
+<a name="line338">338: </a>    <font color="#B22222">/* Monitor convergence */</font>
+<a name="line339">339: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESConverged.html">SNESConverged</a>(snes, snes-&gt;iter, 0.0, 0.0, fnorm));
+<a name="line340">340: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESMonitor.html">SNESMonitor</a>(snes, snes-&gt;iter, fnorm));
+<a name="line341">341: </a>    <font color="#4169E1">if</font> (i == 0 &amp;&amp; snes-&gt;reason) <font color="#4169E1">break</font>;
+<a name="line342">342: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> j = 0; j &lt; maxits; j++) {
+<a name="line343">343: </a>      <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> normsqX_Q, deltaS = 1;
+
+<a name="line345">345: </a>      <font color="#B22222">/* Call general purpose update function */</font>
+<a name="line346">346: </a>      <a href="../../../../manualpages/Sys/PetscTryTypeMethod.html">PetscTryTypeMethod</a>(snes, update, snes-&gt;iter);
+
+<a name="line348">348: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESComputeJacobian.html">SNESComputeJacobian</a>(snes, X, snes-&gt;jacobian, snes-&gt;jacobian_pre));
+<a name="line349">349: </a>      SNESCheckJacobianDomainerror(snes);
+<a name="line350">350: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(snes-&gt;ksp, snes-&gt;jacobian, snes-&gt;jacobian_pre));
+<a name="line351">351: </a>      <font color="#B22222">/* Solve J deltaX_Q = Q, where J is Jacobian matrix */</font>
+<a name="line352">352: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(snes-&gt;ksp, Q, deltaX_Q));
+<a name="line353">353: </a>      SNESCheckKSPSolve(snes);
+<a name="line354">354: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPGetIterationNumber.html">KSPGetIterationNumber</a>(snes-&gt;ksp, &amp;lits));
+<a name="line355">355: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(snes, <font color="#666666">"iter=%"</font> PetscInt_FMT <font color="#666666">", tangent load linear solve iterations=%"</font> PetscInt_FMT <font color="#666666">"\n"</font>, snes-&gt;iter, lits));
+<a name="line356">356: </a>      <font color="#B22222">/* Compute load parameter variation */</font>
+<a name="line357">357: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(deltaX_Q, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;normsqX_Q));
+<a name="line358">358: </a>      normsqX_Q *= normsqX_Q;
+<a name="line359">359: </a>      <font color="#B22222">/* On first iter, use predictor. This is the same regardless of corrector scheme. */</font>
+<a name="line360">360: </a>      <font color="#4169E1">if</font> (j == 0) {
+<a name="line361">361: </a>        <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> sign = 1.0;
+<a name="line362">362: </a>        <font color="#4169E1">if</font> (i &gt; 0) {
+<a name="line363">363: </a>          <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDotRealPart.html">VecDotRealPart</a>(DeltaX, deltaX_Q, &amp;sign));
+<a name="line364">364: </a>          sign += data-&gt;psisq * data-&gt;lambda_update;
+<a name="line365">365: </a>          sign = sign &gt;= 0 ? 1.0 : -1.0;
+<a name="line366">366: </a>        }
+<a name="line367">367: </a>        data-&gt;lambda_update = 0.0;
+<a name="line368">368: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecZeroEntries.html">VecZeroEntries</a>(DeltaX));
+<a name="line369">369: </a>        deltaLambda = sign * stepSize / PetscSqrtReal(normsqX_Q + data-&gt;psisq);
+<a name="line370">370: </a>      } <font color="#4169E1">else</font> {
+<a name="line371">371: </a>        <font color="#B22222">/* Solve J deltaX_R = -R */</font>
+<a name="line372">372: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(snes-&gt;ksp, R, deltaX_R));
+<a name="line373">373: </a>        SNESCheckKSPSolve(snes);
+<a name="line374">374: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPGetIterationNumber.html">KSPGetIterationNumber</a>(snes-&gt;ksp, &amp;lits));
+<a name="line375">375: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(snes, <font color="#666666">"iter=%"</font> PetscInt_FMT <font color="#666666">", residual linear solve iterations=%"</font> PetscInt_FMT <font color="#666666">"\n"</font>, snes-&gt;iter, lits));
+<a name="line376">376: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecScale.html">VecScale</a>(deltaX_R, -1));
+
+<a name="line378">378: </a>        <font color="#4169E1">if</font> (data-&gt;correction_type == SNES_NEWTONAL_CORRECTION_NORMAL) {
+<a name="line379">379: </a>          <font color="#B22222">/*</font>
+<a name="line380">380: </a><font color="#B22222">            Take a step orthogonal to the current incremental update DeltaX.</font>
+<a name="line381">381: </a><font color="#B22222">            Note, this approach is cheaper than the exact correction, but may exhibit convergence</font>
+<a name="line382">382: </a><font color="#B22222">            issues due to the iterative trial points not being on the quadratic constraint surface.</font>
+<a name="line383">383: </a><font color="#B22222">            On the bright side, we always have a real and unique solution for deltaLambda.</font>
+<a name="line384">384: </a><font color="#B22222">          */</font>
+<a name="line385">385: </a>          <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> coefs[2];
+<a name="line386">386: </a>          <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         rhs[] = {deltaX_R, deltaX_Q};
+
+<a name="line388">388: </a>          <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecMDot.html">VecMDot</a>(DeltaX, 2, rhs, coefs));
+<a name="line389">389: </a>          deltaLambda = -<a href="../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(coefs[0]) / (<a href="../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(coefs[1]) + data-&gt;psisq * data-&gt;lambda_update);
+<a name="line390">390: </a>        } <font color="#4169E1">else</font> {
+<a name="line391">391: </a>          <font color="#B22222">/*</font>
+<a name="line392">392: </a><font color="#B22222">            Solve</font>
+<a name="line393">393: </a><font color="#B22222">              a*deltaLambda^2 + b*deltaLambda + c = 0  (*)</font>
+<a name="line394">394: </a><font color="#B22222">            where</font>
+<a name="line395">395: </a><font color="#B22222">              a = a0</font>
+<a name="line396">396: </a><font color="#B22222">              b = b0 + b1*deltaS</font>
+<a name="line397">397: </a><font color="#B22222">              c = c0 + c1*deltaS + c2*deltaS^2</font>
+<a name="line398">398: </a><font color="#B22222">            and deltaS is either 1, or the largest value in (0, 1) that satisfies</font>
+<a name="line399">399: </a><font color="#B22222">              b^2 - 4*a*c = as*deltaS^2 + bs*deltaS + cs &gt;= 0</font>
+<a name="line400">400: </a><font color="#B22222">            where</font>
+<a name="line401">401: </a><font color="#B22222">              as = b1^2 - 4*a0*c2</font>
+<a name="line402">402: </a><font color="#B22222">              bs = 2*b1*b0 - 4*a0*c1</font>
+<a name="line403">403: </a><font color="#B22222">              cs = b0^2 - 4*a0*c0</font>
+<a name="line404">404: </a><font color="#B22222">            These "partial corrections" prevent (*) from having complex roots.</font>
+<a name="line405">405: </a><font color="#B22222">          */</font>
+<a name="line406">406: </a>          <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   psisqLambdaUpdate, discriminant;
+<a name="line407">407: </a>          <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   as, bs, cs;
+<a name="line408">408: </a>          <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   a0, b0, b1, c0, c1, c2;
+<a name="line409">409: </a>          <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> coefs1[3]; <font color="#B22222">/* coefs[0] = deltaX_Q*DeltaX, coefs[1] = deltaX_R*DeltaX, coefs[2] = DeltaX*DeltaX */</font>
+<a name="line410">410: </a>          <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> coefs2[2]; <font color="#B22222">/* coefs[0] = deltaX_Q*deltaX_R, coefs[1] = deltaX_R*deltaX_R */</font>
+<a name="line411">411: </a>          const <a href="../../../../manualpages/Vec/Vec.html">Vec</a>   rhs1[3] = {deltaX_Q, deltaX_R, DeltaX};
+<a name="line412">412: </a>          const <a href="../../../../manualpages/Vec/Vec.html">Vec</a>   rhs2[2] = {deltaX_Q, deltaX_R};
+
+<a name="line414">414: </a>          psisqLambdaUpdate = data-&gt;psisq * data-&gt;lambda_update;
+<a name="line415">415: </a>          <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecMDotBegin.html">VecMDotBegin</a>(DeltaX, 3, rhs1, coefs1));
+<a name="line416">416: </a>          <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecMDotBegin.html">VecMDotBegin</a>(deltaX_R, 2, rhs2, coefs2));
+<a name="line417">417: </a>          <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecMDotEnd.html">VecMDotEnd</a>(DeltaX, 3, rhs1, coefs1));
+<a name="line418">418: </a>          <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecMDotEnd.html">VecMDotEnd</a>(deltaX_R, 2, rhs2, coefs2));
+
+<a name="line420">420: </a>          a0 = normsqX_Q + data-&gt;psisq;
+<a name="line421">421: </a>          b0 = 2 * (<a href="../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(coefs1[0]) + psisqLambdaUpdate);
+<a name="line422">422: </a>          b1 = 2 * <a href="../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(coefs2[0]);
+<a name="line423">423: </a>          c0 = <a href="../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(coefs1[2]) + psisqLambdaUpdate * data-&gt;lambda_update - stepSize * stepSize;
+<a name="line424">424: </a>          c1 = 2 * <a href="../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(coefs1[1]);
+<a name="line425">425: </a>          c2 = <a href="../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(coefs2[1]);
+
+<a name="line427">427: </a>          as = b1 * b1 - 4 * a0 * c2;
+<a name="line428">428: </a>          bs = 2 * (b1 * b0 - 2 * a0 * c1);
+<a name="line429">429: </a>          cs = b0 * b0 - 4 * a0 * c0;
+
+<a name="line431">431: </a>          discriminant = cs + bs * deltaS + as * deltaS * deltaS;
+
+<a name="line433">433: </a>          <font color="#4169E1">if</font> (discriminant &lt; 0) {
+<a name="line434">434: </a>            <font color="#B22222">/* Take deltaS &lt; 1 with the unique root -b/(2*a) */</font>
+<a name="line435">435: </a>            <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> x1;
+
+<a name="line437">437: </a>            <font color="#B22222">/* Compute deltaS to be the largest root of (as * x^2 + bs * x + cs = 0) */</font>
+<a name="line438">438: </a>            PetscQuadraticRoots(as, bs, cs, &amp;x1, &amp;deltaS);
+<a name="line439">439: </a>            <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(snes, <font color="#666666">"iter=%"</font> PetscInt_FMT <font color="#666666">", discriminant=%18.16e &lt; 0, shrinking residual update size to deltaS = %18.16e\n"</font>, snes-&gt;iter, (double)discriminant, (double)deltaS));
+<a name="line440">440: </a>            deltaLambda = -0.5 * (b0 + b1 * deltaS) / a0;
+<a name="line441">441: </a>          } <font color="#4169E1">else</font> {
+<a name="line442">442: </a>            <font color="#B22222">/* Use deltaS = 1, pick root that is closest to the last point to prevent doubling back */</font>
+<a name="line443">443: </a>            <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> dlambda1, dlambda2;
+
+<a name="line445">445: </a>            PetscQuadraticRoots(a0, b0 + b1, c0 + c1 + c2, &amp;dlambda1, &amp;dlambda2);
+<a name="line446">446: </a>            deltaLambda = (b0 * dlambda1) &gt; (b0 * dlambda2) ? dlambda1 : dlambda2;
+<a name="line447">447: </a>          }
+<a name="line448">448: </a>        }
+<a name="line449">449: </a>      }
+<a name="line450">450: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSAWsTakeAccess.html">PetscObjectSAWsTakeAccess</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes));
+<a name="line451">451: </a>      data-&gt;lambda = data-&gt;lambda + deltaLambda;
+<a name="line452">452: </a>      <font color="#4169E1">if</font> (data-&gt;lambda &gt; data-&gt;lambda_max) {
+<a name="line453">453: </a>        <font color="#B22222">/* Ensure that lambda = lambda_max exactly at the end of incremental process. This ensures the final solution matches the problem we want to solve. */</font>
+<a name="line454">454: </a>        deltaLambda  = deltaLambda - (data-&gt;lambda - data-&gt;lambda_max);
+<a name="line455">455: </a>        data-&gt;lambda = data-&gt;lambda_max;
+<a name="line456">456: </a>      }
+<a name="line457">457: </a>      <font color="#4169E1">if</font> (data-&gt;lambda &lt; data-&gt;lambda_min) {
+<a name="line458">458: </a>        <font color="#B22222">// LCOV_EXCL_START</font>
+<a name="line459">459: </a>        <font color="#B22222">/* Ensure that lambda &gt;= lambda_min. This prevents some potential oscillatory behavior. */</font>
+<a name="line460">460: </a>        deltaLambda  = deltaLambda - (data-&gt;lambda - data-&gt;lambda_min);
+<a name="line461">461: </a>        data-&gt;lambda = data-&gt;lambda_min;
+<a name="line462">462: </a>        <font color="#B22222">// LCOV_EXCL_STOP</font>
+<a name="line463">463: </a>      }
+<a name="line464">464: </a>      data-&gt;lambda_update = data-&gt;lambda_update + deltaLambda;
+<a name="line465">465: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSAWsGrantAccess.html">PetscObjectSAWsGrantAccess</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes));
+<a name="line466">466: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(snes, <font color="#666666">"iter=%"</font> PetscInt_FMT <font color="#666666">", lambda=%18.16e, lambda_update=%18.16e\n"</font>, snes-&gt;iter, (double)data-&gt;lambda, (double)data-&gt;lambda_update));
+<a name="line467">467: </a>      <font color="#4169E1">if</font> (j == 0) {
+<a name="line468">468: </a>        <font color="#B22222">/* deltaX = deltaLambda*deltaX_Q */</font>
+<a name="line469">469: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(deltaX_Q, deltaX));
+<a name="line470">470: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecScale.html">VecScale</a>(deltaX, deltaLambda));
+<a name="line471">471: </a>      } <font color="#4169E1">else</font> {
+<a name="line472">472: </a>        <font color="#B22222">/* deltaX = deltaS*deltaX_R + deltaLambda*deltaX_Q */</font>
+<a name="line473">473: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAXPBYPCZ.html">VecAXPBYPCZ</a>(deltaX, deltaS, deltaLambda, 0, deltaX_R, deltaX_Q));
+<a name="line474">474: </a>      }
+<a name="line475">475: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(DeltaX, 1, deltaX));
+<a name="line476">476: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(X, 1, deltaX));
+<a name="line477">477: </a>      <font color="#B22222">/* Q = -dF/dlambda(X, lambda)*/</font>
+<a name="line478">478: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESNewtonALComputeFunction.html">SNESNewtonALComputeFunction</a>(snes, X, Q));
+<a name="line479">479: </a>      <font color="#B22222">/* R = F(X, lambda) */</font>
+<a name="line480">480: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESComputeFunction.html">SNESComputeFunction</a>(snes, X, R));
+<a name="line481">481: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNormBegin.html">VecNormBegin</a>(R, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;fnorm));
+<a name="line482">482: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNormBegin.html">VecNormBegin</a>(X, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;xnorm));
+<a name="line483">483: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNormBegin.html">VecNormBegin</a>(deltaX, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;ynorm));
+<a name="line484">484: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNormEnd.html">VecNormEnd</a>(R, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;fnorm));
+<a name="line485">485: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNormEnd.html">VecNormEnd</a>(X, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;xnorm));
+<a name="line486">486: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNormEnd.html">VecNormEnd</a>(deltaX, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;ynorm));
+
+<a name="line488">488: </a>      <font color="#4169E1">if</font> (PetscLogPrintInfo) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SNESNewtonALCheckArcLength(snes, DeltaX, data-&gt;lambda_update, stepSize));
+
+<a name="line490">490: </a>      <font color="#B22222">/* Monitor convergence */</font>
+<a name="line491">491: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSAWsTakeAccess.html">PetscObjectSAWsTakeAccess</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes));
+<a name="line492">492: </a>      snes-&gt;iter++;
+<a name="line493">493: </a>      snes-&gt;norm  = fnorm;
+<a name="line494">494: </a>      snes-&gt;ynorm = ynorm;
+<a name="line495">495: </a>      snes-&gt;xnorm = xnorm;
+<a name="line496">496: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSAWsGrantAccess.html">PetscObjectSAWsGrantAccess</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes));
+<a name="line497">497: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(SNESLogConvergenceHistory(snes, snes-&gt;norm, lits));
+<a name="line498">498: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESConverged.html">SNESConverged</a>(snes, snes-&gt;iter, xnorm, ynorm, fnorm));
+<a name="line499">499: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESMonitor.html">SNESMonitor</a>(snes, snes-&gt;iter, snes-&gt;norm));
+<a name="line500">500: </a>      <font color="#4169E1">if</font> (!snes-&gt;reason &amp;&amp; j == maxits - 1) snes-&gt;reason = <a href="../../../../manualpages/SNES/SNES_DIVERGED_MAX_IT.html">SNES_DIVERGED_MAX_IT</a>;
+<a name="line501">501: </a>      <font color="#4169E1">if</font> (snes-&gt;reason) <font color="#4169E1">break</font>;
+<a name="line502">502: </a>    }
+<a name="line503">503: </a>    <font color="#4169E1">if</font> (snes-&gt;reason &lt; 0) <font color="#4169E1">break</font>;
+<a name="line504">504: </a>    <font color="#4169E1">if</font> (data-&gt;lambda &gt;= data-&gt;lambda_max) {
+<a name="line505">505: </a>      <font color="#4169E1">break</font>;
+<a name="line506">506: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (maxincs &gt; 0 &amp;&amp; i == maxincs - 1) {
+<a name="line507">507: </a>      snes-&gt;reason = <a href="../../../../manualpages/SNES/SNES_DIVERGED_MAX_IT.html">SNES_DIVERGED_MAX_IT</a>;
+<a name="line508">508: </a>      <font color="#4169E1">break</font>;
+<a name="line509">509: </a>    } <font color="#4169E1">else</font> {
+<a name="line510">510: </a>      snes-&gt;reason = <a href="../../../../manualpages/SNES/SNESConvergedReason.html">SNES_CONVERGED_ITERATING</a>;
+<a name="line511">511: </a>    }
+<a name="line512">512: </a>  }
+<a name="line513">513: </a>  <font color="#B22222">/* Reset RHS vector, if changed */</font>
+<a name="line514">514: </a>  <font color="#4169E1">if</font> (data-&gt;copied_rhs) {
+<a name="line515">515: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(data-&gt;vec_rhs_orig, snes-&gt;vec_rhs));
+<a name="line516">516: </a>    data-&gt;copied_rhs = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line517">517: </a>  }
+<a name="line518">518: </a>  snes-&gt;max_its = maxits; <font color="#B22222">/* reset snes-&gt;max_its */</font>
+<a name="line519">519: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line520">520: </a>}
+
+<a name="line522">522: </a><font color="#B22222">/*</font>
+<a name="line523">523: </a><font color="#B22222">   SNESSetUp_NEWTONAL - Sets up the internal data structures for the later use</font>
+<a name="line524">524: </a><font color="#B22222">   of the <a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a> nonlinear solver.</font>
+
+<a name="line526">526: </a><font color="#B22222">   Input Parameter:</font>
+<a name="line527">527: </a><font color="#B22222">.  snes - the <a href="../../../../manualpages/SNES/SNES.html">SNES</a> context</font>
+<a name="line528">528: </a><font color="#B22222">.  x - the solution vector</font>
+
+<a name="line530">530: </a><font color="#B22222">   Application Interface Routine: <a href="../../../../manualpages/SNES/SNESSetUp.html">SNESSetUp</a>()</font>
+<a name="line531">531: </a><font color="#B22222"> */</font>
+<a name="line532">532: </a><strong><font color="#4169E1"><a name="SNESSetUp_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESSetUp_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes)</font></strong>
+<a name="line533">533: </a>{
+<a name="line534">534: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line535">535: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESSetWorkVecs.html">SNESSetWorkVecs</a>(snes, 4));
+<a name="line536">536: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESSetUpMatrices.html">SNESSetUpMatrices</a>(snes));
+<a name="line537">537: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line538">538: </a>}
+
+<a name="line540">540: </a><font color="#B22222">/*</font>
+<a name="line541">541: </a><font color="#B22222">   SNESSetFromOptions_NEWTONAL - Sets various parameters for the <a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a> method.</font>
+
+<a name="line543">543: </a><font color="#B22222">   Input Parameter:</font>
+<a name="line544">544: </a><font color="#B22222">.  snes - the <a href="../../../../manualpages/SNES/SNES.html">SNES</a> context</font>
+
+<a name="line546">546: </a><font color="#B22222">   Application Interface Routine: <a href="../../../../manualpages/SNES/SNESSetFromOptions.html">SNESSetFromOptions</a>()</font>
+<a name="line547">547: </a><font color="#B22222">*/</font>
+<a name="line548">548: </a><strong><font color="#4169E1"><a name="SNESSetFromOptions_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESSetFromOptions_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes, PetscOptionItems PetscOptionsObject)</font></strong>
+<a name="line549">549: </a>{
+<a name="line550">550: </a>  SNES_NEWTONAL             *data            = (SNES_NEWTONAL *)snes-&gt;data;
+<a name="line551">551: </a>  <a href="../../../../manualpages/SNES/SNESNewtonALCorrectionType.html">SNESNewtonALCorrectionType</a> correction_type = data-&gt;correction_type;
+
+<a name="line553">553: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line554">554: </a>  <a href="../../../../manualpages/Sys/PetscOptionsHeadBegin.html">PetscOptionsHeadBegin</a>(PetscOptionsObject, <font color="#666666">"<a href="../../../../manualpages/SNES/SNES.html">SNES</a> Newton Arc Length options"</font>);
+<a name="line555">555: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-snes_newtonal_step_size"</font>, <font color="#666666">"Initial arc length increment step size"</font>, <font color="#666666">"SNESNewtonAL"</font>, data-&gt;step_size, &amp;data-&gt;step_size, NULL));
+<a name="line556">556: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-snes_newtonal_max_continuation_steps"</font>, <font color="#666666">"Maximum number of increment steps"</font>, <font color="#666666">"SNESNewtonAL"</font>, data-&gt;max_continuation_steps, &amp;data-&gt;max_continuation_steps, NULL));
+<a name="line557">557: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-snes_newtonal_psisq"</font>, <font color="#666666">"Regularization parameter for arc length continuation, 0 for cylindrical"</font>, <font color="#666666">"SNESNewtonAL"</font>, data-&gt;psisq, &amp;data-&gt;psisq, NULL));
+<a name="line558">558: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-snes_newtonal_lambda_min"</font>, <font color="#666666">"Minimum value of the load parameter lambda"</font>, <font color="#666666">"SNESNewtonAL"</font>, data-&gt;lambda_min, &amp;data-&gt;lambda_min, NULL));
+<a name="line559">559: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsReal.html">PetscOptionsReal</a>(<font color="#666666">"-snes_newtonal_lambda_max"</font>, <font color="#666666">"Maximum value of the load parameter lambda"</font>, <font color="#666666">"SNESNewtonAL"</font>, data-&gt;lambda_max, &amp;data-&gt;lambda_max, NULL));
+<a name="line560">560: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-snes_newtonal_scale_rhs"</font>, <font color="#666666">"Scale the constant vector passed to `<a href="../../../../manualpages/SNES/SNESSolve.html">SNESSolve</a>` by the load parameter lambda"</font>, <font color="#666666">"SNESNewtonAL"</font>, data-&gt;scale_rhs, &amp;data-&gt;scale_rhs, NULL));
+<a name="line561">561: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsEnum.html">PetscOptionsEnum</a>(<font color="#666666">"-snes_newtonal_correction_type"</font>, <font color="#666666">"Type of correction to use in the arc-length continuation method"</font>, <font color="#666666">"<a href="../../../../manualpages/SNES/SNESNewtonALCorrectionType.html">SNESNewtonALCorrectionType</a>"</font>, SNESNewtonALCorrectionTypes, (<a href="../../../../manualpages/Sys/PetscEnum.html">PetscEnum</a>)correction_type, (<a href="../../../../manualpages/Sys/PetscEnum.html">PetscEnum</a> *)&amp;correction_type, NULL));
+<a name="line562">562: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESNewtonALSetCorrectionType.html">SNESNewtonALSetCorrectionType</a>(snes, correction_type));
+<a name="line563">563: </a>  <a href="../../../../manualpages/Sys/PetscOptionsHeadEnd.html">PetscOptionsHeadEnd</a>();
+<a name="line564">564: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line565">565: </a>}
+
+<a name="line567">567: </a><strong><font color="#4169E1"><a name="SNESReset_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESReset_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes)</font></strong>
+<a name="line568">568: </a>{
+<a name="line569">569: </a>  SNES_NEWTONAL *al = (SNES_NEWTONAL *)snes-&gt;data;
+
+<a name="line571">571: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line572">572: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;al-&gt;vec_rhs_orig));
+<a name="line573">573: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line574">574: </a>}
+
+<a name="line576">576: </a><font color="#B22222">/*</font>
+<a name="line577">577: </a><font color="#B22222">   SNESDestroy_NEWTONAL - Destroys the private SNES_NEWTONAL context that was created</font>
+<a name="line578">578: </a><font color="#B22222">   with SNESCreate_NEWTONAL().</font>
+
+<a name="line580">580: </a><font color="#B22222">   Input Parameter:</font>
+<a name="line581">581: </a><font color="#B22222">.  snes - the <a href="../../../../manualpages/SNES/SNES.html">SNES</a> context</font>
+
+<a name="line583">583: </a><font color="#B22222">   Application Interface Routine: <a href="../../../../manualpages/SNES/SNESDestroy.html">SNESDestroy</a>()</font>
+<a name="line584">584: </a><font color="#B22222"> */</font>
+<a name="line585">585: </a><strong><font color="#4169E1"><a name="SNESDestroy_NEWTONAL"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESDestroy_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes)</font></strong>
+<a name="line586">586: </a>{
+<a name="line587">587: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line588">588: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALSetCorrectionType_C"</font>, NULL));
+<a name="line589">589: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALGetLoadParameter_C"</font>, NULL));
+<a name="line590">590: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALSetFunction_C"</font>, NULL));
+<a name="line591">591: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALGetFunction_C"</font>, NULL));
+<a name="line592">592: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALComputeFunction_C"</font>, NULL));
+<a name="line593">593: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(snes-&gt;data));
+<a name="line594">594: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line595">595: </a>}
+
+<a name="line597">597: </a><font color="#B22222">/*MC</font>
+<a name="line598">598: </a><font color="#B22222">  <a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a> - Newton based nonlinear solver that uses a arc-length continuation method to solve the nonlinear system.</font>
+
+<a name="line600">600: </a><font color="#B22222">  Options Database Keys:</font>
+<a name="line601">601: </a><font color="#B22222">+   -snes_newtonal_step_size &lt;1.0&gt;              - Initial arc length increment step size</font>
+<a name="line602">602: </a><font color="#B22222">.   -snes_newtonal_max_continuation_steps &lt;100&gt; - Maximum number of continuation steps, or negative for no limit (not recommended)</font>
+<a name="line603">603: </a><font color="#B22222">.   -snes_newtonal_psisq &lt;1.0&gt;                  - Regularization parameter for arc length continuation, 0 for cylindrical. Larger values generally lead to more steps.</font>
+<a name="line604">604: </a><font color="#B22222">.   -snes_newtonal_lambda_min &lt;0.0&gt;             - Minimum value of the load parameter lambda</font>
+<a name="line605">605: </a><font color="#B22222">.   -snes_newtonal_lambda_max &lt;1.0&gt;             - Maximum value of the load parameter lambda</font>
+<a name="line606">606: </a><font color="#B22222">.   -snes_newtonal_scale_rhs &lt;true&gt;             - Scale the constant vector passed to `<a href="../../../../manualpages/SNES/SNESSolve.html">SNESSolve</a>` by the load parameter lambda</font>
+<a name="line607">607: </a><font color="#B22222">-   -snes_newtonal_correction_type &lt;exact&gt;      - Type of correction to use in the arc-length continuation method, `exact` or `normal`</font>
+
+<a name="line609">609: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line611">611: </a><font color="#B22222">  Note:</font>
+<a name="line612">612: </a><font color="#B22222">  The exact correction scheme with partial updates is detailed in {cite}`Ritto-CorreaCamotim2008` and the implementation of the</font>
+<a name="line613">613: </a><font color="#B22222">  normal correction scheme is based on {cite}`LeonPaulinoPereiraMenezesLages_2011`.</font>
+
+<a name="line615">615: </a><font color="#B22222">.seealso: [](ch_snes), `<a href="../../../../manualpages/SNES/SNESCreate.html">SNESCreate</a>()`, `<a href="../../../../manualpages/SNES/SNES.html">SNES</a>`, `<a href="../../../../manualpages/SNES/SNESSetType.html">SNESSetType</a>()`, `<a href="../../../../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a>`, `<a href="../../../../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()`, `<a href="../../../../manualpages/SNES/SNESNewtonALGetFunction.html">SNESNewtonALGetFunction</a>()`, `<a href="../../../../manualpages/SNES/SNESNewtonALGetLoadParameter.html">SNESNewtonALGetLoadParameter</a>()`</font>
+<a name="line616">616: </a><font color="#B22222">M*/</font>
+<a name="line617">617: </a><strong><font color="#4169E1"><a name="SNESCreate_NEWTONAL"></a>PETSC_EXTERN <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SNESCreate_NEWTONAL(<a href="../../../../manualpages/SNES/SNES.html">SNES</a> snes)</font></strong>
+<a name="line618">618: </a>{
+<a name="line619">619: </a>  SNES_NEWTONAL *arclengthParameters;
+
+<a name="line621">621: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line622">622: </a>  snes-&gt;ops-&gt;setup          = SNESSetUp_NEWTONAL;
+<a name="line623">623: </a>  snes-&gt;ops-&gt;solve          = SNESSolve_NEWTONAL;
+<a name="line624">624: </a>  snes-&gt;ops-&gt;destroy        = SNESDestroy_NEWTONAL;
+<a name="line625">625: </a>  snes-&gt;ops-&gt;setfromoptions = SNESSetFromOptions_NEWTONAL;
+<a name="line626">626: </a>  snes-&gt;ops-&gt;reset          = SNESReset_NEWTONAL;
+
+<a name="line628">628: </a>  snes-&gt;usesksp = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line629">629: </a>  snes-&gt;usesnpc = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line631">631: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SNES/SNESParametersInitialize.html">SNESParametersInitialize</a>(snes));
+<a name="line632">632: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterSetDefault.html">PetscObjectParameterSetDefault</a>(snes, max_funcs, 30000);
+<a name="line633">633: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterSetDefault.html">PetscObjectParameterSetDefault</a>(snes, max_its, 50);
+
+<a name="line635">635: </a>  snes-&gt;alwayscomputesfinalresidual = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line637">637: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;arclengthParameters));
+<a name="line638">638: </a>  arclengthParameters-&gt;lambda                 = 0.0;
+<a name="line639">639: </a>  arclengthParameters-&gt;lambda_update          = 0.0;
+<a name="line640">640: </a>  arclengthParameters-&gt;step_size              = 1.0;
+<a name="line641">641: </a>  arclengthParameters-&gt;max_continuation_steps = 100;
+<a name="line642">642: </a>  arclengthParameters-&gt;psisq                  = 1.0;
+<a name="line643">643: </a>  arclengthParameters-&gt;lambda_min             = 0.0;
+<a name="line644">644: </a>  arclengthParameters-&gt;lambda_max             = 1.0;
+<a name="line645">645: </a>  arclengthParameters-&gt;scale_rhs              = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line646">646: </a>  arclengthParameters-&gt;correction_type        = SNES_NEWTONAL_CORRECTION_EXACT;
+<a name="line647">647: </a>  snes-&gt;data                                  = (void *)arclengthParameters;
+
+<a name="line649">649: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALSetCorrectionType_C"</font>, SNESNewtonALSetCorrectionType_NEWTONAL));
+<a name="line650">650: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALGetLoadParameter_C"</font>, SNESNewtonALGetLoadParameter_NEWTONAL));
+<a name="line651">651: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALSetFunction_C"</font>, SNESNewtonALSetFunction_NEWTONAL));
+<a name="line652">652: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALGetFunction_C"</font>, SNESNewtonALGetFunction_NEWTONAL));
+<a name="line653">653: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)snes, <font color="#666666">"SNESNewtonALComputeFunction_C"</font>, SNESNewtonALComputeFunction_NEWTONAL));
+<a name="line654">654: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line655">655: </a>}
+</pre>
+</body>
+
+</html>
+

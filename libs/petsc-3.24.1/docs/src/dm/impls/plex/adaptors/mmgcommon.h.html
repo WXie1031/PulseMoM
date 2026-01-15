@@ -1,0 +1,33 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/plex/adaptors/mmgcommon.h">Actual source code: mmgcommon.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:47+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/dmpleximpl.h.html">&lt;petsc/private/dmpleximpl.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#228B22">#define PetscCallMMG_Private(ret, name, ...) \</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>)); \</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">    <a href="../../../../../manualpages/Sys/PetscStackPushExternal.html">PetscStackPushExternal</a>(<a href="../../../../../manualpages/Sys/PetscStringize.html">PetscStringize</a>(name)); \</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">    int PETSC_UNUSED mmg_ierr_ = name(__VA_ARGS__); \</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">    <a href="../../../../../manualpages/Sys/PetscStackPop.html">PetscStackPop</a>; \</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>()); \</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">    </font><font color="#B22222">/* <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(mmg_ierr_ == (ret),<a href="../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>,<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>,"Error calling %s: error code %d",<a href="../../../../../manualpages/Sys/PetscStringize.html">PetscStringize</a>(__VA_ARGS__),mmg_ierr_); */</font><font color="#228B22"> \</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line15"> 15: </a><font color="#B22222">// MMG sometimes returns 1, sometimes 0 when an error has occurred</font>
+<a name="line16"> 16: </a><strong><font color="#228B22">#define PetscCallMMG(name, ...)             PetscCallMMG_Private(MMG5_SUCCESS, name, __VA_ARGS__)</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">#define PetscCallMMG_NONSTANDARD(name, ...) PetscCallMMG_Private(1, name, __VA_ARGS__)</font></strong>
+</pre>
+</body>
+
+</html>
+

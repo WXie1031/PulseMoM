@@ -1,0 +1,38 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/classes/viewer/interface/ftn-custom/zviewaf.c">Actual source code: zviewaf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscviewer.h.html">&lt;petscviewer.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define petscviewerandformatcreate_  PETSCVIEWERANDFORMATCREATE</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define petscviewerandformatdestroy_ PETSCVIEWERANDFORMATDESTROY</font></strong>
+<a name="line7">  7: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define petscviewerandformatcreate_  petscviewerandformatcreate</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define petscviewerandformatdestroy_ petscviewerandformatdestroy</font></strong>
+<a name="line10"> 10: </a><font color="#A020F0">#endif</font>
+
+<a name="line12"> 12: </a><strong><font color="#4169E1"><a name="petscviewerandformatcreate_"></a>PETSC_EXTERN void petscviewerandformatcreate_(<a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> *vin, <a href="../../../../../../manualpages/Viewer/PetscViewerFormat.html">PetscViewerFormat</a> *format, PetscViewerAndFormat **vf, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line13"> 13: </a>{
+<a name="line14"> 14: </a>  <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> v;
+<a name="line15"> 15: </a>  PetscPatchDefaultViewers_Fortran(vin, v);
+<a name="line16"> 16: </a>  *ierr = <a href="../../../../../../manualpages/Viewer/PetscViewerAndFormatCreate.html">PetscViewerAndFormatCreate</a>(v, *format, vf);
+<a name="line17"> 17: </a>}
+
+<a name="line19"> 19: </a><strong><font color="#4169E1"><a name="petscviewerandformatdestroy_"></a>PETSC_EXTERN void petscviewerandformatdestroy_(PetscViewerAndFormat **vf, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line20"> 20: </a>{
+<a name="line21"> 21: </a>  *ierr = <a href="../../../../../../manualpages/Viewer/PetscViewerAndFormatDestroy.html">PetscViewerAndFormatDestroy</a>(vf);
+<a name="line22"> 22: </a>}
+</pre>
+</body>
+
+</html>
+

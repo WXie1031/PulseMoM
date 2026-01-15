@@ -1,0 +1,1301 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>PETSc Style and Usage Guide &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'developers/style';</script>
+    <link rel="icon" href="../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="BuildSystem" href="buildsystem.html" />
+    <link rel="prev" title="PETSc Development Environment" href="development.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="communication.html">PETSc Developers Communication Channels</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="contributing/index.html">Contributing to PETSc</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="contributing/developingmr.html">Developing a Merge Request</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing/submittingmr.html">Submitting a Merge Request</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing/pipelines.html">GitLab CI Pipelines</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mrmanagement.html">Merge request management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mrfork.html">Checkout fork merge request branch</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="development.html">PETSc Development Environment</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">PETSc Style and Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="buildsystem.html">BuildSystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">PETSc Testing System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Developing PETSc Documentation</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="design.html">The Design of PETSc</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="kernel.html">The PETSc Kernel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="objects.html">Basic Object Design and Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="callbacks.html">How the Solvers Handle User Provided Callbacks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="matrices.html">The Various Matrix Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="articles.html">Articles about PETSc Design</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="meetings-developers.html">Meeting organization practices</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Developers</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">PETSc Style...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="petsc-style-and-usage-guide">
+<span id="style"></span><h1>PETSc Style and Usage Guide<a class="headerlink" href="#petsc-style-and-usage-guide" title="Link to this heading">#</a></h1>
+<p>The PETSc team uses certain conventions to make the source code
+consistent and easier to maintain. We will interchangeably use the
+terminology <em>subclass</em>, <em>implementation</em>, or <em>type</em> <a class="footnote-reference brackets" href="#footnote-1" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> to refer to a
+concrete realization of an abstract base class. For example,
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSPGMRES.html">KSPGMRES</a></span></code> is a type for the base class <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSP.html">KSP</a></span></code>.</p>
+<section id="names">
+<h2>Names<a class="headerlink" href="#names" title="Link to this heading">#</a></h2>
+<p>Consistency of names for variables, functions, and so on is extremely
+important. We use several conventions</p>
+<ol class="arabic">
+<li><p>All function names and enum types consist of acronyms or words, each
+of which is capitalized, for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSPSolve.html">KSPSolve</a>()</span></code> and
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/MatGraphOperations/MatGetOrdering.html">MatGetOrdering</a>()</span></code>.</p></li>
+<li><p>All enum elements and macro variables are named with all capital
+letters. When they consist of several complete words, there is an
+underscore between each word. For example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a></span></code>.</p></li>
+<li><p>Functions that are private to PETSc (not callable by the application
+code) either</p>
+<ul class="simple">
+<li><p>have an appended <code class="docutils notranslate"><span class="pre">_Private</span></code> (for example, <code class="docutils notranslate"><span class="pre">StashValues_Private</span></code>)
+or</p></li>
+<li><p>have an appended <code class="docutils notranslate"><span class="pre">_Subtype</span></code> (for example, <code class="docutils notranslate"><span class="pre">MatMultSeq_AIJ</span></code>).</p></li>
+</ul>
+<p>In addition, functions that are not intended for use outside of a
+particular file are declared <code class="docutils notranslate"><span class="pre">static</span></code>. Also, see the item
+on symbol visibility in <a class="reference internal" href="#usage-of-petsc-functions-and-macros"><span class="std std-ref">Usage of PETSc Functions and Macros</span></a>.</p>
+</li>
+<li><p>Function names in structures (for example, <code class="docutils notranslate"><span class="pre">_matops</span></code>) are the same
+as the base application function name without the object prefix and
+in lowercase. For example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MatMultTranspose.html">MatMultTranspose</a>()</span></code> has a
+structure name of <code class="docutils notranslate"><span class="pre">multtranspose</span></code>.</p></li>
+<li><p>Names of implementations of class functions should begin with the
+function name, an underscore, and the name of the implementation, for
+example, <code class="docutils notranslate"><span class="pre">KSPSolve_GMRES()</span></code>.</p></li>
+<li><p>Each application-usable function begins with the name of the class
+object, followed by any subclass name, for example,
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/IS/ISInvertPermutation.html">ISInvertPermutation</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MatMult.html">MatMult</a>()</span></code>, or
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSPGMRESSetRestart.html">KSPGMRESSetRestart</a>()</span></code>.</p></li>
+<li><p>Functions that PETSc provides as defaults for user-providable
+functions end with <code class="docutils notranslate"><span class="pre">Default</span></code> (for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscSignalHandlerDefault.html">PetscSignalHandlerDefault</a>()</span></code>).</p></li>
+<li><p>Options database keys are lower case, have an underscore between
+words, and match the function name associated with the option without
+the word “set” or “get”, for example, <code class="docutils notranslate"><span class="pre">-ksp_gmres_restart</span></code>.</p></li>
+<li><p>Specific <code class="docutils notranslate"><span class="pre">XXXType</span></code> values (for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MATSEQAIJ.html">MATSEQAIJ</a></span></code>) do not have
+an underscore in them unless they refer to another package that uses
+an underscore, for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MATSOLVERSUPERLU_DIST.html">MATSOLVERSUPERLU_DIST</a></span></code>.</p></li>
+<li><p>Typedefs for functions should end in <code class="docutils notranslate"><span class="pre">Fn</span></code> as in, for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESFunctionFn.html">SNESFunctionFn</a></span></code>.</p></li>
+</ol>
+</section>
+<section id="petsc-and-standard-datatypes">
+<span id="stylepetsccount"></span><h2>PETSc and standard datatypes<a class="headerlink" href="#petsc-and-standard-datatypes" title="Link to this heading">#</a></h2>
+<ol class="arabic">
+<li><p><code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code> is generally used for array indices, and array lengths. It
+is a signed 32-bit or 64-bit <code class="docutils notranslate"><span class="pre">int</span></code> depending on the <code class="docutils notranslate"><span class="pre">./configure</span></code> option
+<code class="docutils notranslate"><span class="pre">--with-64-bit-indices</span></code>. There is the possibility of integer overflow with the
+32-bit version.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code> is <code class="docutils notranslate"><span class="pre">ptrdiff_t</span></code>, (on 64-bit systems it is 64-bits) and should be used for array sizes (number of entries)
+and indices that may become large. <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscIntCast.html">PetscIntCast</a>()</span></code> should always be used when converting
+to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code> from <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code>. Since, in most configurations an array of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code> requires twice the memory
+of an array of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code> most index arrays (such as <code class="docutils notranslate"><span class="pre"><a href="../manualpages/IS/ISGetIndices.html">ISGetIndices</a>()</span></code> use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code>,
+when these arrays get too large then <code class="docutils notranslate"><span class="pre">--with-64-bit-indices</span></code> must be used to
+<code class="docutils notranslate"><span class="pre">./configure</span></code> PETSc. In most cases it is appropriate to use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code> in lieu of <code class="docutils notranslate"><span class="pre">PetscInt64</span></code>.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">size_t</span></code> is used for variables that contain the amount of memory, generally in bytes.
+It should <strong>not</strong> be used for the number of
+entries in an array, or to index into an array, that should be <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code>, or <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code>.
+Though <code class="docutils notranslate"><span class="pre">size_t</span></code> is unsigned and hence can have values larger than those that can be stored
+in a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code> those sizes will never be reached in practice so it is ok to cast with <code class="docutils notranslate"><span class="pre">(<a href="../manualpages/Sys/PetscCount.html">PetscCount</a>)</span></code>
+from a <code class="docutils notranslate"><span class="pre">size_t</span></code> variable to a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code> variable, but <strong>not</strong> a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code>.
+One should not blindly cast from a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code> or a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code>
+to <code class="docutils notranslate"><span class="pre">size_t</span></code> since, when the value is negative, it will produce garbage.</p></li>
+<li><p><strong>Never</strong> blindly put in a cast from a potentially longer (in number of bits) to a shorter integer such as</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">PetscInt64</span><span class="w"> </span><span class="n">a</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">b</span>
+<span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="p">)</span><span class="n">a</span>
+</pre></div>
+</div>
+<p>simply to prevent a compiler warning. Use the appropriate PETSc cast function unless you
+absolutely know the value will fit in the lesser number of bits.</p>
+</li>
+<li><p>MPI 4.0 supports the use of <code class="docutils notranslate"><span class="pre">MPI_Count</span></code> (large count) for many MPI functions that previously used <code class="docutils notranslate"><span class="pre">int</span></code> in a new API where the MPI function
+names end in <code class="docutils notranslate"><span class="pre">_c</span></code>. Since not all installed MPI implementations have such support, use <code class="docutils notranslate"><span class="pre">MPIU_XXX()</span></code> routines
+that use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span></code> for count arguments and use the large count MPI versions when possible.
+When not possible they first check the size of the input count arguments and error if they
+will not fit in the MPI required <code class="docutils notranslate"><span class="pre">int</span></code>, if they fit then the standard MPI functions are automatically called.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">sizeof</span><span class="p">(</span><span class="n">MPI_Count</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="p">)</span>
+<span class="k">sizeof</span><span class="p">(</span><span class="n">PetscInt64</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscCount.html">PetscCount</a></span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="p">)</span>
+<span class="k">sizeof</span><span class="p">(</span><span class="n">MPI_Count</span><span class="p">)</span><span class="w"> </span><span class="n">may</span><span class="w"> </span><span class="n">be</span><span class="w"> </span><span class="n">strictly</span><span class="w"> </span><span class="n">greater</span><span class="w"> </span><span class="n">than</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">PetscInt64</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="coding-conventions-and-style">
+<h2>Coding Conventions and Style<a class="headerlink" href="#coding-conventions-and-style" title="Link to this heading">#</a></h2>
+<p>Within the PETSc source code, we adhere to the following guidelines so
+that the code is uniform and easily maintained.</p>
+<section id="c-formatting">
+<h3>C Formatting<a class="headerlink" href="#c-formatting" title="Link to this heading">#</a></h3>
+<p>The <code class="docutils notranslate"><span class="pre">.clang-format</span></code> file in the PETSc root directory controls the white space and basic layout. You can run the formatter in the entire repository with <code class="docutils notranslate"><span class="pre">make</span> <span class="pre">clangformat</span></code>. All merge requests must be properly formatted; this is automatically checked for merge requests with <code class="docutils notranslate"><span class="pre">make</span> <span class="pre">checkclangformat</span></code>.</p>
+<p>Even with the use of <code class="docutils notranslate"><span class="pre">clang-format</span></code> there are still many decisions about code formatting that must be constantly made. A subset of these is automatically checked for merge requests with <code class="docutils notranslate"><span class="pre">make</span> <span class="pre">checkbadSource</span></code>.</p>
+<ol class="arabic">
+<li><p>The prototypes for functions should not include the names of the
+variables</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">PETSC_EXTERN</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span><span class="w"> </span><span class="n">MyFunction</span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="p">);</span><span class="w"> </span><span class="c1">// Correct</span>
+<span class="n">PETSC_EXTERN</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span><span class="w"> </span><span class="n">MyFunction</span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">myvalue</span><span class="p">);</span><span class="w"> </span><span class="c1">// Incorrect</span>
+</pre></div>
+</div>
+</li>
+<li><p>All local variables of a particular type (for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code>) should be listed
+on the same line if possible; otherwise, they should be listed on adjacent lines. Note
+that pointers of different arity (levels of indirection) are considered to be different types. <code class="docutils notranslate"><span class="pre">clang-format</span></code> automatically
+handles the indenting shown below.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Correct</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w">   </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">;</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w">  </span><span class="o">*</span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">e</span><span class="p">;</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="o">**</span><span class="n">f</span><span class="p">;</span>
+
+<span class="c1">// Incorrect</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="o">**</span><span class="n">f</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Local variables should be initialized in their declaration when possible</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Correct</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">11</span><span class="p">;</span>
+
+<span class="n"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span><span class="p">;</span>
+<span class="c1">// use a</span>
+
+<span class="c1">// Incorrect</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+
+<span class="n"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span><span class="p">;</span>
+<span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">11</span><span class="p">;</span>
+<span class="c1">// use a</span>
+</pre></div>
+</div>
+</li>
+<li><p>All PETSc subroutine code blocks <em>must</em> start with a single blank line between the local variable
+declarations followed by <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span></code>.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Correct</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+
+<span class="n"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span><span class="p">;</span>
+
+<span class="c1">// Incorrect</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="n"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span><span class="p">;</span>
+
+<span class="c1">// Incorrect</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">11</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Functions in PETSc examples, including <code class="docutils notranslate"><span class="pre">main()</span></code> should have <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a></span></code> as the first line after the local variable declarations.</p></li>
+<li><p>PETSc functions that begin <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span></code> must always return via <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>()</span></code>, or <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>()</span></code>, not <code class="docutils notranslate"><span class="pre">return</span></code>. If the function returns a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span></code>, then it must always return with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>)</span></code>.</p></li>
+<li><p>Functions that do use return should use <code class="docutils notranslate"><span class="pre">return</span> <span class="pre">xx;</span></code> rather than <code class="docutils notranslate"><span class="pre">return(xx);</span></code></p></li>
+<li><p>All PETSc function calls must have their return value checked for errors using the
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCall.html">PetscCall</a>()</span></code> macro. This should be wrapped around the function in question.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n">MyFunction</span><span class="p">(...));</span><span class="w"> </span><span class="c1">// Correct</span>
+<span class="n"><a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span><span class="w"> </span><span class="n">ierr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MyFunction</span><span class="p">(...);</span><span class="n"><a href="../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n">ierr</span><span class="p">);</span><span class="w"> </span><span class="c1">// Incorrect</span>
+</pre></div>
+</div>
+<p>The only exceptions to this rule are begin-end style macros which embed local variables
+or loops as part of their expansion
+(e.g. <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>()</span></code>/<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>()</span></code>). These handle errors internally
+and do not need error checking.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Correct</span>
+<span class="n"><a href="../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a></span><span class="p">(...);</span>
+<span class="n"><a href="../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a></span><span class="p">();</span>
+</pre></div>
+</div>
+<p>As a rule, always try to wrap the function first; if this fails to compile, you do
+not need to add the error checking.</p>
+<p>Calls to external package functions are generally made with <code class="docutils notranslate"><span class="pre">PetscCallExternal()</span></code> or its variants that are specialized for particular packages, for example <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCallBLAS.html">PetscCallBLAS</a>()</span></code></p>
+</li>
+<li><p>Single operation <code class="docutils notranslate"><span class="pre">if</span></code> and <code class="docutils notranslate"><span class="pre">else</span></code> commands should not be wrapped in braces. They should be done as follows,</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="n">XXXX</span><span class="p">;</span>
+<span class="k">else</span><span class="w"> </span><span class="n">YYY</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>not</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="w"> </span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="n">XXXX</span><span class="p">;}</span>
+<span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="n">YYY</span><span class="p">;}</span>
+</pre></div>
+</div>
+</li>
+<li><p>Do not leave sections of commented-out code or dead source code protected with <code class="docutils notranslate"><span class="pre">ifdef</span> <span class="pre">foo</span></code> in the source files.</p></li>
+<li><p>Use classic block comments (<code class="docutils notranslate"><span class="pre">/*</span> <span class="pre">There</span> <span class="pre">must</span> <span class="pre">be</span> <span class="pre">a</span> <span class="pre">space</span> <span class="pre">before</span> <span class="pre">the</span> <span class="pre">first</span> <span class="pre">word</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">comment</span> <span class="pre">and</span> <span class="pre">a</span> <span class="pre">space</span> <span class="pre">at</span> <span class="pre">the</span> <span class="pre">end</span> <span class="pre">*/</span></code>,
+(<code class="docutils notranslate"><span class="pre">/*Do</span> <span class="pre">not</span> <span class="pre">do</span> <span class="pre">this*/</span></code>) for multi-line comments, and <code class="docutils notranslate"><span class="pre">//</span> <span class="pre">Comment</span></code> for single-line comments in source files.</p></li>
+<li><p>Do not put a <code class="docutils notranslate"><span class="pre">*</span></code> at the beginning or end of each line of a multi-line comment.</p></li>
+<li><p>Do not use <code class="docutils notranslate"><span class="pre">/*</span> <span class="pre">----</span> <span class="pre">...</span> <span class="pre">-----</span> <span class="pre">*/</span></code> or similar constructs to separate parts of source code files.</p></li>
+<li><p>Use appropriate grammar and spelling in the comments.</p></li>
+<li><p>All variables must be declared at the beginning of the code block (C90
+style), never mixed in with code. However, when variables are only used in a limited
+scope, it is encouraged to declare them in that scope. For example:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">cond</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n"><a href="../manualpages/Sys/PetscScalar.html">PetscScalar</a></span><span class="w"> </span><span class="o">*</span><span class="n">tmp</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n"><a href="../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a></span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">tmp</span><span class="p">));</span>
+<span class="w">  </span><span class="c1">// use tmp</span>
+<span class="w">  </span><span class="n"><a href="../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscFree.html">PetscFree</a></span><span class="p">(</span><span class="n">tmp</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The only exception to this is variables used exclusively within a <code class="docutils notranslate"><span class="pre">for</span></code> loop, which must
+be declared inside the loop initializer:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Correct</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// loop body</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Correct, variable used outside of loop</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+</pre></div>
+</div>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// loop body</span>
+<span class="p">}</span>
+<span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+</pre></div>
+</div>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Incorrect</span>
+<span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// loop body</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p>Developers can use // to split very long lines when it improves code readability. For example</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">f</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">].</span><span class="n">omega</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">xdot</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="p">].</span><span class="n">omega</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">uxx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">uyy</span><span class="w"> </span><span class="c1">//</span>
+<span class="w">              </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">vxp</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">u</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">].</span><span class="n">omega</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">vxm</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">].</span><span class="n">omega</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">u</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">hy</span><span class="w"> </span><span class="c1">//</span>
+<span class="w">              </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">vyp</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">u</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">].</span><span class="n">omega</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">vym</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">].</span><span class="n">omega</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">u</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">hx</span><span class="w"> </span><span class="c1">//</span>
+<span class="w">              </span><span class="o">-</span><span class="w"> </span><span class="mf">.5</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">grashof</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">].</span><span class="n">temp</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">].</span><span class="n">temp</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">hy</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>The use of <code class="docutils notranslate"><span class="pre">//</span> <span class="pre">clang-format</span> <span class="pre">off</span></code> is allowed in the source code but should only be used when necessary. It should not
+be used when trailing // to split lines works.</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// clang-format off</span>
+<span class="n">f</span><span class="w"> </span><span class="p">...</span>
+<span class="c1">// clang-format on</span>
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils notranslate"><span class="pre">size</span></code> and <code class="docutils notranslate"><span class="pre">rank</span></code> should be used exclusively for the results of <code class="docutils notranslate"><span class="pre"><a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_size.html#MPI_Comm_size">MPI_Comm_size</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>()</span></code> and other variable names for these values should be avoided unless necessary.</p></li>
+</ol>
+</section>
+<section id="c-usage">
+<h3>C Usage<a class="headerlink" href="#c-usage" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>Do not use language features that are not in the intersection of C99, C++11, and MSVC
+v1900+ (Visual Studio 2015). Examples of such banned features include variable-length arrays.
+Note that variable-length arrays (including VLA-pointers) are not supported in C++ and
+were made optional in C11. You may use designated initializers via the
+<code class="docutils notranslate"><span class="pre">PetscDesignatedInitializer()</span></code> macro.</p></li>
+<li><p>Array and pointer arguments where the array values are not changed
+should be labeled as <code class="docutils notranslate"><span class="pre">const</span></code> arguments.</p></li>
+<li><p>Scalar values passed to functions should <em>never</em> be labeled as
+<code class="docutils notranslate"><span class="pre">const</span></code>.</p></li>
+<li><p>Subroutines that would normally have a <code class="docutils notranslate"><span class="pre">void</span> <span class="pre">**</span></code> argument to return
+a pointer to some data should be prototyped as <code class="docutils notranslate"><span class="pre">void</span> <span class="pre">*</span></code>.
+This prevents the caller from having to put a <code class="docutils notranslate"><span class="pre">(void</span> <span class="pre">**)</span></code> cast in
+each function call. See, for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMDA/DMDAVecGetArray.html">DMDAVecGetArray</a>()</span></code>.</p></li>
+<li><p>Do not use the <code class="docutils notranslate"><span class="pre">register</span></code> directive.</p></li>
+<li><p>Use <code class="docutils notranslate"><span class="pre">if</span> <span class="pre">(v</span> <span class="pre">==</span> <span class="pre">NULL)</span></code> or <code class="docutils notranslate"><span class="pre">if</span> <span class="pre">(flg</span> <span class="pre">==</span> <span class="pre"><a href="../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>)</span></code>, instead of using <code class="docutils notranslate"><span class="pre">if</span> <span class="pre">(!v)</span></code> or <code class="docutils notranslate"><span class="pre">if</span> <span class="pre">(flg)</span></code> or <code class="docutils notranslate"><span class="pre">if</span> <span class="pre">(!flg)</span></code>.</p></li>
+<li><p>Avoid <code class="docutils notranslate"><span class="pre">#ifdef</span></code> or <code class="docutils notranslate"><span class="pre">#ifndef</span></code> when possible. Rather, use <code class="docutils notranslate"><span class="pre">#if</span> <span class="pre">defined</span></code> or <code class="docutils notranslate"><span class="pre">#if</span> <span class="pre">!defined</span></code>. Better, use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>()</span></code> (see below). The only exception to this
+rule is for header guards, where the <code class="docutils notranslate"><span class="pre">#ifndef</span></code> form is preferred (see below).</p></li>
+<li><p>Header guard macros should be done using <code class="docutils notranslate"><span class="pre">#pragma</span> <span class="pre">once</span></code>. This must be the very first
+non-comment line of the file. There must be no leading or trailing empty (non-comment)
+lines in the header. For example, do</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/*</span>
+<span class="cm">  It&#39;s OK to have</span>
+
+<span class="cm">  comments</span>
+<span class="cm">*/</span>
+<span class="c1">// before the guard</span>
+<span class="cp">#pragma once</span>
+
+<span class="c1">// OK, other headers included after the guard</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;petscdm.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;petscdevice.h&gt;</span>
+
+<span class="c1">// OK, other preprocessor symbols defined after the guard</span>
+<span class="cp">#define FOO_BAR_BAZ</span>
+
+<span class="c1">// OK, regular symbols defined after the guard</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_p_PetscFoo</span><span class="w"> </span><span class="o">*</span><span class="n">PetscFoo</span><span class="p">;</span>
+<span class="p">...</span>
+</pre></div>
+</div>
+<p>Do not do</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// ERROR, empty lines at the beginning of the header</span>
+
+
+
+<span class="c1">// ERROR, included other headers before the guard</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;petscdm.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;petscdevice.h&gt;</span>
+
+<span class="c1">// ERROR, defined other preprocessor symbols before the guard</span>
+<span class="cp">#define FOO_BAR_BAZ</span>
+
+<span class="c1">// ERROR, defined regular symbols before the guard</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">_p_PetscFoo</span><span class="w"> </span><span class="o">*</span><span class="n">PetscFoo</span><span class="p">;</span>
+
+<span class="cp">#pragma once</span>
+</pre></div>
+</div>
+</li>
+<li><p>Never use system random number generators such as <code class="docutils notranslate"><span class="pre">rand()</span></code> in PETSc
+code or examples because these can produce different results on
+different systems, thus making portability testing difficult. Instead,
+use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscRandom.html">PetscRandom</a></span></code> which produces the same results regardless
+of the system used.</p></li>
+<li><p>Variadic macros may be used in PETSc, but must work with MSVC v1900+ (Visual Studio
+2015). Most compilers have conforming implementations of the C99/C++11 rules for
+<code class="docutils notranslate"><span class="pre">__VA_ARGS__</span></code>, but MSVC’s implementation is not conforming and may need workarounds.
+See <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>()</span></code> for an example of how to work around MSVC’s limitations to write
+a macro that is usable in both.</p></li>
+</ol>
+</section>
+<section id="usage-of-petsc-functions-and-macros">
+<span id="id2"></span><h3>Usage of PETSc Functions and Macros<a class="headerlink" href="#usage-of-petsc-functions-and-macros" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>Lengthy conditional preprocessor blocks should mark any <code class="docutils notranslate"><span class="pre">#else</span></code> or <code class="docutils notranslate"><span class="pre">#endif</span></code>
+directives with a comment containing (or explaining) either the boolean condition or
+the macro’s name if the first directive tests whether one is defined. One
+should be able to read any part of the macroblock and find or deduce the
+initial <code class="docutils notranslate"><span class="pre">#if</span></code>. That is:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#if defined(MY_MACRO)</span>
+<span class="c1">// many lines of code</span>
+<span class="cp">#else </span><span class="c1">// MY_MACRO (use name of macro)</span>
+<span class="c1">// many more lines of code</span>
+<span class="cp">#endif </span><span class="c1">// MY_MACRO</span>
+
+<span class="cp">#if MY_MACRO &gt; 10</span>
+<span class="c1">// code</span>
+<span class="cp">#else </span><span class="c1">// MY_MACRO &lt; 10</span>
+<span class="c1">// more code</span>
+<span class="cp">#endif </span><span class="c1">// MY_MACRO &gt; 10</span>
+</pre></div>
+</div>
+</li>
+<li><p>Public PETSc include files, <code class="docutils notranslate"><span class="pre">petsc*.h</span></code>, should not reference
+private PETSc <code class="docutils notranslate"><span class="pre">petsc/private/*impl.h</span></code> include files.</p></li>
+<li><p>Public and private PETSc include files cannot reference include files
+located in the PETSc source tree.</p></li>
+<li><p>All public functions must sanity-check their arguments using the appropriate
+<code class="docutils notranslate"><span class="pre">PetscValidXXX()</span></code> macros. These must appear between <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span></code> and
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>()</span></code> For example</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span><span class="w"> </span><span class="nf">PetscPublicFunction</span><span class="p">(</span><span class="n"><a href="../manualpages/Vec/Vec.html">Vec</a></span><span class="w"> </span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscScalar.html">PetscScalar</a></span><span class="w"> </span><span class="o">*</span><span class="n">array</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">collectiveInt</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="n"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a></span><span class="p">;</span>
+<span class="w">  </span><span class="n">PetscValidHeaderSpecific</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="n">VEC_CLASSID</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w">  </span><span class="n">PetscAssertPointer</span><span class="p">(</span><span class="n">array</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="w">  </span><span class="n">PetscValidLogicalCollectiveInt</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="n">collectiveInt</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="w">  </span><span class="n"><a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a></span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a></span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>See <code class="docutils notranslate"><span class="pre">include/petsc/private/petscimpl.h</span></code> and search for “PetscValid” to see all
+available checker macros.</p>
+</li>
+<li><p>When possible, use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>()</span></code> instead of preprocessor conditionals.
+For example, use:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a></span><span class="p">(</span><span class="n">USE_DEBUG</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>instead of:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#if defined(PETSC_USE_DEBUG)</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="cp">#endif</span>
+</pre></div>
+</div>
+<p>The former usage allows syntax and type-checking in all configurations of
+PETSc, whereas the latter needs to be compiled with and without debugging
+to confirm that it compiles.</p>
+</li>
+<li><p><em>Never</em> put a function call in a <code class="docutils notranslate"><span class="pre">return</span></code> statement; do not write</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a></span><span class="p">(</span><span class="w"> </span><span class="n">somefunction</span><span class="p">(...)</span><span class="w"> </span><span class="p">);</span><span class="w"> </span><span class="cm">/* Incorrect */</span>
+</pre></div>
+</div>
+</li>
+<li><p>Do <em>not</em> put a blank line immediately after <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;</span></code>
+or a blank line immediately before <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);</span></code>.</p></li>
+<li><p>Do not include <code class="docutils notranslate"><span class="pre">assert.h</span></code> in PETSc source code. Do not use
+<code class="docutils notranslate"><span class="pre">assert()</span></code>, it doesn’t play well in the parallel MPI world.
+You may use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscAssert.html">PetscAssert</a>()</span></code> where appropriate. See <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCall.html">PetscCall</a>()</span></code> documentation
+for guidance of when to use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCheck.html">PetscCheck</a>()</span></code> vs. <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscAssert.html">PetscAssert</a>()</span></code>.</p></li>
+<li><p>Make error messages short but informative. The user should be able to reasonably
+diagnose the greater problem from your error message.</p></li>
+<li><p>Except in code that may be called before PETSc is fully initialized,
+always use <code class="docutils notranslate"><span class="pre">PetscMallocN()</span></code> (for example, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>()</span></code>),
+<code class="docutils notranslate"><span class="pre">PetscCallocN()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscNew.html">PetscNew</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscFree.html">PetscFree</a>()</span></code>, not
+<code class="docutils notranslate"><span class="pre">malloc()</span></code> and <code class="docutils notranslate"><span class="pre">free()</span></code>.</p></li>
+<li><p>MPI routines and macros that are not part of the 2.1 standard
+should not be used in PETSc without appropriate <code class="docutils notranslate"><span class="pre">configure</span></code>
+checks and <code class="docutils notranslate"><span class="pre">#if</span> <span class="pre"><a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>()</span></code> checks. Code should also be provided
+that works if the MPI feature is not available; for example,</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#if <a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_MPI_REDUCE_LOCAL)</span>
+<span class="w">  </span><span class="n"><a href="../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a></span><span class="p">(</span><span class="n"><a href="http://www.mpich.org/static/docs/latest/www3/MPI_Reduce_local.html#MPI_Reduce_local">MPI_Reduce_local</a></span><span class="p">(</span><span class="n">inbuf</span><span class="p">,</span><span class="w"> </span><span class="n">inoutbuf</span><span class="p">,</span><span class="w"> </span><span class="n">count</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/MPIU_INT.html">MPIU_INT</a></span><span class="p">,</span><span class="w"> </span><span class="n">MPI_SUM</span><span class="p">));</span>
+<span class="cp">#else</span>
+<span class="w">  </span><span class="n"><a href="../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a></span><span class="p">(</span><span class="n"><a href="http://www.mpich.org/static/docs/latest/www3/MPI_Reduce.html#MPI_Reduce">MPI_Reduce</a></span><span class="p">(</span><span class="n">inbuf</span><span class="p">,</span><span class="w"> </span><span class="n">inoutbuf</span><span class="p">,</span><span class="w"> </span><span class="n">count</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/MPIU_INT.html">MPIU_INT</a></span><span class="p">,</span><span class="w"> </span><span class="n">MPI_SUM</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a></span><span class="p">);</span>
+<span class="cp">#endif</span>
+</pre></div>
+</div>
+</li>
+<li><p>Do not introduce PETSc routines that provide essentially the same
+functionality as an available MPI routine. For example, do not write
+a routine <code class="docutils notranslate"><span class="pre">PetscGlobalSum()</span></code> that takes a scalar value and performs
+an <code class="docutils notranslate"><span class="pre"><a href="http://www.mpich.org/static/docs/latest/www3/MPI_Allreduce.html#MPI_Allreduce">MPI_Allreduce</a>()</span></code> on it. Instead, use the MPI routine
+<code class="docutils notranslate"><span class="pre"><a href="http://www.mpich.org/static/docs/latest/www3/MPI_Allreduce.html#MPI_Allreduce">MPI_Allreduce</a>()</span></code> directly in the code.</p></li>
+<li><p>Never use a local variable counter such as <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span> <span class="pre">flops</span> <span class="pre">=</span> <span class="pre">0;</span></code> to
+accumulate flops and then call <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>();</span></code> <em>always</em> just
+call <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Log/PetscLogFlops.html">PetscLogFlops</a>()</span></code> directly when needed.</p></li>
+<li><p>Library symbols meant to be directly usable by the user should be declared
+<code class="docutils notranslate"><span class="pre">PETSC_EXTERN</span></code> in their respective public header file. Symbols intended for internal use should instead be declared <code class="docutils notranslate"><span class="pre">PETSC_INTERN</span></code>. Note that doing so is
+unnecessary in the case of symbols local to a single translation unit; these should
+be declared <code class="docutils notranslate"><span class="pre">static</span></code>. PETSc can be configured to build a separate shared
+library for each top-level class (<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/Mat.html">Mat</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/Vec.html">Vec</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSP.html">KSP</a></span></code>, and so on), and that plugin
+implementations of these classes can be included as separate shared libraries; thus,
+otherwise private symbols may need to be marked <code class="docutils notranslate"><span class="pre">PETSC_SINGLE_LIBRARY_INTERN</span></code>. For
+example</p>
+<ul class="simple">
+<li><p><code class="docutils notranslate"><span class="pre">MatStashCreate_Private()</span></code> is marked <code class="docutils notranslate"><span class="pre">PETSC_INTERN</span></code> as it is used
+across compilation units, but only within the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/Mat.html">Mat</a></span></code> package;</p></li>
+<li><p>all functions, such as <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSPCreate.html">KSPCreate</a>()</span></code>, included in the public
+headers (<code class="docutils notranslate"><span class="pre">include/petsc*.h</span></code>) should be marked <code class="docutils notranslate"><span class="pre">PETSC_EXTERN</span></code>;</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">VecLoad_Default()</span></code> is marked
+<code class="docutils notranslate"><span class="pre">PETSC_SINGLE_LIBRARY_INTERN</span></code> as it may be used across library boundaries, but is
+not intended to be visible to users;</p></li>
+</ul>
+</li>
+<li><p>Before removing or renaming an API function, type, or enumerator,
+<code class="docutils notranslate"><span class="pre">PETSC_DEPRECATED_XXX()</span></code> should be used in the relevant header file
+to indicate the new usage and the PETSc version number where the
+deprecation will first appear. The old function or type, with the
+deprecation warning, should remain for at least one major release. We do not remove support for the
+deprecated functionality unless there is a specific reason to remove it; it is not removed simply because
+it has been deprecated for “a long time.”</p>
+<p>The function or type’s manual page should be updated (see <a class="reference internal" href="#manual-page-format"><span class="std std-ref">Manual Page Format</span></a>).
+For example,</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="n">NewType</span><span class="w"> </span><span class="n">OldType</span><span class="w"> </span><span class="n">PETSC_DEPRECATED_TYPEDEF</span><span class="p">(</span><span class="s">&quot;Use NewType (since version 3.9)&quot;</span><span class="p">);</span>
+
+<span class="n">PETSC_DEPRECATED_FUNCTION</span><span class="p">(</span><span class="s">&quot;Use NewFunction() (since version 3.9)&quot;</span><span class="p">)</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span><span class="w"> </span><span class="n">OldFunction</span><span class="p">();</span>
+
+<span class="cp">#define OLD_ENUMERATOR_DEPRECATED  OLD_ENUMERATOR PETSC_DEPRECATED_ENUM(&quot;Use NEW_ENUMERATOR (since version 3.9)&quot;)</span>
+<span class="k">typedef</span><span class="w"> </span><span class="k">enum</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">OLD_ENUMERATOR_DEPRECATED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="n">NEW_ENUMERATOR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="p">}</span><span class="w"> </span><span class="n">MyEnum</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Note that after compiler preprocessing, the enum above would be transformed into something like</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span><span class="w"> </span><span class="k">enum</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">OLD_ENUMERATOR</span><span class="w"> </span><span class="nf">__attribute__</span><span class="p">((</span><span class="n">deprecated</span><span class="p">))</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="n">NEW_ENUMERATOR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="p">}</span><span class="w"> </span><span class="n">MyEnum</span><span class="p">;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Before removing or renaming an options database key,
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscOptionsDeprecated.html">PetscOptionsDeprecated</a>()</span></code> should be used for at least one major
+release. We do not remove support for the
+deprecated functionality unless there is a specific reason to remove it; it is not removed simply because
+it has been deprecated for “a long time.”</p></li>
+<li><p>The format strings in PETSc ASCII output routines, such as
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>()</span></code>, take a <code class="docutils notranslate"><span class="pre">%&quot;</span> <span class="pre">PetscInt_FMT</span> <span class="pre">&quot;</span></code> for all PETSc variables of type <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code>,
+not a <code class="docutils notranslate"><span class="pre">%d</span></code>.</p></li>
+<li><p>All arguments of type <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscReal.html">PetscReal</a></span></code> to PETSc ASCII output routines,
+such as <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscPrintf.html">PetscPrintf</a></span></code>, must be cast to <code class="docutils notranslate"><span class="pre">double</span></code>, for example,</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../manualpages/Sys/PetscPrintf.html">PetscPrintf</a></span><span class="p">(</span><span class="n"><a href="../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a></span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Norm %g</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">norm</span><span class="p">);</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="formatted-comments">
+<h2>Formatted Comments<a class="headerlink" href="#formatted-comments" title="Link to this heading">#</a></h2>
+<p>PETSc uses formatted comments and the Sowing packages <span id="id3">[<a class="reference internal" href="#id1933" title="W Gropp. Users manual for bfort: producing Fortran interfaces to C source code. Technical Report ANL/MCS-TM-208, Argonne National Laboratory, 1995.">Gro95b</a>]</span> <span id="id4">[<a class="reference internal" href="#id1934" title="W Gropp. Users manual for doctext: producing documentation from source code. Technical Report ANL/MCS-TM-206, Argonne National Laboratory, 1995.">Gro95a</a>]</span>
+to generate documentation (manual pages) and the Fortran interfaces. Documentation
+for Sowing and the formatting may be found at
+<a class="reference external" href="http://wgropp.cs.illinois.edu/projects/software/sowing/">http://wgropp.cs.illinois.edu/projects/software/sowing/</a>; in particular,
+see the documentation for <code class="docutils notranslate"><span class="pre">doctext</span></code>. Currently, doctext produces Markdown files ending in <code class="docutils notranslate"><span class="pre">.md</span></code>, which
+Sphinx later processes.</p>
+<ul class="simple">
+<li><p><code class="docutils notranslate"><span class="pre">/*&#64;</span></code>
+a formatted comment of a function that will be used for documentation and a Fortran interface.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">/*&#64;C</span></code>
+a formatted comment of a function that will be used only for documentation, not to generate a Fortran interface. Certain constructs and usages do not yet support automatically generating a Fortran interface. In general, such labeled C functions should have a custom Fortran interface provided.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">/*E</span></code>
+a formatted comment of an enum used for documentation only.
+.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">/*S</span></code>
+a formatted comment for a data type such as
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSP.html">KSP</a></span></code>
+.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">/*J</span></code>
+a formatted comment for a string type such as
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSPType.html">KSPType</a></span></code>
+.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">/*MC</span></code>
+a formatted comment of a CPP macro or enum value for documentation.</p></li>
+</ul>
+<p>The Fortran interface files supplied manually by the developer go into the
+directory <code class="docutils notranslate"><span class="pre">ftn-custom</span></code>, while those automatically generated
+go into directories in the $PETSC_ARCH/ftn`` directory tree.</p>
+<p>Each include file that contains formatted comments needs to have a line of the form</p>
+<blockquote>
+<div><div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* SUBMANSEC = submansec (for example Sys) */</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>preceded by and followed by a blank line. For source code, this information is found in the makefile in that source code’s directory in the format</p>
+<blockquote>
+<div><div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">MANSEC</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n"><a href="../manualpages/DM/DM.html">DM</a></span>
+<span class="n">SUBMANSEC</span><span class="o">=</span><span class="w"> </span><span class="n">DMPlex</span>
+</pre></div>
+</div>
+</div></blockquote>
+<section id="manual-page-format">
+<span id="id5"></span><h3>Manual Page Format<a class="headerlink" href="#manual-page-format" title="Link to this heading">#</a></h3>
+<p>Each function, typedef, class, macro, enum, and so on in the public API
+should include the following data, correctly formatted (see codes
+section) to generate complete manual pages and (possibly) Fortran interfaces with
+Sowing. All entries below should be separated by blank lines. Except
+where noted, add a newline after the section headings.</p>
+<ol class="arabic">
+<li><p>The item’s name, followed by a dash and brief (one-sentence)
+description.</p></li>
+<li><p>If documenting a function implemented with a preprocessor macro
+(e.g., <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>()</span></code>), an explicit <code class="docutils notranslate"><span class="pre">Synopsis:</span></code> section
+noting the required header and the function signature.</p></li>
+<li><p>If documenting a function, a description of the function’s
+“collectivity”.</p>
+<ul class="simple">
+<li><p><code class="docutils notranslate"><span class="pre">Not</span> <span class="pre">Collective</span></code> if the function need not be called on multiple (or possibly all) MPI
+processes</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">Collective</span></code> if the function is a collective operation.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">Logically</span> <span class="pre">Collective;</span> <span class="pre">yyy</span> <span class="pre">must</span> <span class="pre">contain</span> <span class="pre">common</span> <span class="pre">value]</span></code>
+if the function is collective but does not require any actual
+synchronization (e.g., setting class parameters uniformly). Any
+argument yyy, which must have the same value on all ranks of the
+MPI communicator should be noted here.</p></li>
+</ul>
+</li>
+<li><p>If the function is not supported in Fortran, then after the collective information, on the same line,
+one should provide <code class="docutils notranslate"><span class="pre">;</span> <span class="pre">No</span> <span class="pre">Fortran</span> <span class="pre">support</span></code>.</p></li>
+<li><p>If documenting a function with input parameters, a list of input
+parameter descriptions in an <code class="docutils notranslate"><span class="pre">Input</span> <span class="pre">Parameter(s):</span></code> section.</p></li>
+<li><p>If documenting a function with output parameters, a list of output
+parameter descriptions in an <code class="docutils notranslate"><span class="pre">Output</span> <span class="pre">Parameter(s):</span></code> section.</p></li>
+<li><p>If any input or output parameters are function pointers, they should be documented in the style</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">Calling sequence of `func()`:</span>
+<span class="go">. arg - the integer argument description</span>
+</pre></div>
+</div>
+</li>
+<li><p>If documenting a function that interacts with the options database, a
+list of options database keys in an <code class="docutils notranslate"><span class="pre">Options</span> <span class="pre">Database</span> <span class="pre">Key(s):</span></code>
+section.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">Level:</span></code> (no newline) followed by <code class="docutils notranslate"><span class="pre">beginner</span></code>,
+<code class="docutils notranslate"><span class="pre">intermediate</span></code>, <code class="docutils notranslate"><span class="pre">advanced</span></code>, <code class="docutils notranslate"><span class="pre">developer</span></code>, or <code class="docutils notranslate"><span class="pre">deprecated</span></code>. This
+should be listed before the various <code class="docutils notranslate"><span class="pre">Note(s):</span></code> sections.</p></li>
+<li><p>(Optional) a <code class="docutils notranslate"><span class="pre">Note(s):</span></code> section containing in-depth discussion,
+technical caveats, special cases, and so on. If it is ambiguous
+whether returned pointers/objects need to be freed/destroyed by the
+user or not, this information should be mentioned here.</p></li>
+<li><p>(If applicable) a <code class="docutils notranslate"><span class="pre">Fortran</span> <span class="pre">Note(s):</span></code> section detailing any relevant
+differences in calling or using the item from Fortran.</p></li>
+<li><p>(If applicable) a <code class="docutils notranslate"><span class="pre">Developer</span> <span class="pre">Note(s):</span></code> section detailing any relevant
+information about the code for developers, for example, why a
+particular algorithm was implemented.</p></li>
+<li><p>(If applicable) references should be indicated inline with {cite}`Bibtex-key` where
+Bibtex-key is in the file <code class="docutils notranslate"><span class="pre">doc/petsc.bib</span></code>, as in the manual page for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PC/PCFIELDSPLIT.html">PCFIELDSPLIT</a></span></code>.</p></li>
+<li><p><code class="docutils notranslate"><span class="pre">.seealso:</span></code> (no newline, no spaces to the left of this text), followed by a list of related manual
+pages. These manual pages should usually also point back to this
+manual page in their <code class="docutils notranslate"><span class="pre">.seealso:</span></code> sections. This is the final entry in the
+comment. There should be no blank line after the <code class="docutils notranslate"><span class="pre">.seealso:</span></code> items.</p></li>
+<li><p>All PETSc functions that appear in a manual page (except the one in the header at the top) should end with a <code class="docutils notranslate"><span class="pre">()</span></code> and be enclosed
+in single back tick marks. All PETSc enum types and macros etc, should also be enclosed in single back tick marks.
+This includes each item listed in the <code class="docutils notranslate"><span class="pre">.seealso:</span></code> lines.</p></li>
+</ol>
+</section>
+<section id="spelling-and-capitalization">
+<h3>Spelling and Capitalization<a class="headerlink" href="#spelling-and-capitalization" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Proper nouns, including Unix, Linux, X Windows, and Microsoft Windows, should be fully written and capitalized. This includes all operating systems.
+The Apple computer operating system is written as macOS.</p></li>
+<li><p>Company names and product names should be capitalized.</p></li>
+<li><p>Company names and terms that are traditionally all capitalized, for example, MATLAB, NVIDIA, and CUDA, should be all capitalized.</p></li>
+<li><p>ARM is a family of processor designs, while Arm is the company that licenses them.</p></li>
+<li><p>Unix should not be all capitalized.</p></li>
+<li><p>Microsoft Windows should always be written out with two words. That is, it should not be shortened to Windows or MS Win etc.</p></li>
+<li><p>CMake should be capitalized as shown.</p></li>
+<li><p>BLAS and LAPACK are written in full capitalization.</p></li>
+<li><p>Open MPI is written as two words.</p></li>
+</ol>
+</section>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
+<div class="docutils container" id="id6">
+<div role="list" class="citation-list">
+<div class="citation" id="id1934" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">Gro95a</a><span class="fn-bracket">]</span></span>
+<p>W Gropp. Users manual for doctext: producing documentation from source code. Technical Report ANL/MCS-TM-206, Argonne National Laboratory, 1995.</p>
+</div>
+<div class="citation" id="id1933" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">Gro95b</a><span class="fn-bracket">]</span></span>
+<p>W Gropp. Users manual for bfort: producing Fortran interfaces to C source code. Technical Report ANL/MCS-TM-208, Argonne National Laboratory, 1995.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+<hr class="footnotes docutils" />
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="footnote-1" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Type also refers to the string name of the subclass.</p>
+</aside>
+</aside>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="development.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">PETSc Development Environment</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="buildsystem.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">BuildSystem</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#names">Names</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-and-standard-datatypes">PETSc and standard datatypes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coding-conventions-and-style">Coding Conventions and Style</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c-formatting">C Formatting</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c-usage">C Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#usage-of-petsc-functions-and-macros">Usage of PETSc Functions and Macros</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#formatted-comments">Formatted Comments</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-page-format">Manual Page Format</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spelling-and-capitalization">Spelling and Capitalization</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/developers/style.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/developers/style.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

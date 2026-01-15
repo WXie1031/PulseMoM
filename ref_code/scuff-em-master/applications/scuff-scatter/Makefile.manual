@@ -1,0 +1,14 @@
+include $(SE)/MakefileRules.abInitio
+
+OBJS = scuff-scatter.o OutputModules.o
+
+all: scuff-scatter-haswell scuff-scatter-barcelona
+
+scuff-scatter-haswell:	$(OBJS)
+			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS_HASWELL)
+
+scuff-scatter-barcelona:	$(OBJS)
+			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS_BARCELONA)
+
+clean:
+		/bin/rm *.o *.a

@@ -1,0 +1,152 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/logging/handler/impls/mpe/logmpe.c">Actual source code: logmpe.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/logimpl.h.html">&lt;petsc/private/logimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/loghandlerimpl.h.html">&lt;petsc/private/loghandlerimpl.h&gt;</A>
+<a name="line3">  3: </a><font color="#A020F0">#include &lt;mpe.h&gt;</font>
+
+<a name="line5">  5: </a><font color="#4169E1"><a name="_n_PetscEventMPE"></a>typedef struct _n_PetscEventMPE </font>{
+<a name="line6">  6: </a>  int start;
+<a name="line7">  7: </a>  int final;
+<a name="line8">  8: </a>} PetscEventMPE;
+
+<a name="line10"> 10: </a><strong><font color="#4169E1">PETSC_LOG_RESIZABLE_ARRAY(MPEArray, PetscEventMPE, void *, NULL, NULL, NULL)</font></strong>;
+
+<a name="line12"> 12: </a><font color="#4169E1">typedef struct _n_PetscLogHandler_MPE *PetscLogHandler_MPE;</font>
+
+<a name="line14"> 14: </a><font color="#4169E1"><a name="_n_PetscLogHandler_MPE"></a>struct _n_PetscLogHandler_MPE </font>{
+<a name="line15"> 15: </a>  PetscLogMPEArray events;
+<a name="line16"> 16: </a>};
+
+<a name="line18"> 18: </a><strong><font color="#4169E1"><a name="PetscLogHandlerContextCreate_MPE"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerContextCreate_MPE(PetscLogHandler_MPE *mpe_p)</font></strong>
+<a name="line19"> 19: </a>{
+<a name="line20"> 20: </a>  PetscLogHandler_MPE mpe;
+
+<a name="line22"> 22: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line23"> 23: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(mpe_p));
+<a name="line24"> 24: </a>  mpe = *mpe_p;
+<a name="line25"> 25: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogMPEArrayCreate(128, &amp;mpe-&gt;events));
+<a name="line26"> 26: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line27"> 27: </a>}
+
+<a name="line29"> 29: </a><strong><font color="#4169E1"><a name="PetscLogHandlerDestroy_MPE"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerDestroy_MPE(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> h)</font></strong>
+<a name="line30"> 30: </a>{
+<a name="line31"> 31: </a>  PetscLogHandler_MPE mpe = (PetscLogHandler_MPE)h-&gt;data;
+
+<a name="line33"> 33: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line34"> 34: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogMPEArrayDestroy(&amp;mpe-&gt;events));
+<a name="line35"> 35: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(mpe));
+<a name="line36"> 36: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line37"> 37: </a>}
+
+<a name="line39"> 39: </a><strong><font color="#228B22">#define PETSC_RGB_COLORS_MAX 39</font></strong>
+<a name="line40"> 40: </a>static const char *PetscLogMPERGBColors[PETSC_RGB_COLORS_MAX] = {<font color="#666666">"OliveDrab:      "</font>, <font color="#666666">"BlueViolet:     "</font>, <font color="#666666">"CadetBlue:      "</font>, <font color="#666666">"CornflowerBlue: "</font>, <font color="#666666">"DarkGoldenrod:  "</font>, <font color="#666666">"DarkGreen:      "</font>, <font color="#666666">"DarkKhaki:      "</font>, <font color="#666666">"DarkOliveGreen: "</font>,
+<a name="line41"> 41: </a>                                                                 <font color="#666666">"DarkOrange:     "</font>, <font color="#666666">"DarkOrchid:     "</font>, <font color="#666666">"DarkSeaGreen:   "</font>, <font color="#666666">"DarkSlateGray:  "</font>, <font color="#666666">"DarkTurquoise:  "</font>, <font color="#666666">"DeepPink:       "</font>, <font color="#666666">"DarkKhaki:      "</font>, <font color="#666666">"DimGray:        "</font>,
+<a name="line42"> 42: </a>                                                                 <font color="#666666">"DodgerBlue:     "</font>, <font color="#666666">"GreenYellow:    "</font>, <font color="#666666">"HotPink:        "</font>, <font color="#666666">"IndianRed:      "</font>, <font color="#666666">"LavenderBlush:  "</font>, <font color="#666666">"LawnGreen:      "</font>, <font color="#666666">"LemonChiffon:   "</font>, <font color="#666666">"LightCoral:     "</font>,
+<a name="line43"> 43: </a>                                                                 <font color="#666666">"LightCyan:      "</font>, <font color="#666666">"LightPink:      "</font>, <font color="#666666">"LightSalmon:    "</font>, <font color="#666666">"LightSlateGray: "</font>, <font color="#666666">"LightYellow:    "</font>, <font color="#666666">"LimeGreen:      "</font>, <font color="#666666">"MediumPurple:   "</font>, <font color="#666666">"MediumSeaGreen: "</font>,
+<a name="line44"> 44: </a>                                                                 <font color="#666666">"MediumSlateBlue:"</font>, <font color="#666666">"MidnightBlue:   "</font>, <font color="#666666">"MintCream:      "</font>, <font color="#666666">"MistyRose:      "</font>, <font color="#666666">"NavajoWhite:    "</font>, <font color="#666666">"NavyBlue:       "</font>, <font color="#666666">"OliveDrab:      "</font>};
+
+<a name="line46"> 46: </a><strong><font color="#4169E1"><a name="PetscLogMPEGetRGBColor_Internal"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogMPEGetRGBColor_Internal(const char *str[])</font></strong>
+<a name="line47"> 47: </a>{
+<a name="line48"> 48: </a>  static int idx = 0;
+
+<a name="line50"> 50: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line51"> 51: </a>  *str = PetscLogMPERGBColors[idx];
+<a name="line52"> 52: </a>  idx  = (idx + 1) % PETSC_RGB_COLORS_MAX;
+<a name="line53"> 53: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line54"> 54: </a>}
+
+<a name="line56"> 56: </a><strong><font color="#4169E1"><a name="PetscLogHandlerMPECreateEvent"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerMPECreateEvent(const char name[], PetscLogMPEArray array)</font></strong>
+<a name="line57"> 57: </a>{
+<a name="line58"> 58: </a>  PetscEventMPE mpe_event;
+<a name="line59"> 59: </a>  <a href="../../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>   rank;
+
+<a name="line61"> 61: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line62"> 62: </a>  MPE_Log_get_state_eventIDs(&amp;mpe_event.start, &amp;mpe_event.final);
+<a name="line63"> 63: </a>  <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;rank));
+<a name="line64"> 64: </a>  <font color="#4169E1">if</font> (rank == 0) {
+<a name="line65"> 65: </a>    const char *color;
+
+<a name="line67"> 67: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogMPEGetRGBColor_Internal(&amp;color));
+<a name="line68"> 68: </a>    MPE_Describe_state(mpe_event.start, mpe_event.final, name, (char *)color);
+<a name="line69"> 69: </a>  }
+<a name="line70"> 70: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogMPEArrayPush(array, mpe_event));
+<a name="line71"> 71: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line72"> 72: </a>}
+
+<a name="line74"> 74: </a><strong><font color="#4169E1"><a name="PetscLogHandlerMPEUpdate"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerMPEUpdate(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> h)</font></strong>
+<a name="line75"> 75: </a>{
+<a name="line76"> 76: </a>  PetscLogHandler_MPE mpe = (PetscLogHandler_MPE)h-&gt;data;
+<a name="line77"> 77: </a>  <a href="../../../../../../manualpages/Log/PetscLogState.html">PetscLogState</a>       state;
+<a name="line78"> 78: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>            num_events, num_events_old;
+
+<a name="line80"> 80: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line81"> 81: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogHandlerGetState.html">PetscLogHandlerGetState</a>(h, &amp;state));
+<a name="line82"> 82: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogStateGetNumEvents.html">PetscLogStateGetNumEvents</a>(state, &amp;num_events));
+<a name="line83"> 83: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogMPEArrayGetSize(mpe-&gt;events, &amp;num_events_old, NULL));
+<a name="line84"> 84: </a>  <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = num_events_old; i &lt; num_events; i++) {
+<a name="line85"> 85: </a>    <a href="../../../../../../manualpages/Log/PetscLogEventInfo.html">PetscLogEventInfo</a> event_info;
+
+<a name="line87"> 87: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogStateEventGetInfo.html">PetscLogStateEventGetInfo</a>(state, (<a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a>)i, &amp;event_info));
+<a name="line88"> 88: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogHandlerMPECreateEvent(event_info.name, mpe-&gt;events));
+<a name="line89"> 89: </a>  }
+<a name="line90"> 90: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line91"> 91: </a>}
+
+<a name="line93"> 93: </a><strong><font color="#4169E1"><a name="PetscLogHandlerEventBegin_MPE"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerEventBegin_MPE(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> event, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o1, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o2, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o3, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o4)</font></strong>
+<a name="line94"> 94: </a>{
+<a name="line95"> 95: </a>  PetscLogHandler_MPE mpe = (PetscLogHandler_MPE)handler-&gt;data;
+<a name="line96"> 96: </a>  PetscEventMPE       mpe_event;
+
+<a name="line98"> 98: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line99"> 99: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogHandlerMPEUpdate(handler));
+<a name="line100">100: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogMPEArrayGet(mpe-&gt;events, event, &amp;mpe_event));
+<a name="line101">101: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MPE_Log_event(mpe_event.start, 0, NULL));
+<a name="line102">102: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line103">103: </a>}
+
+<a name="line105">105: </a><strong><font color="#4169E1"><a name="PetscLogHandlerEventEnd_MPE"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerEventEnd_MPE(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler, <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> event, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o1, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o2, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o3, <a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> o4)</font></strong>
+<a name="line106">106: </a>{
+<a name="line107">107: </a>  PetscLogHandler_MPE mpe = (PetscLogHandler_MPE)handler-&gt;data;
+<a name="line108">108: </a>  PetscEventMPE       mpe_event;
+
+<a name="line110">110: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line111">111: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogHandlerMPEUpdate(handler));
+<a name="line112">112: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogMPEArrayGet(mpe-&gt;events, event, &amp;mpe_event));
+<a name="line113">113: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MPE_Log_event(mpe_event.final, 0, NULL));
+<a name="line114">114: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line115">115: </a>}
+
+<a name="line117">117: </a><font color="#B22222">/*MC</font>
+<a name="line118">118: </a><font color="#B22222">  <a href="../../../../../../manualpages/Log/PETSCLOGHANDLERMPE.html">PETSCLOGHANDLERMPE</a> - <a href="../../../../../../manualpages/Log/PETSCLOGHANDLERMPE.html">PETSCLOGHANDLERMPE</a> = "mpe" -  A</font>
+<a name="line119">119: </a><font color="#B22222">  `<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>` that collects data for MPE, the MPI Parallel Environment for</font>
+<a name="line120">120: </a><font color="#B22222">  performance visualization.  A log handler of this type is created and started</font>
+<a name="line121">121: </a><font color="#B22222">  by `<a href="../../../../../../manualpages/Log/PetscLogMPEBegin.html">PetscLogMPEBegin</a>()`.</font>
+
+<a name="line123">123: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line125">125: </a><font color="#B22222">.seealso: [](ch_profiling), `<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a>`</font>
+<a name="line126">126: </a><font color="#B22222">M*/</font>
+
+<a name="line128">128: </a><strong><font color="#4169E1"><a name="PetscLogHandlerCreate_MPE"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscLogHandlerCreate_MPE(<a href="../../../../../../manualpages/Log/PetscLogHandler.html">PetscLogHandler</a> handler)</font></strong>
+<a name="line129">129: </a>{
+<a name="line130">130: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line131">131: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscLogHandlerContextCreate_MPE((PetscLogHandler_MPE *)&amp;handler-&gt;data));
+<a name="line132">132: </a>  handler-&gt;ops-&gt;destroy    = PetscLogHandlerDestroy_MPE;
+<a name="line133">133: </a>  handler-&gt;ops-&gt;eventbegin = PetscLogHandlerEventBegin_MPE;
+<a name="line134">134: </a>  handler-&gt;ops-&gt;eventend   = PetscLogHandlerEventEnd_MPE;
+<a name="line135">135: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line136">136: </a>}
+</pre>
+</body>
+
+</html>
+

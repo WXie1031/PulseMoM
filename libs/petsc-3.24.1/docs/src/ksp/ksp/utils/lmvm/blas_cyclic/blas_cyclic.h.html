@@ -1,0 +1,73 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/utils/lmvm/blas_cyclic/blas_cyclic.h">Actual source code: blas_cyclic.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petscvec.h.html">&lt;petscvec.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petscmat.h.html">&lt;petscmat.h&gt;</A>
+
+<a name="line6">  6: </a><font color="#B22222">/*</font>
+<a name="line7">  7: </a><font color="#B22222">  Dense linear algebra for vectors and matrices that are _cyclically indexed_.</font>
+
+<a name="line9">  9: </a><font color="#B22222">  For a <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, this means that it has a fixed size m, but it is for storing data from a sliding window of _history</font>
+<a name="line10"> 10: </a><font color="#B22222">  indices_.  Rather than rearranging the vector as the window slides, we insert the value v_i for history index i in the</font>
+<a name="line11"> 11: </a><font color="#B22222">  location v[i % m].</font>
+
+<a name="line13"> 13: </a><font color="#B22222">  This has the following effects on linear algebra:</font>
+
+<a name="line15"> 15: </a><font color="#B22222">  - Sometimes we are dealing with a window that is smaller than m, e.g. doing y[i % m] &lt;- alpha x[i % m], but not all</font>
+<a name="line16"> 16: </a><font color="#B22222">    values in [0, m) are active.  We want the linear algebra routines to leave the inactive indices</font>
+<a name="line17"> 17: </a><font color="#B22222">    untouched.</font>
+
+<a name="line19"> 19: </a><font color="#B22222">  - We sometimes need operations that work on the upper triangle of a matrix _with respect to history indices_, i.e.</font>
+<a name="line20"> 20: </a><font color="#B22222">    operating on the values</font>
+
+<a name="line22"> 22: </a><font color="#B22222">      A[i % m, j % m], i &lt;= j</font>
+
+<a name="line24"> 24: </a><font color="#B22222">  The functions defined here dispatch linear algebra operations, described by the range of history indices [oldest, next) that</font>
+<a name="line25"> 25: </a><font color="#B22222">  they act on, to the appropriate backend blas-like (BLAS, cuBLAS, hipBLAS) libraries.</font>
+<a name="line26"> 26: </a><font color="#B22222"> */</font>
+
+<a name="line28"> 28: </a>PETSC_INTERN <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> AXPBY_Cyc;
+<a name="line29"> 29: </a>PETSC_INTERN <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> DMV_Cyc;
+<a name="line30"> 30: </a>PETSC_INTERN <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> DSV_Cyc;
+<a name="line31"> 31: </a>PETSC_INTERN <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> TRSV_Cyc;
+<a name="line32"> 32: </a>PETSC_INTERN <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> GEMV_Cyc;
+<a name="line33"> 33: </a>PETSC_INTERN <a href="../../../../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> HEMV_Cyc;
+
+<a name="line35"> 35: </a><font color="#B22222">/* These methods are intended for small vectors / dense matrices that are either sequential or have all of their entries on the first rank */</font>
+<a name="line36"> 36: </a><font color="#B22222">// y <- alpha * x + beta * y</font>
+<a name="line37"> 37: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecAXPBYCyclic(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line38"> 38: </a><font color="#B22222">// y <- alpha * (A .* x) + beta * y</font>
+<a name="line39"> 39: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecDMVCyclic(<a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line40"> 40: </a><font color="#B22222">// y <- (x ./ A)</font>
+<a name="line41"> 41: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecDSVCyclic(<a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line42"> 42: </a><font color="#B22222">// y <- (triu(A) \ x)</font>
+<a name="line43"> 43: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSeqDenseTRSVCyclic(<a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line44"> 44: </a><font color="#B22222">// y <- alpha * A * x + beta * y</font>
+<a name="line45"> 45: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSeqDenseGEMVCyclic(<a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line46"> 46: </a><font color="#B22222">// y <- alpha * symm(A) * x + beta * y   [sym(A) = triu(A) + striu(A)^H]</font>
+<a name="line47"> 47: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSeqDenseHEMVCyclic(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line48"> 48: </a><font color="#B22222">// A[i,:] <- alpha * x + beta * A[i,:]</font>
+<a name="line49"> 49: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSeqDenseRowAXPBYCyclic(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)</font></strong>;
+
+<a name="line51"> 51: </a><font color="#B22222">/* These methods are intended for for tall matrices of column vectors where we would like to compute products with ranges of the</font>
+<a name="line52"> 52: </a><font color="#B22222">   vectors.  The column layout should place all columns on the first rank.  Because they may involve MPI communication,</font>
+<a name="line53"> 53: </a><font color="#B22222">   they rely on implementations from the dense matrix backends */</font>
+<a name="line54"> 54: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMultColumnRange(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)</font></strong>;
+<a name="line55"> 55: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMultAddColumnRange(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)</font></strong>;
+<a name="line56"> 56: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMultHermitianTransposeColumnRange(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)</font></strong>;
+<a name="line57"> 57: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMultHermitianTransposeAddColumnRange(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)</font></strong>;
+</pre>
+</body>
+
+</html>
+

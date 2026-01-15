@@ -1,0 +1,36 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/vec/impls/seq/ftn-kernels/fwaxpy.F90">Actual source code: fwaxpy.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:20+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>!
+<a name="line2">  2: </a>!
+<a name="line3">  3: </a>!    Fortran kernel <font color="#4169E1">for</font> the WAXPY() vector routine
+<a name="line4">  4: </a>!
+<a name="line5">  5: </a><font color="#A020F0">#include &lt;petsc/finclude/petscsys.h&gt;</font>
+<a name="line6">  6: </a>!
+<a name="line7">  7: </a><strong><font color="#4169E1"><a name="FortranWAXPY"></a>pure subroutine FortranWAXPY(n, a, x, y, w)</font></strong>
+<a name="line8">  8: </a>  use, intrinsic :: ISO_C_binding
+<a name="line9">  9: </a>  implicit none(type, external)
+<a name="line10"> 10: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, intent(in) :: a
+<a name="line11"> 11: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, intent(in) :: x(*), y(*)
+<a name="line12"> 12: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, intent(inout) :: w(*)
+<a name="line13"> 13: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, intent(in) :: n
+
+<a name="line15"> 15: </a>  PETSC_AssertAlignx(16, x(1))
+<a name="line16"> 16: </a>  PETSC_AssertAlignx(16, y(1))
+<a name="line17"> 17: </a>  PETSC_AssertAlignx(16, w(1))
+
+<a name="line19"> 19: </a>  w(1:n) = a*x(1:n) + y(1:n)
+<a name="line20"> 20: </a>end subroutine FortranWAXPY
+</pre>
+</body>
+
+</html>
+

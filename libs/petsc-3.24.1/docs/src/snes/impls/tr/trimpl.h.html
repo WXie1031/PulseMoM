@@ -1,0 +1,65 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/snes/impls/tr/trimpl.h">Actual source code: trimpl.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:06+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#B22222">/*</font>
+<a name="line2">  2: </a><font color="#B22222">   Context for a Newton trust region method for solving a system</font>
+<a name="line3">  3: </a><font color="#B22222">   of nonlinear equations</font>
+<a name="line4">  4: </a><font color="#B22222"> */</font>
+
+<a name="line6">  6: </a><font color="#A020F0">#pragma once</font>
+<a name="line7">  7: </a>#include <A href="../../../../include/petsc/private/snesimpl.h.html">&lt;petsc/private/snesimpl.h&gt;</A>
+
+<a name="line9">  9: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> delta; <font color="#B22222">/* trust region radius */</font>
+
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, delta0); <font color="#B22222">/* initial radius for trust region */</font>
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, deltaM); <font color="#B22222">/* maximum radius for trust region */</font>
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, deltam); <font color="#B22222">/* minimum radius for trust region */</font>
+
+<a name="line16"> 16: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> kmdc; <font color="#B22222">/* sufficient decrease parameter */</font>
+
+<a name="line18"> 18: </a>  <font color="#B22222">/*</font>
+<a name="line19"> 19: </a><font color="#B22222">    Given rho = (fk - fkp1) / (m(0) - m(pk))</font>
+
+<a name="line21"> 21: </a><font color="#B22222">    The radius is modified as:</font>
+<a name="line22"> 22: </a><font color="#B22222">      rho &lt; eta2 -&gt; delta *= t1</font>
+<a name="line23"> 23: </a><font color="#B22222">      rho &gt; eta3 -&gt; delta *= t2</font>
+<a name="line24"> 24: </a><font color="#B22222">      delta = min(delta,deltaM)</font>
+
+<a name="line26"> 26: </a><font color="#B22222">    The step is accepted if rho &gt; eta1</font>
+<a name="line27"> 27: </a><font color="#B22222">    The iterative process is halted if delta &lt; deltam</font>
+<a name="line28"> 28: </a><font color="#B22222">  */</font>
+<a name="line29"> 29: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, eta1);
+<a name="line30"> 30: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, eta2);
+<a name="line31"> 31: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, eta3);
+<a name="line32"> 32: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, t1);
+<a name="line33"> 33: </a>  <a href="../../../../manualpages/Sys/PetscObjectParameterDeclare.html">PetscObjectParameterDeclare</a>(<a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, t2);
+
+<a name="line35"> 35: </a>  <font color="#B22222">/* Use quasi-Newton models for J and (possibly different) Jp */</font>
+<a name="line36"> 36: </a>  <a href="../../../../manualpages/SNES/SNESNewtonTRQNType.html">SNESNewtonTRQNType</a> qn;
+<a name="line37"> 37: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                qnB;
+<a name="line38"> 38: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                qnB_pre;
+
+<a name="line40"> 40: </a>  <font color="#B22222">/* The type of norm for the trust region */</font>
+<a name="line41"> 41: </a>  <a href="../../../../manualpages/Vec/NormType.html">NormType</a> norm;
+
+<a name="line43"> 43: </a>  <a href="../../../../manualpages/SNES/SNESNewtonTRFallbackType.html">SNESNewtonTRFallbackType</a> fallback; <font color="#B22222">/* enum to distinguish fallback in case Newton step is outside of the trust region */</font>
+
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*precheck)(<a href="../../../../manualpages/SNES/SNES.html">SNES</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *, void *);
+<a name="line46"> 46: </a>  void *precheckctx;
+<a name="line47"> 47: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*postcheck)(<a href="../../../../manualpages/SNES/SNES.html">SNES</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *, <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *, void *);
+<a name="line48"> 48: </a>  void *postcheckctx;
+<a name="line49"> 49: </a>} SNES_NEWTONTR;
+</pre>
+</body>
+
+</html>
+

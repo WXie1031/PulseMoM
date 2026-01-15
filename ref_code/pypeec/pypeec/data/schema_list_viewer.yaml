@@ -1,0 +1,193 @@
+#############################################################################
+"data_plot_domain": &data_plot_domain
+    "type": "object"
+    "required":
+        - "title"
+        - "colormap"
+        - "opacity"
+    properties:
+        "title":
+            "type":
+                - "null"
+                - "string"
+            "minLength": 1
+        "colormap":
+            "type": "string"
+            "minLength": 1
+        "opacity":
+            "type": "number"
+            "minimum": 0
+            "maximum": 1
+
+#############################################################################
+"data_plot_component": &data_plot_component
+    "type": "object"
+    "required":
+        - "title"
+        - "colormap"
+        - "opacity"
+    properties:
+        "title":
+            "type":
+                - "null"
+                - "string"
+            "minLength": 1
+        "colormap":
+            "type": "string"
+            "minLength": 1
+        "opacity":
+            "type": "number"
+            "minimum": 0
+            "maximum": 1
+
+#############################################################################
+"data_plot_voxelization": &data_plot_voxelization
+    "type": "object"
+    "required":
+        - "title"
+        - "color_voxel"
+        - "color_reference"
+        - "width_voxel"
+        - "width_reference"
+        - "opacity_voxel"
+        - "opacity_reference"
+    properties:
+        "title":
+            "type":
+                - "null"
+                - "string"
+            "minLength": 1
+        "color_voxel":
+            "type": "string"
+            "minLength": 1
+        "color_reference":
+            "type": "string"
+            "minLength": 1
+        "width_voxel":
+            "type": "number"
+            "minimum": 0
+        "width_reference":
+            "type": "number"
+            "minimum": 0
+        "opacity_voxel":
+            "type": "number"
+            "minimum": 0
+            "maximum": 1
+        "opacity_reference":
+            "type": "number"
+            "minimum": 0
+            "maximum": 1
+
+#############################################################################
+"data_plot_matrix": &data_plot_matrix
+    "type": "object"
+    "required":
+        - "title"
+        - "width"
+        - "color_edge"
+        - "color_true"
+        - "color_false"
+    properties:
+        "title":
+            "type":
+                - "null"
+                - "string"
+            "minLength": 1
+        "width":
+            "type": "number"
+            "minimum": 0
+        "color_edge":
+            "type": "string"
+            "minLength": 1
+        "color_true":
+            "type": "string"
+            "minLength": 1
+        "color_false":
+            "type": "string"
+            "minLength": 1
+
+#############################################################################
+"type": "object"
+"additionalProperties":
+    "type": "object"
+    "required":
+        - "framework"
+        - "layout"
+        - "data_window"
+        - "data_options"
+        - "data_plot"
+    "properties":
+        "framework":
+            "type": "string"
+            "enum":
+                - "pyvista"
+                - "matplotlib"
+        "layout":
+            "type": "string"
+            "enum":
+                - "domain"
+                - "component"
+                - "voxelization"
+                - "connected"
+                - "adjacent"
+        "data_window": !include schema_plot_window.yaml
+    "allOf":
+        -   if:
+                "properties":
+                    "framework":
+                        "const": "pyvista"
+            "then":
+                "properties":
+                    "data_options": !include schema_plot_pyvista.yaml
+        -   if:
+                "properties":
+                    "framework":
+                        "const": "matplotlib"
+            "then":
+                "properties":
+                    "data_options": !include schema_plot_matplotlib.yaml
+        -   if:
+                "properties":
+                    "layout":
+                        "const": "domain"
+            "then":
+                "properties":
+                    "data_plot": *data_plot_domain
+                    "framework":
+                        "const": "pyvista"
+        -   if:
+                "properties":
+                    "layout":
+                        "const": "component"
+            "then":
+                "properties":
+                    "data_plot": *data_plot_component
+                    "framework":
+                        "const": "pyvista"
+        -   if:
+                "properties":
+                    "layout":
+                        "const": "voxelization"
+            "then":
+                "properties":
+                    "data_plot": *data_plot_voxelization
+                    "framework":
+                        "const": "pyvista"
+        -   if:
+                "properties":
+                    "layout":
+                        "const": "connected"
+            "then":
+                "properties":
+                    "data_plot": *data_plot_matrix
+                    "framework":
+                        "const": "matplotlib"
+        -   if:
+                "properties":
+                    "layout":
+                        "const": "adjacent"
+            "then":
+                "properties":
+                    "data_plot": *data_plot_matrix
+                    "framework":
+                        "const": "matplotlib"

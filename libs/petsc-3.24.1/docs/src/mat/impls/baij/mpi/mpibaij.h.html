@@ -1,0 +1,71 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/baij/mpi/mpibaij.h">Actual source code: mpibaij.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+<a name="line2">  2: </a>#include <A href="../../../../src/mat/impls/baij/seq/baij.h.html">&lt;../src/mat/impls/baij/seq/baij.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../src/mat/impls/aij/mpi/mpiaij.h.html">&lt;../src/mat/impls/aij/mpi/mpiaij.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petsc/private/hashmapi.h.html">&lt;petsc/private/hashmapi.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#228B22">#define MPIBAIJHEADER \</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  MPIAIJHEADER; \</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *rangebs;                            </font><font color="#B22222">/* rmap-&gt;range/bs */</font><font color="#228B22"> \</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  rstartbs, rendbs, cstartbs, cendbs; </font><font color="#B22222">/* map values / bs  */</font><font color="#228B22"> \</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  bs2;                                </font><font color="#B22222">/* block size, bs2 = bs*bs */</font><font color="#228B22"> \</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  Mbs, Nbs;                           </font><font color="#B22222">/* number block rows/cols in matrix; M/bs, N/bs */</font><font color="#228B22"> \</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  mbs, nbs;                           </font><font color="#B22222">/* number block rows/cols on processor; m/bs, n/bs */</font><font color="#228B22"> \</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">\</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  </font><font color="#B22222">/* The following variables are used for matrix assembly */</font><font color="#228B22"> \</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> subset_off_proc_entries; </font><font color="#B22222">/* <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a> if assembly will always communicate a subset of the entries communicated the first time */</font><font color="#228B22"> \</font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">\</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  </font><font color="#B22222">/* The following variable is used by blocked matrix assembly */</font><font color="#228B22"> \</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  MatScalar *barray; </font><font color="#B22222">/* Block array of size bs2 */</font><font color="#228B22"> \</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">\</font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">  </font><font color="#B22222">/* Some variables to make <a href="../../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a> and others more efficient */</font><font color="#228B22"> \</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    rstart_bs, rend_bs; \</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    cstart_bs, cend_bs; \</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   *ht; </font><font color="#B22222">/* Hash table to speed up matrix assembly */</font><font color="#228B22"> \</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">  MatScalar **hd; </font><font color="#B22222">/* Hash table data */</font><font color="#228B22"> \</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    ht_size; \</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    ht_total_ct, ht_insert_ct; </font><font color="#B22222">/* Hash table statistics */</font><font color="#228B22"> \</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>   ht_flag;                   </font><font color="#B22222">/* Flag to indicate if hash tables are used */</font><font color="#228B22"> \</font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">  double      ht_fact;                   </font><font color="#B22222">/* Factor to determine the HT size */</font><font color="#228B22"> \</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">\</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>   setvalueslen;  </font><font color="#B22222">/* only used for single precision computations */</font><font color="#228B22"> \</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">  MatScalar *setvaluescopy; </font><font color="#B22222">/* area double precision values in MatSetValuesXXX() are copied*/</font><font color="#228B22"> \</font></strong>
+<a name="line32"> 32: </a><strong><font color="#228B22">                            </font><font color="#B22222">/* before calling MatSetValuesXXX_MPIBAIJ_MatScalar() */</font><font color="#228B22"> \</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      ijonly;    </font><font color="#B22222">/* used in  MatCreateSubMatrices_MPIBAIJ_local() for getting ij structure only */</font><font color="#228B22"> \</font></strong>
+<a name="line34"> 34: </a><strong><font color="#228B22">  struct _MatOps cops</font></strong>
+
+<a name="line36"> 36: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line37"> 37: </a>  MPIBAIJHEADER;
+<a name="line38"> 38: </a>} Mat_MPIBAIJ;
+
+<a name="line40"> 40: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatView_MPIBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+<a name="line41"> 41: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLoad_MPIBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+<a name="line42"> 42: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatView_MPIBAIJ_Binary(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+<a name="line43"> 43: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatLoad_MPIBAIJ_Binary(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+
+<a name="line45"> 45: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreateColmap_MPIBAIJ_Private(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>)</font></strong>;
+<a name="line46"> 46: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreateSubMatrices_MPIBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../../../manualpages/IS/IS.html">IS</a>[], const <a href="../../../../../manualpages/IS/IS.html">IS</a>[], <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a>, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *[])</font></strong>;
+<a name="line47"> 47: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreateSubMatrices_MPIBAIJ_local(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../../../manualpages/IS/IS.html">IS</a>[], const <a href="../../../../../manualpages/IS/IS.html">IS</a>[], <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a>, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>)</font></strong>;
+<a name="line48"> 48: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreateSubMatrix_MPIBAIJ_Private(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/IS/IS.html">IS</a>, <a href="../../../../../manualpages/IS/IS.html">IS</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a>, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>)</font></strong>;
+<a name="line49"> 49: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatGetMultiProcBlock_MPIBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>, <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a>, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *)</font></strong>;
+<a name="line50"> 50: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatIncreaseOverlap_MPIBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/IS/IS.html">IS</a>[], <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)</font></strong>;
+<a name="line51"> 51: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatIncreaseOverlap_MPIBAIJ_Once(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../manualpages/IS/IS.html">IS</a> *)</font></strong>;
+<a name="line52"> 52: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMPIBAIJSetPreallocation_MPIBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> bs, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> d_nz, const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *d_nnz, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> o_nz, const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *o_nnz)</font></strong>;
+<a name="line53"> 53: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatAXPYGetPreallocation_MPIBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>, const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *)</font></strong>;
+
+<a name="line55"> 55: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConjugate_SeqBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a>)</font></strong>;
+</pre>
+</body>
+
+</html>
+

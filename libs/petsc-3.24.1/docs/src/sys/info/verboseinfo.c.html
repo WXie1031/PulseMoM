@@ -1,0 +1,663 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/info/verboseinfo.c">Actual source code: verboseinfo.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#B22222">/*</font>
+<a name="line2">  2: </a><font color="#B22222">      <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>() is contained in a different file from the other profiling to</font>
+<a name="line3">  3: </a><font color="#B22222">   allow it to be replaced at link time by an alternative routine.</font>
+<a name="line4">  4: </a><font color="#B22222">*/</font>
+<a name="line5">  5: </a>#include <A href="../../../include/petsc/private/petscimpl.h.html">&lt;petsc/private/petscimpl.h&gt;</A>
+
+<a name="line7">  7: </a><font color="#B22222">/*</font>
+<a name="line8">  8: </a><font color="#B22222">  The next set of variables determine which, if any, <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>() calls are used.</font>
+<a name="line9">  9: </a><font color="#B22222">  If PetscLogPrintInfo is false, no info messages are printed.</font>
+
+<a name="line11"> 11: </a><font color="#B22222">  If PetscInfoFlags[OBJECT_CLASSID - PETSC_SMALLEST_CLASSID] is zero, no messages related</font>
+<a name="line12"> 12: </a><font color="#B22222">  to that object are printed. OBJECT_CLASSID is, for example, MAT_CLASSID.</font>
+<a name="line13"> 13: </a><font color="#B22222">  Note for developers: the PetscInfoFlags array is currently 160 entries large, to ensure headroom. Perhaps it is worth</font>
+<a name="line14"> 14: </a><font color="#B22222">  dynamically allocating this array intelligently rather than just some big number.</font>
+
+<a name="line16"> 16: </a><font color="#B22222">  PetscInfoFilename determines where <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>() output is piped.</font>
+<a name="line17"> 17: </a><font color="#B22222">  PetscInfoClassnames holds a char array of classes which are filtered out/for in <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>() calls.</font>
+<a name="line18"> 18: </a><font color="#B22222">*/</font>
+<a name="line19"> 19: </a>const char *const        PetscInfoCommFlags[]   = {<font color="#666666">"all"</font>, <font color="#666666">"no_self"</font>, <font color="#666666">"only_self"</font>, <font color="#666666">"<a href="../../../manualpages/Log/PetscInfoCommFlag.html">PetscInfoCommFlag</a>"</font>, <font color="#666666">"PETSC_INFO_COMM_"</font>, NULL};
+<a name="line20"> 20: </a>static <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>         PetscInfoClassesLocked = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, PetscInfoInvertClasses = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, PetscInfoClassesSet = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line21"> 21: </a>static char            **PetscInfoClassnames = NULL;
+<a name="line22"> 22: </a>static char             *PetscInfoFilename   = NULL;
+<a name="line23"> 23: </a>static <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>          PetscInfoNumClasses = -1;
+<a name="line24"> 24: </a>static <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PetscInfoCommFlag</a> PetscInfoCommFilter = <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_ALL</a>;
+<a name="line25"> 25: </a>static int               PetscInfoFlags[]    = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+<a name="line26"> 26: </a>                                                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+<a name="line27"> 27: </a>                                                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+<a name="line28"> 28: </a>static char             *PetscInfoNames[<a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(PetscInfoFlags)] = {NULL};
+<a name="line29"> 29: </a><a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>                PetscLogPrintInfo                                         = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line30"> 30: </a>FILE                    *PetscInfoFile                                             = NULL;
+
+<a name="line32"> 32: </a><font color="#B22222">/*@</font>
+<a name="line33"> 33: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoEnabled.html">PetscInfoEnabled</a> - Checks whether a given `PetscClassid` is allowed to print using `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`</font>
+
+<a name="line35"> 35: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line37"> 37: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line38"> 38: </a><font color="#B22222">. classid - `PetscClassid` retrieved from a `<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a>` e.g. `VEC_CLASSID`</font>
+
+<a name="line40"> 40: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line41"> 41: </a><font color="#B22222">. enabled - `<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>` indicating whether this classid is allowed to print</font>
+
+<a name="line43"> 43: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line45"> 45: </a><font color="#B22222">  Note:</font>
+<a name="line46"> 46: </a><font color="#B22222">  Use `PETSC_SMALLEST_CLASSID` to check if "sys" `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` calls are enabled. When PETSc is configured with debugging</font>
+<a name="line47"> 47: </a><font color="#B22222">  support this function checks if classid &gt;= `PETSC_SMALLEST_CLASSID`, otherwise it assumes valid classid.</font>
+
+<a name="line49"> 49: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>()`, `<a href="../../../manualpages/Log/PetscInfoGetInfo.html">PetscInfoGetInfo</a>()`, `PetscObjectGetClassid()`</font>
+<a name="line50"> 50: </a><font color="#B22222">@*/</font>
+<a name="line51"> 51: </a><strong><font color="#4169E1"><a name="PetscInfoEnabled"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoEnabled.html">PetscInfoEnabled</a>(<a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classid, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *enabled)</font></strong>
+<a name="line52"> 52: </a>{
+<a name="line53"> 53: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line54"> 54: </a>  PetscAssertPointer(enabled, 2);
+<a name="line55"> 55: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(classid &gt;= PETSC_SMALLEST_CLASSID, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Classid (current: %d) must be equal to or greater than PETSC_SMALLEST_CLASSID"</font>, classid);
+<a name="line56"> 56: </a>  *enabled = (<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>)(PetscLogPrintInfo &amp;&amp; PetscInfoFlags[classid - PETSC_SMALLEST_CLASSID]);
+<a name="line57"> 57: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line58"> 58: </a>}
+
+<a name="line60"> 60: </a><font color="#B22222">/*@</font>
+<a name="line61"> 61: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a> - Enables/disables `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` messages</font>
+
+<a name="line63"> 63: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line65"> 65: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line66"> 66: </a><font color="#B22222">. flag - `<a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>` or `<a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>`</font>
+
+<a name="line68"> 68: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line70"> 70: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoEnabled.html">PetscInfoEnabled</a>()`, `<a href="../../../manualpages/Log/PetscInfoGetInfo.html">PetscInfoGetInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`</font>
+<a name="line71"> 71: </a><font color="#B22222">@*/</font>
+<a name="line72"> 72: </a><strong><font color="#4169E1"><a name="PetscInfoAllow"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>(<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> flag)</font></strong>
+<a name="line73"> 73: </a>{
+<a name="line74"> 74: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line75"> 75: </a>  PetscLogPrintInfo = flag;
+<a name="line76"> 76: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line77"> 77: </a>}
+
+<a name="line79"> 79: </a><font color="#B22222">/*@</font>
+<a name="line80"> 80: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoSetFile.html">PetscInfoSetFile</a> - Sets the printing destination for all `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` calls</font>
+
+<a name="line82"> 82: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line84"> 84: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line85"> 85: </a><font color="#B22222">+ filename - Name of the file where `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` will print to, use `NULL` to write to `PETSC_STDOUT`.</font>
+<a name="line86"> 86: </a><font color="#B22222">- mode     - Write mode passed to `<a href="../../../manualpages/Sys/PetscFOpen.html">PetscFOpen</a>()`</font>
+
+<a name="line88"> 88: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line90"> 90: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoGetFile.html">PetscInfoGetFile</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`, `<a href="../../../manualpages/Sys/PetscFOpen.html">PetscFOpen</a>()`</font>
+<a name="line91"> 91: </a><font color="#B22222">@*/</font>
+<a name="line92"> 92: </a><strong><font color="#4169E1"><a name="PetscInfoSetFile"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoSetFile.html">PetscInfoSetFile</a>(const char filename[], const char mode[])</font></strong>
+<a name="line93"> 93: </a>{
+<a name="line94"> 94: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line95"> 95: </a>  <font color="#4169E1">if</font> (!PetscInfoFile) PetscInfoFile = PETSC_STDOUT;
+<a name="line96"> 96: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(PetscInfoFilename));
+<a name="line97"> 97: </a>  <font color="#4169E1">if</font> (filename) {
+<a name="line98"> 98: </a>    <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> rank;
+<a name="line99"> 99: </a>    char        fname[PETSC_MAX_PATH_LEN], tname[11];
+
+<a name="line101">101: </a>    PetscAssertPointer(filename, 1);
+<a name="line102">102: </a>    PetscAssertPointer(mode, 2);
+<a name="line103">103: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFixFilename.html">PetscFixFilename</a>(filename, fname));
+<a name="line104">104: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(fname, &amp;PetscInfoFilename));
+<a name="line105">105: </a>    <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;rank));
+<a name="line106">106: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(tname, <a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(tname), <font color="#666666">".%d"</font>, rank));
+<a name="line107">107: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrlcat.html">PetscStrlcat</a>(fname, tname, <a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(fname)));
+<a name="line108">108: </a>    {
+<a name="line109">109: </a>      const <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> oldflag = PetscLogPrintInfo;
+
+<a name="line111">111: </a>      PetscLogPrintInfo = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line112">112: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFOpen.html">PetscFOpen</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, fname, mode, &amp;PetscInfoFile));
+<a name="line113">113: </a>      PetscLogPrintInfo = oldflag;
+<a name="line114">114: </a>      <font color="#B22222">/*</font>
+<a name="line115">115: </a><font color="#B22222">        <a href="../../../manualpages/Sys/PetscFOpen.html">PetscFOpen</a> will write to PETSC_STDOUT and not PetscInfoFile here, so we disable the</font>
+<a name="line116">116: </a><font color="#B22222">        <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a> call inside it, and call it afterwards so that it actually writes to file</font>
+<a name="line117">117: </a><font color="#B22222">      */</font>
+<a name="line118">118: </a>    }
+<a name="line119">119: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(NULL, <font color="#666666">"Opened <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a> file %s\n"</font>, fname));
+<a name="line120">120: </a>  }
+<a name="line121">121: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line122">122: </a>}
+
+<a name="line124">124: </a><font color="#B22222">/*@C</font>
+<a name="line125">125: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoGetFile.html">PetscInfoGetFile</a> - Gets the `filename` and `FILE` pointer of the file where `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` prints to</font>
+
+<a name="line127">127: </a><font color="#B22222">  Not Collective; No Fortran Support</font>
+
+<a name="line129">129: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line130">130: </a><font color="#B22222">+ filename - The name of the output file</font>
+<a name="line131">131: </a><font color="#B22222">- InfoFile - The `FILE` pointer for the output file</font>
+
+<a name="line133">133: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line135">135: </a><font color="#B22222">  Note:</font>
+<a name="line136">136: </a><font color="#B22222">  This routine allocates and copies the `filename` so that the `filename` survives `<a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>()`. The user is</font>
+<a name="line137">137: </a><font color="#B22222">  therefore responsible for freeing the allocated `filename` pointer with `<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>()`</font>
+
+<a name="line139">139: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFile.html">PetscInfoSetFile</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`, `<a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>()`</font>
+<a name="line140">140: </a><font color="#B22222">@*/</font>
+<a name="line141">141: </a><strong><font color="#4169E1"><a name="PetscInfoGetFile"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoGetFile.html">PetscInfoGetFile</a>(char *filename[], FILE **InfoFile)</font></strong>
+<a name="line142">142: </a>{
+<a name="line143">143: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line144">144: </a>  PetscAssertPointer(filename, 1);
+<a name="line145">145: </a>  PetscAssertPointer(InfoFile, 2);
+<a name="line146">146: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(PetscInfoFilename, filename));
+<a name="line147">147: </a>  *InfoFile = PetscInfoFile;
+<a name="line148">148: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line149">149: </a>}
+
+<a name="line151">151: </a><font color="#B22222">/*@C</font>
+<a name="line152">152: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoSetClasses.html">PetscInfoSetClasses</a> - Sets the classes which `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` is filtered for/against</font>
+
+<a name="line154">154: </a><font color="#B22222">  Not Collective; No Fortran Support</font>
+
+<a name="line156">156: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line157">157: </a><font color="#B22222">+ exclude    - Whether or not to invert the filter, i.e. if exclude is true, `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` will print from every class that</font>
+<a name="line158">158: </a><font color="#B22222">    is NOT one of the classes specified</font>
+<a name="line159">159: </a><font color="#B22222">. n          - Number of classes to filter for (size of `classnames`)</font>
+<a name="line160">160: </a><font color="#B22222">- classnames - String array containing the names of classes to filter for, e.g. "vec"</font>
+
+<a name="line162">162: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line164">164: </a><font color="#B22222">  Notes:</font>
+<a name="line165">165: </a><font color="#B22222">  This function CANNOT be called after `<a href="../../../manualpages/Log/PetscInfoGetClass.html">PetscInfoGetClass</a>()` or `<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>()` has been called, unless the user calls `<a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>()` first.</font>
+
+<a name="line167">167: </a><font color="#B22222">  Names in the `classnames` list should correspond to the names returned by `<a href="../../../manualpages/Sys/PetscObjectGetClassName.html">PetscObjectGetClassName</a>()`.</font>
+
+<a name="line169">169: </a><font color="#B22222">  This function only sets the list of class names.</font>
+<a name="line170">170: </a><font color="#B22222">  The actual filtering is deferred to `<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>()`, except of sys which is processed right away.</font>
+<a name="line171">171: </a><font color="#B22222">  The reason for this is that we need to set the list of included/excluded classes before their classids are known.</font>
+<a name="line172">172: </a><font color="#B22222">  Typically the classid is assigned and `<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>()` called in &lt;Class&gt;InitializePackage() (e.g. `<a href="../../../manualpages/Vec/VecInitializePackage.html">VecInitializePackage</a>()`).</font>
+
+<a name="line174">174: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoGetClass.html">PetscInfoGetClass</a>()`, `<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`, `<a href="../../../manualpages/Sys/PetscStrToArray.html">PetscStrToArray</a>()`, `<a href="../../../manualpages/Sys/PetscObjectGetName.html">PetscObjectGetName</a>()`</font>
+<a name="line175">175: </a><font color="#B22222">@*/</font>
+<a name="line176">176: </a><strong><font color="#4169E1"><a name="PetscInfoSetClasses"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoSetClasses.html">PetscInfoSetClasses</a>(<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> exclude, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, const char *const *classnames)</font></strong>
+<a name="line177">177: </a>{
+<a name="line178">178: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line179">179: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!PetscInfoClassesLocked, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"Trying to modify <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>() configuration after it has been locked to a read-only state. Usually, this is an *error*! To re-enable modification, you must reset <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>() by calling <a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>() first"</font>);
+<a name="line180">180: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrNArrayDestroy.html">PetscStrNArrayDestroy</a>(PetscInfoNumClasses, &amp;PetscInfoClassnames));
+<a name="line181">181: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrNArrayallocpy.html">PetscStrNArrayallocpy</a>(n, classnames, &amp;PetscInfoClassnames));
+<a name="line182">182: </a>  PetscInfoNumClasses    = n;
+<a name="line183">183: </a>  PetscInfoInvertClasses = exclude;
+<a name="line184">184: </a>  <font color="#B22222">/* Process sys class right away */</font>
+<a name="line185">185: </a>  {
+<a name="line186">186: </a>    const <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> id = PETSC_SMALLEST_CLASSID;
+
+<a name="line188">188: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"sys"</font>, 1, &amp;id));
+<a name="line189">189: </a>  }
+<a name="line190">190: </a>  PetscInfoClassesSet = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line191">191: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line192">192: </a>}
+
+<a name="line194">194: </a><font color="#B22222">/*@</font>
+<a name="line195">195: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoGetClass.html">PetscInfoGetClass</a> - Indicates whether the provided `classname` is marked as a filter in `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` as set by `<a href="../../../manualpages/Log/PetscInfoSetClasses.html">PetscInfoSetClasses</a>()`</font>
+
+<a name="line197">197: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line199">199: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line200">200: </a><font color="#B22222">. classname - Name of the class to search for</font>
+
+<a name="line202">202: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line203">203: </a><font color="#B22222">. found - `<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>` indicating whether the classname was found</font>
+
+<a name="line205">205: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line207">207: </a><font color="#B22222">  Note:</font>
+<a name="line208">208: </a><font color="#B22222">  Use `<a href="../../../manualpages/Sys/PetscObjectGetName.html">PetscObjectGetName</a>()` to retrieve an appropriate classname</font>
+
+<a name="line210">210: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetClasses.html">PetscInfoSetClasses</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`, `<a href="../../../manualpages/Sys/PetscObjectGetName.html">PetscObjectGetName</a>()`</font>
+<a name="line211">211: </a><font color="#B22222">@*/</font>
+<a name="line212">212: </a><strong><font color="#4169E1"><a name="PetscInfoGetClass"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoGetClass.html">PetscInfoGetClass</a>(const char classname[], <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *found)</font></strong>
+<a name="line213">213: </a>{
+<a name="line214">214: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> unused;
+
+<a name="line216">216: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line217">217: </a>  PetscAssertPointer(classname, 1);
+<a name="line218">218: </a>  PetscAssertPointer(found, 2);
+<a name="line219">219: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscEListFind.html">PetscEListFind</a>(PetscInfoNumClasses, (const char *const *)PetscInfoClassnames, classname ? classname : <font color="#666666">"sys"</font>, &amp;unused, found));
+<a name="line220">220: </a>  PetscInfoClassesLocked = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line221">221: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line222">222: </a>}
+
+<a name="line224">224: </a><font color="#B22222">/*@</font>
+<a name="line225">225: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoGetInfo.html">PetscInfoGetInfo</a> - Returns the current state of several flags for `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`</font>
+
+<a name="line227">227: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line229">229: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line230">230: </a><font color="#B22222">+ infoEnabled  - `<a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>` if `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>`(`<a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>`) has been called</font>
+<a name="line231">231: </a><font color="#B22222">. classesSet   - `<a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>` if the list of classes to filter for has been set</font>
+<a name="line232">232: </a><font color="#B22222">. exclude      - `<a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>` if the class filtering for `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` is inverted</font>
+<a name="line233">233: </a><font color="#B22222">. locked       - `<a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>` if the list of classes to filter for has been locked</font>
+<a name="line234">234: </a><font color="#B22222">- commSelfFlag - Enum indicating whether `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` will print for communicators of size 1, any size != 1, or all</font>
+<a name="line235">235: </a><font color="#B22222">    communicators</font>
+
+<a name="line237">237: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line239">239: </a><font color="#B22222">  Note:</font>
+<a name="line240">240: </a><font color="#B22222">  Initially commSelfFlag = `<a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_ALL</a>`</font>
+
+<a name="line242">242: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFilterCommSelf.html">PetscInfoSetFilterCommSelf</a>`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`</font>
+<a name="line243">243: </a><font color="#B22222">@*/</font>
+<a name="line244">244: </a><strong><font color="#4169E1"><a name="PetscInfoGetInfo"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoGetInfo.html">PetscInfoGetInfo</a>(<a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *infoEnabled, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *classesSet, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *exclude, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> *locked, <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PetscInfoCommFlag</a> *commSelfFlag)</font></strong>
+<a name="line245">245: </a>{
+<a name="line246">246: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line247">247: </a>  <font color="#4169E1">if</font> (infoEnabled) PetscAssertPointer(infoEnabled, 1);
+<a name="line248">248: </a>  <font color="#4169E1">if</font> (classesSet) PetscAssertPointer(classesSet, 2);
+<a name="line249">249: </a>  <font color="#4169E1">if</font> (exclude) PetscAssertPointer(exclude, 3);
+<a name="line250">250: </a>  <font color="#4169E1">if</font> (locked) PetscAssertPointer(locked, 4);
+<a name="line251">251: </a>  <font color="#4169E1">if</font> (commSelfFlag) PetscAssertPointer(commSelfFlag, 5);
+<a name="line252">252: </a>  <font color="#4169E1">if</font> (infoEnabled) *infoEnabled = PetscLogPrintInfo;
+<a name="line253">253: </a>  <font color="#4169E1">if</font> (classesSet) *classesSet = PetscInfoClassesSet;
+<a name="line254">254: </a>  <font color="#4169E1">if</font> (exclude) *exclude = PetscInfoInvertClasses;
+<a name="line255">255: </a>  <font color="#4169E1">if</font> (locked) *locked = PetscInfoClassesLocked;
+<a name="line256">256: </a>  <font color="#4169E1">if</font> (commSelfFlag) *commSelfFlag = PetscInfoCommFilter;
+<a name="line257">257: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line258">258: </a>}
+
+<a name="line260">260: </a><font color="#B22222">/*@</font>
+<a name="line261">261: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a> - Activates or deactivates a class based on the filtering status of `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`</font>
+
+<a name="line263">263: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line265">265: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line266">266: </a><font color="#B22222">+ classname  - Name of the class to activate/deactivate `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` for</font>
+<a name="line267">267: </a><font color="#B22222">. numClassID - Number of entries in `classIDs`</font>
+<a name="line268">268: </a><font color="#B22222">- classIDs   - Array containing all of the `<a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a>`s associated with `classname`</font>
+
+<a name="line270">270: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line271">271: </a><font color="#B22222">. -info [filename][:[~]&lt;list,of,classnames&gt;[:[~]self]] - specify which informative messages are printed, see `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`.</font>
+
+<a name="line273">273: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line275">275: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoActivateClass.html">PetscInfoActivateClass</a>()`, `<a href="../../../manualpages/Log/PetscInfoDeactivateClass.html">PetscInfoDeactivateClass</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`</font>
+<a name="line276">276: </a><font color="#B22222">@*/</font>
+<a name="line277">277: </a><strong><font color="#4169E1"><a name="PetscInfoProcessClass"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(const char classname[], <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> numClassID, const <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classIDs[])</font></strong>
+<a name="line278">278: </a>{
+<a name="line279">279: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> enabled, exclude, found, opt;
+<a name="line280">280: </a>  char      logList[256];
+
+<a name="line282">282: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line283">283: </a>  PetscAssertPointer(classname, 1);
+<a name="line284">284: </a>  <a href="../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>(numClassID &gt; 0, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Number of classids %"</font> PetscInt_FMT <font color="#666666">" &lt;= 0"</font>, numClassID);
+<a name="line285">285: </a>  <font color="#4169E1">if</font> (numClassID) PetscAssertPointer(classIDs, 3);
+<a name="line286">286: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoGetInfo.html">PetscInfoGetInfo</a>(&amp;enabled, NULL, &amp;exclude, NULL, NULL));
+<a name="line287">287: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsDeprecated_Private.html">PetscOptionsDeprecated_Private</a>(NULL, <font color="#666666">"-info_exclude"</font>, NULL, <font color="#666666">"3.13"</font>, <font color="#666666">"Use ~ with -info to indicate classes to exclude"</font>));
+<a name="line288">288: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-info_exclude"</font>, logList, <font color="#4169E1">sizeof</font>(logList), &amp;opt));
+<a name="line289">289: </a>  <font color="#4169E1">if</font> (opt) {
+<a name="line290">290: </a>    <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> pkg;
+
+<a name="line292">292: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrInList.html">PetscStrInList</a>(classname, logList, ',', &amp;pkg));
+<a name="line293">293: </a>    <font color="#4169E1">if</font> (pkg) {
+<a name="line294">294: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; numClassID; ++i) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoDeactivateClass.html">PetscInfoDeactivateClass</a>(classIDs[i]));
+<a name="line295">295: </a>    }
+<a name="line296">296: </a>  }
+<a name="line297">297: </a>  <a href="../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(PETSC_LARGEST_CLASSID - PETSC_SMALLEST_CLASSID &lt; (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>)<a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(PetscInfoNames), <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"PetscInfoNames array is too small for %s, need %d not %d"</font>, classname, PETSC_LARGEST_CLASSID - PETSC_SMALLEST_CLASSID + 1, (int)<a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(PetscInfoNames));
+<a name="line298">298: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; numClassID; ++i) {
+<a name="line299">299: </a>    const <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> idx = classIDs[i] - PETSC_SMALLEST_CLASSID;
+
+<a name="line301">301: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(PetscInfoNames[idx]));
+<a name="line302">302: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(classname, PetscInfoNames + idx));
+<a name="line303">303: </a>  }
+<a name="line304">304: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoGetClass.html">PetscInfoGetClass</a>(classname, &amp;found));
+<a name="line305">305: </a>  <font color="#4169E1">if</font> ((found &amp;&amp; exclude) || (!found &amp;&amp; !exclude)) {
+<a name="line306">306: </a>    <font color="#4169E1">if</font> (PetscInfoNumClasses &gt; 0) {
+<a name="line307">307: </a>      <font color="#B22222">/* Check if -info was called empty */</font>
+<a name="line308">308: </a>      <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; numClassID; ++i) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoDeactivateClass.html">PetscInfoDeactivateClass</a>(classIDs[i]));
+<a name="line309">309: </a>    }
+<a name="line310">310: </a>  } <font color="#4169E1">else</font> {
+<a name="line311">311: </a>    <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; numClassID; ++i) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoActivateClass.html">PetscInfoActivateClass</a>(classIDs[i]));
+<a name="line312">312: </a>  }
+<a name="line313">313: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line314">314: </a>}
+
+<a name="line316">316: </a><font color="#B22222">/*@</font>
+<a name="line317">317: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoSetFilterCommSelf.html">PetscInfoSetFilterCommSelf</a> - Sets `<a href="../../../manualpages/Log/PetscInfoCommFlag.html">PetscInfoCommFlag</a>` enum to determine communicator filtering for `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`</font>
+
+<a name="line319">319: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line321">321: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line322">322: </a><font color="#B22222">. commSelfFlag - Enum value indicating method with which to filter `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` based on the size of the communicator of the object calling `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`</font>
+
+<a name="line324">324: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line325">325: </a><font color="#B22222">. -info [filename][:[~]&lt;list,of,classnames&gt;[:[~]self]] - specify which informative messages are printed, See `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`.</font>
+
+<a name="line327">327: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line329">329: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoGetInfo.html">PetscInfoGetInfo</a>()`</font>
+<a name="line330">330: </a><font color="#B22222">@*/</font>
+<a name="line331">331: </a><strong><font color="#4169E1"><a name="PetscInfoSetFilterCommSelf"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoSetFilterCommSelf.html">PetscInfoSetFilterCommSelf</a>(<a href="../../../manualpages/Log/PetscInfoCommFlag.html">PetscInfoCommFlag</a> commSelfFlag)</font></strong>
+<a name="line332">332: </a>{
+<a name="line333">333: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line334">334: </a>  PetscInfoCommFilter = commSelfFlag;
+<a name="line335">335: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line336">336: </a>}
+
+<a name="line338">338: </a><font color="#B22222">/*@</font>
+<a name="line339">339: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a> - Configure `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` using command line options, enabling or disabling various calls to `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`</font>
+
+<a name="line341">341: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line343">343: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line344">344: </a><font color="#B22222">. options - Options database, use `NULL` for default global database</font>
+
+<a name="line346">346: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line347">347: </a><font color="#B22222">. -info [filename][:[~]&lt;list,of,classnames&gt;[:[~]self]] - specify which informative messages are printed, See `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`.</font>
+
+<a name="line349">349: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line351">351: </a><font color="#B22222">  Note:</font>
+<a name="line352">352: </a><font color="#B22222">  This function is called automatically during `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()` so users usually do not need to call it themselves.</font>
+
+<a name="line354">354: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFile.html">PetscInfoSetFile</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetClasses.html">PetscInfoSetClasses</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFilterCommSelf.html">PetscInfoSetFilterCommSelf</a>()`, `<a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>()`</font>
+<a name="line355">355: </a><font color="#B22222">@*/</font>
+<a name="line356">356: </a><strong><font color="#4169E1"><a name="PetscInfoSetFromOptions"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>(PetscOptions options)</font></strong>
+<a name="line357">357: </a>{
+<a name="line358">358: </a>  char      optstring[PETSC_MAX_PATH_LEN];
+<a name="line359">359: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> set;
+
+<a name="line361">361: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line362">362: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(options, NULL, <font color="#666666">"-info"</font>, optstring, <a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(optstring), &amp;set));
+<a name="line363">363: </a>  <font color="#4169E1">if</font> (set) {
+<a name="line364">364: </a>    size_t            size_loc0_, size_loc1_, size_loc2_;
+<a name="line365">365: </a>    char             *loc0_ = NULL, *loc1_ = NULL, *loc2_ = NULL;
+<a name="line366">366: </a>    char            **loc1_array  = NULL;
+<a name="line367">367: </a>    <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>         loc1_invert = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, loc2_invert = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line368">368: </a>    int               nLoc1_       = 0;
+<a name="line369">369: </a>    <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PetscInfoCommFlag</a> commSelfFlag = <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_ALL</a>;
+
+<a name="line371">371: </a>    PetscInfoClassesSet = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line372">372: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>(<a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line373">373: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(optstring, &amp;loc0_));
+<a name="line374">374: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrchr.html">PetscStrchr</a>(loc0_, ':', &amp;loc1_));
+<a name="line375">375: </a>    <font color="#4169E1">if</font> (loc1_) {
+<a name="line376">376: </a>      *loc1_++ = 0;
+<a name="line377">377: </a>      <font color="#4169E1">if</font> (*loc1_ == '~') {
+<a name="line378">378: </a>        loc1_invert = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line379">379: </a>        ++loc1_;
+<a name="line380">380: </a>      }
+<a name="line381">381: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrchr.html">PetscStrchr</a>(loc1_, ':', &amp;loc2_));
+<a name="line382">382: </a>    }
+<a name="line383">383: </a>    <font color="#4169E1">if</font> (loc2_) {
+<a name="line384">384: </a>      *loc2_++ = 0;
+<a name="line385">385: </a>      <font color="#4169E1">if</font> (*loc2_ == '~') {
+<a name="line386">386: </a>        loc2_invert = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line387">387: </a>        ++loc2_;
+<a name="line388">388: </a>      }
+<a name="line389">389: </a>    }
+<a name="line390">390: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrlen.html">PetscStrlen</a>(loc0_, &amp;size_loc0_));
+<a name="line391">391: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrlen.html">PetscStrlen</a>(loc1_, &amp;size_loc1_));
+<a name="line392">392: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrlen.html">PetscStrlen</a>(loc2_, &amp;size_loc2_));
+<a name="line393">393: </a>    <font color="#4169E1">if</font> (size_loc1_) {
+<a name="line394">394: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrtolower.html">PetscStrtolower</a>(loc1_));
+<a name="line395">395: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrToArray.html">PetscStrToArray</a>(loc1_, ',', &amp;nLoc1_, &amp;loc1_array));
+<a name="line396">396: </a>    }
+<a name="line397">397: </a>    <font color="#4169E1">if</font> (size_loc2_) {
+<a name="line398">398: </a>      <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> foundSelf;
+
+<a name="line400">400: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrtolower.html">PetscStrtolower</a>(loc2_));
+<a name="line401">401: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrcmp.html">PetscStrcmp</a>(<font color="#666666">"self"</font>, loc2_, &amp;foundSelf));
+<a name="line402">402: </a>      <font color="#4169E1">if</font> (foundSelf) commSelfFlag = loc2_invert ? <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_NO_SELF</a> : <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_ONLY_SELF</a>;
+<a name="line403">403: </a>    }
+<a name="line404">404: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoSetFile.html">PetscInfoSetFile</a>(size_loc0_ ? loc0_ : NULL, <font color="#666666">"w"</font>));
+<a name="line405">405: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoSetClasses.html">PetscInfoSetClasses</a>(loc1_invert, nLoc1_, (const char *const *)loc1_array));
+<a name="line406">406: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoSetFilterCommSelf.html">PetscInfoSetFilterCommSelf</a>(commSelfFlag));
+<a name="line407">407: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrToArrayDestroy.html">PetscStrToArrayDestroy</a>(nLoc1_, loc1_array));
+<a name="line408">408: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(loc0_));
+<a name="line409">409: </a>  }
+<a name="line410">410: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line411">411: </a>}
+
+<a name="line413">413: </a><font color="#B22222">/*@</font>
+<a name="line414">414: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a> - Destroys and resets internal `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` data structures.</font>
+
+<a name="line416">416: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line418">418: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line420">420: </a><font color="#B22222">  Notes:</font>
+<a name="line421">421: </a><font color="#B22222">  This is automatically called in `<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>()`. Useful for changing filters mid-program, or culling subsequent</font>
+<a name="line422">422: </a><font color="#B22222">  `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` calls down the line.</font>
+
+<a name="line424">424: </a><font color="#B22222">  Users calling this routine midway through a program should note that `<a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>()`</font>
+<a name="line425">425: </a><font color="#B22222">  constitutes a full reset of `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`. It flushes, then closes, the current info file,</font>
+<a name="line426">426: </a><font color="#B22222">  re-enables all classes, and resets all internal state. Finally -- and perhaps crucially -- it</font>
+<a name="line427">427: </a><font color="#B22222">  disables `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` as-if-by `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>(<a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>)`.</font>
+
+<a name="line429">429: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`</font>
+<a name="line430">430: </a><font color="#B22222">@*/</font>
+<a name="line431">431: </a><strong><font color="#4169E1"><a name="PetscInfoDestroy"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>(void)</font></strong>
+<a name="line432">432: </a>{
+<a name="line433">433: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line434">434: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>(<a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line435">435: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrNArrayDestroy.html">PetscStrNArrayDestroy</a>(PetscInfoNumClasses, &amp;PetscInfoClassnames));
+<a name="line436">436: </a>  <font color="#4169E1">if</font> (PetscInfoFile) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFFlush.html">PetscFFlush</a>(PetscInfoFile));
+<a name="line437">437: </a>  <font color="#4169E1">if</font> (PetscInfoFilename) {
+<a name="line438">438: </a>    <a href="../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>(PetscInfoFile, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_NULL</a>, <font color="#666666">"Have non-null <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a> file '%s', but corresponding FILE handle is null!"</font>, PetscInfoFilename);
+<a name="line439">439: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(PetscInfoFilename));
+<a name="line440">440: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFClose.html">PetscFClose</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, PetscInfoFile));
+<a name="line441">441: </a>  }
+<a name="line442">442: </a>  <a href="../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>(<a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(PetscInfoFlags) == <a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(PetscInfoNames), <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"PetscInfoFlags and PetscInfoNames must be the same size"</font>);
+<a name="line443">443: </a>  <font color="#4169E1">for</font> (size_t i = 0; i &lt; <a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(PetscInfoFlags); ++i) {
+<a name="line444">444: </a>    PetscInfoFlags[i] = 1;
+<a name="line445">445: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFree.html">PetscFree</a>(PetscInfoNames[i]));
+<a name="line446">446: </a>  }
+
+<a name="line448">448: </a>  PetscInfoFile          = NULL;
+<a name="line449">449: </a>  PetscInfoClassesLocked = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line450">450: </a>  PetscInfoInvertClasses = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line451">451: </a>  PetscInfoClassesSet    = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line452">452: </a>  PetscInfoNumClasses    = -1;
+<a name="line453">453: </a>  PetscInfoCommFilter    = <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_ALL</a>;
+<a name="line454">454: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line455">455: </a>}
+
+<a name="line457">457: </a><strong><font color="#4169E1"><a name="PetscInfoSetClassActivation_Private"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscInfoSetClassActivation_Private(<a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classid, int value)</font></strong>
+<a name="line458">458: </a>{
+<a name="line459">459: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line460">460: </a>  <font color="#4169E1">if</font> (!classid) classid = PETSC_SMALLEST_CLASSID;
+<a name="line461">461: </a>  PetscInfoFlags[classid - PETSC_SMALLEST_CLASSID] = value;
+<a name="line462">462: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line463">463: </a>}
+
+<a name="line465">465: </a><font color="#B22222">/*@</font>
+<a name="line466">466: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoDeactivateClass.html">PetscInfoDeactivateClass</a> - Deactivates `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` messages for a PETSc object class.</font>
+
+<a name="line468">468: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line470">470: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line471">471: </a><font color="#B22222">. classid - The object class,  e.g., `MAT_CLASSID`, `SNES_CLASSID`, etc.</font>
+
+<a name="line473">473: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line474">474: </a><font color="#B22222">. -info [filename][:[~]&lt;list,of,classnames&gt;[:[~]self]] - specify which informative messages are printed, See `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`.</font>
+
+<a name="line476">476: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line478">478: </a><font color="#B22222">  Note:</font>
+<a name="line479">479: </a><font color="#B22222">  One can pass 0 to deactivate all messages that are not associated with an object.</font>
+
+<a name="line481">481: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfoActivateClass.html">PetscInfoActivateClass</a>()`, `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`</font>
+<a name="line482">482: </a><font color="#B22222">@*/</font>
+<a name="line483">483: </a><strong><font color="#4169E1"><a name="PetscInfoDeactivateClass"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoDeactivateClass.html">PetscInfoDeactivateClass</a>(<a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classid)</font></strong>
+<a name="line484">484: </a>{
+<a name="line485">485: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line486">486: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscInfoSetClassActivation_Private(classid, 0));
+<a name="line487">487: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line488">488: </a>}
+
+<a name="line490">490: </a><font color="#B22222">/*@</font>
+<a name="line491">491: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfoActivateClass.html">PetscInfoActivateClass</a> - Activates `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` messages for a PETSc object class.</font>
+
+<a name="line493">493: </a><font color="#B22222">  Not Collective</font>
+
+<a name="line495">495: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line496">496: </a><font color="#B22222">. classid - The object class, e.g., `MAT_CLASSID`, `SNES_CLASSID`, etc.</font>
+
+<a name="line498">498: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line499">499: </a><font color="#B22222">. -info [filename][:[~]&lt;list,of,classnames&gt;[:[~]self]] - specify which informative messages are printed, See `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`.</font>
+
+<a name="line501">501: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line503">503: </a><font color="#B22222">  Note:</font>
+<a name="line504">504: </a><font color="#B22222">  One can pass 0 to activate all messages that are not associated with an object.</font>
+
+<a name="line506">506: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfoDeactivateClass.html">PetscInfoDeactivateClass</a>()`, `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`</font>
+<a name="line507">507: </a><font color="#B22222">@*/</font>
+<a name="line508">508: </a><strong><font color="#4169E1"><a name="PetscInfoActivateClass"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfoActivateClass.html">PetscInfoActivateClass</a>(<a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classid)</font></strong>
+<a name="line509">509: </a>{
+<a name="line510">510: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line511">511: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscInfoSetClassActivation_Private(classid, 1));
+<a name="line512">512: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line513">513: </a>}
+
+<a name="line515">515: </a><font color="#B22222">/*</font>
+<a name="line516">516: </a><font color="#B22222">   If the option -history was used, then all printed <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()</font>
+<a name="line517">517: </a><font color="#B22222">  messages are also printed to the history file, called by default</font>
+<a name="line518">518: </a><font color="#B22222">  .petschistory in ones home directory.</font>
+<a name="line519">519: </a><font color="#B22222">*/</font>
+<a name="line520">520: </a>PETSC_INTERN FILE          *petsc_history;
+<a name="line521">521: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscVFPrintf_Internal(FILE *, const char[], ...)</font></strong>;
+
+<a name="line523">523: </a><font color="#B22222">/*MC</font>
+<a name="line524">524: </a><font color="#B22222">  <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a> - Logs informative data</font>
+
+<a name="line526">526: </a><font color="#B22222">  Synopsis:</font>
+<a name="line527">527: </a>#include <A href="../../../include/petsclog.h.html">&lt;petsclog.h&gt;</A>
+<a name="line528">528: </a><font color="#B22222">  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(<a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a> obj, const char message[], ...)</font>
+
+<a name="line530">530: </a><font color="#B22222">  Collective</font>
+
+<a name="line532">532: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line533">533: </a><font color="#B22222">+ obj     - object most closely associated with the logging statement or `NULL`</font>
+<a name="line534">534: </a><font color="#B22222">- message - logging message using standard "printf" format</font>
+
+<a name="line536">536: </a><font color="#B22222">  Options Database Key:</font>
+<a name="line537">537: </a><font color="#B22222">. -info [filename][:[~]&lt;list,of,classnames&gt;[:[~]self]] - specify which informative messages are printed</font>
+
+<a name="line539">539: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line541">541: </a><font color="#B22222">  Notes:</font>
+<a name="line542">542: </a><font color="#B22222">  `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` prints only from the first processor in the communicator of `obj`.</font>
+<a name="line543">543: </a><font color="#B22222">  If `obj` is `NULL`, the `<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>` communicator is used, i.e. every rank of `<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>` prints the message.</font>
+
+<a name="line545">545: </a><font color="#B22222">  The optional &lt;list,of,classnames&gt; is a comma separated list of enabled classes, e.g. `vec,mat,ksp`.</font>
+<a name="line546">546: </a><font color="#B22222">  If this list is not specified, all classes are enabled.</font>
+<a name="line547">547: </a><font color="#B22222">  Prepending the list with ~ means inverted selection, i.e. all classes except the listed are enabled.</font>
+<a name="line548">548: </a><font color="#B22222">  A special classname `sys` relates to `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` with `obj` being `NULL`.</font>
+
+<a name="line550">550: </a><font color="#B22222">  The optional keyword `self` specifies that `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` is enabled only for a communicator size of 1 (e.g. `<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>`).</font>
+<a name="line551">551: </a><font color="#B22222">  By contrast, ~self means that `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` is enabled only for communicator size &gt; 1 (e.g. `<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>`), i.e. those `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` calls which print from every rank of `<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>` are disabled.</font>
+
+<a name="line553">553: </a><font color="#B22222">  All classname/self matching is case insensitive. Filename is case sensitive.</font>
+
+<a name="line555">555: </a><font color="#B22222">  Example of Usage:</font>
+<a name="line556">556: </a><font color="#B22222">.vb</font>
+<a name="line557">557: </a><font color="#B22222">     <a href="../../../manualpages/Mat/Mat.html">Mat</a> A;</font>
+<a name="line558">558: </a><font color="#B22222">     <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> alpha;</font>
+<a name="line559">559: </a><font color="#B22222">     ...</font>
+<a name="line560">560: </a><font color="#B22222">     <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(A,"Matrix uses parameter alpha=%" PetscInt_FMT "\n",alpha);</font>
+<a name="line561">561: </a><font color="#B22222">.ve</font>
+
+<a name="line563">563: </a><font color="#B22222">  Examples using Options:</font>
+<a name="line564">564: </a><font color="#B22222">  Each call of the form</font>
+<a name="line565">565: </a><font color="#B22222">.vb</font>
+<a name="line566">566: </a><font color="#B22222">     <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(obj, msg);</font>
+<a name="line567">567: </a><font color="#B22222">     <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(obj, msg, arg1);</font>
+<a name="line568">568: </a><font color="#B22222">     <a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(obj, msg, arg1, arg2);</font>
+<a name="line569">569: </a><font color="#B22222">.ve</font>
+<a name="line570">570: </a><font color="#B22222">  is evaluated as follows.</font>
+<a name="line571">571: </a><font color="#B22222">.vb</font>
+<a name="line572">572: </a><font color="#B22222">    -info or -info :: prints `msg` to `PETSC_STDOUT`, for any PETSc `obj` regardless class or communicator</font>
+<a name="line573">573: </a><font color="#B22222">    -info :mat:self prints `msg` to `PETSC_STDOUT` only if class of `obj` is `<a href="../../../manualpages/Mat/Mat.html">Mat</a>`, and its communicator has size = 1</font>
+<a name="line574">574: </a><font color="#B22222">    -info myInfoFileName:~vec:~self prints `msg` to file named `myInfoFileName`, only if the `obj`'s class is `NULL` or other than `<a href="../../../manualpages/Vec/Vec.html">Vec</a>`, and `obj`'s communicator has size &gt; 1</font>
+<a name="line575">575: </a><font color="#B22222">    -info :sys prints to `PETSC_STDOUT` only if `obj` is `NULL`</font>
+<a name="line576">576: </a><font color="#B22222">    -info :sys:~self deactivates all info messages because `sys` means `obj` = `NULL` which implies `<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>` but `~self` filters out everything on `<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>`.</font>
+<a name="line577">577: </a><font color="#B22222">.ve</font>
+
+<a name="line579">579: </a><font color="#B22222">  Fortran Notes:</font>
+<a name="line580">580: </a><font color="#B22222">  This function does not take the `obj` argument, there is only the `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()`</font>
+<a name="line581">581: </a><font color="#B22222">  version, not `<a href="../../../manualpages/Log/PetscInfo.html">PetscInfo</a>()` etc.</font>
+
+<a name="line583">583: </a><font color="#B22222">.seealso: [](sec_PetscInfo), `<a href="../../../manualpages/Log/PetscInfoAllow.html">PetscInfoAllow</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFromOptions.html">PetscInfoSetFromOptions</a>()`, `<a href="../../../manualpages/Log/PetscInfoEnabled.html">PetscInfoEnabled</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFile.html">PetscInfoSetFile</a>()`, `<a href="../../../manualpages/Log/PetscInfoGetFile.html">PetscInfoGetFile</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetClasses.html">PetscInfoSetClasses</a>()`,</font>
+<a name="line584">584: </a><font color="#B22222">          `<a href="../../../manualpages/Log/PetscInfoGetClass.html">PetscInfoGetClass</a>()`, `<a href="../../../manualpages/Log/PetscInfoGetInfo.html">PetscInfoGetInfo</a>()`, `<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>()`, `<a href="../../../manualpages/Log/PetscInfoSetFilterCommSelf.html">PetscInfoSetFilterCommSelf</a>()`, `<a href="../../../manualpages/Log/PetscInfoDestroy.html">PetscInfoDestroy</a>()`, `<a href="../../../manualpages/Log/PetscInfoDeactivateClass.html">PetscInfoDeactivateClass</a>()`,</font>
+<a name="line585">585: </a><font color="#B22222">          `<a href="../../../manualpages/Log/PetscInfoActivateClass.html">PetscInfoActivateClass</a>()`</font>
+<a name="line586">586: </a><font color="#B22222">M*/</font>
+<a name="line587">587: </a><strong><font color="#4169E1"><a name="PetscInfo_Private"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscInfo_Private(const char func[], <a href="../../../manualpages/Sys/PetscObject.html">PetscObject</a> obj, const char message[], ...)</font></strong>
+<a name="line588">588: </a>{
+<a name="line589">589: </a>  <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classid = PETSC_SMALLEST_CLASSID;
+<a name="line590">590: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>    enabled = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line591">591: </a>  <a href="../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>     comm    = MPI_COMM_NULL;
+<a name="line592">592: </a>  <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>  rank    = 0;
+<a name="line593">593: </a>  const char  *otype   = NULL;
+
+<a name="line595">595: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line596">596: </a>  <font color="#4169E1">if</font> (obj) {
+<a name="line598">598: </a>    classid = obj-&gt;classid;
+<a name="line599">599: </a>  }
+<a name="line600">600: </a>  PetscAssertPointer(message, 3);
+<a name="line601">601: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoEnabled.html">PetscInfoEnabled</a>(classid, &amp;enabled));
+<a name="line602">602: </a>  <font color="#4169E1">if</font> (!enabled) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line603">603: </a>  <font color="#4169E1">if</font> (obj) {
+<a name="line604">604: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectGetComm.html">PetscObjectGetComm</a>(obj, &amp;comm));
+<a name="line605">605: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscObjectGetType.html">PetscObjectGetType</a>(obj, &amp;otype));
+<a name="line606">606: </a>    <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(comm, &amp;rank));
+<a name="line607">607: </a>  }
+<a name="line608">608: </a>  <font color="#B22222">/* rank &gt; 0 always jumps out */</font>
+<a name="line609">609: </a>  <font color="#4169E1">if</font> (rank) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line610">610: </a>  <font color="#4169E1">else</font> {
+<a name="line611">611: </a>    <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> size = 1;
+
+<a name="line613">613: </a>    <font color="#4169E1">if</font> (comm != MPI_COMM_NULL) <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_size.html#MPI_Comm_size">MPI_Comm_size</a>(comm, &amp;size));
+<a name="line614">614: </a>    <font color="#B22222">/* If no self printing is allowed, and size too small, get out */</font>
+<a name="line615">615: </a>    <font color="#4169E1">if</font> ((PetscInfoCommFilter == <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_NO_SELF</a>) &amp;&amp; (size &lt; 2)) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line616">616: </a>    <font color="#B22222">/* If ONLY self printing, and size too big, get out */</font>
+<a name="line617">617: </a>    <font color="#4169E1">if</font> ((PetscInfoCommFilter == <a href="../../../manualpages/Log/PetscInfoCommFlag.html">PETSC_INFO_COMM_ONLY_SELF</a>) &amp;&amp; (size &gt; 1)) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line618">618: </a>  }
+<a name="line619">619: </a>  <font color="#B22222">/* Mute info messages within this function */</font>
+<a name="line620">620: </a>  {
+<a name="line621">621: </a>    const <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> oldflag = PetscLogPrintInfo;
+<a name="line622">622: </a>    va_list         Argp;
+<a name="line623">623: </a>    <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>     urank;
+<a name="line624">624: </a>    char            string[8 * 1024];
+<a name="line625">625: </a>    size_t          fullLength, len;
+
+<a name="line627">627: </a>    PetscLogPrintInfo = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line628">628: </a>    <a href="../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(MPI_COMM_WORLD, &amp;urank));
+<a name="line629">629: </a>    <font color="#4169E1">if</font> (otype) {
+<a name="line630">630: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(string, <a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(string), <font color="#666666">"[%d] &lt;%s:%s&gt; %s(): "</font>, urank, PetscInfoNames[classid - PETSC_SMALLEST_CLASSID], otype, func));
+<a name="line631">631: </a>    } <font color="#4169E1">else</font> {
+<a name="line632">632: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscSNPrintf.html">PetscSNPrintf</a>(string, <a href="../../../manualpages/Sys/PETSC_STATIC_ARRAY_LENGTH.html">PETSC_STATIC_ARRAY_LENGTH</a>(string), <font color="#666666">"[%d] &lt;%s&gt; %s(): "</font>, urank, PetscInfoNames[classid - PETSC_SMALLEST_CLASSID], func));
+<a name="line633">633: </a>    }
+<a name="line634">634: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrlen.html">PetscStrlen</a>(string, &amp;len));
+<a name="line635">635: </a>    va_start(Argp, message);
+<a name="line636">636: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscVSNPrintf.html">PetscVSNPrintf</a>(string + len, 8 * 1024 - len, message, &amp;fullLength, Argp));
+<a name="line637">637: </a>    va_end(Argp);
+<a name="line638">638: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscVFPrintf_Internal(PetscInfoFile, <font color="#666666">"%s"</font>, string));
+<a name="line639">639: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFFlush.html">PetscFFlush</a>(PetscInfoFile));
+<a name="line640">640: </a>    <font color="#4169E1">if</font> (petsc_history) {
+<a name="line641">641: </a>      va_start(Argp, message);
+<a name="line642">642: </a>      <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*PetscVFPrintf)(petsc_history, message, Argp));
+<a name="line643">643: </a>      va_end(Argp);
+<a name="line644">644: </a>    }
+<a name="line645">645: </a>    PetscLogPrintInfo = oldflag;
+<a name="line646">646: </a>  }
+<a name="line647">647: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line648">648: </a>}
+</pre>
+</body>
+
+</html>
+

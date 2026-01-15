@@ -1,0 +1,837 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Developing a Merge Request &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'developers/contributing/developingmr';</script>
+    <link rel="icon" href="../../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Submitting a Merge Request" href="submittingmr.html" />
+    <link rel="prev" title="Contributing to PETSc" href="index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../communication.html">PETSc Developers Communication Channels</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Contributing to PETSc</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Developing a Merge Request</a></li>
+<li class="toctree-l2"><a class="reference internal" href="submittingmr.html">Submitting a Merge Request</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipelines.html">GitLab CI Pipelines</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../mrmanagement.html">Merge request management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mrfork.html">Checkout fork merge request branch</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../development.html">PETSc Development Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../style.html">PETSc Style and Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../buildsystem.html">BuildSystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">PETSc Testing System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../documentation.html">Developing PETSc Documentation</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../design.html">The Design of PETSc</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../kernel.html">The PETSc Kernel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../objects.html">Basic Object Design and Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../callbacks.html">How the Solvers Handle User Provided Callbacks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../matrices.html">The Various Matrix Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../articles.html">Articles about PETSc Design</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../meetings-developers.html">Meeting organization practices</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Developers</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Contributing to PETSc</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Developing...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="developing-a-merge-request">
+<span id="ch-developingmr"></span><h1>Developing a Merge Request<a class="headerlink" href="#developing-a-merge-request" title="Link to this heading">#</a></h1>
+<section id="select-the-integration-branch">
+<span id="sec-integration-branches"></span><h2>Select the integration branch<a class="headerlink" href="#select-the-integration-branch" title="Link to this heading">#</a></h2>
+<p><strong>Integration branches</strong> are permanent branches in a repository that developers can contribute to. PETSc has two integration branches: <code class="docutils notranslate"><span class="pre">release</span></code>
+and <code class="docutils notranslate"><span class="pre">main</span></code>. <strong>Feature branches</strong> are temporary branches created by developers to add or change a feature. A new feature branch is the basis for each
+merge request.</p>
+<section id="release">
+<span id="sec-release-branch"></span><h3><code class="docutils notranslate"><span class="pre">release</span></code><a class="headerlink" href="#release" title="Link to this heading">#</a></h3>
+<p>The <code class="docutils notranslate"><span class="pre">release</span></code> branch contains the latest PETSc release including bug-fixes.</p>
+<p>Bug-fixes, along with most documentation fixes, should start from <code class="docutils notranslate"><span class="pre">release</span></code>.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>fetch
+<span class="gp">$ </span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>yourname/fix-component-name<span class="w"> </span>origin/release
+</pre></div>
+</div>
+<p>Bug-fix updates, about every month, (e.g. 3.17.1) are tagged on <code class="docutils notranslate"><span class="pre">release</span></code> (e.g. v3.17.1).</p>
+</section>
+<section id="main">
+<span id="sec-main-branch"></span><h3><code class="docutils notranslate"><span class="pre">main</span></code><a class="headerlink" href="#main" title="Link to this heading">#</a></h3>
+<p>The <code class="docutils notranslate"><span class="pre">main</span></code> branch contains everything in the release branch as well as new features that have passed all testing
+and will be in the next release (e.g. version 3.18). Users developing software based
+on recently-added features in PETSc should follow <code class="docutils notranslate"><span class="pre">main</span></code>.</p>
+<p>New features should start from <code class="docutils notranslate"><span class="pre">main</span></code>.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>fetch
+<span class="gp">$ </span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>yourname/fix-component-name<span class="w"> </span>origin/main
+</pre></div>
+</div>
+</section>
+</section>
+<section id="start-a-new-feature-branch">
+<span id="sec-developing-a-new-feature"></span><h2>Start a new feature branch<a class="headerlink" href="#start-a-new-feature-branch" title="Link to this heading">#</a></h2>
+<ul>
+<li><p>Determine the appropriate integration_branch to start from, <code class="docutils notranslate"><span class="pre">main</span></code> or <code class="docutils notranslate"><span class="pre">release</span></code> (for documentation and bug fixes only).</p></li>
+<li><p>Create and switch to a new feature branch:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>fetch
+<span class="gp">$ </span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>&lt;loginname&gt;/&lt;affected-package&gt;-&lt;short-description&gt;<span class="w"> </span>origin/main<span class="w">  </span><span class="c1"># or origin/release</span>
+</pre></div>
+</div>
+<p>For example, Barry’s new feature branch on removing CPP in <code class="docutils notranslate"><span class="pre">snes/</span></code> will
+use</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>barry/snes-removecpp<span class="w"> </span>origin/main
+</pre></div>
+</div>
+<p>Use all lowercase and no additional underscores in the branch name.</p>
+</li>
+</ul>
+</section>
+<section id="develop-your-code">
+<h2>Develop your code<a class="headerlink" href="#develop-your-code" title="Link to this heading">#</a></h2>
+<ul>
+<li><p>Write code and tests.</p></li>
+<li><p>For any new features or API changes you introduced add information on them to <code class="docutils notranslate"><span class="pre">doc/changes/dev.rst</span></code>.</p></li>
+<li><p>Inspect changes and stage code using standard Git commands, e.g.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>status
+<span class="gp">$ </span>git<span class="w"> </span>add<span class="w"> </span>file1<span class="w"> </span>file2
+<span class="gp">$ </span>git<span class="w"> </span>commit
+</pre></div>
+</div>
+</li>
+<li><p>Commit code with good commit message, for example</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>commit
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>ComponentName: one-line explanation of commit
+
+After a blank line, write a more detailed explanation of the commit. Many tools do not auto-wrap this part, so wrap paragraph text at a reasonable length. Commit messages are meant for other people to read, possibly months or years later, so describe the rationale for the change in a manner that will make sense later, and which will be provide helpful search terms.
+
+Use the imperative, e.g. &quot;Fix bug&quot;, not &quot;Fixed bug&quot;.
+
+If any interfaces have changed, the commit should fix occurrences in PETSc itself and the message should state its impact on users.
+
+We have defined several standard commit message tags you should use; this makes it easy to search for specific types of contributions. Multiple tags may be used in the same commit message.
+
+/spend 1h or 30m
+
+If other people contributed significantly to a commit, perhaps by reporting bugs or by writing an initial version of the patch, acknowledge them using tags at the end of the commit message.
+
+Reported-by: Helpful User &lt;helpful@example.com&gt;
+Based-on-patch-by: Original Idea &lt;original@example.com&gt;
+Thanks-to: Incremental Improver &lt;improver@example.com&gt;
+
+If work is done for a particular well defined funding source or project you should label the commit with one or more of the tags
+
+Funded-by: My funding source
+Project: My project name
+</pre></div>
+</div>
+</li>
+<li><p>Push the feature branch to the remote repository as desired:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">% </span>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>barry/snes-removecpp
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="test-your-branch">
+<h2>Test your branch<a class="headerlink" href="#test-your-branch" title="Link to this heading">#</a></h2>
+<ul>
+<li><p>Include <a class="reference internal" href="../testing.html"><span class="doc">tests</span></a> which cover any changes to the source code.</p></li>
+<li><p><a class="reference internal" href="../../manual/tests.html#sec-runningtests"><span class="std std-ref">Run the full test suite</span></a> on your machine.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>alltests<span class="w"> </span><span class="nv">TIMEOUT</span><span class="o">=</span><span class="m">600</span>
+</pre></div>
+</div>
+</li>
+<li><p>Run the source checkers on your machine.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>checkbadSource
+<span class="gp">$ </span>make<span class="w"> </span>clangformat
+<span class="gp">$ </span>make<span class="w"> </span>lint
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="maintain-a-clean-commit-history">
+<span id="sec-clean-commit-history"></span><h2>Maintain a clean commit history<a class="headerlink" href="#maintain-a-clean-commit-history" title="Link to this heading">#</a></h2>
+<p>If your contribution can be logically decomposed into 2 or more
+separate contributions, submit them in sequence with different
+branches and merge requests instead of all at once.</p>
+<p>Often a branch’s commit history does not present a logical series of changes.
+Extra commits from bug-fixes or tiny improvements may accumulate. One commit may contain multiple orthogonal changes.
+The order of changes may be incorrect. Branches without a clean commit history will often break <code class="docutils notranslate"><span class="pre">git</span> <span class="pre">bisect</span></code>.
+Ideally, each commit in an MR will pass the PETSc CI testing, while presenting a small-as-possible set of very closely related changes.</p>
+<p>Use different commits for:</p>
+<ul class="simple">
+<li><p>fixing formatting and spelling mistakes,</p></li>
+<li><p>fixing a bug,</p></li>
+<li><p>adding a new feature,</p></li>
+<li><p>adding another new feature.</p></li>
+</ul>
+<p>Rewriting history can be done in <a class="reference external" href="https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History">several ways</a>; the easiest is often with the interactive <code class="docutils notranslate"><span class="pre">rebase</span></code> command, which allows one to combine (“squash”), rearrange, and edit commits.</p>
+<p>It is better to clean up your commits regularly than to wait until you have a large number of them.</p>
+<p>For example, if you have made three commits and the most recent two are fixes for the first, you could use</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>rebase<span class="w"> </span>-i<span class="w"> </span>HEAD~3
+</pre></div>
+</div>
+<p>If the branch has already been pushed, the rewritten branch is not compatible with the remote copy of the branch. You must force push your changes with</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>push<span class="w"> </span>-f<span class="w"> </span>origin<span class="w"> </span>branch-name
+</pre></div>
+</div>
+<p>to update the remote branch with your copy. This must be done with extreme care and only if you know someone else has not changed the remote copy of the branch,
+otherwise you will lose those changes. Never do a <code class="docutils notranslate"><span class="pre">git</span> <span class="pre">pull</span></code> immediately after you rebase since that will merge the old branch (from GitLab) into your local one and create a mess <a class="footnote-reference brackets" href="#block-ugly-pull-merge" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.</p>
+<p>You can use <code class="docutils notranslate"><span class="pre">git</span> <span class="pre">log</span></code> to see the recent changes to your branch and help determine what commits should be rearranged, combined, or split.
+You may also find it helpful to use an additional tool such as
+<a class="reference external" href="https://git-scm.com/docs/git-gui/">git-gui</a>, <a class="reference external" href="https://github.com/jesseduffield/lazygit">lazygit</a>, or <a class="reference external" href="https://git-scm.com/downloads/guis">various GUI tools</a>.</p>
+</section>
+<section id="rebase-your-branch-against-the-integration-branch">
+<span id="sec-rebasing"></span><h2>Rebase your branch against the integration branch<a class="headerlink" href="#rebase-your-branch-against-the-integration-branch" title="Link to this heading">#</a></h2>
+<p>You may also need to occasionally <a class="reference external" href="https://git-scm.com/book/en/v2/Git-Branching-Rebasing">rebase</a> your branch onto to the latest version of your <a class="reference internal" href="#sec-integration-branches"><span class="std std-ref">integration branch</span></a> <a class="footnote-reference brackets" href="#rebase-not-merge-upstream" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>, if the integration branch has had relevant changes since you started working on your feature branch.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>fetch<span class="w"> </span>origin<span class="w">                              </span><span class="c1"># assume origin --&gt; PETSc upstream</span>
+<span class="gp">$ </span>git<span class="w"> </span>checkout<span class="w"> </span>myname/component-feature
+<span class="gp">$ </span>git<span class="w"> </span>branch<span class="w"> </span>myname/component-feature-backup-1<span class="w">  </span><span class="c1"># optional</span>
+<span class="gp">$ </span>git<span class="w"> </span>rebase<span class="w"> </span>origin/main<span class="w">                        </span><span class="c1"># or origin/release</span>
+</pre></div>
+</div>
+<p>Note that this type of rebasing is different than the <code class="docutils notranslate"><span class="pre">rebase</span> <span class="pre">-i</span></code> process for organizing your commits in a coherent manner.</p>
+<p class="rubric">Footnotes</p>
+</section>
+</section>
+<hr class="footnotes docutils" />
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="block-ugly-pull-merge" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>You may wish to <a class="reference external" href="https://git-scm.com/docs/git-config#Documentation/git-config.txt-pullff">make it impossible to perform these usually-undesired “non fast-forward” merges when pulling</a>, with <code class="docutils notranslate"><span class="pre">git</span> <span class="pre">config</span> <span class="pre">--global</span> <span class="pre">pull.ff</span> <span class="pre">only</span></code>.</p>
+</aside>
+<aside class="footnote brackets" id="rebase-not-merge-upstream" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>Rebasing is generally preferable to <a class="reference external" href="http://yarchive.net/comp/linux/git_merges_from_upstream.html">merging an upstream branch</a>.</p>
+</aside>
+</aside>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Contributing to PETSc</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="submittingmr.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Submitting a Merge Request</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#select-the-integration-branch">Select the integration branch</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#release"><code class="docutils notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#main"><code class="docutils notranslate"><span class="pre">main</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-a-new-feature-branch">Start a new feature branch</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#develop-your-code">Develop your code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#test-your-branch">Test your branch</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maintain-a-clean-commit-history">Maintain a clean commit history</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rebase-your-branch-against-the-integration-branch">Rebase your branch against the integration branch</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/developers/contributing/developingmr.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../../_sources/developers/contributing/developingmr.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

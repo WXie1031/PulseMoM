@@ -1,0 +1,406 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/sbaij/seq/aijsbaij.c">Actual source code: aijsbaij.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:01+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../src/mat/impls/aij/seq/aij.h.html">&lt;../src/mat/impls/aij/seq/aij.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../src/mat/impls/baij/seq/baij.h.html">&lt;../src/mat/impls/baij/seq/baij.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../src/mat/impls/sbaij/seq/sbaij.h.html">&lt;../src/mat/impls/sbaij/seq/sbaij.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#4169E1"><a name="MatConvert_SeqSBAIJ_SeqAIJ"></a>PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_SeqSBAIJ_SeqAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../manualpages/Mat/MatType.html">MatType</a> newtype, <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a> reuse, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *newmat)</font></strong>
+<a name="line6">  6: </a>{
+<a name="line7">  7: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>           B;
+<a name="line8">  8: </a>  Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A-&gt;data;
+<a name="line9">  9: </a>  Mat_SeqAIJ   *b;
+<a name="line10"> 10: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     *ai = a-&gt;i, *aj = a-&gt;j, m = A-&gt;rmap-&gt;N, n = A-&gt;cmap-&gt;n, i, j, k, *bi, *bj, *rowlengths, nz, *rowstart, itmp;
+<a name="line11"> 11: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs = A-&gt;rmap-&gt;bs, bs2 = bs * bs, mbs = A-&gt;rmap-&gt;N / bs, diagcnt = 0;
+<a name="line12"> 12: </a>  MatScalar    *av, *bv;
+<a name="line13"> 13: </a><font color="#A020F0">#if defined(PETSC_USE_COMPLEX)</font>
+<a name="line14"> 14: </a>  const int aconj = A-&gt;hermitian == <a href="../../../../../manualpages/Sys/PetscBool3.html">PETSC_BOOL3_TRUE</a> ? 1 : 0;
+<a name="line15"> 15: </a><font color="#A020F0">#else</font>
+<a name="line16"> 16: </a>  const int aconj = 0;
+<a name="line17"> 17: </a><font color="#A020F0">#endif</font>
+
+<a name="line19"> 19: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line20"> 20: </a>  <font color="#B22222">/* compute rowlengths of newmat */</font>
+<a name="line21"> 21: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc2.html">PetscMalloc2</a>(m, &amp;rowlengths, m + 1, &amp;rowstart));
+
+<a name="line23"> 23: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) rowlengths[i * bs] = 0;
+<a name="line24"> 24: </a>  k = 0;
+<a name="line25"> 25: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) {
+<a name="line26"> 26: </a>    nz = ai[i + 1] - ai[i];
+<a name="line27"> 27: </a>    <font color="#4169E1">if</font> (nz) {
+<a name="line28"> 28: </a>      rowlengths[k] += nz; <font color="#B22222">/* no. of upper triangular blocks */</font>
+<a name="line29"> 29: </a>      <font color="#4169E1">if</font> (*aj == i) {
+<a name="line30"> 30: </a>        aj++;
+<a name="line31"> 31: </a>        diagcnt++;
+<a name="line32"> 32: </a>        nz--;
+<a name="line33"> 33: </a>      } <font color="#B22222">/* skip diagonal */</font>
+<a name="line34"> 34: </a>      <font color="#4169E1">for</font> (j = 0; j &lt; nz; j++) { <font color="#B22222">/* no. of lower triangular blocks */</font>
+<a name="line35"> 35: </a>        rowlengths[(*aj) * bs]++;
+<a name="line36"> 36: </a>        aj++;
+<a name="line37"> 37: </a>      }
+<a name="line38"> 38: </a>    }
+<a name="line39"> 39: </a>    rowlengths[k] *= bs;
+<a name="line40"> 40: </a>    <font color="#4169E1">for</font> (j = 1; j &lt; bs; j++) rowlengths[k + j] = rowlengths[k];
+<a name="line41"> 41: </a>    k += bs;
+<a name="line42"> 42: </a>  }
+
+<a name="line44"> 44: </a>  <font color="#4169E1">if</font> (reuse != <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>) {
+<a name="line45"> 45: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;B));
+<a name="line46"> 46: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(B, m, n, m, n));
+<a name="line47"> 47: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(B, <a href="../../../../../manualpages/Mat/MATSEQAIJ.html">MATSEQAIJ</a>));
+<a name="line48"> 48: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSeqAIJSetPreallocation.html">MatSeqAIJSetPreallocation</a>(B, 0, rowlengths));
+<a name="line49"> 49: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetBlockSize.html">MatSetBlockSize</a>(B, A-&gt;rmap-&gt;bs));
+<a name="line50"> 50: </a>  } <font color="#4169E1">else</font> B = *newmat;
+
+<a name="line52"> 52: </a>  b  = (Mat_SeqAIJ *)B-&gt;data;
+<a name="line53"> 53: </a>  bi = b-&gt;i;
+<a name="line54"> 54: </a>  bj = b-&gt;j;
+<a name="line55"> 55: </a>  bv = b-&gt;a;
+
+<a name="line57"> 57: </a>  <font color="#B22222">/* set b-&gt;i */</font>
+<a name="line58"> 58: </a>  bi[0]       = 0;
+<a name="line59"> 59: </a>  rowstart[0] = 0;
+<a name="line60"> 60: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) {
+<a name="line61"> 61: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; bs; j++) {
+<a name="line62"> 62: </a>      b-&gt;ilen[i * bs + j]      = rowlengths[i * bs];
+<a name="line63"> 63: </a>      rowstart[i * bs + j + 1] = rowstart[i * bs + j] + rowlengths[i * bs];
+<a name="line64"> 64: </a>    }
+<a name="line65"> 65: </a>    bi[i + 1] = bi[i] + rowlengths[i * bs] / bs;
+<a name="line66"> 66: </a>  }
+<a name="line67"> 67: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(bi[mbs] == 2 * a-&gt;nz - diagcnt, <a href="../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"bi[mbs]: %"</font> PetscInt_FMT <font color="#666666">" != 2*a-&gt;nz-diagcnt: %"</font> PetscInt_FMT, bi[mbs], 2 * a-&gt;nz - diagcnt);
+
+<a name="line69"> 69: </a>  <font color="#B22222">/* set b-&gt;j and b-&gt;a */</font>
+<a name="line70"> 70: </a>  aj = a-&gt;j;
+<a name="line71"> 71: </a>  av = a-&gt;a;
+<a name="line72"> 72: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) {
+<a name="line73"> 73: </a>    nz = ai[i + 1] - ai[i];
+<a name="line74"> 74: </a>    <font color="#B22222">/* diagonal block */</font>
+<a name="line75"> 75: </a>    <font color="#4169E1">if</font> (nz &amp;&amp; *aj == i) {
+<a name="line76"> 76: </a>      nz--;
+<a name="line77"> 77: </a>      <font color="#4169E1">for</font> (j = 0; j &lt; bs; j++) { <font color="#B22222">/* row i*bs+j */</font>
+<a name="line78"> 78: </a>        itmp = i * bs + j;
+<a name="line79"> 79: </a>        <font color="#4169E1">for</font> (k = 0; k &lt; bs; k++) { <font color="#B22222">/* col i*bs+k */</font>
+<a name="line80"> 80: </a>          *(bj + rowstart[itmp]) = (*aj) * bs + k;
+<a name="line81"> 81: </a>          *(bv + rowstart[itmp]) = *(av + k * bs + j);
+<a name="line82"> 82: </a>          rowstart[itmp]++;
+<a name="line83"> 83: </a>        }
+<a name="line84"> 84: </a>      }
+<a name="line85"> 85: </a>      aj++;
+<a name="line86"> 86: </a>      av += bs2;
+<a name="line87"> 87: </a>    }
+
+<a name="line89"> 89: </a>    <font color="#4169E1">while</font> (nz--) {
+<a name="line90"> 90: </a>      <font color="#B22222">/* lower triangular blocks */</font>
+<a name="line91"> 91: </a>      <font color="#4169E1">for</font> (j = 0; j &lt; bs; j++) { <font color="#B22222">/* row (*aj)*bs+j */</font>
+<a name="line92"> 92: </a>        itmp = (*aj) * bs + j;
+<a name="line93"> 93: </a>        <font color="#4169E1">for</font> (k = 0; k &lt; bs; k++) { <font color="#B22222">/* col i*bs+k */</font>
+<a name="line94"> 94: </a>          *(bj + rowstart[itmp]) = i * bs + k;
+<a name="line95"> 95: </a>          *(bv + rowstart[itmp]) = aconj ? PetscConj(*(av + j * bs + k)) : *(av + j * bs + k);
+<a name="line96"> 96: </a>          rowstart[itmp]++;
+<a name="line97"> 97: </a>        }
+<a name="line98"> 98: </a>      }
+<a name="line99"> 99: </a>      <font color="#B22222">/* upper triangular blocks */</font>
+<a name="line100">100: </a>      <font color="#4169E1">for</font> (j = 0; j &lt; bs; j++) { <font color="#B22222">/* row i*bs+j */</font>
+<a name="line101">101: </a>        itmp = i * bs + j;
+<a name="line102">102: </a>        <font color="#4169E1">for</font> (k = 0; k &lt; bs; k++) { <font color="#B22222">/* col (*aj)*bs+k */</font>
+<a name="line103">103: </a>          *(bj + rowstart[itmp]) = (*aj) * bs + k;
+<a name="line104">104: </a>          *(bv + rowstart[itmp]) = *(av + k * bs + j);
+<a name="line105">105: </a>          rowstart[itmp]++;
+<a name="line106">106: </a>        }
+<a name="line107">107: </a>      }
+<a name="line108">108: </a>      aj++;
+<a name="line109">109: </a>      av += bs2;
+<a name="line110">110: </a>    }
+<a name="line111">111: </a>  }
+<a name="line112">112: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(rowlengths, rowstart));
+<a name="line113">113: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line114">114: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line116">116: </a>  <font color="#4169E1">if</font> (reuse == <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>) {
+<a name="line117">117: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatHeaderReplace.html">MatHeaderReplace</a>(A, &amp;B));
+<a name="line118">118: </a>  } <font color="#4169E1">else</font> {
+<a name="line119">119: </a>    *newmat = B;
+<a name="line120">120: </a>  }
+<a name="line121">121: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line122">122: </a>}
+
+<a name="line124">124: </a>#include <A href="../../../../src/mat/impls/aij/seq/aij.h.html">&lt;../src/mat/impls/aij/seq/aij.h&gt;</A>
+
+<a name="line126">126: </a><strong><font color="#4169E1"><a name="MatConvert_SeqAIJ_SeqSBAIJ_Preallocate"></a>PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_SeqAIJ_SeqSBAIJ_Preallocate(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **nnz)</font></strong>
+<a name="line127">127: </a>{
+<a name="line128">128: </a>  Mat_SeqAIJ     *Aa = (Mat_SeqAIJ *)A-&gt;data;
+<a name="line129">129: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        m, n, bs = A-&gt;rmap-&gt;bs;
+<a name="line130">130: </a>  const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *ai = Aa-&gt;i, *aj = Aa-&gt;j;
+
+<a name="line132">132: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line133">133: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(A, &amp;m, &amp;n));
+
+<a name="line135">135: </a>  <font color="#4169E1">if</font> (bs == 1) {
+<a name="line136">136: </a>    const <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *adiag = Aa-&gt;diag;
+
+<a name="line138">138: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(m, nnz));
+<a name="line139">139: </a>    <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; m; i++) {
+<a name="line140">140: </a>      <font color="#4169E1">if</font> (adiag[i] == ai[i + 1]) {
+<a name="line141">141: </a>        (*nnz)[i] = 0;
+<a name="line142">142: </a>        <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> j = ai[i]; j &lt; ai[i + 1]; j++) (*nnz)[i] += (aj[j] &gt; i);
+<a name="line143">143: </a>      } <font color="#4169E1">else</font> (*nnz)[i] = ai[i + 1] - adiag[i];
+<a name="line144">144: </a>    }
+<a name="line145">145: </a>  } <font color="#4169E1">else</font> {
+<a name="line146">146: </a>    <a href="../../../../../manualpages/PetscH/PetscHSetIJ.html">PetscHSetIJ</a>    ht;
+<a name="line147">147: </a>    PetscHashIJKey key;
+<a name="line148">148: </a>    <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      missing;
+
+<a name="line150">150: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscH/PetscHSetIJCreate.html">PetscHSetIJCreate</a>(&amp;ht));
+<a name="line151">151: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(m / bs, nnz));
+<a name="line152">152: </a>    <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; m; i++) {
+<a name="line153">153: </a>      key.i = i / bs;
+<a name="line154">154: </a>      <font color="#4169E1">for</font> (<a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> k = ai[i]; k &lt; ai[i + 1]; k++) {
+<a name="line155">155: </a>        key.j = aj[k] / bs;
+<a name="line156">156: </a>        <font color="#4169E1">if</font> (key.j &lt; key.i) <font color="#4169E1">continue</font>;
+<a name="line157">157: </a>        <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscH/PetscHSetIJQueryAdd.html">PetscHSetIJQueryAdd</a>(ht, key, &amp;missing));
+<a name="line158">158: </a>        <font color="#4169E1">if</font> (missing) (*nnz)[key.i]++;
+<a name="line159">159: </a>      }
+<a name="line160">160: </a>    }
+<a name="line161">161: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/PetscH/PetscHSetIJDestroy.html">PetscHSetIJDestroy</a>(&amp;ht));
+<a name="line162">162: </a>  }
+<a name="line163">163: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line164">164: </a>}
+
+<a name="line166">166: </a><strong><font color="#4169E1"><a name="MatConvert_SeqAIJ_SeqSBAIJ"></a>PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_SeqAIJ_SeqSBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../manualpages/Mat/MatType.html">MatType</a> newtype, <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a> reuse, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *newmat)</font></strong>
+<a name="line167">167: </a>{
+<a name="line168">168: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>           B;
+<a name="line169">169: </a>  Mat_SeqAIJ   *a = (Mat_SeqAIJ *)A-&gt;data;
+<a name="line170">170: </a>  Mat_SeqSBAIJ *b;
+<a name="line171">171: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     *ai = a-&gt;i, *aj, m = A-&gt;rmap-&gt;N, n = A-&gt;cmap-&gt;N, i, j, *bi, *bj, *rowlengths, bs = A-&gt;rmap-&gt;bs;
+<a name="line172">172: </a>  MatScalar    *av, *bv;
+<a name="line173">173: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>     miss = <a href="../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line175">175: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line176">176: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line177">177: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(A-&gt;symmetric == <a href="../../../../../manualpages/Sys/PetscBool3.html">PETSC_BOOL3_TRUE</a>, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"Matrix must be symmetric. Call <a href="../../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(mat,<a href="../../../../../manualpages/Mat/MatOption.html">MAT_SYMMETRIC</a>,<a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>)"</font>);
+<a name="line178">178: </a><font color="#A020F0">#else</font>
+<a name="line179">179: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(A-&gt;symmetric == <a href="../../../../../manualpages/Sys/PetscBool3.html">PETSC_BOOL3_TRUE</a> || A-&gt;hermitian == <a href="../../../../../manualpages/Sys/PetscBool3.html">PETSC_BOOL3_TRUE</a>, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"Matrix must be either symmetric or hermitian. Call <a href="../../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(mat,<a href="../../../../../manualpages/Mat/MatOption.html">MAT_SYMMETRIC</a>,<a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>) and/or <a href="../../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(mat,<a href="../../../../../manualpages/Mat/MatOption.html">MAT_HERMITIAN</a>,<a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>)"</font>);
+<a name="line180">180: </a><font color="#A020F0">#endif</font>
+<a name="line181">181: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(n == m, <a href="../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Matrix must be square"</font>);
+
+<a name="line183">183: </a>  <font color="#4169E1">if</font> (bs == 1) {
+<a name="line184">184: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(m, &amp;rowlengths));
+<a name="line185">185: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; m; i++) {
+<a name="line186">186: </a>      <font color="#4169E1">if</font> (a-&gt;diag[i] == ai[i + 1]) {             <font color="#B22222">/* missing diagonal */</font>
+<a name="line187">187: </a>        rowlengths[i] = (ai[i + 1] - ai[i]) + 1; <font color="#B22222">/* allocate some extra space */</font>
+<a name="line188">188: </a>        miss          = <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line189">189: </a>      } <font color="#4169E1">else</font> {
+<a name="line190">190: </a>        rowlengths[i] = (ai[i + 1] - a-&gt;diag[i]);
+<a name="line191">191: </a>      }
+<a name="line192">192: </a>    }
+<a name="line193">193: </a>  } <font color="#4169E1">else</font> <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatConvert_SeqAIJ_SeqSBAIJ_Preallocate(A, &amp;rowlengths));
+<a name="line194">194: </a>  <font color="#4169E1">if</font> (reuse != <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>) {
+<a name="line195">195: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;B));
+<a name="line196">196: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(B, m, n, m, n));
+<a name="line197">197: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(B, <a href="../../../../../manualpages/Mat/MATSEQSBAIJ.html">MATSEQSBAIJ</a>));
+<a name="line198">198: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSeqSBAIJSetPreallocation.html">MatSeqSBAIJSetPreallocation</a>(B, bs, 0, rowlengths));
+<a name="line199">199: </a>  } <font color="#4169E1">else</font> B = *newmat;
+
+<a name="line201">201: </a>  <font color="#4169E1">if</font> (bs == 1 &amp;&amp; !miss) {
+<a name="line202">202: </a>    b  = (Mat_SeqSBAIJ *)B-&gt;data;
+<a name="line203">203: </a>    bi = b-&gt;i;
+<a name="line204">204: </a>    bj = b-&gt;j;
+<a name="line205">205: </a>    bv = b-&gt;a;
+
+<a name="line207">207: </a>    bi[0] = 0;
+<a name="line208">208: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; m; i++) {
+<a name="line209">209: </a>      aj = a-&gt;j + a-&gt;diag[i];
+<a name="line210">210: </a>      av = a-&gt;a + a-&gt;diag[i];
+<a name="line211">211: </a>      <font color="#4169E1">for</font> (j = 0; j &lt; rowlengths[i]; j++) {
+<a name="line212">212: </a>        *bj = *aj;
+<a name="line213">213: </a>        bj++;
+<a name="line214">214: </a>        aj++;
+<a name="line215">215: </a>        *bv = *av;
+<a name="line216">216: </a>        bv++;
+<a name="line217">217: </a>        av++;
+<a name="line218">218: </a>      }
+<a name="line219">219: </a>      bi[i + 1]  = bi[i] + rowlengths[i];
+<a name="line220">220: </a>      b-&gt;ilen[i] = rowlengths[i];
+<a name="line221">221: </a>    }
+<a name="line222">222: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line223">223: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line224">224: </a>  } <font color="#4169E1">else</font> {
+<a name="line225">225: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(B, <a href="../../../../../manualpages/Mat/MatOption.html">MAT_IGNORE_LOWER_TRIANGULAR</a>, <a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line226">226: </a>    <font color="#B22222">/* reuse may not be equal to <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>, but the basic converter will reallocate or replace newmat if this value is not used */</font>
+<a name="line227">227: </a>    <font color="#B22222">/* if reuse is equal to <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, it has been appropriately preallocated before                                          */</font>
+<a name="line228">228: </a>    <font color="#B22222">/*                      <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>, it will be replaced with <a href="../../../../../manualpages/Mat/MatHeaderReplace.html">MatHeaderReplace</a> below                                        */</font>
+<a name="line229">229: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatConvert_Basic(A, newtype, <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>, &amp;B));
+<a name="line230">230: </a>  }
+<a name="line231">231: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(rowlengths));
+<a name="line232">232: </a>  <font color="#4169E1">if</font> (reuse == <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatHeaderReplace.html">MatHeaderReplace</a>(A, &amp;B));
+<a name="line233">233: </a>  <font color="#4169E1">else</font> *newmat = B;
+<a name="line234">234: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line235">235: </a>}
+
+<a name="line237">237: </a><strong><font color="#4169E1"><a name="MatConvert_SeqSBAIJ_SeqBAIJ"></a>PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_SeqSBAIJ_SeqBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../manualpages/Mat/MatType.html">MatType</a> newtype, <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a> reuse, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *newmat)</font></strong>
+<a name="line238">238: </a>{
+<a name="line239">239: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>           B;
+<a name="line240">240: </a>  Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A-&gt;data;
+<a name="line241">241: </a>  Mat_SeqBAIJ  *b;
+<a name="line242">242: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     *ai = a-&gt;i, *aj = a-&gt;j, m = A-&gt;rmap-&gt;N, n = A-&gt;cmap-&gt;n, i, k, *bi, *bj, *browlengths, nz, *browstart, itmp;
+<a name="line243">243: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs = A-&gt;rmap-&gt;bs, bs2 = bs * bs, mbs = m / bs, col, row;
+<a name="line244">244: </a>  MatScalar    *av, *bv;
+<a name="line245">245: </a><font color="#A020F0">#if defined(PETSC_USE_COMPLEX)</font>
+<a name="line246">246: </a>  const int aconj = A-&gt;hermitian == <a href="../../../../../manualpages/Sys/PetscBool3.html">PETSC_BOOL3_TRUE</a> ? 1 : 0;
+<a name="line247">247: </a><font color="#A020F0">#else</font>
+<a name="line248">248: </a>  const int aconj = 0;
+<a name="line249">249: </a><font color="#A020F0">#endif</font>
+
+<a name="line251">251: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line252">252: </a>  <font color="#B22222">/* compute browlengths of newmat */</font>
+<a name="line253">253: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc2.html">PetscMalloc2</a>(mbs, &amp;browlengths, mbs, &amp;browstart));
+<a name="line254">254: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) browlengths[i] = 0;
+<a name="line255">255: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) {
+<a name="line256">256: </a>    nz = ai[i + 1] - ai[i];
+<a name="line257">257: </a>    aj++;                      <font color="#B22222">/* skip diagonal */</font>
+<a name="line258">258: </a>    <font color="#4169E1">for</font> (k = 1; k &lt; nz; k++) { <font color="#B22222">/* no. of lower triangular blocks */</font>
+<a name="line259">259: </a>      browlengths[*aj]++;
+<a name="line260">260: </a>      aj++;
+<a name="line261">261: </a>    }
+<a name="line262">262: </a>    browlengths[i] += nz; <font color="#B22222">/* no. of upper triangular blocks */</font>
+<a name="line263">263: </a>  }
+
+<a name="line265">265: </a>  <font color="#4169E1">if</font> (reuse != <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>) {
+<a name="line266">266: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;B));
+<a name="line267">267: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(B, m, n, m, n));
+<a name="line268">268: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(B, <a href="../../../../../manualpages/Mat/MATSEQBAIJ.html">MATSEQBAIJ</a>));
+<a name="line269">269: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSeqBAIJSetPreallocation.html">MatSeqBAIJSetPreallocation</a>(B, bs, 0, browlengths));
+<a name="line270">270: </a>  } <font color="#4169E1">else</font> B = *newmat;
+
+<a name="line272">272: </a>  b  = (Mat_SeqBAIJ *)B-&gt;data;
+<a name="line273">273: </a>  bi = b-&gt;i;
+<a name="line274">274: </a>  bj = b-&gt;j;
+<a name="line275">275: </a>  bv = b-&gt;a;
+
+<a name="line277">277: </a>  <font color="#B22222">/* set b-&gt;i */</font>
+<a name="line278">278: </a>  bi[0] = 0;
+<a name="line279">279: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) {
+<a name="line280">280: </a>    b-&gt;ilen[i]   = browlengths[i];
+<a name="line281">281: </a>    bi[i + 1]    = bi[i] + browlengths[i];
+<a name="line282">282: </a>    browstart[i] = bi[i];
+<a name="line283">283: </a>  }
+<a name="line284">284: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(bi[mbs] == 2 * a-&gt;nz - mbs, <a href="../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"bi[mbs]: %"</font> PetscInt_FMT <font color="#666666">" != 2*a-&gt;nz - mbs: %"</font> PetscInt_FMT, bi[mbs], 2 * a-&gt;nz - mbs);
+
+<a name="line286">286: </a>  <font color="#B22222">/* set b-&gt;j and b-&gt;a */</font>
+<a name="line287">287: </a>  aj = a-&gt;j;
+<a name="line288">288: </a>  av = a-&gt;a;
+<a name="line289">289: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) {
+<a name="line290">290: </a>    <font color="#B22222">/* diagonal block */</font>
+<a name="line291">291: </a>    *(bj + browstart[i]) = *aj;
+<a name="line292">292: </a>    aj++;
+
+<a name="line294">294: </a>    itmp = bs2 * browstart[i];
+<a name="line295">295: </a>    <font color="#4169E1">for</font> (k = 0; k &lt; bs2; k++) {
+<a name="line296">296: </a>      *(bv + itmp + k) = *av;
+<a name="line297">297: </a>      av++;
+<a name="line298">298: </a>    }
+<a name="line299">299: </a>    browstart[i]++;
+
+<a name="line301">301: </a>    nz = ai[i + 1] - ai[i] - 1;
+<a name="line302">302: </a>    <font color="#4169E1">while</font> (nz--) {
+<a name="line303">303: </a>      <font color="#B22222">/* lower triangular blocks - transpose blocks of A */</font>
+<a name="line304">304: </a>      *(bj + browstart[*aj]) = i; <font color="#B22222">/* block col index */</font>
+
+<a name="line306">306: </a>      itmp = bs2 * browstart[*aj]; <font color="#B22222">/* row index */</font>
+<a name="line307">307: </a>      <font color="#4169E1">for</font> (col = 0; col &lt; bs; col++) {
+<a name="line308">308: </a>        k = col;
+<a name="line309">309: </a>        <font color="#4169E1">for</font> (row = 0; row &lt; bs; row++) {
+<a name="line310">310: </a>          bv[itmp + col * bs + row] = aconj ? PetscConj(av[k]) : av[k];
+<a name="line311">311: </a>          k += bs;
+<a name="line312">312: </a>        }
+<a name="line313">313: </a>      }
+<a name="line314">314: </a>      browstart[*aj]++;
+
+<a name="line316">316: </a>      <font color="#B22222">/* upper triangular blocks */</font>
+<a name="line317">317: </a>      *(bj + browstart[i]) = *aj;
+<a name="line318">318: </a>      aj++;
+
+<a name="line320">320: </a>      itmp = bs2 * browstart[i];
+<a name="line321">321: </a>      <font color="#4169E1">for</font> (k = 0; k &lt; bs2; k++) bv[itmp + k] = av[k];
+<a name="line322">322: </a>      av += bs2;
+<a name="line323">323: </a>      browstart[i]++;
+<a name="line324">324: </a>    }
+<a name="line325">325: </a>  }
+<a name="line326">326: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(browlengths, browstart));
+<a name="line327">327: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line328">328: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line330">330: </a>  <font color="#4169E1">if</font> (reuse == <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatHeaderReplace.html">MatHeaderReplace</a>(A, &amp;B));
+<a name="line331">331: </a>  <font color="#4169E1">else</font> *newmat = B;
+<a name="line332">332: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line333">333: </a>}
+
+<a name="line335">335: </a><strong><font color="#4169E1"><a name="MatConvert_SeqBAIJ_SeqSBAIJ"></a>PETSC_INTERN <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_SeqBAIJ_SeqSBAIJ(<a href="../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../manualpages/Mat/MatType.html">MatType</a> newtype, <a href="../../../../../manualpages/Mat/MatReuse.html">MatReuse</a> reuse, <a href="../../../../../manualpages/Mat/Mat.html">Mat</a> *newmat)</font></strong>
+<a name="line336">336: </a>{
+<a name="line337">337: </a>  <a href="../../../../../manualpages/Mat/Mat.html">Mat</a>           B;
+<a name="line338">338: </a>  Mat_SeqBAIJ  *a = (Mat_SeqBAIJ *)A-&gt;data;
+<a name="line339">339: </a>  Mat_SeqSBAIJ *b;
+<a name="line340">340: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     *ai = a-&gt;i, *aj, m = A-&gt;rmap-&gt;N, n = A-&gt;cmap-&gt;n, i, j, k, *bi, *bj, *browlengths;
+<a name="line341">341: </a>  <a href="../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      bs = A-&gt;rmap-&gt;bs, bs2 = bs * bs, mbs = m / bs, dd;
+<a name="line342">342: </a>  MatScalar    *av, *bv;
+<a name="line343">343: </a>  <a href="../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>     flg;
+
+<a name="line345">345: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line346">346: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(A-&gt;symmetric, <a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"Matrix must be symmetric. Call <a href="../../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(mat,<a href="../../../../../manualpages/Mat/MatOption.html">MAT_SYMMETRIC</a>,<a href="../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>)"</font>);
+<a name="line347">347: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(n == m, <a href="../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Matrix must be square"</font>);
+<a name="line348">348: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatMissingDiagonal_SeqBAIJ(A, &amp;flg, &amp;dd)); <font color="#B22222">/* check for missing diagonals, then mark diag */</font>
+<a name="line349">349: </a>  <a href="../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!flg, <a href="../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONGSTATE</a>, <font color="#666666">"Matrix is missing diagonal %"</font> PetscInt_FMT, dd);
+
+<a name="line351">351: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(mbs, &amp;browlengths));
+<a name="line352">352: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) browlengths[i] = ai[i + 1] - a-&gt;diag[i];
+
+<a name="line354">354: </a>  <font color="#4169E1">if</font> (reuse != <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>) {
+<a name="line355">355: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;B));
+<a name="line356">356: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(B, m, n, m, n));
+<a name="line357">357: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(B, <a href="../../../../../manualpages/Mat/MATSEQSBAIJ.html">MATSEQSBAIJ</a>));
+<a name="line358">358: </a>    <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatSeqSBAIJSetPreallocation.html">MatSeqSBAIJSetPreallocation</a>(B, bs, 0, browlengths));
+<a name="line359">359: </a>  } <font color="#4169E1">else</font> B = *newmat;
+
+<a name="line361">361: </a>  b  = (Mat_SeqSBAIJ *)B-&gt;data;
+<a name="line362">362: </a>  bi = b-&gt;i;
+<a name="line363">363: </a>  bj = b-&gt;j;
+<a name="line364">364: </a>  bv = b-&gt;a;
+
+<a name="line366">366: </a>  bi[0] = 0;
+<a name="line367">367: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; mbs; i++) {
+<a name="line368">368: </a>    aj = a-&gt;j + a-&gt;diag[i];
+<a name="line369">369: </a>    av = a-&gt;a + (a-&gt;diag[i]) * bs2;
+<a name="line370">370: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; browlengths[i]; j++) {
+<a name="line371">371: </a>      *bj = *aj;
+<a name="line372">372: </a>      bj++;
+<a name="line373">373: </a>      aj++;
+<a name="line374">374: </a>      <font color="#4169E1">for</font> (k = 0; k &lt; bs2; k++) {
+<a name="line375">375: </a>        *bv = *av;
+<a name="line376">376: </a>        bv++;
+<a name="line377">377: </a>        av++;
+<a name="line378">378: </a>      }
+<a name="line379">379: </a>    }
+<a name="line380">380: </a>    bi[i + 1]  = bi[i] + browlengths[i];
+<a name="line381">381: </a>    b-&gt;ilen[i] = browlengths[i];
+<a name="line382">382: </a>  }
+<a name="line383">383: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(browlengths));
+<a name="line384">384: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line385">385: </a>  <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(B, <a href="../../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line387">387: </a>  <font color="#4169E1">if</font> (reuse == <a href="../../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>) <a href="../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../manualpages/Mat/MatHeaderReplace.html">MatHeaderReplace</a>(A, &amp;B));
+<a name="line388">388: </a>  <font color="#4169E1">else</font> *newmat = B;
+<a name="line389">389: </a>  <a href="../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line390">390: </a>}
+</pre>
+</body>
+
+</html>
+

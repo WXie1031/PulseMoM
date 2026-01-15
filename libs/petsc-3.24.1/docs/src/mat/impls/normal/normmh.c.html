@@ -1,0 +1,356 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/normal/normmh.c">Actual source code: normmh.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:01+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../src/mat/impls/shell/shell.h.html">&lt;../src/mat/impls/shell/shell.h&gt;</A>
+
+<a name="line3">  3: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line4">  4: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a> A;
+<a name="line5">  5: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a> D; <font color="#B22222">/* local submatrix for diagonal part */</font>
+<a name="line6">  6: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> w;
+<a name="line7">  7: </a>} Mat_NormalHermitian;
+
+<a name="line9">  9: </a><strong><font color="#4169E1"><a name="MatCreateSubMatrices_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreateSubMatrices_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> mat, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, const <a href="../../../../manualpages/IS/IS.html">IS</a> irow[], const <a href="../../../../manualpages/IS/IS.html">IS</a> icol[], <a href="../../../../manualpages/Mat/MatReuse.html">MatReuse</a> scall, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *submat[])</font></strong>
+<a name="line10"> 10: </a>{
+<a name="line11"> 11: </a>  Mat_NormalHermitian *a;
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                  B, *suba;
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>                  *row;
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>          shift, scale;
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             M;
+
+<a name="line17"> 17: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(irow == icol, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)mat), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Not implemented"</font>);
+<a name="line19"> 19: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetScalingShifts.html">MatShellGetScalingShifts</a>(mat, &amp;shift, &amp;scale, (<a href="../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/Mat/Mat.html">Mat</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED));
+<a name="line20"> 20: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(mat, &amp;a));
+<a name="line21"> 21: </a>  B = a-&gt;A;
+<a name="line22"> 22: </a>  <font color="#4169E1">if</font> (scall != <a href="../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(n, submat));
+<a name="line23"> 23: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(B, &amp;M, NULL));
+<a name="line24"> 24: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(n, &amp;row));
+<a name="line25"> 25: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateStride.html">ISCreateStride</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, M, 0, 1, &amp;row[0]));
+<a name="line26"> 26: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISSetIdentity.html">ISSetIdentity</a>(row[0]));
+<a name="line27"> 27: </a>  <font color="#4169E1">for</font> (M = 1; M &lt; n; ++M) row[M] = row[0];
+<a name="line28"> 28: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateSubMatrices.html">MatCreateSubMatrices</a>(B, n, row, icol, <a href="../../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, &amp;suba));
+<a name="line29"> 29: </a>  <font color="#4169E1">for</font> (M = 0; M &lt; n; ++M) {
+<a name="line30"> 30: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a>(suba[M], *submat + M));
+<a name="line31"> 31: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShift.html">MatShift</a>((*submat)[M], shift));
+<a name="line32"> 32: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatScale.html">MatScale</a>((*submat)[M], scale));
+<a name="line33"> 33: </a>  }
+<a name="line34"> 34: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;row[0]));
+<a name="line35"> 35: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(row));
+<a name="line36"> 36: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroySubMatrices.html">MatDestroySubMatrices</a>(n, &amp;suba));
+<a name="line37"> 37: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line38"> 38: </a>}
+
+<a name="line40"> 40: </a><strong><font color="#4169E1"><a name="MatPermute_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatPermute_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/IS/IS.html">IS</a> rowp, <a href="../../../../manualpages/IS/IS.html">IS</a> colp, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *B)</font></strong>
+<a name="line41"> 41: </a>{
+<a name="line42"> 42: </a>  Mat_NormalHermitian *a;
+<a name="line43"> 43: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                  C, Aa;
+<a name="line44"> 44: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>                   row;
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>          shift, scale;
+
+<a name="line47"> 47: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line48"> 48: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(rowp == colp, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Row permutation and column permutation must be the same"</font>);
+<a name="line49"> 49: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetScalingShifts.html">MatShellGetScalingShifts</a>(A, &amp;shift, &amp;scale, (<a href="../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/Mat/Mat.html">Mat</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED));
+<a name="line50"> 50: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(A, &amp;a));
+<a name="line51"> 51: </a>  Aa = a-&gt;A;
+<a name="line52"> 52: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISCreateStride.html">ISCreateStride</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)Aa), Aa-&gt;rmap-&gt;n, Aa-&gt;rmap-&gt;rstart, 1, &amp;row));
+<a name="line53"> 53: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISSetIdentity.html">ISSetIdentity</a>(row));
+<a name="line54"> 54: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatPermute.html">MatPermute</a>(Aa, row, colp, &amp;C));
+<a name="line55"> 55: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;row));
+<a name="line56"> 56: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a>(C, B));
+<a name="line57"> 57: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;C));
+<a name="line58"> 58: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShift.html">MatShift</a>(*B, shift));
+<a name="line59"> 59: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatScale.html">MatScale</a>(*B, scale));
+<a name="line60"> 60: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line61"> 61: </a>}
+
+<a name="line63"> 63: </a><strong><font color="#4169E1"><a name="MatDuplicate_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatDuplicate_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/Mat/MatDuplicateOption.html">MatDuplicateOption</a> op, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *B)</font></strong>
+<a name="line64"> 64: </a>{
+<a name="line65"> 65: </a>  Mat_NormalHermitian *a;
+<a name="line66"> 66: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                  C;
+
+<a name="line68"> 68: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line69"> 69: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(A, &amp;a));
+<a name="line70"> 70: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(a-&gt;A, op, &amp;C));
+<a name="line71"> 71: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a>(C, B));
+<a name="line72"> 72: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;C));
+<a name="line73"> 73: </a>  <font color="#4169E1">if</font> (op == <a href="../../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCopy.html">MatCopy</a>(A, *B, <a href="../../../../manualpages/Mat/MatStructure.html">SAME_NONZERO_PATTERN</a>));
+<a name="line74"> 74: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line75"> 75: </a>}
+
+<a name="line77"> 77: </a><strong><font color="#4169E1"><a name="MatCopy_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCopy_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../manualpages/Mat/MatStructure.html">MatStructure</a> str)</font></strong>
+<a name="line78"> 78: </a>{
+<a name="line79"> 79: </a>  Mat_NormalHermitian *a, *b;
+
+<a name="line81"> 81: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line82"> 82: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(A, &amp;a));
+<a name="line83"> 83: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(B, &amp;b));
+<a name="line84"> 84: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCopy.html">MatCopy</a>(a-&gt;A, b-&gt;A, str));
+<a name="line85"> 85: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line86"> 86: </a>}
+
+<a name="line88"> 88: </a><strong><font color="#4169E1"><a name="MatMult_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMult_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> N, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> x, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> y)</font></strong>
+<a name="line89"> 89: </a>{
+<a name="line90"> 90: </a>  Mat_NormalHermitian *Na;
+
+<a name="line92"> 92: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line93"> 93: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(N, &amp;Na));
+<a name="line94"> 94: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatMult.html">MatMult</a>(Na-&gt;A, x, Na-&gt;w));
+<a name="line95"> 95: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatMultHermitianTranspose.html">MatMultHermitianTranspose</a>(Na-&gt;A, Na-&gt;w, y));
+<a name="line96"> 96: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line97"> 97: </a>}
+
+<a name="line99"> 99: </a><strong><font color="#4169E1"><a name="MatDestroy_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatDestroy_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> N)</font></strong>
+<a name="line100">100: </a>{
+<a name="line101">101: </a>  Mat_NormalHermitian *Na;
+
+<a name="line103">103: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line104">104: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(N, &amp;Na));
+<a name="line105">105: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;Na-&gt;A));
+<a name="line106">106: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;Na-&gt;D));
+<a name="line107">107: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;Na-&gt;w));
+<a name="line108">108: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(Na));
+<a name="line109">109: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)N, <font color="#666666">"MatNormalHermitianGetMat_C"</font>, NULL));
+<a name="line110">110: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line111">111: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)N, <font color="#666666">"MatNormalGetMat_C"</font>, NULL));
+<a name="line112">112: </a><font color="#A020F0">#endif</font>
+<a name="line113">113: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)N, <font color="#666666">"MatConvert_normalh_seqaij_C"</font>, NULL));
+<a name="line114">114: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)N, <font color="#666666">"MatConvert_normalh_mpiaij_C"</font>, NULL));
+<a name="line115">115: </a><font color="#A020F0">#if defined(PETSC_HAVE_HYPRE)</font>
+<a name="line116">116: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)N, <font color="#666666">"MatConvert_normalh_hypre_C"</font>, NULL));
+<a name="line117">117: </a><font color="#A020F0">#endif</font>
+<a name="line118">118: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)N, <font color="#666666">"MatShellSetContext_C"</font>, NULL));
+<a name="line119">119: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line120">120: </a>}
+
+<a name="line122">122: </a><font color="#B22222">/*</font>
+<a name="line123">123: </a><font color="#B22222">      Slow, nonscalable version</font>
+<a name="line124">124: </a><font color="#B22222">*/</font>
+<a name="line125">125: </a><strong><font color="#4169E1"><a name="MatGetDiagonal_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatGetDiagonal_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> N, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> v)</font></strong>
+<a name="line126">126: </a>{
+<a name="line127">127: </a>  Mat_NormalHermitian *Na;
+<a name="line128">128: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                  A;
+<a name="line129">129: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             i, j, rstart, rend, nnz;
+<a name="line130">130: </a>  const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      *cols;
+<a name="line131">131: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>         *work, *values;
+<a name="line132">132: </a>  const <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>   *mvalues;
+
+<a name="line134">134: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line135">135: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(N, &amp;Na));
+<a name="line136">136: </a>  A = Na-&gt;A;
+<a name="line137">137: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(A-&gt;cmap-&gt;N, &amp;work));
+<a name="line138">138: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(work, A-&gt;cmap-&gt;N));
+<a name="line139">139: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(A, &amp;rstart, &amp;rend));
+<a name="line140">140: </a>  <font color="#4169E1">for</font> (i = rstart; i &lt; rend; i++) {
+<a name="line141">141: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetRow.html">MatGetRow</a>(A, i, &amp;nnz, &amp;cols, &amp;mvalues));
+<a name="line142">142: </a>    <font color="#4169E1">for</font> (j = 0; j &lt; nnz; j++) work[cols[j]] += mvalues[j] * PetscConj(mvalues[j]);
+<a name="line143">143: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatRestoreRow.html">MatRestoreRow</a>(A, i, &amp;nnz, &amp;cols, &amp;mvalues));
+<a name="line144">144: </a>  }
+<a name="line145">145: </a>  <a href="../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="../../../../manualpages/Sys/MPIU_Allreduce.html">MPIU_Allreduce</a>(MPI_IN_PLACE, work, A-&gt;cmap-&gt;N, <a href="../../../../manualpages/Sys/MPIU_SCALAR.html">MPIU_SCALAR</a>, MPIU_SUM, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)N)));
+<a name="line146">146: </a>  rstart = N-&gt;cmap-&gt;rstart;
+<a name="line147">147: </a>  rend   = N-&gt;cmap-&gt;rend;
+<a name="line148">148: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecGetArray.html">VecGetArray</a>(v, &amp;values));
+<a name="line149">149: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(values, work + rstart, rend - rstart));
+<a name="line150">150: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecRestoreArray.html">VecRestoreArray</a>(v, &amp;values));
+<a name="line151">151: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(work));
+<a name="line152">152: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line153">153: </a>}
+
+<a name="line155">155: </a><strong><font color="#4169E1"><a name="MatGetDiagonalBlock_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatGetDiagonalBlock_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> N, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *D)</font></strong>
+<a name="line156">156: </a>{
+<a name="line157">157: </a>  Mat_NormalHermitian *Na;
+<a name="line158">158: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                  M, A;
+
+<a name="line160">160: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line161">161: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(N, &amp;Na));
+<a name="line162">162: </a>  A = Na-&gt;A;
+<a name="line163">163: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetDiagonalBlock.html">MatGetDiagonalBlock</a>(A, &amp;M));
+<a name="line164">164: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a>(M, &amp;Na-&gt;D));
+<a name="line165">165: </a>  *D = Na-&gt;D;
+<a name="line166">166: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line167">167: </a>}
+
+<a name="line169">169: </a><strong><font color="#4169E1"><a name="MatNormalHermitianGetMat_NormalHermitian"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatNormalHermitianGetMat_NormalHermitian(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *M)</font></strong>
+<a name="line170">170: </a>{
+<a name="line171">171: </a>  Mat_NormalHermitian *Aa;
+
+<a name="line173">173: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line174">174: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(A, &amp;Aa));
+<a name="line175">175: </a>  *M = Aa-&gt;A;
+<a name="line176">176: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line177">177: </a>}
+
+<a name="line179">179: </a><font color="#B22222">/*@</font>
+<a name="line180">180: </a><font color="#B22222">  <a href="../../../../manualpages/Mat/MatNormalHermitianGetMat.html">MatNormalHermitianGetMat</a> - Gets the `<a href="../../../../manualpages/Mat/Mat.html">Mat</a>` object stored inside a `<a href="../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>`</font>
+
+<a name="line182">182: </a><font color="#B22222">  Logically Collective</font>
+
+<a name="line184">184: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line185">185: </a><font color="#B22222">. A - the `<a href="../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>` matrix</font>
+
+<a name="line187">187: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line188">188: </a><font color="#B22222">. M - the matrix object stored inside `A`</font>
+
+<a name="line190">190: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line192">192: </a><font color="#B22222">.seealso: [](ch_matrices), `<a href="../../../../manualpages/Mat/Mat.html">Mat</a>`, `<a href="../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>`, `<a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a>()`</font>
+<a name="line193">193: </a><font color="#B22222">@*/</font>
+<a name="line194">194: </a><strong><font color="#4169E1"><a name="MatNormalHermitianGetMat"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/Mat/MatNormalHermitianGetMat.html">MatNormalHermitianGetMat</a>(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *M)</font></strong>
+<a name="line195">195: </a>{
+<a name="line196">196: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line199">199: </a>  PetscAssertPointer(M, 2);
+<a name="line200">200: </a>  <a href="../../../../manualpages/Sys/PetscUseMethod.html">PetscUseMethod</a>(A, <font color="#666666">"MatNormalHermitianGetMat_C"</font>, (<a href="../../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *), (A, M));
+<a name="line201">201: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line202">202: </a>}
+
+<a name="line204">204: </a><strong><font color="#4169E1"><a name="MatConvert_NormalHermitian_AIJ"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_NormalHermitian_AIJ(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/Mat/MatType.html">MatType</a> newtype, <a href="../../../../manualpages/Mat/MatReuse.html">MatReuse</a> reuse, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *newmat)</font></strong>
+<a name="line205">205: </a>{
+<a name="line206">206: </a>  Mat_NormalHermitian *Aa;
+<a name="line207">207: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>                  B, conjugate;
+<a name="line208">208: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>                  left, right, dshift;
+<a name="line209">209: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>          scale, shift;
+<a name="line210">210: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>             m, n, M, N;
+
+<a name="line212">212: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line213">213: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetContext.html">MatShellGetContext</a>(A, &amp;Aa));
+<a name="line214">214: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellGetScalingShifts.html">MatShellGetScalingShifts</a>(A, &amp;shift, &amp;scale, &amp;dshift, &amp;left, &amp;right, (<a href="../../../../manualpages/Mat/Mat.html">Mat</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED));
+<a name="line215">215: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetSize.html">MatGetSize</a>(A, &amp;M, &amp;N));
+<a name="line216">216: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetLocalSize.html">MatGetLocalSize</a>(A, &amp;m, &amp;n));
+<a name="line217">217: </a>  <font color="#4169E1">if</font> (reuse == <a href="../../../../manualpages/Mat/MatReuse.html">MAT_REUSE_MATRIX</a>) {
+<a name="line218">218: </a>    B = *newmat;
+<a name="line219">219: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatProductReplaceMats.html">MatProductReplaceMats</a>(Aa-&gt;A, Aa-&gt;A, NULL, B));
+<a name="line220">220: </a>  } <font color="#4169E1">else</font> {
+<a name="line221">221: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatProductCreate.html">MatProductCreate</a>(Aa-&gt;A, Aa-&gt;A, NULL, &amp;B));
+<a name="line222">222: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatProductSetType.html">MatProductSetType</a>(B, <a href="../../../../manualpages/Mat/MatProductType.html">MATPRODUCT_AtB</a>));
+<a name="line223">223: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatProductSetFromOptions.html">MatProductSetFromOptions</a>(B));
+<a name="line224">224: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatProductSymbolic.html">MatProductSymbolic</a>(B));
+<a name="line225">225: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(B, !<a href="../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX) ? <a href="../../../../manualpages/Mat/MatOption.html">MAT_SYMMETRIC</a> : <a href="../../../../manualpages/Mat/MatOption.html">MAT_HERMITIAN</a>, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line226">226: </a>  }
+<a name="line227">227: </a>  <font color="#4169E1">if</font> (<a href="../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)) {
+<a name="line228">228: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDuplicate.html">MatDuplicate</a>(Aa-&gt;A, <a href="../../../../manualpages/Mat/MatDuplicateOption.html">MAT_COPY_VALUES</a>, &amp;conjugate));
+<a name="line229">229: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatConjugate.html">MatConjugate</a>(conjugate));
+<a name="line230">230: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatProductReplaceMats.html">MatProductReplaceMats</a>(conjugate, Aa-&gt;A, NULL, B));
+<a name="line231">231: </a>  }
+<a name="line232">232: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatProductNumeric.html">MatProductNumeric</a>(B));
+<a name="line233">233: </a>  <font color="#4169E1">if</font> (<a href="../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;conjugate));
+<a name="line234">234: </a>  <font color="#4169E1">if</font> (reuse == <a href="../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatHeaderReplace.html">MatHeaderReplace</a>(A, &amp;B));
+<a name="line235">235: </a>  <font color="#4169E1">else</font> <font color="#4169E1">if</font> (reuse == <a href="../../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>) *newmat = B;
+<a name="line236">236: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatConvert.html">MatConvert</a>(*newmat, <a href="../../../../manualpages/Mat/MATAIJ.html">MATAIJ</a>, <a href="../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>, newmat));
+<a name="line237">237: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDiagonalScale.html">MatDiagonalScale</a>(*newmat, left, right));
+<a name="line238">238: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatScale.html">MatScale</a>(*newmat, scale));
+<a name="line239">239: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShift.html">MatShift</a>(*newmat, shift));
+<a name="line240">240: </a>  <font color="#4169E1">if</font> (dshift) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDiagonalSet.html">MatDiagonalSet</a>(*newmat, dshift, <a href="../../../../manualpages/Sys/ADD_VALUES.html">ADD_VALUES</a>));
+<a name="line241">241: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line242">242: </a>}
+
+<a name="line244">244: </a><font color="#A020F0">#if defined(PETSC_HAVE_HYPRE)</font>
+<a name="line245">245: </a><strong><font color="#4169E1"><a name="MatConvert_NormalHermitian_HYPRE"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatConvert_NormalHermitian_HYPRE(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/Mat/MatType.html">MatType</a> type, <a href="../../../../manualpages/Mat/MatReuse.html">MatReuse</a> reuse, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *B)</font></strong>
+<a name="line246">246: </a>{
+<a name="line247">247: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line248">248: </a>  <font color="#4169E1">if</font> (reuse == <a href="../../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>) {
+<a name="line249">249: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatConvert.html">MatConvert</a>(A, <a href="../../../../manualpages/Mat/MATAIJ.html">MATAIJ</a>, reuse, B));
+<a name="line250">250: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatConvert.html">MatConvert</a>(*B, type, <a href="../../../../manualpages/Mat/MatReuse.html">MAT_INPLACE_MATRIX</a>, B));
+<a name="line251">251: </a>  } <font color="#4169E1">else</font> <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatConvert_Basic(A, type, reuse, B)); <font color="#B22222">/* fall back to basic convert */</font>
+<a name="line252">252: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line253">253: </a>}
+<a name="line254">254: </a><font color="#A020F0">#endif</font>
+
+<a name="line256">256: </a><font color="#B22222">/*MC</font>
+<a name="line257">257: </a><font color="#B22222">  <a href="../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a> - a matrix that behaves like (A*)'*A for `<a href="../../../../manualpages/Mat/MatMult.html">MatMult</a>()` while only containing A</font>
+
+<a name="line259">259: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line261">261: </a><font color="#B22222">  Developer Notes:</font>
+<a name="line262">262: </a><font color="#B22222">  This is implemented on top of `<a href="../../../../manualpages/Mat/MATSHELL.html">MATSHELL</a>` to get support for scaling and shifting without requiring duplicate code</font>
+
+<a name="line264">264: </a><font color="#B22222">  Users can not call `<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>()` operations on this class, there is some error checking for that incorrect usage</font>
+
+<a name="line266">266: </a><font color="#B22222">.seealso: [](ch_matrices), `<a href="../../../../manualpages/Mat/Mat.html">Mat</a>`, `<a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a>()`, `<a href="../../../../manualpages/Mat/MatMult.html">MatMult</a>()`, `<a href="../../../../manualpages/Mat/MatNormalHermitianGetMat.html">MatNormalHermitianGetMat</a>()`, `<a href="../../../../manualpages/Mat/MATNORMAL.html">MATNORMAL</a>`, `<a href="../../../../manualpages/Mat/MatCreateNormal.html">MatCreateNormal</a>()`</font>
+<a name="line267">267: </a><font color="#B22222">M*/</font>
+
+<a name="line269">269: </a><font color="#B22222">/*@</font>
+<a name="line270">270: </a><font color="#B22222">  <a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a> - Creates a new matrix object `<a href="../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>` that behaves like $A^* A$.</font>
+
+<a name="line272">272: </a><font color="#B22222">  Collective</font>
+
+<a name="line274">274: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line275">275: </a><font color="#B22222">. A - the (possibly rectangular complex) matrix</font>
+
+<a name="line277">277: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line278">278: </a><font color="#B22222">. N - the matrix that represents $ A^* A$</font>
+
+<a name="line280">280: </a><font color="#B22222">  Level: intermediate</font>
+
+<a name="line282">282: </a><font color="#B22222">  Note:</font>
+<a name="line283">283: </a><font color="#B22222">  The product $ A^* A$ is NOT actually formed! Rather the new matrix</font>
+<a name="line284">284: </a><font color="#B22222">  object performs the matrix-vector product, `<a href="../../../../manualpages/Mat/MatMult.html">MatMult</a>()`, by first multiplying by</font>
+<a name="line285">285: </a><font color="#B22222">  $A$ and then $A^*$</font>
+
+<a name="line287">287: </a><font color="#B22222">  If `<a href="../../../../manualpages/Mat/MatGetFactor.html">MatGetFactor</a>()` is called on this matrix with `<a href="../../../../manualpages/Mat/MatFactorType.html">MAT_FACTOR_QR</a>` then the inner matrix `A` is used for the factorization</font>
+
+<a name="line289">289: </a><font color="#B22222">.seealso: [](ch_matrices), `<a href="../../../../manualpages/Mat/Mat.html">Mat</a>`, `<a href="../../../../manualpages/Mat/MATNORMAL.html">MATNORMAL</a>`, `<a href="../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>`, `<a href="../../../../manualpages/Mat/MatNormalHermitianGetMat.html">MatNormalHermitianGetMat</a>()`</font>
+<a name="line290">290: </a><font color="#B22222">@*/</font>
+<a name="line291">291: </a><strong><font color="#4169E1"><a name="MatCreateNormalHermitian"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/Mat/MatCreateNormalHermitian.html">MatCreateNormalHermitian</a>(<a href="../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../manualpages/Mat/Mat.html">Mat</a> *N)</font></strong>
+<a name="line292">292: </a>{
+<a name="line293">293: </a>  Mat_NormalHermitian *Na;
+<a name="line294">294: </a>  <a href="../../../../manualpages/Vec/VecType.html">VecType</a>              vtype;
+
+<a name="line296">296: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line297">297: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), N));
+<a name="line298">298: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/PetscLayoutReference.html">PetscLayoutReference</a>(A-&gt;cmap, &amp;(*N)-&gt;rmap));
+<a name="line299">299: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/PetscLayoutReference.html">PetscLayoutReference</a>(A-&gt;cmap, &amp;(*N)-&gt;cmap));
+<a name="line300">300: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetType.html">MatSetType</a>(*N, <a href="../../../../manualpages/Mat/MATSHELL.html">MATSHELL</a>));
+<a name="line301">301: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;Na));
+<a name="line302">302: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetContext.html">MatShellSetContext</a>(*N, Na));
+<a name="line303">303: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A));
+<a name="line304">304: </a>  Na-&gt;A = A;
+<a name="line305">305: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateVecs.html">MatCreateVecs</a>(A, NULL, &amp;Na-&gt;w));
+
+<a name="line307">307: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetBlockSize.html">MatSetBlockSize</a>(*N, A-&gt;cmap-&gt;bs));
+<a name="line308">308: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_DESTROY, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatDestroy_NormalHermitian));
+<a name="line309">309: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_MULT, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatMult_NormalHermitian));
+<a name="line310">310: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_MULT_HERMITIAN_TRANSPOSE, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatMult_NormalHermitian));
+<a name="line311">311: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line312">312: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_MULT_TRANSPOSE, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatMult_NormalHermitian));
+<a name="line313">313: </a><font color="#A020F0">#endif</font>
+<a name="line314">314: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_DUPLICATE, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatDuplicate_NormalHermitian));
+<a name="line315">315: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_GET_DIAGONAL, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatGetDiagonal_NormalHermitian));
+<a name="line316">316: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_GET_DIAGONAL_BLOCK, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatGetDiagonalBlock_NormalHermitian));
+<a name="line317">317: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatShellSetOperation.html">MatShellSetOperation</a>(*N, MATOP_COPY, (<a href="../../../../manualpages/Sys/PetscErrorCodeFn.html">PetscErrorCodeFn</a> *)MatCopy_NormalHermitian));
+<a name="line318">318: </a>  (*N)-&gt;ops-&gt;createsubmatrices = MatCreateSubMatrices_NormalHermitian;
+<a name="line319">319: </a>  (*N)-&gt;ops-&gt;permute           = MatPermute_NormalHermitian;
+
+<a name="line321">321: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatNormalHermitianGetMat_C"</font>, MatNormalHermitianGetMat_NormalHermitian));
+<a name="line322">322: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line323">323: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatNormalGetMat_C"</font>, MatNormalHermitianGetMat_NormalHermitian));
+<a name="line324">324: </a><font color="#A020F0">#endif</font>
+<a name="line325">325: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatConvert_normalh_seqaij_C"</font>, MatConvert_NormalHermitian_AIJ));
+<a name="line326">326: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatConvert_normalh_mpiaij_C"</font>, MatConvert_NormalHermitian_AIJ));
+<a name="line327">327: </a><font color="#A020F0">#if defined(PETSC_HAVE_HYPRE)</font>
+<a name="line328">328: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatConvert_normalh_hypre_C"</font>, MatConvert_NormalHermitian_HYPRE));
+<a name="line329">329: </a><font color="#A020F0">#endif</font>
+<a name="line330">330: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatShellSetContext_C"</font>, MatShellSetContext_Immutable));
+<a name="line331">331: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatShellSetContextDestroy_C"</font>, MatShellSetContextDestroy_Immutable));
+<a name="line332">332: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <font color="#666666">"MatShellSetManageScalingShifts_C"</font>, MatShellSetManageScalingShifts_Immutable));
+<a name="line333">333: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetOption.html">MatSetOption</a>(*N, !<a href="../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX) ? <a href="../../../../manualpages/Mat/MatOption.html">MAT_SYMMETRIC</a> : <a href="../../../../manualpages/Mat/MatOption.html">MAT_HERMITIAN</a>, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line334">334: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetVecType.html">MatGetVecType</a>(A, &amp;vtype));
+<a name="line335">335: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetVecType.html">MatSetVecType</a>(*N, vtype));
+<a name="line336">336: </a><font color="#A020F0">#if defined(PETSC_HAVE_DEVICE)</font>
+<a name="line337">337: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatBindToCPU.html">MatBindToCPU</a>(*N, A-&gt;boundtocpu));
+<a name="line338">338: </a><font color="#A020F0">#endif</font>
+<a name="line339">339: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetUp.html">MatSetUp</a>(*N));
+<a name="line340">340: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscObjectChangeTypeName((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*N, <a href="../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>));
+<a name="line341">341: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line342">342: </a>}
+</pre>
+</body>
+
+</html>
+

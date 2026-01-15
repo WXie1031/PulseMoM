@@ -1,0 +1,974 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Changes: 3.22 &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'changes/322';</script>
+    <link rel="icon" href="../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Changes: 3.21" href="321.html" />
+    <link rel="prev" title="Changes: 3.23" href="323.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../overview/nutshell.html">PETSc in a nutshell</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/features.html">Supported Systems</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../overview/gpu_roadmap.html">GPU Support Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/vector_table.html">Summary of Vector Types Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/matrix_table.html">Summary of Matrix Types Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/linear_solve_table.html">Summary of Sparse Linear Solvers Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/nonlinear_solve_table.html">Summary of Nonlinear Solvers Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/integrator_table.html">Summary of Time Integrators Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/tao_solve_table.html">Summary of Tao Solvers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/discrete_table.html">Summary of Discretization Management Systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/plex_transform_table.html">Summary of Unstructured Mesh Transformations</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../manual/index.html">User-Guide</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manual/introduction.html">Introduction to PETSc</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manual/about_this_manual.html">About This Manual</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/getting_started.html">Getting Started</a></li>
+
+
+
+
+
+
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manual/programming.html">The Solvers in PETSc/TAO</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manual/vec.html">Vectors and Parallel Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/mat.html">Matrices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/ksp.html">KSP: Linear System Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/snes.html">SNES: Nonlinear Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/ts.html">TS: Scalable ODE and DAE Solvers</a></li>
+
+<li class="toctree-l3"><a class="reference internal" href="../manual/tao.html">TAO: Optimization Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/regressor.html">PetscRegressor: Regression Solvers</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manual/dm.html">DM: Interfacing Between Solvers and Models/Discretizations</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manual/dmbase.html">DM Basics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/section.html">PetscSection: Connecting Grids to Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/dmplex.html">DMPlex: Unstructured Grids</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/dmstag.html">DMSTAG: Staggered, Structured Grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/dmnetwork.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/dt.html">PetscDT: Discretization Technology in PETSc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/fe.html">PetscFE: Finite Element Infrastructure in PETSc</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manual/additional.html">Additional Information</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manual/fortran.html">PETSc for Fortran Users</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/versionchecking.html">Checking the PETSc version</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/matlab.html">Using MATLAB with PETSc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/profiling.html">Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/performance.html">Hints for Performance Tuning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/streams.html">STREAMS: Example Study</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/blas-lapack.html">The Use of BLAS and LAPACK in PETSc and external libraries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/other.html">Other PETSc Features</a></li>
+
+<li class="toctree-l3"><a class="reference internal" href="../manual/advanced.html">Advanced Features of Matrices and Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manual/tests.html">Running PETSc Tests</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../manualpages/index.html">C/Fortran API</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Vector.html">Vectors and Index Sets</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Vec/index.html">Vector Operations (Vec)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/IS/index.html">Index sets (IS)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Matrix.html">Matrices and Matrix Operations</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Mat/index.html">Matrix Operations (Mat)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/MatGraphOperations/index.html">Matrix colorings (MatColoring), orderings (MatOrdering), partitionings (MatPartitioning), and coarsening (MatCoarsen)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/MatFD/index.html">Finite difference computation of Jacobians (MatFD)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/DataLayout.html">Data Layout and Communication</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscSF/index.html">Star Forest Communication (PetscSF)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscSection/index.html">Section Data Layout (PetscSection)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/AO/index.html">Application Orderings (AO)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/DataManagement.html">Data Management between Vec and Mat, and Distributed Mesh Data Structures</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-10"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DM/index.html">Data Management (DM)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMDA/index.html">Structured Grids (DMDA)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMStag/index.html">Staggered, Structured Grids (DMSTAG)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMPlex/index.html">Unstructured Grids and Cell Complexes (DMPLEX)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMNetwork/index.html">Graphs and Networks (DMNETWORK)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMForest/index.html">A Forest of Trees and Structured Adaptive Refinement (DMFOREST)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMPatch/index.html">Sequences of parallel mesh patches (DMPATCH)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMSwarm/index.html">Particle Discretizations (DMSWARM)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMMOAB/index.html">MOAB Mesh Representation (DMMOAB)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMLabel/index.html">Selecting Parts of Meshes (DMLabel)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMPRODUCT/index.html">Tensor products of meshes (DMRODUCT)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMComposite/index.html">DMComposite</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Discretization.html">Discretization and Function Spaces</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-11"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DT/index.html">Discretization Technology and Quadrature (DT)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/SPACE/index.html">Function Spaces (PetscSpace)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DUALSPACE/index.html">Dual Spaces (PetscDualSpace)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/FE/index.html">Finite Elements (PetscFE)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/FV/index.html">Finite Volumes (PetscFV)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PF/index.html">Defining your own mathematical functions (PF)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/LANDAU/index.html">Landau Collision Operator</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/LinearSolvers.html">Linear Solvers and Preconditioners</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-12"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/KSP/index.html">Linear Solvers and Krylov Methods (KSP)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PC/index.html">Preconditioners (PC)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/NonlinearSolvers.html">Nonlinear Solvers</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-13"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/SNES/index.html">Nonlinear Solvers (SNES)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/SNESFAS/index.html">Full Approximation Scheme (FAS) nonlinear multigrid</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Timestepping.html">Forward and Adjoint Timestepping</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-14"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/TS/index.html">Time Stepping ODE and DAE Solvers (TS)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Sensitivity/index.html">Sensitivity Analysis for ODE and DAE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Characteristic/index.html">Semi-Lagrangian Solves using the Method of Characteristics</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Optimization.html">Optimization</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-15"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Tao/index.html">Optimization Solvers (Tao)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/TaoLineSearch/index.html">Optimization Line Search (TaoLineSearch)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/MachineLearning.html">Machine Learning</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-16"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscRegressor/index.html">Regression Analysis and Classification (PetscRegressor)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Visualization.html">Graphics and Visualization</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-17"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Draw/index.html">Graphics (Draw)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Viewer/index.html">Viewing Objects (Viewer)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/System.html">System Routines, Profiling, Data Structures</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-18"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Sys/index.html">PETSc Options, IO, and System Utilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscH/index.html">Hash Tables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Log/index.html">Profiling and Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Device/index.html">Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Matlab/index.html">Matlab</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Bag/index.html">Bag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/BM/index.html">Benchmarks (BM)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html">Changes for each release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../manualpages/singleindex.html">Single Index of all PETSc Manual Pages</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Changes for each release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../manualpages/singleindex.html">Single Index of all PETSc Manual Pages</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../overview/previous_release_docs.html">Documentation for previous PETSc releases</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-19"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.23/docs"> 3.23</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.22/docs"> 3.22</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.21/docs"> 3.21</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.20/docs"> 3.20</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.19/docs"> 3.19</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.18/docs"> 3.18</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.17/docs"> 3.17</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.16/docs"> 3.16</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.15/docs"> 3.15</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.14/docs"> 3.14</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.13/docs"> 3.13</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.12/docs"> 3.12</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.11/docs"> 3.11</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.10/docs"> 3.10</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.9/docs"> 3.9</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.8/docs"> 3.8</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.7/docs"> 3.7</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.6/docs"> 3.6</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.5/docs"> 3.5</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.4/docs"> 3.4</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.3/docs"> 3.3</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../overview/index.html" class="nav-link">Overview</a></li>
+    
+    
+    <li class="breadcrumb-item"><i class="fa-solid fa-ellipsis"></i></li>
+    
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Changes for each release</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Changes: 3.22</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="changes-3-22">
+<h1>Changes: 3.22<a class="headerlink" href="#changes-3-22" title="Link to this heading">#</a></h1>
+<p class="rubric">General:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre">-mpiuni-allow-multiprocess-launch</span></code> to allow mpiexec to launch multiple indendent MPI-Uni jobs. Previously a sanity check
+error message was always produced</p></li>
+</ul>
+<p class="rubric">Configure/Build:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre">--with-openmp-kernels</span></code></p></li>
+<li><p>Update to work with python-3.13</p></li>
+<li><p>Change <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/MPIU_Allreduce.html">MPIU_Allreduce</a>()</span></code> to always returns an MPI error code that should be checked with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCallReturnMPI.html">PetscCallReturnMPI</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCallMPIReturnMPI.html">PetscCallMPIReturnMPI</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCheckReturnMPI.html">PetscCheckReturnMPI</a>()</span></code> to check for in PETSc provided MPI callbacks</p></li>
+</ul>
+<p class="rubric">Sys:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscPragmaUseOMPKernels.html">PetscPragmaUseOMPKernels</a></span></code></p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre">PetscOptionsRestoreViewer()</span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>()</span></code></p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre">PetscOptionsGetViewer()</span></code> and <code class="docutils notranslate"><span class="pre">PetscOptionsGetViewers()</span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscOptionsCreateViewer.html">PetscOptionsCreateViewer</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscOptionsCreateViewers.html">PetscOptionsCreateViewers</a>()</span></code></p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre">PetscOptionsPushGetViewerOff()</span></code>, <code class="docutils notranslate"><span class="pre">PetscOptionsPopGetViewerOff()</span></code>, and <code class="docutils notranslate"><span class="pre">PetscOptionsGetViewerOff()</span></code> in favor of
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscOptionsPushCreateViewerOff.html">PetscOptionsPushCreateViewerOff</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscOptionsPopCreateViewerOff.html">PetscOptionsPopCreateViewerOff</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscOptionsGetCreateViewerOff.html">PetscOptionsGetCreateViewerOff</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscObjectContainerCompose.html">PetscObjectContainerCompose</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscObjectContainerQuery.html">PetscObjectContainerQuery</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">size_t</span></code> argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscMPIErrorString.html">PetscMPIErrorString</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscCallExternalAbort.html">PetscCallExternalAbort</a>()</span></code> for calling external library functions from functions not returning <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscRandomSetOptionsPrefix.html">PetscRandomSetOptionsPrefix</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscOptionsGetBool3.html">PetscOptionsGetBool3</a>()</span></code> to get a ternary logical value from a command line option</p></li>
+</ul>
+<p class="rubric">Event Logging:</p>
+<p class="rubric">PetscViewer:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscViewerASCIIStdoutSetFileUnit.html">PetscViewerASCIIStdoutSetFileUnit</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">PetscShmgetAllocateArrayScalar()</span></code>, <code class="docutils notranslate"><span class="pre">PetscShmgetDeallocateArrayScalar()</span></code>, <code class="docutils notranslate"><span class="pre">PetscShmgetAllocateArrayInt()</span></code>, and <code class="docutils notranslate"><span class="pre">PetscShmgetDeallocateArrayInt()</span></code> for Fortran</p></li>
+</ul>
+<p class="rubric">PetscDraw:</p>
+<p class="rubric">AO:</p>
+<p class="rubric">IS:</p>
+<p class="rubric">VecScatter / PetscSF:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSFRegisterPersistent.html">PetscSFRegisterPersistent</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSFDeregisterPersistent.html">PetscSFDeregisterPersistent</a>()</span></code> for safe optimization of persistent communication</p></li>
+</ul>
+<p class="rubric">PF:</p>
+<p class="rubric">Vec:</p>
+<ul class="simple">
+<li><p>The <code class="docutils notranslate"><span class="pre"><a href="../manualpages/IS/IS.html">IS</a></span></code> passed to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecISAXPY.html">VecISAXPY</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecISCopy.html">VecISCopy</a>()</span></code>. <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecISSet.html">VecISSet</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecISShift.html">VecISShift</a>()</span></code> must have the same communicator of the vectors used</p></li>
+<li><p>Make <code class="docutils notranslate"><span class="pre">VecLock</span></code> API active in optimized mode</p></li>
+<li><p><code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecNestSetSubVec.html">VecNestSetSubVec</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecNestSetSubVecs.html">VecNestSetSubVecs</a>()</span></code> now take references to input vectors rather than creating duplicates</p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecSetInf.html">VecSetInf</a>()</span></code> with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecFlag.html">VecFlag</a>()</span></code></p></li>
+</ul>
+<p class="rubric">PetscSection:</p>
+<p class="rubric">PetscPartitioner:</p>
+<p class="rubric">Mat:</p>
+<ul class="simple">
+<li><p>Change <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MatProductSetFill.html">MatProductSetFill</a>()</span></code> to support <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code>. <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MatMatMult.html">MatMatMult</a>()</span></code> and its friends and relations now accept
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> in the <code class="docutils notranslate"><span class="pre">fill</span></code> argument. <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> is deprecated for those functions</p></li>
+<li><p>Change the default <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MatType.html">MatType</a></span></code> of the output <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/Mat.html">Mat</a></span></code> of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/MatSchurComplementComputeExplicitOperator.html">MatSchurComplementComputeExplicitOperator</a>()</span></code> to be <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MATDENSE.html">MATDENSE</a></span></code>. It may be changed from the command line, e.g., <code class="docutils notranslate"><span class="pre">-fieldsplit_1_explicit_operator_mat_type</span> <span class="pre">aij</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">MATOP_GET_BLOCK_DIAGONAL</span></code> and <code class="docutils notranslate"><span class="pre">MATOP_GET_VBLOCK_DIAGONAL</span></code> to set methods returning the diagonal point blocks of a matrix</p></li>
+</ul>
+<p class="rubric">MatCoarsen:</p>
+<p class="rubric">PC:</p>
+<ul class="simple">
+<li><p>Add support in <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PC/PCFieldSplitSetFields.html">PCFieldSplitSetFields</a>()</span></code> including with <code class="docutils notranslate"><span class="pre">-pc_fieldsplit_%d_fields</span> <span class="pre">fields</span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MATNEST.html">MATNEST</a></span></code>, making it possible to
+utilize multiple levels of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PC/PCFIELDSPLIT.html">PCFIELDSPLIT</a></span></code> with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/MATNEST.html">MATNEST</a></span></code> from the command line</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">PCCompositeSpecialSetAlphaMat()</span></code> API to use a matrix other than the identity in
+preconditioners based on an alternating direction iteration, e.g., setting <span class="math">\(M\)</span> for
+<span class="math">\(P = (A + alpha M) M^{-1} (alpha M + B)\)</span></p></li>
+<li><p>Reuse the result of <span class="math">\(T = A_{00}^-1 A_{01}\)</span> in <code class="docutils notranslate"><span class="pre">PCApply_FieldSplit_Schur</span></code> with <code class="docutils notranslate"><span class="pre">-pc_fieldsplit_schur_fact_type</span> <span class="pre">full</span></code></p></li>
+<li><p>Change the option database keys for coarsening for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PC/PCGAMG.html">PCGAMG</a></span></code> to use the prefix <code class="docutils notranslate"><span class="pre">-pc_gamg_</span></code>, for example <code class="docutils notranslate"><span class="pre">-pc_gamg_mat_coarsen_type</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PC/PCGAMGSetGraphSymmetrize.html">PCGAMGSetGraphSymmetrize</a>()</span></code> and <code class="docutils notranslate"><span class="pre">-pc_gamg_graph_symmetrize</span></code> to control symmetrization when coarsening the graph</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">-pc_hypre_type</span> <span class="pre">ilu</span></code> with <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_type</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_iterative_setup_type</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_iterative_setup_maxiter</span></code>,
+<code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_iterative_setup_tolerance</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_print_level</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_logging</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_level</span></code>,
+<code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_max_nnz_per_row</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_tol</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_maxiter</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_drop_threshold</span></code>,
+<code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_tri_solve</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_lower_jacobi_iters</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_upper_jacobi_iters</span></code>, and <code class="docutils notranslate"><span class="pre">-pc_hypre_ilu_local_reordering</span></code></p></li>
+<li><p>Improve <code class="docutils notranslate"><span class="pre">-pc_type</span> <span class="pre">boomeramg</span></code> with <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_smooth_num_sweeps</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_type</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_iterative_setup_type</span></code>,
+<code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_iterative_setup_option</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_iterative_setup_maxiter</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_iterative_setup_tolerance</span></code>,
+<code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_print_level</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_logging</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_level</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_max_nnz_per_row</span></code>,
+<code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_maxiter</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_drop_tol</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_tri_solve</span></code>, <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_lower_jacobi_iters</span></code>,
+<code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_upper_jacobi_iters</span></code>, and <code class="docutils notranslate"><span class="pre">-pc_hypre_boomeramg_ilu_local_reordering</span></code></p></li>
+</ul>
+<p class="rubric">KSP:</p>
+<ul class="simple">
+<li><p>Add support for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span></code> as an argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSPSetTolerances.html">KSPSetTolerances</a>()</span></code> to set the parameter back to its initial value when the object’s type was set</p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSPSetTolerances.html">KSPSetTolerances</a>()</span></code></p></li>
+</ul>
+<p class="rubric">SNES:</p>
+<ul class="simple">
+<li><p>Add support for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span></code> as an argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESSetTolerances.html">SNESSetTolerances</a>()</span></code> to set the parameter back to its initial value when the object’s type was set</p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESSetTolerances.html">SNESSetTolerances</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitor.html">DMAdaptorMonitor</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorSet.html">DMAdaptorMonitorSet</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorCancel.html">DMAdaptorMonitorCancel</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorSetFromOptions.html">DMAdaptorMonitorSetFromOptions</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorSize.html">DMAdaptorMonitorSize</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorError.html">DMAdaptorMonitorError</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorErrorDraw.html">DMAdaptorMonitorErrorDraw</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorErrorDrawLGCreate.html">DMAdaptorMonitorErrorDrawLGCreate</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorErrorDrawLG.html">DMAdaptorMonitorErrorDrawLG</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorRegister.html">DMAdaptorMonitorRegister</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorRegisterAll.html">DMAdaptorMonitorRegisterAll</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorMonitorRegisterDestroy.html">DMAdaptorMonitorRegisterDestroy</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorGetCriterion.html">DMAdaptorGetCriterion</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorSetCriterion.html">DMAdaptorSetCriterion</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorSetOptionsPrefix.html">DMAdaptorSetOptionsPrefix</a>()</span></code></p></li>
+<li><p>Add Newton’s method with arc length continuation: <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNEWTONAL.html">SNESNEWTONAL</a></span></code> with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonALSetFunction.html">SNESNewtonALSetFunction</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonALGetFunction.html">SNESNewtonALGetFunction</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonALComputeFunction.html">SNESNewtonALComputeFunction</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonALGetLoadParameter.html">SNESNewtonALGetLoadParameter</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonALSetCorrectionType.html">SNESNewtonALSetCorrectionType</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonTRSetTolerances.html">SNESNewtonTRSetTolerances</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonTRSetUpdateParameters.html">SNESNewtonTRSetUpdateParameters</a>()</span></code> to programmatically set trust region parameters</p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESSetTrustRegionTolerance.html">SNESSetTrustRegionTolerance</a>()</span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESNewtonTRSetTolerances.html">SNESNewtonTRSetTolerances</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNESResetCounters.html">SNESResetCounters</a>()</span></code> to reset counters for linear iterations and function evaluations</p></li>
+</ul>
+<p class="rubric">SNESLineSearch:</p>
+<p class="rubric">TS:</p>
+<ul class="simple">
+<li><p>Add Rosenbrock-W methods from <span id="id1">[<a class="reference internal" href="../manualpages/TS/TSROSWRODASPR2.html#id1015" title="Joachim Rang. Improved traditional Rosenbrock–Wanner methods for stiff ODEs and DAEs. Journal of Computational and Applied Mathematics, 286:128–144, 2015. doi:10.1016/j.cam.2015.03.010.">Ran15</a>]</span> with <span class="math">\(B_{PR}\)</span> stability: <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSROSWR34PRW.html">TSROSWR34PRW</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSROSWR3PRL2.html">TSROSWR3PRL2</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSROSWRODASPR.html">TSROSWRODASPR</a></span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSROSWRODASPR2.html">TSROSWRODASPR2</a></span></code></p></li>
+<li><p>Add support for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span></code> as an argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSSetTolerances.html">TSSetTolerances</a>()</span></code> to set the parameter back to its initial value when the object’s type was set</p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSSetTolerances.html">TSSetTolerances</a>()</span></code></p></li>
+<li><p>Add support for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span></code> as an argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSSetMaxSteps.html">TSSetMaxSteps</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSSetMaxTime.html">TSSetMaxTime</a>()</span></code></p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSAdaptSetSafety.html">TSAdaptSetSafety</a>()</span></code></p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSAdaptSetClip.html">TSAdaptSetClip</a>()</span></code></p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSAdaptSetStepLimits.html">TSAdaptSetStepLimits</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSGetStepResize.html">TSGetStepResize</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">-ts_monitor_solution_vtk_interval</span></code> to control the interval for dumping files</p></li>
+<li><p>Add a new ARKIMEX solver for fast-slow systems that are partitioned component-wise and additively at the same time</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSRHSSplitSetIFunction.html">TSRHSSplitSetIFunction</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSRHSSplitSetIJacobian.html">TSRHSSplitSetIJacobian</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSRHSSplitSetSNES.html">TSRHSSplitSetSNES</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSRHSSplitGetSNES.html">TSRHSSplitGetSNES</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSARKIMEXSetFastSlowSplit.html">TSARKIMEXSetFastSlowSplit</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TSARKIMEXGetFastSlowSplit.html">TSARKIMEXGetFastSlowSplit</a>()</span></code> to support the new solver</p></li>
+</ul>
+<p class="rubric">TAO:</p>
+<ul class="simple">
+<li><p>Add support for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span></code> as an argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Tao/TaoSetTolerances.html">TaoSetTolerances</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Tao/TaoSetConstraintTolerances.html">TaoSetConstraintTolerances</a>()</span></code> to set the parameter back to its initial value when the object’s type was set</p></li>
+<li><p>Deprecate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_DEFAULT.html">PETSC_DEFAULT</a></span></code> in favor of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_CURRENT.html">PETSC_CURRENT</a></span></code> for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Tao/TaoSetTolerances.html">TaoSetTolerances</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Tao/TaoSetConstraintTolerances.html">TaoSetConstraintTolerances</a>()</span></code></p></li>
+</ul>
+<p class="rubric">DM/DA:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGetSparseLocalize.html">DMGetSparseLocalize</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMSetSparseLocalize.html">DMSetSparseLocalize</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGeomModelRegister.html">DMGeomModelRegister</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGeomModelRegisterAll.html">DMGeomModelRegisterAll</a>()</span></code>, <code class="docutils notranslate"><span class="pre">DMGeomModelRegisterDestroy()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMSnapToGeomModel.html">DMSnapToGeomModel</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMSetSnapToGeomModel.html">DMSetSnapToGeomModel</a>()</span></code> to support registering geometric models</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGetOutputSequenceLength.html">DMGetOutputSequenceLength</a>()</span></code></p></li>
+<li><p>Add an additional return vector to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMCreateMassMatrixLumped.html">DMCreateMassMatrixLumped</a>()</span></code> to retrieve the local mass lumping</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexMigrateGlobalToNaturalSF.html">DMPlexMigrateGlobalToNaturalSF</a>()</span></code> modifies the NaturalSF to map from the SF’s old global section to the new global section</p></li>
+</ul>
+<p class="rubric">DMSwarm:</p>
+<p class="rubric">DMPlex:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMLabel/DMLabelGetValueBounds.html">DMLabelGetValueBounds</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">DMPlexOrientLabel()</span></code></p></li>
+<li><p>Add an argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexLabelCohesiveComplete.html">DMPlexLabelCohesiveComplete</a>()</span></code> in order to change behavior at surface boundary</p></li>
+<li><p>Remove <code class="docutils notranslate"><span class="pre">DMPlexSnapToGeomModel()</span></code></p></li>
+<li><p>Add refinement argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexCreateHexCylinderMesh.html">DMPlexCreateHexCylinderMesh</a>()</span></code></p></li>
+<li><p>Now <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexComputeBdIntegral.html">DMPlexComputeBdIntegral</a>()</span></code> takes one function per field</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexCreateEdgeNumbering.html">DMPlexCreateEdgeNumbering</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexComputeL2FluxDiffVec.html">DMPlexComputeL2FluxDiffVec</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexComputeL2FluxDiffVecLocal.html">DMPlexComputeL2FluxDiffVecLocal</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorSetType.html">DMAdaptorSetType</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorGetType.html">DMAdaptorGetType</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorRegister.html">DMAdaptorRegister</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorRegisterAll.html">DMAdaptorRegisterAll</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorRegisterDestroy.html">DMAdaptorRegisterDestroy</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorGetMixedSetupFunction.html">DMAdaptorGetMixedSetupFunction</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMAdaptorSetMixedSetupFunction.html">DMAdaptorSetMixedSetupFunction</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexCreateCellNumbering.html">DMPlexCreateCellNumbering</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexBuildFromCellSectionParallel.html">DMPlexBuildFromCellSectionParallel</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexCreateFromCellSectionParallel.html">DMPlexCreateFromCellSectionParallel</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">-dm_plex_box_label</span></code> to add “Face Sets” label with current “box” conventions</p></li>
+<li><p>Add “Face Sets” label to simplex meshes using current “box” conventions</p></li>
+<li><p>Update <code class="docutils notranslate"><span class="pre">PetscViewerExodusII</span></code> object to cache variable names for faster and more robust look-ups</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIISetNodalVariable.html">PetscViewerExodusIISetNodalVariable</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIISetZonalVariable.html">PetscViewerExodusIISetZonalVariable</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIIGetNodalVariable.html">PetscViewerExodusIIGetNodalVariable</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIIGetZonalVariable.html">PetscViewerExodusIIGetZonalVariable</a>()</span></code> to set or get the number of variables in a file</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIISetNodalVariableName.html">PetscViewerExodusIISetNodalVariableName</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIISetZonalVariableName.html">PetscViewerExodusIISetZonalVariableName</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIIGetNodalVariableName.html">PetscViewerExodusIIGetNodalVariableName</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/PetscViewerExodusIIGetZonalVariableName.html">PetscViewerExodusIIGetZonalVariableName</a>()</span></code> to set or get a single variable name</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">PetscViewerExodusIISetNodalVariablesNames()</span></code>, <code class="docutils notranslate"><span class="pre">PetscViewerExodusIISetZonalVariablesNames()</span></code>, <code class="docutils notranslate"><span class="pre">PetscViewerExodusIIGetNodalVariablesNames()</span></code>, and <code class="docutils notranslate"><span class="pre">PetscViewerExodusIIGetZonalVariablesNames()</span></code> to set or get all variable names at the same time (not available in Fortran)</p></li>
+<li><p>Add degree bounds to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMCopyFields.html">DMCopyFields</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMCopyDS.html">DMCopyDS</a>()</span></code>, <code class="docutils notranslate"><span class="pre">PetscDSCopy()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DT/PetscDSSelectDiscretizations.html">PetscDSSelectDiscretizations</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/FE/PetscFELimitDegree.html">PetscFELimitDegree</a>()</span></code></p></li>
+<li><p>Add localizationHeight and sparseLocalize arguments to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexCreateBoxMesh.html">DMPlexCreateBoxMesh</a>()</span></code> for coordinate localization on periodic meshes</p></li>
+<li><p>Add parallel CGNS reader, enabled by <code class="docutils notranslate"><span class="pre">-dm_plex_cgns_parallel</span></code></p></li>
+<li><p>Add CGNS function for <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/VecLoad.html">VecLoad</a>()</span></code> of solutions in parallel (must be run with <code class="docutils notranslate"><span class="pre">-dm_plex_cgns_parallel</span></code>)</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscViewerCGNSOpen.html">PetscViewerCGNSOpen</a>()</span></code> convenience function</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscViewerCGNSGetSolutionTime.html">PetscViewerCGNSGetSolutionTime</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscViewerCGNSGetSolutionName.html">PetscViewerCGNSGetSolutionName</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscViewerCGNSSetSolutionIndex.html">PetscViewerCGNSSetSolutionIndex</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Viewer/PetscViewerCGNSGetSolutionIndex.html">PetscViewerCGNSGetSolutionIndex</a>()</span></code></p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMPlex/DMPlexGetDepthStratumGlobalSize.html">DMPlexGetDepthStratumGlobalSize</a>()</span></code></p></li>
+</ul>
+<p class="rubric">FE/FV:</p>
+<p class="rubric">DMNetwork:</p>
+<p class="rubric">DMStag:</p>
+<p class="rubric">DT:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DT/PetscDSSetIntegrationParameters.html">PetscDSSetIntegrationParameters</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DT/PetscDSSetCellParameters.html">PetscDSSetCellParameters</a>()</span></code></p></li>
+</ul>
+<p class="rubric">Fortran:</p>
+<ul class="simple">
+<li><p>Add <code class="docutils notranslate"><span class="pre">PETSC_NULL_ENUM</span></code> to be used instead of <code class="docutils notranslate"><span class="pre">PETSC_NULL_INTEGER</span></code> when a pointer to an <code class="docutils notranslate"><span class="pre">enum</span></code> is expected in a PETSc function call</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre">PETSC_NULL_INTEGER_ARRAY</span></code>, <code class="docutils notranslate"><span class="pre">PETSC_NULL_SCALAR_ARRAY</span></code>, and <code class="docutils notranslate"><span class="pre">PETSC_NULL_REAL_ARRAY</span></code> for use instead of
+<code class="docutils notranslate"><span class="pre">PETSC_NULL_INTEGER</span></code>, <code class="docutils notranslate"><span class="pre">PETSC_NULL_SCALAR</span></code>, and <code class="docutils notranslate"><span class="pre">PETSC_NULL_REAL</span></code> when an array is expected in a PETSc function call</p></li>
+<li><p>Add automatically generated interface definitions for most PETSc functions to detect illegal usage at compile time</p></li>
+<li><p>Add <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscObjectIsNull.html">PetscObjectIsNull</a>()</span></code> for users to check if a PETSc object is <code class="docutils notranslate"><span class="pre">NULL</span></code></p></li>
+<li><p>Change the PETSc Fortran API so that non-array values, <code class="docutils notranslate"><span class="pre">v</span></code>, passed to PETSc routines expecting arrays must be cast with <code class="docutils notranslate"><span class="pre">[v]</span></code> in the calling sequence</p></li>
+</ul>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="323.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Changes: 3.23</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="321.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Changes: 3.21</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/changes/322.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/changes/322.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

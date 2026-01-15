@@ -1,0 +1,479 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/yaml/src/reader.c">Actual source code: reader.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+
+<a name="line2">  2: </a><font color="#A020F0">#include </font><font color="#666666">"yaml_private.h"</font><font color="#A020F0"></font>
+
+<a name="line4">  4: </a><font color="#B22222">/*</font>
+<a name="line5">  5: </a><font color="#B22222"> * Declarations.</font>
+<a name="line6">  6: </a><font color="#B22222"> */</font>
+
+<a name="line8">  8: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line9">  9: </a><strong><font color="#4169E1">yaml_parser_set_reader_error(yaml_parser_t *parser, const char *problem,</font></strong>
+<a name="line10"> 10: </a><strong><font color="#4169E1">        size_t offset, int value)</font></strong>;
+
+<a name="line12"> 12: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line13"> 13: </a><strong><font color="#4169E1">yaml_parser_update_raw_buffer(yaml_parser_t *parser)</font></strong>;
+
+<a name="line15"> 15: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line16"> 16: </a><strong><font color="#4169E1">yaml_parser_determine_encoding(yaml_parser_t *parser)</font></strong>;
+
+<a name="line18"> 18: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line19"> 19: </a><strong><font color="#4169E1">yaml_parser_update_buffer(yaml_parser_t *parser, size_t length)</font></strong>;
+
+<a name="line21"> 21: </a><font color="#B22222">/*</font>
+<a name="line22"> 22: </a><font color="#B22222"> * Set the reader error and return 0.</font>
+<a name="line23"> 23: </a><font color="#B22222"> */</font>
+
+<a name="line25"> 25: </a><strong><font color="#4169E1"><a name="yaml_parser_set_reader_error"></a>static int</font></strong>
+<a name="line26"> 26: </a><strong><font color="#4169E1">yaml_parser_set_reader_error(yaml_parser_t *parser, const char *problem,</font></strong>
+<a name="line27"> 27: </a><strong><font color="#4169E1">        size_t offset, int value)</font></strong>
+<a name="line28"> 28: </a>{
+<a name="line29"> 29: </a>    parser-&gt;error = YAML_READER_ERROR;
+<a name="line30"> 30: </a>    parser-&gt;problem = problem;
+<a name="line31"> 31: </a>    parser-&gt;problem_offset = offset;
+<a name="line32"> 32: </a>    parser-&gt;problem_value = value;
+
+<a name="line34"> 34: </a>    <font color="#4169E1">return</font> 0;
+<a name="line35"> 35: </a>}
+
+<a name="line37"> 37: </a><font color="#B22222">/*</font>
+<a name="line38"> 38: </a><font color="#B22222"> * Byte order marks.</font>
+<a name="line39"> 39: </a><font color="#B22222"> */</font>
+
+<a name="line41"> 41: </a><strong><font color="#228B22">#define BOM_UTF8    </font><font color="#666666">"\xef\xbb\xbf"</font><font color="#228B22"></font></strong>
+<a name="line42"> 42: </a><strong><font color="#228B22">#define BOM_UTF16LE </font><font color="#666666">"\xff\xfe"</font><font color="#228B22"></font></strong>
+<a name="line43"> 43: </a><strong><font color="#228B22">#define BOM_UTF16BE </font><font color="#666666">"\xfe\xff"</font><font color="#228B22"></font></strong>
+
+<a name="line45"> 45: </a><font color="#B22222">/*</font>
+<a name="line46"> 46: </a><font color="#B22222"> * Determine the input stream encoding by checking the BOM symbol. If no BOM is</font>
+<a name="line47"> 47: </a><font color="#B22222"> * found, the UTF-8 encoding is assumed. Return 1 on success, 0 on failure.</font>
+<a name="line48"> 48: </a><font color="#B22222"> */</font>
+
+<a name="line50"> 50: </a><strong><font color="#4169E1"><a name="yaml_parser_determine_encoding"></a>static int</font></strong>
+<a name="line51"> 51: </a><strong><font color="#4169E1">yaml_parser_determine_encoding(yaml_parser_t *parser)</font></strong>
+<a name="line52"> 52: </a>{
+<a name="line53"> 53: </a>    <font color="#B22222">/* Ensure that we had enough bytes in the raw buffer. */</font>
+
+<a name="line55"> 55: </a>    <font color="#4169E1">while</font> (!parser-&gt;eof
+<a name="line56"> 56: </a>            &amp;&amp; parser-&gt;raw_buffer.last - parser-&gt;raw_buffer.pointer &lt; 3) {
+<a name="line57"> 57: </a>        <font color="#4169E1">if</font> (!yaml_parser_update_raw_buffer(parser)) <font color="#4169E1">return</font> 0;
+<a name="line58"> 58: </a>    }
+
+<a name="line60"> 60: </a>    <font color="#B22222">/* Determine the encoding. */</font>
+
+<a name="line62"> 62: </a>    <font color="#4169E1">if</font> (parser-&gt;raw_buffer.last - parser-&gt;raw_buffer.pointer &gt;= 2
+<a name="line63"> 63: </a>            &amp;&amp; !memcmp(parser-&gt;raw_buffer.pointer, BOM_UTF16LE, 2)) {
+<a name="line64"> 64: </a>        parser-&gt;encoding = YAML_UTF16LE_ENCODING;
+<a name="line65"> 65: </a>        parser-&gt;raw_buffer.pointer += 2;
+<a name="line66"> 66: </a>        parser-&gt;offset += 2;
+<a name="line67"> 67: </a>    }
+<a name="line68"> 68: </a>    <font color="#4169E1">else</font> <font color="#4169E1">if</font> (parser-&gt;raw_buffer.last - parser-&gt;raw_buffer.pointer &gt;= 2
+<a name="line69"> 69: </a>            &amp;&amp; !memcmp(parser-&gt;raw_buffer.pointer, BOM_UTF16BE, 2)) {
+<a name="line70"> 70: </a>        parser-&gt;encoding = YAML_UTF16BE_ENCODING;
+<a name="line71"> 71: </a>        parser-&gt;raw_buffer.pointer += 2;
+<a name="line72"> 72: </a>        parser-&gt;offset += 2;
+<a name="line73"> 73: </a>    }
+<a name="line74"> 74: </a>    <font color="#4169E1">else</font> <font color="#4169E1">if</font> (parser-&gt;raw_buffer.last - parser-&gt;raw_buffer.pointer &gt;= 3
+<a name="line75"> 75: </a>            &amp;&amp; !memcmp(parser-&gt;raw_buffer.pointer, BOM_UTF8, 3)) {
+<a name="line76"> 76: </a>        parser-&gt;encoding = YAML_UTF8_ENCODING;
+<a name="line77"> 77: </a>        parser-&gt;raw_buffer.pointer += 3;
+<a name="line78"> 78: </a>        parser-&gt;offset += 3;
+<a name="line79"> 79: </a>    }
+<a name="line80"> 80: </a>    <font color="#4169E1">else</font> {
+<a name="line81"> 81: </a>        parser-&gt;encoding = YAML_UTF8_ENCODING;
+<a name="line82"> 82: </a>    }
+
+<a name="line84"> 84: </a>    <font color="#4169E1">return</font> 1;
+<a name="line85"> 85: </a>}
+
+<a name="line87"> 87: </a><font color="#B22222">/*</font>
+<a name="line88"> 88: </a><font color="#B22222"> * Update the raw buffer.</font>
+<a name="line89"> 89: </a><font color="#B22222"> */</font>
+
+<a name="line91"> 91: </a><strong><font color="#4169E1"><a name="yaml_parser_update_raw_buffer"></a>static int</font></strong>
+<a name="line92"> 92: </a><strong><font color="#4169E1">yaml_parser_update_raw_buffer(yaml_parser_t *parser)</font></strong>
+<a name="line93"> 93: </a>{
+<a name="line94"> 94: </a>    size_t size_read = 0;
+
+<a name="line96"> 96: </a>    <font color="#B22222">/* Return if the raw buffer is full. */</font>
+
+<a name="line98"> 98: </a>    <font color="#4169E1">if</font> (parser-&gt;raw_buffer.start == parser-&gt;raw_buffer.pointer
+<a name="line99"> 99: </a>            &amp;&amp; parser-&gt;raw_buffer.last == parser-&gt;raw_buffer.end)
+<a name="line100">100: </a>        <font color="#4169E1">return</font> 1;
+
+<a name="line102">102: </a>    <font color="#B22222">/* Return on EOF. */</font>
+
+<a name="line104">104: </a>    <font color="#4169E1">if</font> (parser-&gt;eof) <font color="#4169E1">return</font> 1;
+
+<a name="line106">106: </a>    <font color="#B22222">/* Move the remaining bytes in the raw buffer to the beginning. */</font>
+
+<a name="line108">108: </a>    <font color="#4169E1">if</font> (parser-&gt;raw_buffer.start &lt; parser-&gt;raw_buffer.pointer
+<a name="line109">109: </a>            &amp;&amp; parser-&gt;raw_buffer.pointer &lt; parser-&gt;raw_buffer.last) {
+<a name="line110">110: </a>        memmove(parser-&gt;raw_buffer.start, parser-&gt;raw_buffer.pointer,
+<a name="line111">111: </a>                parser-&gt;raw_buffer.last - parser-&gt;raw_buffer.pointer);
+<a name="line112">112: </a>    }
+<a name="line113">113: </a>    parser-&gt;raw_buffer.last -=
+<a name="line114">114: </a>        parser-&gt;raw_buffer.pointer - parser-&gt;raw_buffer.start;
+<a name="line115">115: </a>    parser-&gt;raw_buffer.pointer = parser-&gt;raw_buffer.start;
+
+<a name="line117">117: </a>    <font color="#B22222">/* Call the read handler to fill the buffer. */</font>
+
+<a name="line119">119: </a>    <font color="#4169E1">if</font> (!parser-&gt;read_handler(parser-&gt;read_handler_data, parser-&gt;raw_buffer.last,
+<a name="line120">120: </a>                parser-&gt;raw_buffer.end - parser-&gt;raw_buffer.last, &amp;size_read)) {
+<a name="line121">121: </a>        <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser, <font color="#666666">"input error"</font>,
+<a name="line122">122: </a>                parser-&gt;offset, -1);
+<a name="line123">123: </a>    }
+<a name="line124">124: </a>    parser-&gt;raw_buffer.last += size_read;
+<a name="line125">125: </a>    <font color="#4169E1">if</font> (!size_read) parser-&gt;eof = 1;
+
+<a name="line127">127: </a>    <font color="#4169E1">return</font> 1;
+<a name="line128">128: </a>}
+
+<a name="line130">130: </a><font color="#B22222">/*</font>
+<a name="line131">131: </a><font color="#B22222"> * Ensure that the buffer contains at least `length` characters.</font>
+<a name="line132">132: </a><font color="#B22222"> * Return 1 on success, 0 on failure.</font>
+<a name="line133">133: </a><font color="#B22222"> *</font>
+<a name="line134">134: </a><font color="#B22222"> * The length is supposed to be significantly less that the buffer size.</font>
+<a name="line135">135: </a><font color="#B22222"> */</font>
+
+<a name="line137">137: </a><strong><font color="#4169E1"><a name="AML_DECLARE"></a>YAML_DECLARE(int)</font></strong>
+<a name="line138">138: </a><strong><font color="#4169E1">yaml_parser_update_buffer(yaml_parser_t *parser, size_t length)</font></strong>
+<a name="line139">139: </a>{
+<a name="line140">140: </a>    int first = 1;
+
+<a name="line142">142: </a>    assert(parser-&gt;read_handler);   <font color="#B22222">/* Read handler must be set. */</font>
+
+<a name="line144">144: </a>    <font color="#B22222">/* If the EOF flag is set and the raw buffer is empty, do nothing. */</font>
+
+<a name="line146">146: </a>    <font color="#4169E1">if</font> (parser-&gt;eof &amp;&amp; parser-&gt;raw_buffer.pointer == parser-&gt;raw_buffer.last)
+<a name="line147">147: </a>        <font color="#4169E1">return</font> 1;
+
+<a name="line149">149: </a>    <font color="#B22222">/* Return if the buffer contains enough characters. */</font>
+
+<a name="line151">151: </a>    <font color="#4169E1">if</font> (parser-&gt;unread &gt;= length)
+<a name="line152">152: </a>        <font color="#4169E1">return</font> 1;
+
+<a name="line154">154: </a>    <font color="#B22222">/* Determine the input encoding if it is not known yet. */</font>
+
+<a name="line156">156: </a>    <font color="#4169E1">if</font> (!parser-&gt;encoding) {
+<a name="line157">157: </a>        <font color="#4169E1">if</font> (!yaml_parser_determine_encoding(parser))
+<a name="line158">158: </a>            <font color="#4169E1">return</font> 0;
+<a name="line159">159: </a>    }
+
+<a name="line161">161: </a>    <font color="#B22222">/* Move the unread characters to the beginning of the buffer. */</font>
+
+<a name="line163">163: </a>    <font color="#4169E1">if</font> (parser-&gt;buffer.start &lt; parser-&gt;buffer.pointer
+<a name="line164">164: </a>            &amp;&amp; parser-&gt;buffer.pointer &lt; parser-&gt;buffer.last) {
+<a name="line165">165: </a>        size_t size = parser-&gt;buffer.last - parser-&gt;buffer.pointer;
+<a name="line166">166: </a>        memmove(parser-&gt;buffer.start, parser-&gt;buffer.pointer, size);
+<a name="line167">167: </a>        parser-&gt;buffer.pointer = parser-&gt;buffer.start;
+<a name="line168">168: </a>        parser-&gt;buffer.last = parser-&gt;buffer.start + size;
+<a name="line169">169: </a>    }
+<a name="line170">170: </a>    <font color="#4169E1">else</font> <font color="#4169E1">if</font> (parser-&gt;buffer.pointer == parser-&gt;buffer.last) {
+<a name="line171">171: </a>        parser-&gt;buffer.pointer = parser-&gt;buffer.start;
+<a name="line172">172: </a>        parser-&gt;buffer.last = parser-&gt;buffer.start;
+<a name="line173">173: </a>    }
+
+<a name="line175">175: </a>    <font color="#B22222">/* Fill the buffer until it has enough characters. */</font>
+
+<a name="line177">177: </a>    <font color="#4169E1">while</font> (parser-&gt;unread &lt; length)
+<a name="line178">178: </a>    {
+<a name="line179">179: </a>        <font color="#B22222">/* Fill the raw buffer if necessary. */</font>
+
+<a name="line181">181: </a>        <font color="#4169E1">if</font> (!first || parser-&gt;raw_buffer.pointer == parser-&gt;raw_buffer.last) {
+<a name="line182">182: </a>            <font color="#4169E1">if</font> (!yaml_parser_update_raw_buffer(parser)) <font color="#4169E1">return</font> 0;
+<a name="line183">183: </a>        }
+<a name="line184">184: </a>        first = 0;
+
+<a name="line186">186: </a>        <font color="#B22222">/* Decode the raw buffer. */</font>
+
+<a name="line188">188: </a>        <font color="#4169E1">while</font> (parser-&gt;raw_buffer.pointer != parser-&gt;raw_buffer.last)
+<a name="line189">189: </a>        {
+<a name="line190">190: </a>            unsigned int value = 0, value2 = 0;
+<a name="line191">191: </a>            int incomplete = 0;
+<a name="line192">192: </a>            unsigned char octet;
+<a name="line193">193: </a>            unsigned int width = 0;
+<a name="line194">194: </a>            int low, high;
+<a name="line195">195: </a>            size_t k;
+<a name="line196">196: </a>            size_t raw_unread = parser-&gt;raw_buffer.last - parser-&gt;raw_buffer.pointer;
+
+<a name="line198">198: </a>            <font color="#B22222">/* Decode the next character. */</font>
+
+<a name="line200">200: </a>            <font color="#4169E1">switch</font> (parser-&gt;encoding)
+<a name="line201">201: </a>            {
+<a name="line202">202: </a>                <font color="#4169E1">case</font> YAML_UTF8_ENCODING:
+
+<a name="line204">204: </a>                    <font color="#B22222">/*</font>
+<a name="line205">205: </a><font color="#B22222">                     * Decode a UTF-8 character.  Check RFC 3629</font>
+<a name="line206">206: </a><font color="#B22222">                     * (http://www.ietf.org/rfc/rfc3629.txt) for more details.</font>
+<a name="line207">207: </a><font color="#B22222">                     *</font>
+<a name="line208">208: </a><font color="#B22222">                     * The following table (taken from the RFC) is used for</font>
+<a name="line209">209: </a><font color="#B22222">                     * decoding.</font>
+<a name="line210">210: </a><font color="#B22222">                     *</font>
+<a name="line211">211: </a><font color="#B22222">                     *    Char. number range |        UTF-8 octet sequence</font>
+<a name="line212">212: </a><font color="#B22222">                     *      (hexadecimal)    |              (binary)</font>
+<a name="line213">213: </a><font color="#B22222">                     *   --------------------+------------------------------------</font>
+<a name="line214">214: </a><font color="#B22222">                     *   0000 0000-0000 007F | 0xxxxxxx</font>
+<a name="line215">215: </a><font color="#B22222">                     *   0000 0080-0000 07FF | 110xxxxx 10xxxxxx</font>
+<a name="line216">216: </a><font color="#B22222">                     *   0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx</font>
+<a name="line217">217: </a><font color="#B22222">                     *   0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx</font>
+<a name="line218">218: </a><font color="#B22222">                     *</font>
+<a name="line219">219: </a><font color="#B22222">                     * Additionally, the characters in the range 0xD800-0xDFFF</font>
+<a name="line220">220: </a><font color="#B22222">                     * are prohibited as they are reserved for use with UTF-16</font>
+<a name="line221">221: </a><font color="#B22222">                     * surrogate pairs.</font>
+<a name="line222">222: </a><font color="#B22222">                     */</font>
+
+<a name="line224">224: </a>                    <font color="#B22222">/* Determine the length of the UTF-8 sequence. */</font>
+
+<a name="line226">226: </a>                    octet = parser-&gt;raw_buffer.pointer[0];
+<a name="line227">227: </a>                    width = (octet &amp; 0x80) == 0x00 ? 1 :
+<a name="line228">228: </a>                            (octet &amp; 0xE0) == 0xC0 ? 2 :
+<a name="line229">229: </a>                            (octet &amp; 0xF0) == 0xE0 ? 3 :
+<a name="line230">230: </a>                            (octet &amp; 0xF8) == 0xF0 ? 4 : 0;
+
+<a name="line232">232: </a>                    <font color="#B22222">/* Check if the leading octet is valid. */</font>
+
+<a name="line234">234: </a>                    <font color="#4169E1">if</font> (!width)
+<a name="line235">235: </a>                        <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line236">236: </a>                                <font color="#666666">"invalid leading UTF-8 octet"</font>,
+<a name="line237">237: </a>                                parser-&gt;offset, octet);
+
+<a name="line239">239: </a>                    <font color="#B22222">/* Check if the raw buffer contains an incomplete character. */</font>
+
+<a name="line241">241: </a>                    <font color="#4169E1">if</font> (width &gt; raw_unread) {
+<a name="line242">242: </a>                        <font color="#4169E1">if</font> (parser-&gt;eof) {
+<a name="line243">243: </a>                            <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line244">244: </a>                                    <font color="#666666">"incomplete UTF-8 octet sequence"</font>,
+<a name="line245">245: </a>                                    parser-&gt;offset, -1);
+<a name="line246">246: </a>                        }
+<a name="line247">247: </a>                        incomplete = 1;
+<a name="line248">248: </a>                        <font color="#4169E1">break</font>;
+<a name="line249">249: </a>                    }
+
+<a name="line251">251: </a>                    <font color="#B22222">/* Decode the leading octet. */</font>
+
+<a name="line253">253: </a>                    value = (octet &amp; 0x80) == 0x00 ? octet &amp; 0x7F :
+<a name="line254">254: </a>                            (octet &amp; 0xE0) == 0xC0 ? octet &amp; 0x1F :
+<a name="line255">255: </a>                            (octet &amp; 0xF0) == 0xE0 ? octet &amp; 0x0F :
+<a name="line256">256: </a>                            (octet &amp; 0xF8) == 0xF0 ? octet &amp; 0x07 : 0;
+
+<a name="line258">258: </a>                    <font color="#B22222">/* Check and decode the trailing octets. */</font>
+
+<a name="line260">260: </a>                    <font color="#4169E1">for</font> (k = 1; k &lt; width; k ++)
+<a name="line261">261: </a>                    {
+<a name="line262">262: </a>                        octet = parser-&gt;raw_buffer.pointer[k];
+
+<a name="line264">264: </a>                        <font color="#B22222">/* Check if the octet is valid. */</font>
+
+<a name="line266">266: </a>                        <font color="#4169E1">if</font> ((octet &amp; 0xC0) != 0x80)
+<a name="line267">267: </a>                            <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line268">268: </a>                                    <font color="#666666">"invalid trailing UTF-8 octet"</font>,
+<a name="line269">269: </a>                                    parser-&gt;offset+k, octet);
+
+<a name="line271">271: </a>                        <font color="#B22222">/* Decode the octet. */</font>
+
+<a name="line273">273: </a>                        value = (value &lt;&lt; 6) + (octet &amp; 0x3F);
+<a name="line274">274: </a>                    }
+
+<a name="line276">276: </a>                    <font color="#B22222">/* Check the length of the sequence against the value. */</font>
+
+<a name="line278">278: </a>                    <font color="#4169E1">if</font> (!((width == 1) ||
+<a name="line279">279: </a>                            (width == 2 &amp;&amp; value &gt;= 0x80) ||
+<a name="line280">280: </a>                            (width == 3 &amp;&amp; value &gt;= 0x800) ||
+<a name="line281">281: </a>                            (width == 4 &amp;&amp; value &gt;= 0x10000)))
+<a name="line282">282: </a>                        <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line283">283: </a>                                <font color="#666666">"invalid length of a UTF-8 sequence"</font>,
+<a name="line284">284: </a>                                parser-&gt;offset, -1);
+
+<a name="line286">286: </a>                    <font color="#B22222">/* Check the range of the value. */</font>
+
+<a name="line288">288: </a>                    <font color="#4169E1">if</font> ((value &gt;= 0xD800 &amp;&amp; value &lt;= 0xDFFF) || value &gt; 0x10FFFF)
+<a name="line289">289: </a>                        <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line290">290: </a>                                <font color="#666666">"invalid Unicode character"</font>,
+<a name="line291">291: </a>                                parser-&gt;offset, value);
+
+<a name="line293">293: </a>                    <font color="#4169E1">break</font>;
+
+<a name="line295">295: </a>                <font color="#4169E1">case</font> YAML_UTF16LE_ENCODING:
+<a name="line296">296: </a>                <font color="#4169E1">case</font> YAML_UTF16BE_ENCODING:
+
+<a name="line298">298: </a>                    low = (parser-&gt;encoding == YAML_UTF16LE_ENCODING ? 0 : 1);
+<a name="line299">299: </a>                    high = (parser-&gt;encoding == YAML_UTF16LE_ENCODING ? 1 : 0);
+
+<a name="line301">301: </a>                    <font color="#B22222">/*</font>
+<a name="line302">302: </a><font color="#B22222">                     * The UTF-16 encoding is not as simple as one might</font>
+<a name="line303">303: </a><font color="#B22222">                     * naively think.  Check RFC 2781</font>
+<a name="line304">304: </a><font color="#B22222">                     * (http://www.ietf.org/rfc/rfc2781.txt).</font>
+<a name="line305">305: </a><font color="#B22222">                     *</font>
+<a name="line306">306: </a><font color="#B22222">                     * Normally, two subsequent bytes describe a Unicode</font>
+<a name="line307">307: </a><font color="#B22222">                     * character.  However a special technique (called a</font>
+<a name="line308">308: </a><font color="#B22222">                     * surrogate pair) is used for specifying character</font>
+<a name="line309">309: </a><font color="#B22222">                     * values larger than 0xFFFF.</font>
+<a name="line310">310: </a><font color="#B22222">                     *</font>
+<a name="line311">311: </a><font color="#B22222">                     * A surrogate pair consists of two pseudo-characters:</font>
+<a name="line312">312: </a><font color="#B22222">                     *      high surrogate area (0xD800-0xDBFF)</font>
+<a name="line313">313: </a><font color="#B22222">                     *      low surrogate area (0xDC00-0xDFFF)</font>
+<a name="line314">314: </a><font color="#B22222">                     *</font>
+<a name="line315">315: </a><font color="#B22222">                     * The following formulas are used for decoding</font>
+<a name="line316">316: </a><font color="#B22222">                     * and encoding characters using surrogate pairs:</font>
+<a name="line317">317: </a><font color="#B22222">                     *</font>
+<a name="line318">318: </a><font color="#B22222">                     *  U  = U' + 0x10000   (0x01 00 00 &lt;= U &lt;= 0x10 FF FF)</font>
+<a name="line319">319: </a><font color="#B22222">                     *  U' = yyyyyyyyyyxxxxxxxxxx   (0 &lt;= U' &lt;= 0x0F FF FF)</font>
+<a name="line320">320: </a><font color="#B22222">                     *  W1 = 110110yyyyyyyyyy</font>
+<a name="line321">321: </a><font color="#B22222">                     *  W2 = 110111xxxxxxxxxx</font>
+<a name="line322">322: </a><font color="#B22222">                     *</font>
+<a name="line323">323: </a><font color="#B22222">                     * where U is the character value, W1 is the high surrogate</font>
+<a name="line324">324: </a><font color="#B22222">                     * area, W2 is the low surrogate area.</font>
+<a name="line325">325: </a><font color="#B22222">                     */</font>
+
+<a name="line327">327: </a>                    <font color="#B22222">/* Check for incomplete UTF-16 character. */</font>
+
+<a name="line329">329: </a>                    <font color="#4169E1">if</font> (raw_unread &lt; 2) {
+<a name="line330">330: </a>                        <font color="#4169E1">if</font> (parser-&gt;eof) {
+<a name="line331">331: </a>                            <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line332">332: </a>                                    <font color="#666666">"incomplete UTF-16 character"</font>,
+<a name="line333">333: </a>                                    parser-&gt;offset, -1);
+<a name="line334">334: </a>                        }
+<a name="line335">335: </a>                        incomplete = 1;
+<a name="line336">336: </a>                        <font color="#4169E1">break</font>;
+<a name="line337">337: </a>                    }
+
+<a name="line339">339: </a>                    <font color="#B22222">/* Get the character. */</font>
+
+<a name="line341">341: </a>                    value = parser-&gt;raw_buffer.pointer[low]
+<a name="line342">342: </a>                        + (parser-&gt;raw_buffer.pointer[high] &lt;&lt; 8);
+
+<a name="line344">344: </a>                    <font color="#B22222">/* Check for unexpected low surrogate area. */</font>
+
+<a name="line346">346: </a>                    <font color="#4169E1">if</font> ((value &amp; 0xFC00) == 0xDC00)
+<a name="line347">347: </a>                        <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line348">348: </a>                                <font color="#666666">"unexpected low surrogate area"</font>,
+<a name="line349">349: </a>                                parser-&gt;offset, value);
+
+<a name="line351">351: </a>                    <font color="#B22222">/* Check for a high surrogate area. */</font>
+
+<a name="line353">353: </a>                    <font color="#4169E1">if</font> ((value &amp; 0xFC00) == 0xD800) {
+
+<a name="line355">355: </a>                        width = 4;
+
+<a name="line357">357: </a>                        <font color="#B22222">/* Check for incomplete surrogate pair. */</font>
+
+<a name="line359">359: </a>                        <font color="#4169E1">if</font> (raw_unread &lt; 4) {
+<a name="line360">360: </a>                            <font color="#4169E1">if</font> (parser-&gt;eof) {
+<a name="line361">361: </a>                                <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line362">362: </a>                                        <font color="#666666">"incomplete UTF-16 surrogate pair"</font>,
+<a name="line363">363: </a>                                        parser-&gt;offset, -1);
+<a name="line364">364: </a>                            }
+<a name="line365">365: </a>                            incomplete = 1;
+<a name="line366">366: </a>                            <font color="#4169E1">break</font>;
+<a name="line367">367: </a>                        }
+
+<a name="line369">369: </a>                        <font color="#B22222">/* Get the next character. */</font>
+
+<a name="line371">371: </a>                        value2 = parser-&gt;raw_buffer.pointer[low+2]
+<a name="line372">372: </a>                            + (parser-&gt;raw_buffer.pointer[high+2] &lt;&lt; 8);
+
+<a name="line374">374: </a>                        <font color="#B22222">/* Check for a low surrogate area. */</font>
+
+<a name="line376">376: </a>                        <font color="#4169E1">if</font> ((value2 &amp; 0xFC00) != 0xDC00)
+<a name="line377">377: </a>                            <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line378">378: </a>                                    <font color="#666666">"expected low surrogate area"</font>,
+<a name="line379">379: </a>                                    parser-&gt;offset+2, value2);
+
+<a name="line381">381: </a>                        <font color="#B22222">/* Generate the value of the surrogate pair. */</font>
+
+<a name="line383">383: </a>                        value = 0x10000 + ((value &amp; 0x3FF) &lt;&lt; 10) + (value2 &amp; 0x3FF);
+<a name="line384">384: </a>                    }
+
+<a name="line386">386: </a>                    <font color="#4169E1">else</font> {
+<a name="line387">387: </a>                        width = 2;
+<a name="line388">388: </a>                    }
+
+<a name="line390">390: </a>                    <font color="#4169E1">break</font>;
+
+<a name="line392">392: </a>                <font color="#4169E1">default</font>:
+<a name="line393">393: </a>                    assert(1);      <font color="#B22222">/* Impossible. */</font>
+<a name="line394">394: </a>            }
+
+<a name="line396">396: </a>            <font color="#B22222">/* Check if the raw buffer contains enough bytes to form a character. */</font>
+
+<a name="line398">398: </a>            <font color="#4169E1">if</font> (incomplete) <font color="#4169E1">break</font>;
+
+<a name="line400">400: </a>            <font color="#B22222">/*</font>
+<a name="line401">401: </a><font color="#B22222">             * Check if the character is in the allowed range:</font>
+<a name="line402">402: </a><font color="#B22222">             *      #x9 | #xA | #xD | [#x20-#x7E]               (8 bit)</font>
+<a name="line403">403: </a><font color="#B22222">             *      | #x85 | [#xA0-#xD7FF] | [#xE000-#xFFFD]    (16 bit)</font>
+<a name="line404">404: </a><font color="#B22222">             *      | [#x10000-#x10FFFF]                        (32 bit)</font>
+<a name="line405">405: </a><font color="#B22222">             */</font>
+
+<a name="line407">407: </a>            <font color="#4169E1">if</font> (! (value == 0x09 || value == 0x0A || value == 0x0D
+<a name="line408">408: </a>                        || (value &gt;= 0x20 &amp;&amp; value &lt;= 0x7E)
+<a name="line409">409: </a>                        || (value == 0x85) || (value &gt;= 0xA0 &amp;&amp; value &lt;= 0xD7FF)
+<a name="line410">410: </a>                        || (value &gt;= 0xE000 &amp;&amp; value &lt;= 0xFFFD)
+<a name="line411">411: </a>                        || (value &gt;= 0x10000 &amp;&amp; value &lt;= 0x10FFFF)))
+<a name="line412">412: </a>                <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser,
+<a name="line413">413: </a>                        <font color="#666666">"control characters are not allowed"</font>,
+<a name="line414">414: </a>                        parser-&gt;offset, value);
+
+<a name="line416">416: </a>            <font color="#B22222">/* Move the raw pointers. */</font>
+
+<a name="line418">418: </a>            parser-&gt;raw_buffer.pointer += width;
+<a name="line419">419: </a>            parser-&gt;offset += width;
+
+<a name="line421">421: </a>            <font color="#B22222">/* Finally put the character into the buffer. */</font>
+
+<a name="line423">423: </a>            <font color="#B22222">/* 0000 0000-0000 007F -&gt; 0xxxxxxx */</font>
+<a name="line424">424: </a>            <font color="#4169E1">if</font> (value &lt;= 0x7F) *(parser-&gt;buffer.last++) = value;
+<a name="line425">425: </a>            <font color="#B22222">/* 0000 0080-0000 07FF -&gt; 110xxxxx 10xxxxxx */</font>
+<a name="line426">426: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (value &lt;= 0x7FF) {
+<a name="line427">427: </a>                *(parser-&gt;buffer.last++) = 0xC0 + (value &gt;&gt; 6);
+<a name="line428">428: </a>                *(parser-&gt;buffer.last++) = 0x80 + (value &amp; 0x3F);
+<a name="line429">429: </a>            }
+<a name="line430">430: </a>            <font color="#B22222">/* 0000 0800-0000 FFFF -&gt; 1110xxxx 10xxxxxx 10xxxxxx */</font>
+<a name="line431">431: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (value &lt;= 0xFFFF) {
+<a name="line432">432: </a>                *(parser-&gt;buffer.last++) = 0xE0 + (value &gt;&gt; 12);
+<a name="line433">433: </a>                *(parser-&gt;buffer.last++) = 0x80 + ((value &gt;&gt; 6) &amp; 0x3F);
+<a name="line434">434: </a>                *(parser-&gt;buffer.last++) = 0x80 + (value &amp; 0x3F);
+<a name="line435">435: </a>            }
+<a name="line436">436: </a>            <font color="#B22222">/* 0001 0000-0010 FFFF -&gt; 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */</font>
+<a name="line437">437: </a>            <font color="#4169E1">else</font> {
+<a name="line438">438: </a>                *(parser-&gt;buffer.last++) = 0xF0 + (value &gt;&gt; 18);
+<a name="line439">439: </a>                *(parser-&gt;buffer.last++) = 0x80 + ((value &gt;&gt; 12) &amp; 0x3F);
+<a name="line440">440: </a>                *(parser-&gt;buffer.last++) = 0x80 + ((value &gt;&gt; 6) &amp; 0x3F);
+<a name="line441">441: </a>                *(parser-&gt;buffer.last++) = 0x80 + (value &amp; 0x3F);
+<a name="line442">442: </a>            }
+
+<a name="line444">444: </a>            parser-&gt;unread ++;
+<a name="line445">445: </a>        }
+
+<a name="line447">447: </a>        <font color="#B22222">/* On EOF, put NUL into the buffer and return. */</font>
+
+<a name="line449">449: </a>        <font color="#4169E1">if</font> (parser-&gt;eof) {
+<a name="line450">450: </a>            *(parser-&gt;buffer.last++) = '\0';
+<a name="line451">451: </a>            parser-&gt;unread ++;
+<a name="line452">452: </a>            <font color="#4169E1">return</font> 1;
+<a name="line453">453: </a>        }
+
+<a name="line455">455: </a>    }
+
+<a name="line457">457: </a>    <font color="#4169E1">if</font> (parser-&gt;offset &gt;= MAX_FILE_SIZE) {
+<a name="line458">458: </a>        <font color="#4169E1">return</font> yaml_parser_set_reader_error(parser, <font color="#666666">"input is too long"</font>,
+<a name="line459">459: </a>            parser-&gt;offset, -1);
+<a name="line460">460: </a>    }
+
+<a name="line462">462: </a>    <font color="#4169E1">return</font> 1;
+<a name="line463">463: </a>}
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,95 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/is/sf/impls/basic/cupm/sfcupm.hpp">Actual source code: sfcupm.hpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:19+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+<a name="line2">  2: </a>#include <A href="../../../../src/vec/is/sf/impls/basic/sfpack.h.html">&lt;../src/vec/is/sf/impls/basic/sfpack.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/cupminterface.hpp.html">&lt;petsc/private/cupminterface.hpp&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petsc/private/cupmatomics.hpp.html">&lt;petsc/private/cupmatomics.hpp&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../include/petsc/private/deviceimpl.h.html">&lt;petsc/private/deviceimpl.h&gt;</A>
+
+<a name="line7">  7: </a>namespace Petsc
+<a name="line8">  8: </a>{
+
+<a name="line10"> 10: </a>namespace sf
+<a name="line11"> 11: </a>{
+
+<a name="line13"> 13: </a>namespace cupm
+<a name="line14"> 14: </a>{
+
+<a name="line16"> 16: </a>namespace impl
+<a name="line17"> 17: </a>{
+
+<a name="line19"> 19: </a>template &lt;device::cupm::DeviceType T&gt;
+<a name="line20"> 20: </a><font color="#4169E1"><a name="PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL"></a>struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL </font>SfInterface : device::cupm::impl::Interface&lt;T&gt; {
+<a name="line21"> 21: </a>  PETSC_CUPM_INHERIT_INTERFACE_TYPEDEFS_USING(T);
+
+<a name="line23"> 23: </a>private:
+<a name="line24"> 24: </a>  template &lt;typename Type, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line25"> 25: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Pack(PetscSFLink, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, const void *, void *) noexcept;
+
+<a name="line27"> 27: </a>  template &lt;typename Type, class Op, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line28"> 28: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> UnpackAndOp(PetscSFLink, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, void *, const void *) noexcept;
+
+<a name="line30"> 30: </a>  template &lt;typename Type, class Op, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line31"> 31: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> FetchAndOp(PetscSFLink, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, void *, void *) noexcept;
+
+<a name="line33"> 33: </a>  template &lt;typename Type, class Op, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line34"> 34: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ScatterAndOp(PetscSFLink, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, const void *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, void *) noexcept;
+
+<a name="line36"> 36: </a>  template &lt;typename Type, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line37"> 37: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ScatterAndInsert(PetscSFLink, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, const void *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, void *) noexcept;
+
+<a name="line39"> 39: </a>  template &lt;typename Type, class Op, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line40"> 40: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> FetchAndOpLocal(PetscSFLink, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, void *, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, PetscSFPackOpt, const <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, const void *, void *) noexcept;
+
+<a name="line42"> 42: </a>  template &lt;typename Type, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line43"> 43: </a>  static void PackInit_RealType(PetscSFLink) noexcept;
+
+<a name="line45"> 45: </a>  template &lt;typename Type, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> size <font color="#B22222">/*sizeof(Type)*/</font>&gt;
+<a name="line46"> 46: </a>  <font color="#4169E1">struct PackInit_IntegerType_Atomic</font>;
+
+<a name="line48"> 48: </a>  template &lt;typename Type, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line49"> 49: </a>  static void PackInit_IntegerType(PetscSFLink link) noexcept;
+
+<a name="line51"> 51: </a><font color="#A020F0">#if <a href="../../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_COMPLEX)</font>
+<a name="line52"> 52: </a>  template &lt;typename Type, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line53"> 53: </a>  static void PackInit_ComplexType(PetscSFLink link) noexcept;
+<a name="line54"> 54: </a><font color="#A020F0">#endif</font>
+
+<a name="line56"> 56: </a>  template &lt;typename Type&gt;
+<a name="line57"> 57: </a>  static void PackInit_PairType(PetscSFLink link) noexcept;
+
+<a name="line59"> 59: </a>  template &lt;typename Type, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> BS, <a href="../../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> EQ&gt;
+<a name="line60"> 60: </a>  static void PackInit_DumbType(PetscSFLink link) noexcept;
+
+<a name="line62"> 62: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LinkSyncDevice(PetscSFLink) noexcept;
+<a name="line63"> 63: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LinkSyncStream(PetscSFLink) noexcept;
+<a name="line64"> 64: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LinkMemcpy(PetscSFLink, <a href="../../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>, void *, <a href="../../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>, const void *, size_t) noexcept;
+<a name="line65"> 65: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LinkDestroy_MPI(<a href="../../../../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a>, PetscSFLink) noexcept;
+
+<a name="line67"> 67: </a>public:
+<a name="line68"> 68: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Malloc(<a href="../../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>, size_t, void **) noexcept;
+<a name="line69"> 69: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Free(<a href="../../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>, void *) noexcept;
+<a name="line70"> 70: </a>  static <a href="../../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> LinkSetUp(<a href="../../../../../../../manualpages/PetscSF/PetscSF.html">PetscSF</a>, PetscSFLink, MPI_Datatype) noexcept;
+<a name="line71"> 71: </a>};
+
+<a name="line73"> 73: </a>} <font color="#B22222">// namespace impl</font>
+
+<a name="line75"> 75: </a>} <font color="#B22222">// namespace cupm</font>
+
+<a name="line77"> 77: </a>} <font color="#B22222">// namespace sf</font>
+
+<a name="line79"> 79: </a>} <font color="#B22222">// namespace Petsc</font>
+</pre>
+</body>
+
+</html>
+

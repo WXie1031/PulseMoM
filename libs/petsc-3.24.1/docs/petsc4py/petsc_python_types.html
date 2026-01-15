@@ -1,0 +1,1098 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>PETSc Python types &#8212; Python 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="_static/documentation_options.js?v=d1c46438"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'petsc_python_types';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Working with PETSc options" href="petsc_options.html" />
+    <link rel="prev" title="petsc4py.PETSc.COMM_WORLD" href="reference/petsc4py.PETSc.COMM_WORLD.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:39:11-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">Python 3.24.1 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="overview.html">
+                        PETSc Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="install.html">
+                        Installation
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="contributing.html">
+                        Contributing
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="citing.html">
+                        Citations
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="reference.html">
+                        Reference
+                      </a>
+                    </li>
+                
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+                    <li class="nav-item current active">
+                      <a class="nav-link dropdown-item nav-internal" href="#">
+                        PETSc Python types
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link dropdown-item nav-internal" href="petsc_options.html">
+                        Working with PETSc options
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link dropdown-item nav-internal" href="demo/demo.html">
+                        petsc4py demos
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link dropdown-item nav-internal" href="documentation_standards.html">
+                        Documentation standards for petsc4py
+                      </a>
+                    </li>
+                
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="overview.html">
+                        PETSc Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="install.html">
+                        Installation
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="contributing.html">
+                        Contributing
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="citing.html">
+                        Citations
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="reference.html">
+                        Reference
+                      </a>
+                    </li>
+                
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="pst-nav-more-links-2">
+                    More
+                </button>
+                <ul id="pst-nav-more-links-2" class="dropdown-menu">
+                    
+                    <li class="nav-item current active">
+                      <a class="nav-link dropdown-item nav-internal" href="#">
+                        PETSc Python types
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link dropdown-item nav-internal" href="petsc_options.html">
+                        Working with PETSc options
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link dropdown-item nav-internal" href="demo/demo.html">
+                        petsc4py demos
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link dropdown-item nav-internal" href="documentation_standards.html">
+                        Documentation standards for petsc4py
+                      </a>
+                    </li>
+                
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">PETSc Python types</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="petsc-python-types">
+<span id="id1"></span><h1>PETSc Python types<a class="headerlink" href="#petsc-python-types" title="Link to this heading">#</a></h1>
+<p>Here we discuss details about Python-aware PETSc types that can be used within the library.</p>
+<p>In particular, we discuss matrices, preconditioners, Krylov solvers, nonlinear solvers, ODE integrators and viewers.</p>
+<p>The low-level, Cython implementation exposing the Python methods is in <a class="reference external" href="https://gitlab.com/petsc/petsc/-/tree/release/src/binding/petsc4py/src/petsc4py/PETSc/libpetsc4py.pyx">src/petsc4py/PETSc/libpetsc4py.pyx</a>.</p>
+<p>The scripts used here can be found at <a class="reference external" href="https://gitlab.com/petsc/petsc/-/tree/release/src/binding/petsc4py/demo/python_types">demo/python_types</a>.</p>
+<section id="petsc-python-matrix-type">
+<span id="petsc-python-mat"></span><h2>PETSc Python matrix type<a class="headerlink" href="#petsc-python-matrix-type" title="Link to this heading">#</a></h2>
+<p>PETSc provides a convenient way to compute the action of linear operators coded
+in Python through the <a class="reference internal" href="reference/petsc4py.PETSc.Mat.Type.html#petsc4py.PETSc.Mat.Type.PYTHON" title="petsc4py.PETSc.Mat.Type.PYTHON"><code class="xref any py py-attr docutils literal notranslate"><span class="pre">petsc4py.PETSc.Mat.Type.PYTHON</span></code></a> type.</p>
+<p>In addition to the matrix action, the implementation can expose additional
+methods for use within the library. A template class for
+the supported methods is given below.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scalar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mat</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">InsertMode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Viewer</span>
+
+
+<span class="c1"># A template class with the Python methods supported by MATPYTHON</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MatPythonProtocol</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mult</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Matrix vector multiplication: y = A @ x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">multAdd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Matrix vector multiplication: z = A @ x + y.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">multTranspose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transposed matrix vector multiplication: y = A^T @ x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">multTransposeAdd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transposed matrix vector multiplication: z = A^T @ x + y.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">multHermitian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Hermitian matrix vector multiplication: y = A^H @ x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">multHermitianAdd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Hermitian matrix vector multiplication: z = A^H @ x + y.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;View the matrix.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setFromOptions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process command line for customization.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">multDiagonalBlock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the on-process matrix vector multiplication.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">createVecs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Vec</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return tuple of vectors (x,y) suitable for A @ x = y.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="n">Scalar</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scale the matrix by a scalar.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">shift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="n">Scalar</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Shift the matrix by a scalar.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">createSubMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="n">IS</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">IS</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mat</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the submatrix corresponding to r rows and c columns.</span>
+
+<span class="sd">        Matrix out must be reused if not None.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">zeroRowsColumns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="n">IS</span><span class="p">,</span> <span class="n">diag</span><span class="p">:</span> <span class="n">Scalar</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Zero rows and columns of the matrix corresponding to the index set r.</span>
+
+<span class="sd">        Insert diag on the diagonal and modify vectors x and b accordingly if not None.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">getDiagonal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the diagonal of the matrix: d = diag(A).&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setDiagonal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">im</span><span class="p">:</span> <span class="n">InsertMode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the diagonal of the matrix.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">missingDiagonal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">im</span><span class="p">:</span> <span class="n">InsertMode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a flag indicating if the matrix is missing a diagonal entry and the location.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">diagonalScale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">L</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">R</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform left and right diagonal scaling if vectors are not None.</span>
+
+<span class="sd">        A = diag(L)@A@diag(R).</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">getDiagonalBlock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mat</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the on-process matrix.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the required setup.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">duplicate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">op</span><span class="p">:</span> <span class="n">Mat</span><span class="o">.</span><span class="n">DuplicateOption</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mat</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Duplicate the matrix.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">B</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">op</span><span class="p">:</span> <span class="n">Mat</span><span class="o">.</span><span class="n">Structure</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy the matrix: B = A.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">productSetFromOptions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">prodtype</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">Y</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">Z</span><span class="p">:</span> <span class="n">Mat</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The boolean flag indicating if the matrix supports prodtype.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">productSymbolic</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">product</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">producttype</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">Y</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">Z</span><span class="p">:</span> <span class="n">Mat</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the symbolic stage of the requested matrix product.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">productNumeric</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">product</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">producttype</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">Y</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">Z</span><span class="p">:</span> <span class="n">Mat</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the numeric stage of the requested matrix product.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">zeroEntries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the matrix to zero.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">norm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">normtype</span><span class="p">:</span> <span class="n">NormType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the norm of the matrix.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve the equation: x = inv(A) y.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solveAdd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve the equation: x = inv(A) y + z.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solveTranspose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve the equation: x = inv(A)^T y.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solveTransposeAdd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve the equation: x = inv(A)^T y + z.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">SOR</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span>
+        <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span>
+        <span class="n">omega</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">sortype</span><span class="p">:</span> <span class="n">Mat</span><span class="o">.</span><span class="n">SORType</span><span class="p">,</span>
+        <span class="n">shift</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">its</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">lits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform SOR iterations.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">conjugate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the conjugation of the matrix: A = conj(A).&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">imagPart</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set real part to zero. A = imag(A).&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">realPart</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set imaginary part to zero. A = real(A).&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>In the example below, we create an operator that applies the Laplacian operator
+on a two-dimensional grid, and use it to solve the associated linear system.
+The default preconditioner in the script is <a class="reference internal" href="reference/petsc4py.PETSc.PC.Type.html#petsc4py.PETSc.PC.Type.JACOBI" title="petsc4py.PETSc.PC.Type.JACOBI"><code class="xref any py py-attr docutils literal notranslate"><span class="pre">petsc4py.PETSc.PC.Type.JACOBI</span></code></a>
+which needs to access the diagonal of the matrix.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># ------------------------------------------------------------------------</span>
+<span class="c1">#</span>
+<span class="c1">#  Poisson problem. This problem is modeled by the partial</span>
+<span class="c1">#  differential equation</span>
+<span class="c1">#</span>
+<span class="c1">#          -Laplacian(u) = 1,  0 &lt; x,y &lt; 1,</span>
+<span class="c1">#</span>
+<span class="c1">#  with boundary conditions</span>
+<span class="c1">#</span>
+<span class="c1">#           u = 0  for  x = 0, x = 1, y = 0, y = 1</span>
+<span class="c1">#</span>
+<span class="c1">#  A finite difference approximation with the usual 5-point stencil</span>
+<span class="c1">#  is used to discretize the boundary value problem to obtain a</span>
+<span class="c1">#  nonlinear system of equations. The problem is solved in a 2D</span>
+<span class="c1">#  rectangular domain, using distributed arrays (DAs) to partition</span>
+<span class="c1">#  the parallel grid.</span>
+<span class="c1">#</span>
+<span class="c1"># ------------------------------------------------------------------------</span>
+
+<span class="c1"># We first import petsc4py and sys to initialize PETSc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">petsc4py</span>
+
+<span class="n">petsc4py</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
+
+<span class="c1"># Import the PETSc module</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">PETSc</span>
+
+
+<span class="c1"># Here we define a class representing the discretized operator</span>
+<span class="c1"># This allows us to apply the operator &quot;matrix-free&quot;</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Poisson2D</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">da</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">da</span> <span class="o">=</span> <span class="n">da</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">localX</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">createLocalVec</span><span class="p">()</span>
+
+    <span class="c1"># This is the method that PETSc will look for when applying</span>
+    <span class="c1"># the operator. `X` is the PETSc input vector, `Y` the output vector,</span>
+    <span class="c1"># while `mat` is the PETSc matrix holding the PETSc datastructures.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mult</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mat</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">):</span>
+        <span class="c1"># Grid sizes</span>
+        <span class="n">mx</span><span class="p">,</span> <span class="n">my</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getSizes</span><span class="p">()</span>
+        <span class="n">hx</span><span class="p">,</span> <span class="n">hy</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">[</span><span class="n">mx</span><span class="p">,</span> <span class="n">my</span><span class="p">])</span>
+
+        <span class="c1"># Bounds for the local part of the grid this process owns</span>
+        <span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">xe</span><span class="p">),</span> <span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ye</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getRanges</span><span class="p">()</span>
+
+        <span class="c1"># Map global vector to local vectors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">globalToLocal</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">localX</span><span class="p">)</span>
+
+        <span class="c1"># We can access the vector data as NumPy arrays</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getVecArray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">localX</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getVecArray</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span>
+
+        <span class="c1"># Loop on the local grid and compute the local action of the operator</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ye</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">xe</span><span class="p">):</span>
+                <span class="n">u</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>  <span class="c1"># center</span>
+                <span class="n">u_e</span> <span class="o">=</span> <span class="n">u_w</span> <span class="o">=</span> <span class="n">u_n</span> <span class="o">=</span> <span class="n">u_s</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">u_w</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>  <span class="c1"># west</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">mx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">u_e</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>  <span class="c1"># east</span>
+                <span class="k">if</span> <span class="n">j</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">u_s</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># south</span>
+                <span class="k">if</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">ny</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">u_n</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># north</span>
+                <span class="n">u_xx</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">u_e</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">u</span> <span class="o">-</span> <span class="n">u_w</span><span class="p">)</span> <span class="o">*</span> <span class="n">hy</span> <span class="o">/</span> <span class="n">hx</span>
+                <span class="n">u_yy</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">u_n</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">u</span> <span class="o">-</span> <span class="n">u_s</span><span class="p">)</span> <span class="o">*</span> <span class="n">hx</span> <span class="o">/</span> <span class="n">hy</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">u_xx</span> <span class="o">+</span> <span class="n">u_yy</span>
+
+    <span class="c1"># This is the method that PETSc will look for when the diagonal of the matrix is needed.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">getDiagonal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mat</span><span class="p">,</span> <span class="n">D</span><span class="p">):</span>
+        <span class="n">mx</span><span class="p">,</span> <span class="n">my</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getSizes</span><span class="p">()</span>
+        <span class="n">hx</span><span class="p">,</span> <span class="n">hy</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">[</span><span class="n">mx</span><span class="p">,</span> <span class="n">my</span><span class="p">])</span>
+        <span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">xe</span><span class="p">),</span> <span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ye</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getRanges</span><span class="p">()</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getVecArray</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
+
+        <span class="c1"># Loop on the local grid and compute the diagonal</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ye</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">xe</span><span class="p">):</span>
+                <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">hy</span> <span class="o">/</span> <span class="n">hx</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">hx</span> <span class="o">/</span> <span class="n">hy</span>
+
+    <span class="c1"># The class can contain other methods that PETSc won&#39;t use</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">formRHS</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getVecArray</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+        <span class="n">mx</span><span class="p">,</span> <span class="n">my</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getSizes</span><span class="p">()</span>
+        <span class="n">hx</span><span class="p">,</span> <span class="n">hy</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">[</span><span class="n">mx</span><span class="p">,</span> <span class="n">my</span><span class="p">])</span>
+        <span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">xe</span><span class="p">),</span> <span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ye</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">getRanges</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ye</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">xe</span><span class="p">):</span>
+                <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">*</span> <span class="n">hx</span> <span class="o">*</span> <span class="n">hy</span>
+
+
+<span class="c1"># Access the option database and read options from the command line</span>
+<span class="n">OptDB</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Options</span><span class="p">()</span>
+<span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">OptDB</span><span class="o">.</span><span class="n">getIntArray</span><span class="p">(</span>
+    <span class="s1">&#39;grid&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+<span class="p">)</span>  <span class="c1"># Read `-grid &lt;int,int&gt;`, defaults to 16,16</span>
+
+<span class="c1"># Create the distributed memory implementation for structured grid</span>
+<span class="n">da</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">DMDA</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">([</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">],</span> <span class="n">stencil_width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Create vectors to hold the solution and the right-hand side</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">createGlobalVec</span><span class="p">()</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">createGlobalVec</span><span class="p">()</span>
+
+<span class="c1"># Instantiate an object of our Poisson2D class</span>
+<span class="n">pde</span> <span class="o">=</span> <span class="n">Poisson2D</span><span class="p">(</span><span class="n">da</span><span class="p">)</span>
+
+<span class="c1"># Create a PETSc matrix of type Python using `pde` as context</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Mat</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">comm</span><span class="o">=</span><span class="n">da</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">setSizes</span><span class="p">([</span><span class="n">x</span><span class="o">.</span><span class="n">getSizes</span><span class="p">(),</span> <span class="n">b</span><span class="o">.</span><span class="n">getSizes</span><span class="p">()])</span>
+<span class="n">A</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">Mat</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">PYTHON</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">setPythonContext</span><span class="p">(</span><span class="n">pde</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span>
+
+<span class="c1"># Create a Conjugate Gradient Krylov solver</span>
+<span class="n">ksp</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">()</span>
+<span class="n">ksp</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">KSP</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">CG</span><span class="p">)</span>
+
+<span class="c1"># Use diagonal preconditioning</span>
+<span class="n">ksp</span><span class="o">.</span><span class="n">getPC</span><span class="p">()</span><span class="o">.</span><span class="n">setType</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">PC</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">JACOBI</span><span class="p">)</span>
+
+<span class="c1"># Allow command-line customization</span>
+<span class="n">ksp</span><span class="o">.</span><span class="n">setFromOptions</span><span class="p">()</span>
+
+<span class="c1"># Assemble right-hand side and solve the linear system</span>
+<span class="n">pde</span><span class="o">.</span><span class="n">formRHS</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="n">ksp</span><span class="o">.</span><span class="n">setOperators</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+<span class="n">ksp</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># Here we programmatically visualize the solution</span>
+<span class="k">if</span> <span class="n">OptDB</span><span class="o">.</span><span class="n">getBool</span><span class="p">(</span><span class="s1">&#39;plot&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="c1"># Modify the option database: keep the X window open for 1 second</span>
+    <span class="n">OptDB</span><span class="p">[</span><span class="s1">&#39;draw_pause&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="c1"># Obtain a viewer of type DRAW</span>
+    <span class="n">draw</span> <span class="o">=</span> <span class="n">PETSc</span><span class="o">.</span><span class="n">Viewer</span><span class="o">.</span><span class="n">DRAW</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+    <span class="c1"># View the vector in the X window</span>
+    <span class="n">draw</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># We can also visualize the solution by command line options</span>
+<span class="c1"># For example, we can dump a VTK file with:</span>
+<span class="c1">#</span>
+<span class="c1">#     $ python poisson2d.py -plot 0 -view_solution vtk:sol.vts:</span>
+<span class="c1">#</span>
+<span class="c1"># or obtain the same visualization as programmatically done above as:</span>
+<span class="c1">#</span>
+<span class="c1">#     $ python poisson2d.py -plot 0 -view_solution draw -draw_pause 1</span>
+<span class="c1">#</span>
+<span class="n">x</span><span class="o">.</span><span class="n">viewFromOptions</span><span class="p">(</span><span class="s1">&#39;-view_solution&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="petsc-python-preconditioner-type">
+<span id="petsc-python-pc"></span><h2>PETSc Python preconditioner type<a class="headerlink" href="#petsc-python-preconditioner-type" title="Link to this heading">#</a></h2>
+<p>The protocol for the <a class="reference internal" href="reference/petsc4py.PETSc.PC.Type.html#petsc4py.PETSc.PC.Type.PYTHON" title="petsc4py.PETSc.PC.Type.PYTHON"><code class="xref any py py-attr docutils literal notranslate"><span class="pre">petsc4py.PETSc.PC.Type.PYTHON</span></code></a> preconditioner is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">KSP</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">PC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mat</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Viewer</span>
+
+
+<span class="c1"># A template class with the Python methods supported by PCPYTHON</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PCPythonProtocol</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the preconditioner on vector b, return in x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">applySymmetricLeft</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the symmetric left part of the preconditioner on vector b, return in x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">applySymmetricRight</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the symmetric right part of the preconditioner on vector b, return in x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">applyTranspose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the transposed preconditioner on vector b, return in x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">applyMat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">B</span><span class="p">:</span> <span class="n">Mat</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Mat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the preconditioner on a block of right-hand sides B, return in X.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">preSolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Callback called at the beginning of a Krylov method.</span>
+
+<span class="sd">        This method is allowed to modify the right-hand side b and the initial guess x.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">postSolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Callback called at the end of a Krylov method.</span>
+
+<span class="sd">        This method is allowed to modify the right-hand side b and the solution x.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;View the preconditioner.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setFromOptions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process command line for customization.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the required setup.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">:</span> <span class="n">PC</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset the preconditioner.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>In the example below, we create a Jacobi preconditioner, which needs to access
+the diagonal of the matrix. The action of the preconditioner consists of the
+pointwise multiplication of the inverse diagonal with the input vector.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># The user-defined Python class implementing the Jacobi method.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">myJacobi</span><span class="p">:</span>
+    <span class="c1"># Setup the internal data. In this case, we access the matrix diagonal.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">):</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">P</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">getOperators</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">D</span> <span class="o">=</span> <span class="n">P</span><span class="o">.</span><span class="n">getDiagonal</span><span class="p">()</span>
+
+    <span class="c1"># Apply the preconditioner</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">pointwiseDivide</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can run the script used to test our matrix class and use command line
+arguments to specify that our preconditioner should be used:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>mat.py<span class="w"> </span>-pc_type<span class="w"> </span>python<span class="w"> </span>-pc_python_type<span class="w"> </span>pc.myJacobi<span class="w"> </span>-ksp_view
+<span class="go">KSP Object: 1 MPI process</span>
+<span class="go">  type: cg</span>
+<span class="go">  maximum iterations=10000, initial guess is zero</span>
+<span class="go">  tolerances: relative=1e-05, absolute=1e-50, divergence=10000.</span>
+<span class="go">  left preconditioning</span>
+<span class="go">  using PRECONDITIONED norm type for convergence test</span>
+<span class="go">PC Object: 1 MPI process</span>
+<span class="go">  type: python</span>
+<span class="go">    Python: pc.myJacobi</span>
+<span class="go">  linear system matrix = precond matrix:</span>
+<span class="go">  Mat Object: 1 MPI process</span>
+<span class="go">    type: python</span>
+<span class="go">    rows=256, cols=256</span>
+<span class="go">        Python: __main__.Poisson2D</span>
+</pre></div>
+</div>
+</section>
+<section id="petsc-python-linear-solver-type">
+<span id="petsc-python-ksp"></span><h2>PETSc Python linear solver type<a class="headerlink" href="#petsc-python-linear-solver-type" title="Link to this heading">#</a></h2>
+<p>The protocol for the <a class="reference internal" href="reference/petsc4py.PETSc.KSP.Type.html#petsc4py.PETSc.KSP.Type.PYTHON" title="petsc4py.PETSc.KSP.Type.PYTHON"><code class="xref any py py-attr docutils literal notranslate"><span class="pre">petsc4py.PETSc.KSP.Type.PYTHON</span></code></a> Krylov solver is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">KSP</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Viewer</span>
+
+
+<span class="c1"># A template class with the Python methods supported by KSPPYTHON</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">KSPPythonProtocol</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve the linear system with right-hand side b. Return solution in x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solveTranspose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve the transposed linear system with right-hand side b. Return solution in x.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;View the Krylov solver.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setFromOptions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process command line for customization.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the required setup.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">buildSolution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the solution vector.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">buildResidual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the residual vector, return it in r. t is a scratch working vector.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksp</span><span class="p">:</span> <span class="n">KSP</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset the Krylov solver.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+</section>
+<section id="petsc-python-nonlinear-solver-type-todo">
+<span id="petsc-python-snes"></span><h2>PETSc Python nonlinear solver type (TODO)<a class="headerlink" href="#petsc-python-nonlinear-solver-type-todo" title="Link to this heading">#</a></h2>
+</section>
+<section id="petsc-python-ode-integrator-type-todo">
+<span id="petsc-python-ts"></span><h2>PETSc Python ode-integrator type (TODO)<a class="headerlink" href="#petsc-python-ode-integrator-type-todo" title="Link to this heading">#</a></h2>
+</section>
+<section id="petsc-python-optimization-solver-type-todo">
+<span id="petsc-python-tao"></span><h2>PETSc Python optimization solver type (TODO)<a class="headerlink" href="#petsc-python-optimization-solver-type-todo" title="Link to this heading">#</a></h2>
+</section>
+<section id="petsc-python-viewer">
+<span id="id2"></span><h2>PETSc Python viewer<a class="headerlink" href="#petsc-python-viewer" title="Link to this heading">#</a></h2>
+<p>The protocol for the <a class="reference internal" href="reference/petsc4py.PETSc.Viewer.Type.html#petsc4py.PETSc.Viewer.Type.PYTHON" title="petsc4py.PETSc.Viewer.Type.PYTHON"><code class="xref any py py-attr docutils literal notranslate"><span class="pre">petsc4py.PETSc.Viewer.Type.PYTHON</span></code></a> viewer is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Object</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py.PETSc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Viewer</span>
+
+
+<span class="c1"># A template class with the Python methods supported by PETSCVIEWERPYTHON</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PetscViewerPythonProtocol</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">viewObject</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;View a generic object.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setup the viewer.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">setFromOptions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process command line for customization.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Flush the viewer.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">,</span> <span class="n">outviewer</span><span class="p">:</span> <span class="n">Viewer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;View the viewer.&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="reference/petsc4py.PETSc.COMM_WORLD.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">petsc4py.PETSc.COMM_WORLD</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="petsc_options.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Working with PETSc options</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-python-matrix-type">PETSc Python matrix type</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-python-preconditioner-type">PETSc Python preconditioner type</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-python-linear-solver-type">PETSc Python linear solver type</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-python-nonlinear-solver-type-todo">PETSc Python nonlinear solver type (TODO)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-python-ode-integrator-type-todo">PETSc Python ode-integrator type (TODO)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-python-optimization-solver-type-todo">PETSc Python optimization solver type (TODO)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#petsc-python-viewer">PETSc Python viewer</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="_sources/petsc_python_types.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:39:11-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

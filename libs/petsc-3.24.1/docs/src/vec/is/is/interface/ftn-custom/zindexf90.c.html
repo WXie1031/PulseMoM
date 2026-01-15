@@ -1,0 +1,69 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/is/is/interface/ftn-custom/zindexf90.c">Actual source code: zindexf90.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:18+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petscis.h.html">&lt;petscis.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define petsclayoutgetranges_     PETSCLAYOUTGETRANGES</font></strong>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define petsclayoutrestoreranges_ PETSCLAYOUTRESTORERANGES</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define isgetindices_             ISGETINDICES</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define isrestoreindices_         ISRESTOREINDICES</font></strong>
+<a name="line9">  9: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define petsclayoutgetranges_     petsclayoutgetranges</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define petsclayoutrestoreranges_ petsclayoutrestoreranges</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define isgetindices_             isgetindices</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define isrestoreindices_         isrestoreindices</font></strong>
+<a name="line14"> 14: </a><font color="#A020F0">#endif</font>
+
+<a name="line16"> 16: </a><strong><font color="#4169E1"><a name="petsclayoutgetranges_"></a>PETSC_EXTERN void petsclayoutgetranges_(<a href="../../../../../../manualpages/IS/PetscLayout.html">PetscLayout</a> *map, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line17"> 17: </a>{
+<a name="line18"> 18: </a>  const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *fa;
+<a name="line19"> 19: </a>  <a href="../../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>     size;
+
+<a name="line21"> 21: </a>  *ierr = <a href="../../../../../../manualpages/IS/PetscLayoutGetRanges.html">PetscLayoutGetRanges</a>(*map, &amp;fa);
+<a name="line22"> 22: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line23"> 23: </a>  *ierr = <a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_size.html#MPI_Comm_size">MPI_Comm_size</a>((*map)-&gt;comm, &amp;size);
+<a name="line24"> 24: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line25"> 25: </a>  *ierr = F90Array1dCreate((void *)fa, <a href="../../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)size + 1, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line26"> 26: </a>}
+
+<a name="line28"> 28: </a><strong><font color="#4169E1"><a name="petsclayoutrestoreranges_"></a>PETSC_EXTERN void petsclayoutrestoreranges_(<a href="../../../../../../manualpages/IS/PetscLayout.html">PetscLayout</a> *map, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line29"> 29: </a>{
+<a name="line30"> 30: </a>  *ierr = F90Array1dDestroy(ptr, <a href="../../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line31"> 31: </a>}
+
+<a name="line33"> 33: </a><strong><font color="#4169E1"><a name="isgetindices_"></a>PETSC_EXTERN void isgetindices_(<a href="../../../../../../manualpages/IS/IS.html">IS</a> *x, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line34"> 34: </a>{
+<a name="line35"> 35: </a>  const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *fa;
+<a name="line36"> 36: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        len;
+
+<a name="line38"> 38: </a>  *ierr = <a href="../../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(*x, &amp;fa);
+<a name="line39"> 39: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line40"> 40: </a>  *ierr = <a href="../../../../../../manualpages/IS/ISGetLocalSize.html">ISGetLocalSize</a>(*x, &amp;len);
+<a name="line41"> 41: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line42"> 42: </a>  *ierr = F90Array1dCreate((void *)fa, <a href="../../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, 1, len, ptr PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line43"> 43: </a>}
+<a name="line44"> 44: </a><strong><font color="#4169E1"><a name="isrestoreindices_"></a>PETSC_EXTERN void isrestoreindices_(<a href="../../../../../../manualpages/IS/IS.html">IS</a> *x, F90Array1d *ptr, int *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line45"> 45: </a>{
+<a name="line46"> 46: </a>  const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *fa;
+
+<a name="line48"> 48: </a>  *ierr = F90Array1dAccess(ptr, <a href="../../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a>, (void **)&amp;fa PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line49"> 49: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line50"> 50: </a>  *ierr = F90Array1dDestroy(ptr, <a href="../../../../../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a> PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line51"> 51: </a>  <font color="#4169E1">if</font> (*ierr) <font color="#4169E1">return</font>;
+<a name="line52"> 52: </a>  *ierr = <a href="../../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(*x, &amp;fa);
+<a name="line53"> 53: </a>}
+</pre>
+</body>
+
+</html>
+

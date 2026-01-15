@@ -1,0 +1,102 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petscbt.h">Actual source code: petscbt.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:44+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../include/petscsystypes.h.html">&lt;petscsystypes.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../include/petscviewertypes.h.html">&lt;petscviewertypes.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../include/petscstring.h.html">&lt;petscstring.h&gt;</A>
+
+<a name="line7">  7: </a><font color="#B22222">/* SUBMANSEC = Sys */</font>
+
+<a name="line9">  9: </a><font color="#B22222">/* convert an index i to an index suitable for indexing a <a href="../manualpages/Sys/PetscBT.html">PetscBT</a>, such that</font>
+<a name="line10"> 10: </a><font color="#B22222"> * bt[PetscBTIndex(i)] returns the i'th value of the bt */</font>
+<a name="line11"> 11: </a><strong><font color="#4169E1"><a name="PetscBTIndex_Internal"></a>static inline size_t PetscBTIndex_Internal(<a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line12"> 12: </a>{
+<a name="line13"> 13: </a>  <font color="#4169E1">return</font> (size_t)index / PETSC_BITS_PER_BYTE;
+<a name="line14"> 14: </a>}
+
+<a name="line16"> 16: </a><strong><font color="#4169E1"><a name="PetscBTMask_Internal"></a>static inline char PetscBTMask_Internal(<a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line17"> 17: </a>{
+<a name="line18"> 18: </a>  <font color="#4169E1">return</font> (char)(1 &lt;&lt; index % PETSC_BITS_PER_BYTE);
+<a name="line19"> 19: </a>}
+
+<a name="line21"> 21: </a><strong><font color="#4169E1"><a name="PetscBTLength"></a>static inline size_t PetscBTLength(<a href="../manualpages/Sys/PetscCount.html">PetscCount</a> m)</font></strong>
+<a name="line22"> 22: </a>{
+<a name="line23"> 23: </a>  <font color="#4169E1">return</font> (size_t)m / PETSC_BITS_PER_BYTE + 1;
+<a name="line24"> 24: </a>}
+
+<a name="line26"> 26: </a><strong><font color="#4169E1"><a name="PetscBTMemzero"></a>static inline <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTMemzero(<a href="../manualpages/Sys/PetscCount.html">PetscCount</a> m, <a href="../manualpages/Sys/PetscBT.html">PetscBT</a> array)</font></strong>
+<a name="line27"> 27: </a>{
+<a name="line28"> 28: </a>  <font color="#4169E1">return</font> <a href="../manualpages/Sys/PetscArrayzero.html">PetscArrayzero</a>(array, PetscBTLength(m));
+<a name="line29"> 29: </a>}
+
+<a name="line31"> 31: </a><strong><font color="#4169E1"><a name="PetscBTDestroy"></a>static inline <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTDestroy(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> *array)</font></strong>
+<a name="line32"> 32: </a>{
+<a name="line33"> 33: </a>  <font color="#4169E1">return</font> (*array) ? <a href="../manualpages/Sys/PetscFree.html">PetscFree</a>(*array) : <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line34"> 34: </a>}
+
+<a name="line36"> 36: </a><strong><font color="#4169E1"><a name="PetscBTCreate"></a>static inline <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTCreate(<a href="../manualpages/Sys/PetscCount.html">PetscCount</a> m, <a href="../manualpages/Sys/PetscBT.html">PetscBT</a> *array)</font></strong>
+<a name="line37"> 37: </a>{
+<a name="line38"> 38: </a>  <font color="#4169E1">return</font> <a href="../manualpages/Sys/PetscCalloc1.html">PetscCalloc1</a>(PetscBTLength(m), array);
+<a name="line39"> 39: </a>}
+
+<a name="line41"> 41: </a><strong><font color="#4169E1"><a name="PetscBTCopy"></a>static inline <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTCopy(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> dest, <a href="../manualpages/Sys/PetscCount.html">PetscCount</a> m, <a href="../manualpages/Sys/PetscBT.html">PetscBT</a> source)</font></strong>
+<a name="line42"> 42: </a>{
+<a name="line43"> 43: </a>  <font color="#4169E1">return</font> <a href="../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(dest, source, PetscBTLength(m));
+<a name="line44"> 44: </a>}
+
+<a name="line46"> 46: </a><strong><font color="#4169E1"><a name="PetscBTLookup"></a>static inline char PetscBTLookup(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> array, <a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line47"> 47: </a>{
+<a name="line48"> 48: </a>  <font color="#4169E1">return</font> array[PetscBTIndex_Internal(index)] &amp; PetscBTMask_Internal(index);
+<a name="line49"> 49: </a>}
+
+<a name="line51"> 51: </a><strong><font color="#4169E1"><a name="PetscBTSet"></a>static inline <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTSet(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> array, <a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line52"> 52: </a>{
+<a name="line53"> 53: </a>  <a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line54"> 54: </a>  array[PetscBTIndex_Internal(index)] |= PetscBTMask_Internal(index);
+<a name="line55"> 55: </a>  <a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line56"> 56: </a>}
+
+<a name="line58"> 58: </a><strong><font color="#4169E1"><a name="PetscBTNegate"></a>static inline <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTNegate(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> array, <a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line59"> 59: </a>{
+<a name="line60"> 60: </a>  <a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line61"> 61: </a>  array[PetscBTIndex_Internal(index)] ^= PetscBTMask_Internal(index);
+<a name="line62"> 62: </a>  <a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line63"> 63: </a>}
+
+<a name="line65"> 65: </a><strong><font color="#4169E1"><a name="PetscBTClear"></a>static inline <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTClear(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> array, <a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line66"> 66: </a>{
+<a name="line67"> 67: </a>  <a href="../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line68"> 68: </a>  array[PetscBTIndex_Internal(index)] &amp;= (char)~PetscBTMask_Internal(index);
+<a name="line69"> 69: </a>  <a href="../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line70"> 70: </a>}
+
+<a name="line72"> 72: </a><strong><font color="#4169E1"><a name="PetscBTLookupSet"></a>static inline char PetscBTLookupSet(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> array, <a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line73"> 73: </a>{
+<a name="line74"> 74: </a>  const char ret = PetscBTLookup(array, index);
+<a name="line75"> 75: </a>  PetscCallContinue(PetscBTSet(array, index));
+<a name="line76"> 76: </a>  <font color="#4169E1">return</font> ret;
+<a name="line77"> 77: </a>}
+
+<a name="line79"> 79: </a><strong><font color="#4169E1"><a name="PetscBTLookupClear"></a>static inline char PetscBTLookupClear(<a href="../manualpages/Sys/PetscBT.html">PetscBT</a> array, <a href="../manualpages/Sys/PetscCount.html">PetscCount</a> index)</font></strong>
+<a name="line80"> 80: </a>{
+<a name="line81"> 81: </a>  const char ret = PetscBTLookup(array, index);
+<a name="line82"> 82: </a>  PetscCallContinue(PetscBTClear(array, index));
+<a name="line83"> 83: </a>  <font color="#4169E1">return</font> ret;
+<a name="line84"> 84: </a>}
+
+<a name="line86"> 86: </a><strong><font color="#4169E1">PETSC_EXTERN <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscBTView(<a href="../manualpages/Sys/PetscCount.html">PetscCount</a>, const <a href="../manualpages/Sys/PetscBT.html">PetscBT</a>, <a href="../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)</font></strong>;
+</pre>
+</body>
+
+</html>
+

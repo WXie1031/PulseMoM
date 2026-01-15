@@ -1,0 +1,75 @@
+<html>
+
+<head>
+
+  <title>RectClip</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shCore.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushDelphi.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCpp.js"></script><script type="text/javascript" src="../../../../CodeScripts/SyntaxHighlighter/scripts/shBrushCSharp.js"></script><link rel="stylesheet" type="text/css" href="../../../../Styles/default.css"/><link rel="stylesheet" type="text/css" href="../../../../Menu/menu.css"/><link rel="stylesheet" type="text/css" href="../../../../CodeScripts/SyntaxHighlighter/styles/shCoreDefault.css"/><link rel="stylesheet" type="text/css" href="../../../../CodeScripts/SyntaxHighlighter/styles/shThemeDefault.css"/><meta name="viewport" content="width=device-width, initial-scale=1.0"><script type="text/javascript" src="../../../../Menu/menu.js"></script><script type="text/javascript" src="../../../../CodeScripts/bootstrap.js"></script>
+</head>
+
+<body bgcolor="#FFFFFF">
+  <div class="menu" id="menu"><a class="ancestor" href="../../../_Body.htm">Index</a><a class="ancestor" href="../_Body.htm">Clipper</a><span class="active">RectClip</span>
+  </div><br><br>
+
+  <h1>RectClip</h1>
+  <p class="Decl"><span class="Language">Delphi</span><b>function</b> RectClip64(<b>const</b> rect: TRect64; <b>const</b> subjects: TPaths64): TPathsD;</p>
+
+  <p class="Decl"><span class="Language">Delphi</span><b>function</b> RectClipD(<b>const</b> rect: TRectD; <b>const</b> subjects: TPathsD): TPathsD;</p>
+<br class="half">
+  <p class="Decl"><span class="Language"> C++</span>Paths64 RectClip64(<b>const</b> <a href="../Types/Rect64.htm"><b>Rect64</b></a> rect, <b>const</b> Paths64& subjects);</p>
+
+  <p class="Decl"><span class="Language"> C++</span>PathsD RectClipD(<b>const</b> <a href="../Types/RectD.htm"><b>RectD</b></a> rect, <b>const</b> PathsD& subjects);</p>
+<br class="half">
+  <p class="Decl"><span class="Language">C#&nbsp;</span><b>public static</b> <a href="../Types/Paths64.htm"><b>Paths64</b></a> RectClip64(Rect64 rect, Paths64 subjects);</p>
+
+  <p class="Decl"><span class="Language">C#&nbsp;</span><b>public static</b> <a href="../Types/PathsD.htm"><b>PathsD</b></a> RectClipD(RectD rect, PathsD subjects);</p>
+<br class="half">
+  <p> As RectClip's name implies, clipping regions <i>must</i> be rectangular. And since these functions use a completely different clipping algorithm from the library's general purpose polygon clipper, they behave in a number of different ways too.<br><br> First, these functions are extremely fast when compared to the general purpose clipper (see below). However, <b>RectClip</b> only performs <b>intersect</b> clipping, not union or difference clipping. Subject polygons will only be clipped with the clipping boundary, so individual polygons will be unaffected by other polygons. And because <b>RectClip</b> preserves path orientation (winding direction), it is completely agnostic to filling rules. So whatever filling rule applies to the subject polygons will also apply to the solution. </p>
+  <h3>Additional notes:</h3><br>
+
+  <p> 1. RectClip is agnostic to filling rules:<br> <img src="../../../../Images/RectClip0.svg" border="0"> <img src="../../../../Images/RectClipEO.svg" border="0"> <img src="../../../../Images/RectClipNZ.svg" border="0"> <br> </p>
+  <p> 2. Performance:<br><br> <b>RectClip</b> is <em>extremely fast</em> when compared to the Library's general purpose clipper. Where the general purpose <a href="./Intersect.htm"><b>Intersect</b></a> function has roughly <b>O(n&sup3;)</b> performance, <b>RectClip</b> has <b>O(n)</b> performance. <br><br> </p>
+  <p class="Body"> <img src="../../../../Images/RectClipChart.svg" alt="" border="0"> </p>
+  <p class="Body"> <img src="../../../../Images/rectclip.svg" alt="" border="0"> </p>
+  <p> <br> 
+    <div style="background-color: #F0F0F0; float:left; margin:0 20px 0 40px; padding:0">
+      <div>C++ Example:
+      </div>
+      <pre class="brush: cpp;">
+    #include "clipper2/clipper.h"  
+    using namespace Clipper2Lib;
+
+    // create 3 very simple shapes - plus, T and C 
+    Paths64 shapes = {
+      MakePath({ 20,20, 20,0, 40,0, 40,20, 60,20, 
+        60,40, 40,40, 40,60, 20,60, 20,40, 0,40, 0,20 }),
+      MakePath({ 20,60, 20,20, 0,20, 0,0, 60,0, 
+        60,20, 40,20, 40,60 }),
+      MakePath({ 0,0, 60,0, 60,20, 20,20, 20,40, 
+        60,40, 60,60, 0,60 }) };
+
+    // create multiple paths at random positions using the above shapes 
+    const int shape_cnt = 100;
+    const int width = 400, height = 400, margin = width / 6;
+    Rect64 rect = Rect64(margin, margin, width - margin, height - margin);
+    Paths64 subject;
+    srand(time(NULL));
+    subject.reserve(shape_cnt);
+    int w = (width - 60), h = (height - 60);
+    for (int i = 0; i &lt; shape_cnt; ++i)
+      subject.push_back(TranslatePath( 
+        shapes[rand() % 3], rand() % w, rand() % h) );
+
+    // intersect the subject paths with the rectangle
+    Paths64 solution = RectClip(rect, subject);
+      </pre>
+    </div> </p>
+  <p>  </p>
+  <h2 id="Auto-SeeAlso">See Also</h2>
+  <p class="Body"><a href="Intersect.htm">Intersect</a>, <a href="RectClipLines.htm">RectClipLines</a>, <a href="../Types/Paths64.htm">Paths64</a>, <a href="../Types/PathsD.htm">PathsD</a>, <a href="../Types/Rect64.htm">Rect64</a>, <a href="../Types/RectD.htm">RectD</a></p>
+  <p class="Copyright" id="auto"> <br><br> Copyright &#169; 2010-2024 Angus Johnson &#160; - &#160; Clipper2 1.5.2 &#160; - &#160; Help file built on 3 Mar 2025<br><br> </p>
+
+</body>
+
+</html>

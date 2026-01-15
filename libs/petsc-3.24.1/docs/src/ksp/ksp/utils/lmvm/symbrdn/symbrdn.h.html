@@ -1,0 +1,72 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/utils/lmvm/symbrdn/symbrdn.h">Actual source code: symbrdn.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../src/ksp/ksp/utils/lmvm/lmvm.h.html">&lt;../src/ksp/ksp/utils/lmvm/lmvm.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../src/ksp/ksp/utils/lmvm/rescale/symbrdnrescale.h.html">&lt;../src/ksp/ksp/utils/lmvm/rescale/symbrdnrescale.h&gt;</A>
+
+<a name="line6">  6: </a><font color="#B22222">/*</font>
+<a name="line7">  7: </a><font color="#B22222">  Limited-memory Symmetric Broyden method for approximating both</font>
+<a name="line8">  8: </a><font color="#B22222">  the forward product and inverse application of a Jacobian.</font>
+<a name="line9">  9: </a><font color="#B22222">*/</font>
+
+<a name="line11"> 11: </a><font color="#B22222">// bases needed by symmetric [bad] Broyden algorithms beyond those in Mat_LMVM</font>
+<a name="line12"> 12: </a><font color="#4169E1">enum</font> {
+<a name="line13"> 13: </a>  SYMBROYDEN_BASIS_BKS = 0, <font color="#B22222">// B_k S_k for recursive algorithms</font>
+<a name="line14"> 14: </a>  SYMBROYDEN_BASIS_HKY = 1, <font color="#B22222">// dual to the above, H_k Y_k</font>
+<a name="line15"> 15: </a>  SYMBROYDEN_BASIS_COUNT
+<a name="line16"> 16: </a>};
+
+<a name="line18"> 18: </a><font color="#4169E1">typedef <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> SymBroydenBasisType;</font>
+
+<a name="line20"> 20: </a><font color="#B22222">// products needed by symmetric [bad] Broyden algorithms beyond those in Mat_LMVM</font>
+<a name="line21"> 21: </a><font color="#4169E1">enum</font> {
+<a name="line22"> 22: </a>  SYMBROYDEN_PRODUCTS_PHI   = 0, <font color="#B22222">// diagonal: either phi_k = phi_scalar (symm. Broyden), or phi_k is different for every k (symm. bad Broyden)</font>
+<a name="line23"> 23: </a>  SYMBROYDEN_PRODUCTS_PSI   = 1, <font color="#B22222">// diagonal: either psi_k = psi_scalar (symm. bad Broyden), or psi_k is different for every k (symm. Broyden)</font>
+<a name="line24"> 24: </a>  SYMBROYDEN_PRODUCTS_STBKS = 2, <font color="#B22222">// diagonal S_k^T B_k S_k values for recursive algorithms</font>
+<a name="line25"> 25: </a>  SYMBROYDEN_PRODUCTS_YTHKY = 3, <font color="#B22222">// dual to the above: diagonal Y_k^T H_k Y_k values</font>
+<a name="line26"> 26: </a>  SYMBROYDEN_PRODUCTS_M00   = 4, <font color="#B22222">// matrix that appears in (B_* S) M_00 (B_* S)^T rank-m updates, either diagonal (recursive) or full (compact)</font>
+<a name="line27"> 27: </a>  SYMBROYDEN_PRODUCTS_N00   = 5, <font color="#B22222">// dual to the above, appears in (H_* Y) N_00 (H_* Y)^T rank-m updates</font>
+<a name="line28"> 28: </a>  SYMBROYDEN_PRODUCTS_M01   = 6, <font color="#B22222">// matrix that appears in (B_* S) M_01 Y^T rank-m updates, either diagonal (recursive) or full (compact)</font>
+<a name="line29"> 29: </a>  SYMBROYDEN_PRODUCTS_N01   = 7, <font color="#B22222">// dual to the above, appears in (H_* Y) N_01 S^T rank-m updates</font>
+<a name="line30"> 30: </a>  SYMBROYDEN_PRODUCTS_M11   = 8, <font color="#B22222">// matrix that appears in Y M_11 Y^T rank-m updates, either diagonal (recursive) or full (compact)</font>
+<a name="line31"> 31: </a>  SYMBROYDEN_PRODUCTS_N11   = 9, <font color="#B22222">// dual to the above, appears in S N_11 S^T rank-m updates</font>
+<a name="line32"> 32: </a>  SYMBROYDEN_PRODUCTS_COUNT
+<a name="line33"> 33: </a>};
+
+<a name="line35"> 35: </a><font color="#4169E1">typedef <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> SymBroydenProductsType;</font>
+
+<a name="line37"> 37: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line38"> 38: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>         phi_scalar, psi_scalar;
+<a name="line39"> 39: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>          watchdog, max_seq_rejects; <font color="#B22222">/* tracker to reset after a certain # of consecutive rejects */</font>
+<a name="line40"> 40: </a>  SymBroydenRescale rescale;                   <font color="#B22222">/* context for diagonal or scalar rescaling */</font>
+<a name="line41"> 41: </a>  LMBasis           basis[SYMBROYDEN_BASIS_COUNT];
+<a name="line42"> 42: </a>  LMProducts        products[SYMBROYDEN_PRODUCTS_COUNT];
+<a name="line43"> 43: </a>  <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>               StFprev, YtH0Fprev;
+<a name="line44"> 44: </a>} Mat_SymBrdn;
+
+<a name="line46"> 46: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SymBroydenKernel_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>)</font></strong>;
+<a name="line47"> 47: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SymBroydenKernel_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>)</font></strong>;
+
+<a name="line49"> 49: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DFPKernel_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line50"> 50: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DFPKernel_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line51"> 51: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DFPKernel_Dense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+
+<a name="line53"> 53: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BFGSKernel_Recursive(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+<a name="line54"> 54: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BFGSKernel_CompactDense(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>)</font></strong>;
+
+<a name="line56"> 56: </a><strong><font color="#4169E1">PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SymBroydenCompactDenseKernelUseB0S(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>, MatLMVMMode, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *)</font></strong>;
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,62 @@
+' userdefined excitation function
+
+Option Explicit
+
+Function ExcitationFunction(dtime As Double) As Double
+
+   'Assign the excitation signal value for the given time to the function name.
+
+   If ( dtime < 0.6) Then
+
+   ExcitationFunction =  dtime
+
+	ElseIf(dtime<1.4) Then
+
+ExcitationFunction =0.6+0.4*Sin((dtime-0.6)*3.14159/0.8)
+
+ ElseIf ( dtime < 2 ) Then
+
+  ExcitationFunction = 0.6+(1.4-dtime)
+
+Else
+
+   ExcitationFunction = 0
+
+ End If
+
+ End Function
+
+
+' -------------------------------------------------------------------------------------------------
+' Main: This function serves as a main program for testing purposes. (runs and plots the function)
+'       You need to rename this function to "Main" for debugging the excitation function.
+'
+'       Please adjust the time step width and the number of time steps accordingly.
+'
+'		PLEASE NOTE that a userdefined excitation file (*.usf) must not contain a main program for
+'       proper execution by the framework. Therefore please ensure to rename this function
+'       to e.g. "Main2" before the Transient Solver is started
+' -------------------------------------------------------------------------------------------------
+
+Sub Main2
+	Dim tmax As Double, ntstep As Long
+
+	' -------------- PLEASE ADJUST THE SETTINGS BELOW ----------------------
+	tmax   = 2
+	ntstep = 500
+	' -------------- PLEASE ADJUST THE SETTINGS ABOVE ----------------------
+
+	Dim signal As Object, n As Long, tstep As Double
+	Set signal = Result1D("")
+	signal.Initialize ntstep
+	tstep = tmax / ntstep
+
+	For n=0 To ntstep-1
+		signal.SetXY(n, n * tstep, ExcitationFunction(n * tstep))
+	Next n
+
+	signal.Save GetProjectBaseName() + "~excitation function.sig"
+	signal.AddToTree "Excitation Signals\Userdefined Functions\userdefined_plot"
+	SelectTreeItem  "Excitation Signals\Userdefined Functions\userdefined_plot"
+	ResultTree.RefreshView
+End Sub

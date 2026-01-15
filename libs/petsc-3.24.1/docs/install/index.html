@@ -1,0 +1,748 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Install &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'install/index';</script>
+    <link rel="icon" href="../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Download" href="download.html" />
+    <link rel="prev" title="Documentation for previous PETSc releases" href="../overview/previous_release_docs.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="download.html">Download</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install_tutorial.html">Quick Start Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Configuring PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="windows.html">Installing PETSc On Microsoft Windows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multibuild.html">Maintaining Your PETSc Installation(s)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external_software.html">Supported External Software</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Install</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="install">
+<span id="doc-install"></span><h1>Install<a class="headerlink" href="#install" title="Link to this heading">#</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>PETSc is available from multiple package managers.
+Depending on your exact needs (for example limited use of <a class="reference internal" href="external_software.html#doc-externalsoftware"><span class="std std-ref">external packages</span></a>) they are possibly the easiest way for
+you to install PETSc.
+Always verify that the package manager is providing a recent enough release of PETSc with support for the external packages you need.
+Some package managers provide separate packages for the complex number installation of PETSc.</p>
+<ul class="simple">
+<li><p>Archlinux <a class="reference external" href="https://aur.archlinux.org/packages/petsc">https://aur.archlinux.org/packages/petsc</a></p></li>
+<li><dl class="simple myst">
+<dt>Conda: <a class="reference external" href="https://anaconda.org/conda-forge/petsc">https://anaconda.org/conda-forge/petsc</a></dt><dd><p><code class="docutils notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">petsc</span></code></p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple myst">
+<dt>Debian: <a class="reference external" href="https://packages.debian.org/petsc-dev">https://packages.debian.org/petsc-dev</a></dt><dd><p><code class="docutils notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">petsc-dev</span></code></p>
+</dd>
+</dl>
+</li>
+<li><p>E4S: <a class="reference external" href="https://e4s.io/download.html">https://e4s.io/download.html</a></p></li>
+<li><dl class="simple myst">
+<dt>Fedora: <a class="reference external" href="https://packages.fedoraproject.org/pkgs/petsc/petsc">https://packages.fedoraproject.org/pkgs/petsc/petsc</a></dt><dd><p><code class="docutils notranslate"><span class="pre">sudo</span> <span class="pre">yum</span> <span class="pre">install</span> <span class="pre">petsc-mpich-devel</span></code></p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple myst">
+<dt>Homebrew: <a class="reference external" href="https://formulae.brew.sh/formula/petsc">https://formulae.brew.sh/formula/petsc</a></dt><dd><p><code class="docutils notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">petsc</span></code></p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple myst">
+<dt>MacPorts: <a class="reference external" href="https://ports.macports.org/port/petsc">https://ports.macports.org/port/petsc</a></dt><dd><p><code class="docutils notranslate"><span class="pre">sudo</span> <span class="pre">port</span> <span class="pre">install</span> <span class="pre">petsc</span></code></p>
+</dd>
+</dl>
+</li>
+<li><p>MSYS2 (Windows) <a class="reference external" href="https://packages.msys2.org/package/mingw-w64-x86_64-petsc">https://packages.msys2.org/package/mingw-w64-x86_64-petsc</a></p></li>
+<li><p>openSUSE <a class="reference external" href="https://software.opensuse.org/package/petsc">https://software.opensuse.org/package/petsc</a></p></li>
+<li><dl class="simple myst">
+<dt>Python: <a class="reference external" href="https://pypi.org/project/petsc">https://pypi.org/project/petsc</a></dt><dd><p><code class="docutils notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">pip</span> <span class="pre">install</span> <span class="pre">petsc</span> <span class="pre">petsc4py</span></code></p>
+</dd>
+</dl>
+</li>
+<li><p>Slackware: <a class="reference external" href="https://slackbuilds.org/repository/15.0/academic/petsc/?search=petsc">https://slackbuilds.org/repository/15.0/academic/petsc/?search=petsc</a></p></li>
+<li><dl class="simple myst">
+<dt>Spack: <a class="reference external" href="https://spack.io">https://spack.io</a></dt><dd><ul>
+<li><p>debug install - <code class="docutils notranslate"><span class="pre">spack</span> <span class="pre">install</span> <span class="pre">petsc</span> <span class="pre">+debug</span></code></p></li>
+<li><p>optimized install -<code class="docutils notranslate"><span class="pre">spack</span> <span class="pre">install</span> <span class="pre">petsc</span> <span class="pre">cflags='-g</span> <span class="pre">-O3</span> <span class="pre">-march=native</span> <span class="pre">-mtune=native'</span> <span class="pre">fflags='-g</span> <span class="pre">-O3</span> <span class="pre">-march=native</span> <span class="pre">-mtune=native'</span>&#160; <span class="pre">cxxflags='-g</span> <span class="pre">-O3</span> <span class="pre">-march=native</span> <span class="pre">-mtune=native'</span></code></p></li>
+<li><p>install with some external packages - <code class="docutils notranslate"><span class="pre">spack</span> <span class="pre">install</span> <span class="pre">petsc</span> <span class="pre">+superlu-dist</span> <span class="pre">+metis</span> <span class="pre">+hypre</span> <span class="pre">+hdf5</span></code></p></li>
+<li><p>list available variants (configurations) - <code class="docutils notranslate"><span class="pre">spack</span> <span class="pre">info</span> <span class="pre">petsc</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple myst">
+<dt>Ubuntu: <a class="reference external" href="https://packages.ubuntu.com/petsc-dev">https://packages.ubuntu.com/petsc-dev</a></dt><dd><p><code class="docutils notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">petsc-dev</span></code></p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<p>Information and tutorials on setting up a PETSc installation.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="download.html">Download</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="download.html#recommended-obtain-release-version-with-git">Recommended: Obtain Release Version With Git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#alternative-obtain-release-version-with-tarball">Alternative: Obtain Release Version with Tarball</a></li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#advanced-obtain-petsc-development-version-with-git">Advanced: Obtain PETSc Development Version With Git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#release-schedule">Release Schedule</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="install_tutorial.html">Quick Start Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="install_tutorial.html#qqtw-quickest-quick-start-in-the-west">QQTW (Quickest Quick-start in The West)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install_tutorial.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install_tutorial.html#downloading-source">Downloading Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install_tutorial.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install_tutorial.html#compilation">Compilation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install_tutorial.html#congratulations">Congratulations!</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Configuring PETSc</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="install.html#common-example-usages">Common Example Usages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#compilers">Compilers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#external-packages">External Packages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#blas-lapack">BLAS/LAPACK</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#mpi">MPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-on-macos">Installing On macOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installation-location-in-place-or-out-of-place">Installation Location: In-place or Out-of-place</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-on-machine-requiring-cross-compiler-or-a-job-scheduler">Installing On Machine Requiring Cross Compiler Or A Job Scheduler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-with-tau-instrumentation-package">Installing With TAU Instrumentation Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-petsc-to-use-gpus-and-accelerators">Installing PETSc To Use GPUs And Accelerators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-to-run-in-browser-with-emscripten">Installing To Run in Browser with Emscripten</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-on-large-scale-doe-systems">Installing On Large Scale DOE Systems</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="windows.html">Installing PETSc On Microsoft Windows</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="windows.html#linux-on-microsoft-windows">Linux on Microsoft Windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="windows.html#cygwin-gnu-compilers-on-microsoft-windows">Cygwin/GNU Compilers on Microsoft Windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="windows.html#native-microsoft-intel-windows-compilers">Native Microsoft/Intel Windows Compilers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="windows.html#msys2-mingw-gnu-compilers-on-microsoft-windows">MSYS2/MinGW (GNU) Compilers on Microsoft Windows</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="multibuild.html">Maintaining Your PETSc Installation(s)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="multibuild.html#environmental-variables-petsc-dir-and-petsc-arch">Environmental Variables <code class="docutils notranslate"><span class="pre">$PETSC_DIR</span></code> And <code class="docutils notranslate"><span class="pre">$PETSC_ARCH</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="multibuild.html#configure-caching">Configure Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multibuild.html#reconfigure">Reconfigure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multibuild.html#updating-or-reinstalling-petsc">Updating or Reinstalling PETSc</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="external_software.html">Supported External Software</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="external_software.html#partial-list-of-software">Partial List Of Software</a></li>
+<li class="toctree-l2"><a class="reference internal" href="external_software.html#additional-software">Additional Software</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="license.html#clause-bsd-license">2-clause BSD license</a></li>
+<li class="toctree-l2"><a class="reference internal" href="license.html#contributing-license-agreement">Contributing License Agreement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="license.html#legacy-license">Legacy License</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../overview/previous_release_docs.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Documentation for previous PETSc releases</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="download.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Download</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/install/index.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/install/index.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

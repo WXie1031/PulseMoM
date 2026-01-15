@@ -1,0 +1,70 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/tests/ex1f.F90">Actual source code: ex1f.F90</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>!
+<a name="line2">  2: </a>! Test the workaround <font color="#4169E1">for</font> a bug in Open MPI 2.1.1 on Ubuntu 18.04.2
+<a name="line3">  3: </a>! See https:<font color="#B22222">//lists.mcs.anl.gov/pipermail/petsc-dev/2019-July/024803.html</font>
+<a name="line4">  4: </a>!
+<a name="line5">  5: </a>! Contributed-by:       Fabian Jakub  &lt;Fabian.Jakub@physik.uni-muenchen.de&gt;
+<a name="line6">  6: </a>program main
+<a name="line7">  7: </a><font color="#A020F0">#include </font><font color="#666666">"petsc/finclude/petscdmda.h"</font><font color="#A020F0"></font>
+<a name="line8">  8: </a>  use petscvec
+<a name="line9">  9: </a>  use petscdm
+<a name="line10"> 10: </a>  use petscdmda
+<a name="line11"> 11: </a>  implicit none
+
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, parameter :: Ndof = 1, stencil_size = 1
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, parameter :: Nx = 3, Ny = 3
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> :: myid, commsize, ierr
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>, pointer :: xv1d(:)
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, pointer :: lx(:), ly(:)
+<a name="line18"> 18: </a>  <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>, pointer :: nb(:)
+
+<a name="line20"> 20: </a>  type(tDM) :: da
+<a name="line21"> 21: </a>  type(tVec) :: gVec!, naturalVec
+
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(PETSC_NULL_CHARACTER, ierr))
+<a name="line24"> 24: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(mpi_comm_rank(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, myid, ierr))
+<a name="line25"> 25: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(mpi_comm_size(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, commsize, ierr))
+
+<a name="line27"> 27: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDACreate2d.html">DMDACreate2d</a>(<a href="../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_PERIODIC</a>, <a href="../../../manualpages/DM/DMBoundaryType.html">DM_BOUNDARY_PERIODIC</a>, <a href="../../../manualpages/DMDA/DMDAStencilType.html">DMDA_STENCIL_STAR</a>, Nx, Ny, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, Ndof, stencil_size, PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_INTEGER_ARRAY, da, ierr))
+<a name="line28"> 28: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMSetFromOptions.html">DMSetFromOptions</a>(da, ierr))
+<a name="line29"> 29: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(DMSetup(da, ierr))
+
+<a name="line31"> 31: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMCreateGlobalVector.html">DMCreateGlobalVector</a>(da, gVec, ierr))
+<a name="line32"> 32: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecGetArray.html">VecGetArray</a>(gVec, xv1d, ierr))
+<a name="line33"> 33: </a>  xv1d(:) = real(myid, kind(xv1d))
+<a name="line34"> 34: </a>  !print *,myid, 'xv1d', xv1d, ':', xv1d
+<a name="line35"> 35: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecRestoreArray.html">VecRestoreArray</a>(gVec, xv1d, ierr))
+
+<a name="line37"> 37: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscObjectViewFromOptions.html">PetscObjectViewFromOptions</a>(<a href="../../../manualpages/Sys/PetscObjectCast.html">PetscObjectCast</a>(gVec), PETSC_NULL_OBJECT, '-show_gVec', ierr))
+
+<a name="line39"> 39: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetOwnershipRanges.html">DMDAGetOwnershipRanges</a>(da, lx, ly, PETSC_NULL_INTEGER_POINTER, ierr))
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(DMDARestoreOwnershipRanges(da, lx, ly, PETSC_NULL_INTEGER_POINTER, ierr))
+<a name="line41"> 41: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DMDA/DMDAGetNeighbors.html">DMDAGetNeighbors</a>(da, nb, ierr))
+<a name="line42"> 42: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(DMDARestoreNeighbors(da, nb, ierr))
+
+<a name="line44"> 44: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(gVec, ierr))
+<a name="line45"> 45: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/DM/DMDestroy.html">DMDestroy</a>(da, ierr))
+<a name="line46"> 46: </a>  <a href="../../../manualpages/Sys/PetscCallA.html">PetscCallA</a>(<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>(ierr))
+<a name="line47"> 47: </a>end program
+
+<a name="line49"> 49: </a>!<font color="#B22222">/*TEST</font>
+<a name="line50"> 50: </a><font color="#B22222">!</font>
+<a name="line51"> 51: </a><font color="#B22222">!   test:</font>
+<a name="line52"> 52: </a><font color="#B22222">!      nsize: 9</font>
+<a name="line53"> 53: </a><font color="#B22222">!      args: -show_gVec</font>
+<a name="line54"> 54: </a><font color="#B22222">!TEST*/</font>
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,241 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petscdevice_hip.h">Actual source code: petscdevice_hip.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:43+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../include/petscdevice.h.html">&lt;petscdevice.h&gt;</A>
+<a name="line4">  4: </a><font color="#A020F0">#include &lt;petscpkg_version.h&gt;</font>
+
+<a name="line6">  6: </a><font color="#B22222">/* MANSEC = Sys */</font>
+<a name="line7">  7: </a><font color="#B22222">/* SUBMANSEC = Device */</font>
+
+<a name="line9">  9: </a><font color="#A020F0">#if defined(__HCC__) || (defined(__clang__) &amp;&amp; defined(__HIP__))</font>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define PETSC_USING_HCC 1</font></strong>
+<a name="line11"> 11: </a><font color="#A020F0">#endif</font>
+
+<a name="line13"> 13: </a><font color="#A020F0">#if <a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line14"> 14: </a><font color="#A020F0">  #include &lt;hip/hip_runtime.h&gt;</font>
+
+<a name="line16"> 16: </a><font color="#A020F0">  #if PETSC_PKG_HIP_VERSION_GE(5, 2, 0)</font>
+
+<a name="line18"> 18: </a>    <font color="#B22222">// cupmScalarPtrCast() returns hip{Float,Double}Complex while hipBLAS uses hipBlas{Float,Double}Complex, causing many VecCUPM errors like</font>
+<a name="line19"> 19: </a>    <font color="#B22222">// error: no matching function for call to 'cupmBlasXdot'.</font>
+<a name="line20"> 20: </a>    <font color="#B22222">// Before rocm-6.0, one can define ROCM_MATHLIBS_API_USE_HIP_COMPLEX to force rocm to 'typedef hipDoubleComplex hipBlasDoubleComplex' for example.</font>
+<a name="line21"> 21: </a>    <font color="#B22222">// Since then, ROCM_MATHLIBS_API_USE_HIP_COMPLEX is deprecated, and one can define HIPBLAS_V2 to use version 2 of hipBLAS that directly use hipDoubleComplex etc.</font>
+<a name="line22"> 22: </a>    <font color="#B22222">// Per AMD, HIPBLAS_V2 will be removed in the future so that hipBLAS only provides updated APIs (but not yet in 6.2.2 as of Sep. 27, 2024).</font>
+<a name="line23"> 23: </a>    <font color="#B22222">//</font>
+<a name="line24"> 24: </a>    <font color="#B22222">// see https://rocm.docs.amd.com/projects/hipBLAS/en/docs-6.0.0/functions.html#complex-datatypes</font>
+<a name="line25"> 25: </a>    <font color="#B22222">// and https://rocm.docs.amd.com/projects/hipBLAS/en/docs-6.2.2/functions.html#hipblas-v2-and-deprecations</font>
+<a name="line26"> 26: </a><font color="#A020F0">    #if PETSC_PKG_HIP_VERSION_GE(6, 0, 0)</font>
+<a name="line27"> 27: </a><strong><font color="#228B22">      #define HIPBLAS_V2</font></strong>
+<a name="line28"> 28: </a><font color="#A020F0">    #else</font>
+<a name="line29"> 29: </a><strong><font color="#228B22">      #define ROCM_MATHLIBS_API_USE_HIP_COMPLEX</font></strong>
+<a name="line30"> 30: </a><font color="#A020F0">    #endif</font>
+<a name="line31"> 31: </a><font color="#A020F0">    #include &lt;hipblas/hipblas.h&gt;</font>
+<a name="line32"> 32: </a><font color="#A020F0">    #include &lt;hipsparse/hipsparse.h&gt;</font>
+<a name="line33"> 33: </a><font color="#A020F0">  #else</font>
+<a name="line34"> 34: </a><font color="#A020F0">    #include &lt;hipblas.h&gt;</font>
+<a name="line35"> 35: </a><font color="#A020F0">    #include &lt;hipsparse.h&gt;</font>
+<a name="line36"> 36: </a><font color="#A020F0">  #endif</font>
+
+<a name="line38"> 38: </a><font color="#A020F0">  #if PETSC_PKG_HIP_VERSION_LT(5, 4, 0)</font>
+<a name="line39"> 39: </a><strong><font color="#228B22">    #define HIPSPARSE_ORDER_COL HIPSPARSE_ORDER_COLUMN</font></strong>
+<a name="line40"> 40: </a><font color="#A020F0">  #endif</font>
+
+<a name="line42"> 42: </a><font color="#A020F0">  #if defined(__HIP_PLATFORM_NVCC__)</font>
+<a name="line43"> 43: </a><font color="#A020F0">    #include &lt;cusolverDn.h&gt;</font>
+<a name="line44"> 44: </a><font color="#A020F0">  #else // __HIP_PLATFORM_HCC__</font>
+<a name="line45"> 45: </a><font color="#A020F0">    #if PETSC_PKG_HIP_VERSION_GE(5, 2, 0)</font>
+<a name="line46"> 46: </a><font color="#A020F0">      #include &lt;hipsolver/hipsolver.h&gt;</font>
+<a name="line47"> 47: </a><font color="#A020F0">    #else</font>
+<a name="line48"> 48: </a><font color="#A020F0">      #include &lt;hipsolver.h&gt;</font>
+<a name="line49"> 49: </a><font color="#A020F0">    #endif</font>
+<a name="line50"> 50: </a><font color="#A020F0">  #endif                       // __HIP_PLATFORM_NVCC__</font>
+<a name="line51"> 51: </a><font color="#A020F0">  #include &lt;hip/hip_complex.h&gt; // for hipComplex, hipDoubleComplex</font>
+
+<a name="line53"> 53: </a>  <font color="#B22222">// REMOVE ME</font>
+<a name="line54"> 54: </a><strong><font color="#228B22">  #define WaitForHIP() hipDeviceSynchronize()</font></strong>
+
+<a name="line56"> 56: </a><font color="#B22222">/* hipBLAS, hipSPARSE and hipSolver does not have hip*GetErrorName(). We create one on our own. */</font>
+<a name="line57"> 57: </a><strong><font color="#4169E1">PETSC_EXTERN const char *PetscHIPBLASGetErrorName(hipblasStatus_t)</font></strong>;     <font color="#B22222">/* PETSC_EXTERN since it is exposed by the CHKERRHIPBLAS macro */</font>
+<a name="line58"> 58: </a><strong><font color="#4169E1">PETSC_EXTERN const char *PetscHIPSPARSEGetErrorName(hipsparseStatus_t)</font></strong>; <font color="#B22222">/* PETSC_EXTERN since it is exposed by the CHKERRHIPSPARSE macro */</font>
+<a name="line59"> 59: </a><strong><font color="#4169E1">PETSC_EXTERN const char *PetscHIPSolverGetErrorName(hipsolverStatus_t)</font></strong>; <font color="#B22222">/* PETSC_EXTERN since it is exposed by the CHKERRHIPSOLVER macro */</font>
+
+<a name="line61"> 61: </a><strong><font color="#228B22">  #define PetscCallHIP(...) \</font></strong>
+<a name="line62"> 62: </a><strong><font color="#228B22">    do { \</font></strong>
+<a name="line63"> 63: </a><strong><font color="#228B22">      const hipError_t _p_hip_err__ = __VA_ARGS__; \</font></strong>
+<a name="line64"> 64: </a><strong><font color="#228B22">      if (<a href="../manualpages/Sys/PetscUnlikely.html">PetscUnlikely</a>(_p_hip_err__ != hipSuccess)) { \</font></strong>
+<a name="line65"> 65: </a><strong><font color="#228B22">        const char *name  = hipGetErrorName(_p_hip_err__); \</font></strong>
+<a name="line66"> 66: </a><strong><font color="#228B22">        const char *descr = hipGetErrorString(_p_hip_err__); \</font></strong>
+<a name="line67"> 67: </a><strong><font color="#228B22">        <a href="../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU</a>, </font><font color="#666666">"hip error %d (%s) : %s"</font><font color="#228B22">, (<a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>)_p_hip_err__, name, descr); \</font></strong>
+<a name="line68"> 68: </a><strong><font color="#228B22">      } \</font></strong>
+<a name="line69"> 69: </a><strong><font color="#228B22">    } while (0)</font></strong>
+<a name="line70"> 70: </a><strong><font color="#228B22">  #define CHKERRHIP(...) PetscCallHIP(__VA_ARGS__)</font></strong>
+
+<a name="line72"> 72: </a><strong><font color="#228B22">  #define PetscHIPCheckLaunch \</font></strong>
+<a name="line73"> 73: </a><strong><font color="#228B22">    do { \</font></strong>
+<a name="line74"> 74: </a><strong><font color="#228B22">      </font><font color="#B22222">/* Check synchronous errors, i.e. pre-launch */</font><font color="#228B22"> \</font></strong>
+<a name="line75"> 75: </a><strong><font color="#228B22">      PetscCallHIP(hipGetLastError()); \</font></strong>
+<a name="line76"> 76: </a><strong><font color="#228B22">      </font><font color="#B22222">/* Check asynchronous errors, i.e. kernel failed (ULF) */</font><font color="#228B22"> \</font></strong>
+<a name="line77"> 77: </a><strong><font color="#228B22">      PetscCallHIP(hipDeviceSynchronize()); \</font></strong>
+<a name="line78"> 78: </a><strong><font color="#228B22">    } while (0)</font></strong>
+
+<a name="line80"> 80: </a><strong><font color="#228B22">  #define PetscCallHIPBLAS(...) \</font></strong>
+<a name="line81"> 81: </a><strong><font color="#228B22">    do { \</font></strong>
+<a name="line82"> 82: </a><strong><font color="#228B22">      const hipblasStatus_t _p_hipblas_stat__ = __VA_ARGS__; \</font></strong>
+<a name="line83"> 83: </a><strong><font color="#228B22">      if (<a href="../manualpages/Sys/PetscUnlikely.html">PetscUnlikely</a>(_p_hipblas_stat__ != HIPBLAS_STATUS_SUCCESS)) { \</font></strong>
+<a name="line84"> 84: </a><strong><font color="#228B22">        const char *name = PetscHIPBLASGetErrorName(_p_hipblas_stat__); \</font></strong>
+<a name="line85"> 85: </a><strong><font color="#228B22">        <a href="../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU</a>, </font><font color="#666666">"hipBLAS error %d (%s)"</font><font color="#228B22">, (<a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>)_p_hipblas_stat__, name); \</font></strong>
+<a name="line86"> 86: </a><strong><font color="#228B22">      } \</font></strong>
+<a name="line87"> 87: </a><strong><font color="#228B22">    } while (0)</font></strong>
+<a name="line88"> 88: </a><strong><font color="#228B22">  #define CHKERRHIPBLAS(...) PetscCallHIPBLAS(__VA_ARGS__)</font></strong>
+
+<a name="line90"> 90: </a><font color="#A020F0">  #if PETSC_PKG_HIP_VERSION_GE(4, 5, 0)</font>
+<a name="line91"> 91: </a>    <font color="#B22222">/* HIPSPARSE &amp; HIPSOLVER have better functionality with ROCm-4.5 or newer */</font>
+<a name="line92"> 92: </a><strong><font color="#228B22">    #define PetscCallHIPSPARSE(...) \</font></strong>
+<a name="line93"> 93: </a><strong><font color="#228B22">      do { \</font></strong>
+<a name="line94"> 94: </a><strong><font color="#228B22">        const hipsparseStatus_t _p_hipsparse_stat__ = __VA_ARGS__; \</font></strong>
+<a name="line95"> 95: </a><strong><font color="#228B22">        if (<a href="../manualpages/Sys/PetscUnlikely.html">PetscUnlikely</a>(_p_hipsparse_stat__ != HIPSPARSE_STATUS_SUCCESS)) { \</font></strong>
+<a name="line96"> 96: </a><strong><font color="#228B22">          const char *name = PetscHIPSPARSEGetErrorName(_p_hipsparse_stat__); \</font></strong>
+<a name="line97"> 97: </a><strong><font color="#228B22">          <a href="../manualpages/Sys/PetscCheck.html">PetscCheck</a>((_p_hipsparse_stat__ != HIPSPARSE_STATUS_NOT_INITIALIZED) &amp;&amp; (_p_hipsparse_stat__ != HIPSPARSE_STATUS_ALLOC_FAILED), <a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU_RESOURCE</a>, </font><font color="#666666">"hipSPARSE errorcode %d (%s): Reports not initialized or alloc failed; this indicates the GPU has run out resources"</font><font color="#228B22">, (int)_p_hipsparse_stat__, name); \</font></strong>
+<a name="line98"> 98: </a><strong><font color="#228B22">          <a href="../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU</a>, </font><font color="#666666">"hipSPARSE errorcode %d (%s)"</font><font color="#228B22">, (int)_p_hipsparse_stat__, name); \</font></strong>
+<a name="line99"> 99: </a><strong><font color="#228B22">        } \</font></strong>
+<a name="line100">100: </a><strong><font color="#228B22">      } while (0)</font></strong>
+<a name="line101">101: </a><strong><font color="#228B22">    #define CHKERRHIPSPARSE(...) PetscCallHIPSPARSE(__VA_ARGS__)</font></strong>
+
+<a name="line103">103: </a><strong><font color="#228B22">    #define PetscCallHIPSOLVER(...) \</font></strong>
+<a name="line104">104: </a><strong><font color="#228B22">      do { \</font></strong>
+<a name="line105">105: </a><strong><font color="#228B22">        const hipsolverStatus_t _p_hipsolver_stat__ = __VA_ARGS__; \</font></strong>
+<a name="line106">106: </a><strong><font color="#228B22">        if (<a href="../manualpages/Sys/PetscUnlikely.html">PetscUnlikely</a>(_p_hipsolver_stat__ != HIPSOLVER_STATUS_SUCCESS)) { \</font></strong>
+<a name="line107">107: </a><strong><font color="#228B22">          const char *name = PetscHIPSolverGetErrorName(_p_hipsolver_stat__); \</font></strong>
+<a name="line108">108: </a><strong><font color="#228B22">          if (((_p_hipsolver_stat__ == HIPSOLVER_STATUS_NOT_INITIALIZED) || (_p_hipsolver_stat__ == HIPSOLVER_STATUS_ALLOC_FAILED) || (_p_hipsolver_stat__ == HIPSOLVER_STATUS_INTERNAL_ERROR)) &amp;&amp; <a href="../manualpages/Device/PetscDeviceInitialized.html">PetscDeviceInitialized</a>(<a href="../manualpages/Sys/PetscDeviceType.html">PETSC_DEVICE_HIP</a>)) { \</font></strong>
+<a name="line109">109: </a><strong><font color="#228B22">            <a href="../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU_RESOURCE</a>, \</font></strong>
+<a name="line110">110: </a><strong><font color="#228B22">                    </font><font color="#666666">"hipSolver error %d (%s). "</font><font color="#228B22"> \</font></strong>
+<a name="line111">111: </a><strong><font color="#228B22">                    </font><font color="#666666">"This indicates the GPU may have run out resources"</font><font color="#228B22">, \</font></strong>
+<a name="line112">112: </a><strong><font color="#228B22">                    (<a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>)_p_hipsolver_stat__, name); \</font></strong>
+<a name="line113">113: </a><strong><font color="#228B22">          } else { \</font></strong>
+<a name="line114">114: </a><strong><font color="#228B22">            <a href="../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU</a>, </font><font color="#666666">"hipSolver error %d (%s)"</font><font color="#228B22">, (<a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>)_p_hipsolver_stat__, name); \</font></strong>
+<a name="line115">115: </a><strong><font color="#228B22">          } \</font></strong>
+<a name="line116">116: </a><strong><font color="#228B22">        } \</font></strong>
+<a name="line117">117: </a><strong><font color="#228B22">      } while (0)</font></strong>
+<a name="line118">118: </a><strong><font color="#228B22">    #define CHKERRHIPSOLVER(...) PetscCallHIPSOLVER(__VA_ARGS__)</font></strong>
+
+<a name="line120">120: </a><font color="#A020F0">  #else </font><font color="#B22222">/* PETSC_PKG_HIP_VERSION_GE(4,5,0) */</font><font color="#A020F0"></font>
+<a name="line121">121: </a>    <font color="#B22222">/* hipSolver does not exist yet so we work around it</font>
+<a name="line122">122: </a><font color="#B22222">  rocSOLVER users rocBLAS for the handle</font>
+<a name="line123">123: </a><font color="#B22222">  * */</font>
+<a name="line124">124: </a><font color="#A020F0">    #if defined(__HIP_PLATFORM_NVCC__)</font>
+<a name="line125">125: </a><font color="#A020F0">      #include &lt;cusolverDn.h&gt;</font>
+<a name="line126">126: </a><font color="#4169E1">typedef cusolverDnHandle_t hipsolverHandle_t;</font>
+<a name="line127">127: </a><font color="#4169E1">typedef cusolverStatus_t   hipsolverStatus_t;</font>
+
+<a name="line129">129: </a><font color="#B22222">/* Alias hipsolverDestroy to cusolverDnDestroy */</font>
+<a name="line130">130: </a><strong><font color="#4169E1"><a name="hipsolverDestroy"></a>static inline hipsolverStatus_t hipsolverDestroy(hipsolverHandle_t *hipsolverhandle)</font></strong>
+<a name="line131">131: </a>{
+<a name="line132">132: </a>  <font color="#4169E1">return</font> cusolverDnDestroy(hipsolverhandle);
+<a name="line133">133: </a>}
+
+<a name="line135">135: </a><font color="#B22222">/* Alias hipsolverCreate to cusolverDnCreate */</font>
+<a name="line136">136: </a><strong><font color="#4169E1"><a name="hipsolverCreate"></a>static inline hipsolverStatus_t hipsolverCreate(hipsolverHandle_t *hipsolverhandle)</font></strong>
+<a name="line137">137: </a>{
+<a name="line138">138: </a>  <font color="#4169E1">return</font> cusolverDnCreate(hipsolverhandle);
+<a name="line139">139: </a>}
+
+<a name="line141">141: </a><font color="#B22222">/* Alias hipsolverGetStream to cusolverDnGetStream */</font>
+<a name="line142">142: </a><strong><font color="#4169E1"><a name="hipsolverGetStream"></a>static inline hipsolverStatus_t hipsolverGetStream(hipsolverHandle_t handle, hipStream_t *stream)</font></strong>
+<a name="line143">143: </a>{
+<a name="line144">144: </a>  <font color="#4169E1">return</font> cusolverDnGetStream(handle, stream);
+<a name="line145">145: </a>}
+
+<a name="line147">147: </a><font color="#B22222">/* Alias hipsolverSetStream to cusolverDnSetStream */</font>
+<a name="line148">148: </a><strong><font color="#4169E1"><a name="hipsolverSetStream"></a>static inline hipsolverStatus_t hipsolverSetStream(hipsolverHandle_t handle, hipStream_t stream)</font></strong>
+<a name="line149">149: </a>{
+<a name="line150">150: </a>  <font color="#4169E1">return</font> cusolveDnSetStream(handle, stream);
+<a name="line151">151: </a>}
+<a name="line152">152: </a><font color="#A020F0">    #else </font><font color="#B22222">/* __HIP_PLATFORM_HCC__ */</font><font color="#A020F0"></font>
+<a name="line153">153: </a><font color="#A020F0">      #include &lt;rocsolver.h&gt;</font>
+<a name="line154">154: </a><font color="#A020F0">      #include &lt;rocblas.h&gt;</font>
+<a name="line155">155: </a><font color="#4169E1">typedef rocblas_handle hipsolverHandle_t;</font>
+<a name="line156">156: </a><font color="#4169E1">typedef rocblas_status hipsolverStatus_t;</font>
+
+<a name="line158">158: </a><font color="#B22222">/* Alias hipsolverDestroy to rocblas_destroy_handle */</font>
+<a name="line159">159: </a><strong><font color="#4169E1"><a name="hipsolverDestroy"></a>static inline hipsolverStatus_t hipsolverDestroy(hipsolverHandle_t hipsolverhandle)</font></strong>
+<a name="line160">160: </a>{
+<a name="line161">161: </a>  <font color="#4169E1">return</font> rocblas_destroy_handle(hipsolverhandle);
+<a name="line162">162: </a>}
+
+<a name="line164">164: </a><font color="#B22222">/* Alias hipsolverCreate to rocblas_destroy_handle */</font>
+<a name="line165">165: </a><strong><font color="#4169E1"><a name="hipsolverCreate"></a>static inline hipsolverStatus_t hipsolverCreate(hipsolverHandle_t *hipsolverhandle)</font></strong>
+<a name="line166">166: </a>{
+<a name="line167">167: </a>  <font color="#4169E1">return</font> rocblas_create_handle(hipsolverhandle);
+<a name="line168">168: </a>}
+
+<a name="line170">170: </a><font color="#B22222">// Alias hipsolverGetStream to rocblas_get_stream</font>
+<a name="line171">171: </a><strong><font color="#4169E1"><a name="hipsolverGetStream"></a>static inline hipsolverStatus_t hipsolverGetStream(hipsolverHandle_t handle, hipStream_t *stream)</font></strong>
+<a name="line172">172: </a>{
+<a name="line173">173: </a>  <font color="#4169E1">return</font> rocblas_get_stream(handle, stream);
+<a name="line174">174: </a>}
+
+<a name="line176">176: </a><font color="#B22222">// Alias hipsolverSetStream to rocblas_set_stream</font>
+<a name="line177">177: </a><strong><font color="#4169E1"><a name="hipsolverSetStream"></a>static inline hipsolverStatus_t hipsolverSetStream(hipsolverHandle_t handle, hipStream_t stream)</font></strong>
+<a name="line178">178: </a>{
+<a name="line179">179: </a>  <font color="#4169E1">return</font> rocblas_set_stream(handle, stream);
+<a name="line180">180: </a>}
+<a name="line181">181: </a><font color="#A020F0">    #endif // __HIP_PLATFORM_NVCC__</font>
+<a name="line182">182: </a><font color="#A020F0">  #endif   </font><font color="#B22222">/* PETSC_PKG_HIP_VERSION_GE(4,5,0) */</font><font color="#A020F0"></font>
+<a name="line183">183: </a><font color="#B22222">// REMOVE ME</font>
+<a name="line184">184: </a>PETSC_EXTERN hipStream_t    PetscDefaultHipStream; <font color="#B22222">// The default stream used by PETSc</font>
+<a name="line185">185: </a><strong><font color="#4169E1">PETSC_EXTERN <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscHIPBLASGetHandle(hipblasHandle_t *)</font></strong>;
+<a name="line186">186: </a><strong><font color="#4169E1">PETSC_EXTERN <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscHIPSOLVERGetHandle(hipsolverHandle_t *)</font></strong>;
+<a name="line187">187: </a><strong><font color="#4169E1">PETSC_EXTERN <a href="../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscGetCurrentHIPStream(hipStream_t *)</font></strong>;
+
+<a name="line189">189: </a><font color="#A020F0">#endif // PETSC_HAVE_HIP</font>
+
+<a name="line191">191: </a><font color="#B22222">// these can also be defined in petscdevice_cuda.h so we undef and define them *only* if the</font>
+<a name="line192">192: </a><font color="#B22222">// current compiler is HCC. In this case if petscdevice_cuda.h is included first, the macros</font>
+<a name="line193">193: </a><font color="#B22222">// would already be defined, but they would be empty since we cannot be using NVCC at the same</font>
+<a name="line194">194: </a><font color="#B22222">// time.</font>
+<a name="line195">195: </a><font color="#A020F0">#if <a href="../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USING_HCC)</font>
+<a name="line196">196: </a><strong><font color="#228B22">  #undef PETSC_HOST_DECL</font></strong>
+<a name="line197">197: </a><strong><font color="#228B22">  #undef PETSC_DEVICE_DECL</font></strong>
+<a name="line198">198: </a><strong><font color="#228B22">  #undef PETSC_KERNEL_DECL</font></strong>
+<a name="line199">199: </a><strong><font color="#228B22">  #undef PETSC_SHAREDMEM_DECL</font></strong>
+<a name="line200">200: </a><strong><font color="#228B22">  #undef PETSC_FORCEINLINE</font></strong>
+<a name="line201">201: </a><strong><font color="#228B22">  #undef PETSC_CONSTMEM_DECL</font></strong>
+
+<a name="line203">203: </a><strong><font color="#228B22">  #define PETSC_HOST_DECL      __host__</font></strong>
+<a name="line204">204: </a><strong><font color="#228B22">  #define PETSC_DEVICE_DECL    __device__</font></strong>
+<a name="line205">205: </a><strong><font color="#228B22">  #define PETSC_KERNEL_DECL    __global__</font></strong>
+<a name="line206">206: </a><strong><font color="#228B22">  #define PETSC_SHAREDMEM_DECL __shared__</font></strong>
+<a name="line207">207: </a><strong><font color="#228B22">  #define PETSC_FORCEINLINE    __forceinline__</font></strong>
+<a name="line208">208: </a><strong><font color="#228B22">  #define PETSC_CONSTMEM_DECL  __constant__</font></strong>
+<a name="line209">209: </a><font color="#A020F0">#endif</font>
+
+<a name="line211">211: </a><font color="#A020F0">#ifndef PETSC_HOST_DECL // use HOST_DECL as canary</font>
+<a name="line212">212: </a><strong><font color="#228B22">  #define PETSC_HOST_DECL</font></strong>
+<a name="line213">213: </a><strong><font color="#228B22">  #define PETSC_DEVICE_DECL</font></strong>
+<a name="line214">214: </a><strong><font color="#228B22">  #define PETSC_KERNEL_DECL</font></strong>
+<a name="line215">215: </a><strong><font color="#228B22">  #define PETSC_SHAREDMEM_DECL</font></strong>
+<a name="line216">216: </a><strong><font color="#228B22">  #define PETSC_FORCEINLINE inline</font></strong>
+<a name="line217">217: </a><strong><font color="#228B22">  #define PETSC_CONSTMEM_DECL</font></strong>
+<a name="line218">218: </a><font color="#A020F0">#endif</font>
+
+<a name="line220">220: </a><font color="#A020F0">#ifndef PETSC_DEVICE_DEFINED_DECLS_PRIVATE</font>
+<a name="line221">221: </a><strong><font color="#228B22">  #define PETSC_DEVICE_DEFINED_DECLS_PRIVATE</font></strong>
+<a name="line222">222: </a><strong><font color="#228B22">  #define PETSC_HOSTDEVICE_DECL        PETSC_HOST_DECL PETSC_DEVICE_DECL</font></strong>
+<a name="line223">223: </a><strong><font color="#228B22">  #define PETSC_DEVICE_INLINE_DECL     PETSC_DEVICE_DECL PETSC_FORCEINLINE</font></strong>
+<a name="line224">224: </a><strong><font color="#228B22">  #define PETSC_HOSTDEVICE_INLINE_DECL PETSC_HOSTDEVICE_DECL PETSC_FORCEINLINE</font></strong>
+<a name="line225">225: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+

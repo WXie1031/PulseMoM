@@ -1,0 +1,44 @@
+# voxel definition type ("stl" for STL files)
+"mesh_type": "stl"
+
+# definition of the voxel structure
+"data_voxelize":
+    # definition of the voxel structure
+    #   - d: array with the voxel dimensions (x, y, and z directions)
+    #   - xyz_min: array with the lower corner coordinates of the voxel structure
+    #       - vector with the x, y, and z coordinates
+    #       - if null, the STL mesh bounds are used
+    #   - xyz_max: array with the upper corner coordinates of the voxel structure
+    #       - vector with the x, y, and z coordinates
+    #       - if null, the STL mesh bounds are used
+    #   - check: boolean parameters for checking the STL mesh integrity
+    #       - if true, the STL mesh should represent a closed surface
+    #       - if false, the surface status of the STL mesh is not checked
+    #   - thr: threshold for the voxelization (in order to keep/exclude voxels)
+    #       - the volume fraction located inside the STL mesh is computed for each voxel
+    #       - if the fraction is greater than the threshold, the voxel is added to the structure
+    #   - pts: number of test points used for the voxelization (for each voxel)
+    #       - if greater than one, several points are used (pts^3 points are created)
+    #       - if equal to one, a single test point is used (in the center the voxel)
+    #       - the Gauss-Legendre quadrature is used to span the points
+    "param":
+        "d": [10.0e-3, 10.0e-3, 10.0e-3]
+        "xyz_min": [-20e-3, -20e-3, -20e-3]
+        "xyz_max": [+20e-3, +20e-3, +20e-3]
+        "check": true
+        "thr": 0.5
+        "pts": 1
+
+    # definition of the STL files of the different domains
+    #   - dict with the domain name and the STL files
+    #   - required information, the dict cannot be empty
+    #   - domain definition
+    #       - list of STL meshes composing the domain
+    #       - scale: scaling factor for specifying the unit of the STL meshes (before offsetting)
+    #       - offset: array with offsets for translating the STL meshes (after scaling)
+    #       - filename: string with the STL filename
+    "domain_stl":
+        "dom_src": [{"scale": 1.0, "offset": [0.0, 0.0, 0.0], "filename": "stl/dom_src.stl"}]
+        "dom_cond": [{"scale": 1.0, "offset": [0.0, 0.0, 0.0], "filename": "stl/dom_cond.stl"}]
+        "dom_sink": [{"scale": 1.0, "offset": [0.0, 0.0, 0.0], "filename": "stl/dom_sink.stl"}]
+        "dom_mag": [{"scale": 1.0, "offset": [0.0, 0.0, 0.0], "filename": "stl/dom_mag.stl"}]

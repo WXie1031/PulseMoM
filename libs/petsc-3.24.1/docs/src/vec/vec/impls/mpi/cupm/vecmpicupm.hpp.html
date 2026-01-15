@@ -1,0 +1,113 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/vec/impls/mpi/cupm/vecmpicupm.hpp">Actual source code: vecmpicupm.hpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:20+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/veccupmimpl.h.html">&lt;petsc/private/veccupmimpl.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../src/vec/vec/impls/seq/cupm/vecseqcupm.hpp.html">&lt;../src/vec/vec/impls/seq/cupm/vecseqcupm.hpp&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../../src/vec/vec/impls/mpi/pvecimpl.h.html">&lt;../src/vec/vec/impls/mpi/pvecimpl.h&gt;</A>
+
+<a name="line7">  7: </a>namespace Petsc
+<a name="line8">  8: </a>{
+
+<a name="line10"> 10: </a>namespace vec
+<a name="line11"> 11: </a>{
+
+<a name="line13"> 13: </a>namespace cupm
+<a name="line14"> 14: </a>{
+
+<a name="line16"> 16: </a>namespace impl
+<a name="line17"> 17: </a>{
+
+<a name="line19"> 19: </a>template &lt;device::cupm::DeviceType T&gt;
+<a name="line20"> 20: </a>class VecMPI_CUPM : public Vec_CUPMBase&lt;T, VecMPI_CUPM&lt;T&gt;&gt; {
+<a name="line21"> 21: </a>public:
+<a name="line22"> 22: </a>  PETSC_VEC_CUPM_BASE_CLASS_HEADER(base_type, T, VecMPI_CUPM&lt;T&gt;);
+<a name="line23"> 23: </a>  using VecSeq_T = VecSeq_CUPM&lt;T&gt;;
+
+<a name="line25"> 25: </a>private:
+<a name="line26"> 26: </a>  <a href="../../../../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static Vec_MPI          *VecIMPLCast_(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>) noexcept;
+<a name="line27"> 27: </a>  <a href="../../../../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static constexpr <a href="../../../../../../manualpages/Vec/VecType.html">VecType</a> VECIMPLCUPM_() noexcept;
+<a name="line28"> 28: </a>  <a href="../../../../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static constexpr <a href="../../../../../../manualpages/Vec/VecType.html">VecType</a> VECIMPL_() noexcept;
+
+<a name="line30"> 30: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecDestroy_IMPL_(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>) noexcept;
+<a name="line31"> 31: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecResetArray_IMPL_(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>) noexcept;
+<a name="line32"> 32: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecPlaceArray_IMPL_(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *) noexcept;
+<a name="line33"> 33: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecCreate_IMPL_Private_(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *) noexcept;
+
+<a name="line35"> 35: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> CreateMPICUPM_(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscDeviceContext.html">PetscDeviceContext</a>, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> <font color="#B22222">/*allocate_missing*/</font> = <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> <font color="#B22222">/*nghost*/</font> = 0, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> * <font color="#B22222">/*host_array*/</font> = nullptr, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> * <font color="#B22222">/*device_array*/</font> = nullptr) noexcept;
+
+<a name="line37"> 37: </a>public:
+<a name="line38"> 38: </a>  <font color="#B22222">// callable directly via a bespoke function</font>
+<a name="line39"> 39: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> CreateMPICUPM(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>) noexcept;
+<a name="line40"> 40: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> CreateMPICUPMWithArrays(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *) noexcept;
+
+<a name="line42"> 42: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Duplicate(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *) noexcept;
+<a name="line43"> 43: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BindToCPU(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>) noexcept;
+<a name="line44"> 44: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Norm(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/NormType.html">NormType</a>, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *) noexcept;
+<a name="line45"> 45: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Dot(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *) noexcept;
+<a name="line46"> 46: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> TDot(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *) noexcept;
+<a name="line47"> 47: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MDot(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>[], <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *) noexcept;
+<a name="line48"> 48: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DotNorm2(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *) noexcept;
+<a name="line49"> 49: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Max(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *) noexcept;
+<a name="line50"> 50: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Min(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *) noexcept;
+<a name="line51"> 51: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SetPreallocationCOO(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscCount.html">PetscCount</a>, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>[]) noexcept;
+<a name="line52"> 52: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SetValuesCOO(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], <a href="../../../../../../manualpages/Sys/InsertMode.html">InsertMode</a>) noexcept;
+<a name="line53"> 53: </a>  static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ErrorWnorm(<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Vec/NormType.html">NormType</a>, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *) noexcept;
+<a name="line54"> 54: </a>};
+
+<a name="line56"> 56: </a>} <font color="#B22222">// namespace impl</font>
+
+<a name="line58"> 58: </a>template &lt;device::cupm::DeviceType T&gt;
+<a name="line59"> 59: </a><strong><font color="#4169E1"><a name="VecCreateMPICUPMAsync"></a>inline <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecCreateMPICUPMAsync(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> N, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *v)</font></strong> noexcept
+<a name="line60"> 60: </a>{
+<a name="line61"> 61: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line62"> 62: </a>  PetscAssertPointer(v, 4);
+<a name="line63"> 63: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(impl::VecMPI_CUPM&lt;T&gt;::CreateMPICUPM(comm, 0, n, N, v, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line64"> 64: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line65"> 65: </a>}
+
+<a name="line67"> 67: </a>template &lt;device::cupm::DeviceType T&gt;
+<a name="line68"> 68: </a><strong><font color="#4169E1"><a name="VecCreateMPICUPMWithArrays"></a>inline <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecCreateMPICUPMWithArrays(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> bs, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> N, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> cpuarray[], const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> gpuarray[], <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *v)</font></strong>
+<a name="line69"> 69: </a>{
+<a name="line70"> 70: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line71"> 71: </a>  <font color="#4169E1">if</font> (n &amp;&amp; cpuarray) PetscAssertPointer(cpuarray, 5);
+<a name="line72"> 72: </a>  PetscAssertPointer(v, 7);
+<a name="line73"> 73: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(impl::VecMPI_CUPM&lt;T&gt;::CreateMPICUPMWithArrays(comm, bs, n, N, cpuarray, gpuarray, v));
+<a name="line74"> 74: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line75"> 75: </a>}
+
+<a name="line77"> 77: </a>template &lt;device::cupm::DeviceType T&gt;
+<a name="line78"> 78: </a><strong><font color="#4169E1"><a name="VecCreateMPICUPMWithArray"></a>inline <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecCreateMPICUPMWithArray(<a href="../../../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> bs, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> N, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> gpuarray[], <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *v)</font></strong>
+<a name="line79"> 79: </a>{
+<a name="line80"> 80: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line81"> 81: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecCreateMPICUPMWithArrays&lt;T&gt;(comm, bs, n, N, nullptr, gpuarray, v));
+<a name="line82"> 82: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line83"> 83: </a>}
+
+<a name="line85"> 85: </a>} <font color="#B22222">// namespace cupm</font>
+
+<a name="line87"> 87: </a>} <font color="#B22222">// namespace vec</font>
+
+<a name="line89"> 89: </a>} <font color="#B22222">// namespace Petsc</font>
+
+<a name="line91"> 91: </a><font color="#A020F0">#if <a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line92"> 92: </a>extern template class PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL ::Petsc::vec::cupm::impl::VecMPI_CUPM&lt;::Petsc::device::cupm::DeviceType::CUDA&gt;;
+<a name="line93"> 93: </a><font color="#A020F0">#endif</font>
+
+<a name="line95"> 95: </a><font color="#A020F0">#if <a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line96"> 96: </a>extern template class PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL ::Petsc::vec::cupm::impl::VecMPI_CUPM&lt;::Petsc::device::cupm::DeviceType::HIP&gt;;
+<a name="line97"> 97: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+

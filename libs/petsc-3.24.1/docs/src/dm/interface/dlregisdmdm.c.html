@@ -1,0 +1,446 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/interface/dlregisdmdm.c">Actual source code: dlregisdmdm.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../include/petscao.h.html">&lt;petscao.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../include/petsc/private/dmlabelimpl.h.html">&lt;petsc/private/dmlabelimpl.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../include/petsc/private/dmfieldimpl.h.html">&lt;petsc/private/dmfieldimpl.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../include/petsc/private/dmpleximpl.h.html">&lt;petsc/private/dmpleximpl.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../include/petsc/private/dmplextransformimpl.h.html">&lt;petsc/private/dmplextransformimpl.h&gt;</A>
+<a name="line6">  6: </a>#include <A href="../../../include/petsc/private/petscdsimpl.h.html">&lt;petsc/private/petscdsimpl.h&gt;</A>
+<a name="line7">  7: </a>#include <A href="../../../include/petsc/private/petscfeimpl.h.html">&lt;petsc/private/petscfeimpl.h&gt;</A>
+<a name="line8">  8: </a>#include <A href="../../../include/petsc/private/petscfvimpl.h.html">&lt;petsc/private/petscfvimpl.h&gt;</A>
+<a name="line9">  9: </a>#include <A href="../../../include/petsc/private/dmswarmimpl.h.html">&lt;petsc/private/dmswarmimpl.h&gt;</A>
+<a name="line10"> 10: </a>#include <A href="../../../include/petsc/private/dmnetworkimpl.h.html">&lt;petsc/private/dmnetworkimpl.h&gt;</A>
+
+<a name="line12"> 12: </a>static <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> DMPackageInitialized = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line13"> 13: </a><font color="#B22222">/*@C</font>
+<a name="line14"> 14: </a><font color="#B22222">  <a href="../../../manualpages/DM/DMFinalizePackage.html">DMFinalizePackage</a> - This function finalizes everything in the `<a href="../../../manualpages/DM/DM.html">DM</a>` package. It is called</font>
+<a name="line15"> 15: </a><font color="#B22222">  from `<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>()`.</font>
+
+<a name="line17"> 17: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line19"> 19: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line20"> 20: </a><font color="#B22222">@*/</font>
+<a name="line21"> 21: </a><strong><font color="#4169E1"><a name="DMFinalizePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/DMFinalizePackage.html">DMFinalizePackage</a>(void)</font></strong>
+<a name="line22"> 22: </a>{
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line24"> 24: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;DMList));
+<a name="line25"> 25: </a>  DMPackageInitialized = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line26"> 26: </a>  DMRegisterAllCalled  = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line27"> 27: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line28"> 28: </a>}
+
+<a name="line30"> 30: </a><font color="#A020F0">#if defined(PETSC_HAVE_HYPRE)</font>
+<a name="line31"> 31: </a><strong><font color="#4169E1">PETSC_EXTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreate_HYPREStruct(<a href="../../../manualpages/Mat/Mat.html">Mat</a>)</font></strong>;
+<a name="line32"> 32: </a><strong><font color="#4169E1">PETSC_EXTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatCreate_HYPRESStruct(<a href="../../../manualpages/Mat/Mat.html">Mat</a>)</font></strong>;
+<a name="line33"> 33: </a><font color="#A020F0">#endif</font>
+
+<a name="line35"> 35: </a><font color="#B22222">/*@C</font>
+<a name="line36"> 36: </a><font color="#B22222">  <a href="../../../manualpages/DM/DMInitializePackage.html">DMInitializePackage</a> - This function initializes everything in the `<a href="../../../manualpages/DM/DM.html">DM</a>` package. It is called</font>
+<a name="line37"> 37: </a><font color="#B22222">  from `PetscDLLibraryRegister_petscdm()` when using dynamic libraries, and on the first call to `<a href="../../../manualpages/DM/DMCreate.html">DMCreate</a>()`</font>
+<a name="line38"> 38: </a><font color="#B22222">  or similar routines when using shared or static libraries.</font>
+
+<a name="line40"> 40: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line42"> 42: </a><font color="#B22222">  Note:</font>
+<a name="line43"> 43: </a><font color="#B22222">  This function never needs to be called by PETSc users.</font>
+
+<a name="line45"> 45: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line46"> 46: </a><font color="#B22222">@*/</font>
+<a name="line47"> 47: </a><strong><font color="#4169E1"><a name="DMInitializePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/DMInitializePackage.html">DMInitializePackage</a>(void)</font></strong>
+<a name="line48"> 48: </a>{
+<a name="line49"> 49: </a>  char      logList[256];
+<a name="line50"> 50: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> opt, pkg;
+
+<a name="line52"> 52: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line53"> 53: </a>  <font color="#4169E1">if</font> (DMPackageInitialized) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line54"> 54: </a>  DMPackageInitialized = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line56"> 56: </a>  <font color="#B22222">/* Register Classes */</font>
+<a name="line57"> 57: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Distributed Mesh"</font>, &amp;DM_CLASSID));
+<a name="line58"> 58: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DM.html">DM</a> Label"</font>, &amp;DMLABEL_CLASSID));
+<a name="line59"> 59: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Quadrature"</font>, &amp;PETSCQUADRATURE_CLASSID));
+<a name="line60"> 60: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Mesh Transform"</font>, &amp;DMPLEXTRANSFORM_CLASSID));
+<a name="line61"> 61: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Swarm Cell <a href="../../../manualpages/DM/DM.html">DM</a>"</font>, &amp;DMSWARMCELLDM_CLASSID));
+
+<a name="line63"> 63: </a><font color="#A020F0">#if defined(PETSC_HAVE_HYPRE)</font>
+<a name="line64"> 64: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatRegister.html">MatRegister</a>(<a href="../../../manualpages/DMDA/MATHYPRESTRUCT.html">MATHYPRESTRUCT</a>, MatCreate_HYPREStruct));
+<a name="line65"> 65: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Mat/MatRegister.html">MatRegister</a>(<a href="../../../manualpages/DMDA/MATHYPRESSTRUCT.html">MATHYPRESSTRUCT</a>, MatCreate_HYPRESStruct));
+<a name="line66"> 66: </a><font color="#A020F0">#endif</font>
+<a name="line67"> 67: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/PetscSection/PetscSectionSymRegister.html">PetscSectionSymRegister</a>(PETSCSECTIONSYMLABEL, PetscSectionSymCreate_Label));
+
+<a name="line69"> 69: </a>  <font color="#B22222">/* Register Constructors */</font>
+<a name="line70"> 70: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMRegisterAll.html">DMRegisterAll</a>());
+<a name="line71"> 71: </a>  <font color="#B22222">/* Register Events */</font>
+<a name="line72"> 72: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMConvert.html">DMConvert</a>"</font>, DM_CLASSID, &amp;DM_Convert));
+<a name="line73"> 73: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMGlobalToLocal.html">DMGlobalToLocal</a>"</font>, DM_CLASSID, &amp;DM_GlobalToLocal));
+<a name="line74"> 74: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMLocalToGlobal.html">DMLocalToGlobal</a>"</font>, DM_CLASSID, &amp;DM_LocalToGlobal));
+<a name="line75"> 75: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMLocatePoints.html">DMLocatePoints</a>"</font>, DM_CLASSID, &amp;DM_LocatePoints));
+<a name="line76"> 76: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMCoarsen.html">DMCoarsen</a>"</font>, DM_CLASSID, &amp;DM_Coarsen));
+<a name="line77"> 77: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMRefine.html">DMRefine</a>"</font>, DM_CLASSID, &amp;DM_Refine));
+<a name="line78"> 78: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMCreateInterp"</font>, DM_CLASSID, &amp;DM_CreateInterpolation));
+<a name="line79"> 79: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMCreateRestrict"</font>, DM_CLASSID, &amp;DM_CreateRestriction));
+<a name="line80"> 80: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMCreateInject"</font>, DM_CLASSID, &amp;DM_CreateInjection));
+<a name="line81"> 81: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMCreateMat"</font>, DM_CLASSID, &amp;DM_CreateMatrix));
+<a name="line82"> 82: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMCreateMassMat"</font>, DM_CLASSID, &amp;DM_CreateMassMatrix));
+<a name="line83"> 83: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMLoad.html">DMLoad</a>"</font>, DM_CLASSID, &amp;DM_Load));
+<a name="line84"> 84: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DM/DMView.html">DMView</a>"</font>, DM_CLASSID, &amp;DM_View));
+<a name="line85"> 85: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMAdaptInterp"</font>, DM_CLASSID, &amp;DM_AdaptInterpolator));
+<a name="line86"> 86: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMProjectFunc"</font>, DM_CLASSID, &amp;DM_ProjectFunction));
+
+<a name="line88"> 88: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexBuFrCeLi"</font>, DM_CLASSID, &amp;DMPLEX_BuildFromCellList));
+<a name="line89"> 89: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexBuCoFrCeLi"</font>, DM_CLASSID, &amp;DMPLEX_BuildCoordinatesFromCellList));
+<a name="line90"> 90: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexCreateGmsh.html">DMPlexCreateGmsh</a>"</font>, DM_CLASSID, &amp;DMPLEX_CreateGmsh));
+<a name="line91"> 91: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexCrBoxSFC"</font>, DM_CLASSID, &amp;DMPLEX_CreateBoxSFC));
+<a name="line92"> 92: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexCrFromFile"</font>, DM_CLASSID, &amp;DMPLEX_CreateFromFile));
+<a name="line93"> 93: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexCrFromOpts"</font>, DM_CLASSID, &amp;DMPLEX_CreateFromOptions));
+<a name="line94"> 94: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"Mesh Partition"</font>, DM_CLASSID, &amp;DMPLEX_Partition));
+<a name="line95"> 95: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"Mesh Migration"</font>, DM_CLASSID, &amp;DMPLEX_Migrate));
+<a name="line96"> 96: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexPartSelf"</font>, DM_CLASSID, &amp;DMPLEX_PartSelf));
+<a name="line97"> 97: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexPartLblInv"</font>, DM_CLASSID, &amp;DMPLEX_PartLabelInvert));
+<a name="line98"> 98: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexPartLblSF"</font>, DM_CLASSID, &amp;DMPLEX_PartLabelCreateSF));
+<a name="line99"> 99: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexPartStrtSF"</font>, DM_CLASSID, &amp;DMPLEX_PartStratSF));
+<a name="line100">100: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexPointSF"</font>, DM_CLASSID, &amp;DMPLEX_CreatePointSF));
+<a name="line101">101: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexInterp"</font>, DM_CLASSID, &amp;DMPLEX_Interpolate));
+<a name="line102">102: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexDistribute.html">DMPlexDistribute</a>"</font>, DM_CLASSID, &amp;DMPLEX_Distribute));
+<a name="line103">103: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistMS"</font>, DM_CLASSID, &amp;DMPLEX_DistributeMultistage));
+<a name="line104">104: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistCones"</font>, DM_CLASSID, &amp;DMPLEX_DistributeCones));
+<a name="line105">105: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistLabels"</font>, DM_CLASSID, &amp;DMPLEX_DistributeLabels));
+<a name="line106">106: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistSF"</font>, DM_CLASSID, &amp;DMPLEX_DistributeSF));
+<a name="line107">107: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistOvrlp"</font>, DM_CLASSID, &amp;DMPLEX_DistributeOverlap));
+<a name="line108">108: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistField"</font>, DM_CLASSID, &amp;DMPLEX_DistributeField));
+<a name="line109">109: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistData"</font>, DM_CLASSID, &amp;DMPLEX_DistributeData));
+<a name="line110">110: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexInterpSF"</font>, DM_CLASSID, &amp;DMPLEX_InterpolateSF));
+<a name="line111">111: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexGToNBegin"</font>, DM_CLASSID, &amp;DMPLEX_GlobalToNaturalBegin));
+<a name="line112">112: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexGToNEnd"</font>, DM_CLASSID, &amp;DMPLEX_GlobalToNaturalEnd));
+<a name="line113">113: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexNToGBegin"</font>, DM_CLASSID, &amp;DMPLEX_NaturalToGlobalBegin));
+<a name="line114">114: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexNToGEnd"</font>, DM_CLASSID, &amp;DMPLEX_NaturalToGlobalEnd));
+<a name="line115">115: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexStratify.html">DMPlexStratify</a>"</font>, DM_CLASSID, &amp;DMPLEX_Stratify));
+<a name="line116">116: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexSymmetrize.html">DMPlexSymmetrize</a>"</font>, DM_CLASSID, &amp;DMPLEX_Symmetrize));
+<a name="line117">117: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexPrealloc"</font>, DM_CLASSID, &amp;DMPLEX_Preallocate));
+<a name="line118">118: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexResidualFE"</font>, DM_CLASSID, &amp;DMPLEX_ResidualFEM));
+<a name="line119">119: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexJacobianFE"</font>, DM_CLASSID, &amp;DMPLEX_JacobianFEM));
+<a name="line120">120: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexInterpFE"</font>, DM_CLASSID, &amp;DMPLEX_InterpolatorFEM));
+<a name="line121">121: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexInjectorFE"</font>, DM_CLASSID, &amp;DMPLEX_InjectorFEM));
+<a name="line122">122: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexIntegralFE"</font>, DM_CLASSID, &amp;DMPLEX_IntegralFEM));
+<a name="line123">123: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexRebalance"</font>, DM_CLASSID, &amp;DMPLEX_RebalanceSharedPoints));
+<a name="line124">124: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexLocatePoints"</font>, DM_CLASSID, &amp;DMPLEX_LocatePoints));
+<a name="line125">125: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexTopologyView.html">DMPlexTopologyView</a>"</font>, DM_CLASSID, &amp;DMPLEX_TopologyView));
+<a name="line126">126: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexLabelsView.html">DMPlexLabelsView</a>"</font>, DM_CLASSID, &amp;DMPLEX_LabelsView));
+<a name="line127">127: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexCoordinatesView.html">DMPlexCoordinatesView</a>"</font>, DM_CLASSID, &amp;DMPLEX_CoordinatesView));
+<a name="line128">128: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexSectionView.html">DMPlexSectionView</a>"</font>, DM_CLASSID, &amp;DMPLEX_SectionView));
+<a name="line129">129: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexGlobalVectorView.html">DMPlexGlobalVectorView</a>"</font>, DM_CLASSID, &amp;DMPLEX_GlobalVectorView));
+<a name="line130">130: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexLocalVectorView.html">DMPlexLocalVectorView</a>"</font>, DM_CLASSID, &amp;DMPLEX_LocalVectorView));
+<a name="line131">131: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexTopologyLoad.html">DMPlexTopologyLoad</a>"</font>, DM_CLASSID, &amp;DMPLEX_TopologyLoad));
+<a name="line132">132: </a><font color="#A020F0">#if defined(PETSC_HAVE_HDF5)</font>
+<a name="line133">133: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistributionView"</font>, DM_CLASSID, &amp;DMPLEX_DistributionView));
+<a name="line134">134: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexDistributionLoad"</font>, DM_CLASSID, &amp;DMPLEX_DistributionLoad));
+<a name="line135">135: </a><font color="#A020F0">#endif</font>
+<a name="line136">136: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexLabelsLoad.html">DMPlexLabelsLoad</a>"</font>, DM_CLASSID, &amp;DMPLEX_LabelsLoad));
+<a name="line137">137: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexCoordinatesLoad.html">DMPlexCoordinatesLoad</a>"</font>, DM_CLASSID, &amp;DMPLEX_CoordinatesLoad));
+<a name="line138">138: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexSectionLoad.html">DMPlexSectionLoad</a>"</font>, DM_CLASSID, &amp;DMPLEX_SectionLoad));
+<a name="line139">139: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexGlobalVectorLoad.html">DMPlexGlobalVectorLoad</a>"</font>, DM_CLASSID, &amp;DMPLEX_GlobalVectorLoad));
+<a name="line140">140: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexLocalVectorLoad.html">DMPlexLocalVectorLoad</a>"</font>, DM_CLASSID, &amp;DMPLEX_LocalVectorLoad));
+<a name="line141">141: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexMetricEnforceSPD.html">DMPlexMetricEnforceSPD</a>"</font>, DM_CLASSID, &amp;DMPLEX_MetricEnforceSPD));
+<a name="line142">142: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexMetricNormalize.html">DMPlexMetricNormalize</a>"</font>, DM_CLASSID, &amp;DMPLEX_MetricNormalize));
+<a name="line143">143: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexMetricAverage.html">DMPlexMetricAverage</a>"</font>, DM_CLASSID, &amp;DMPLEX_MetricAverage));
+<a name="line144">144: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexMetricIntersect"</font>, DM_CLASSID, &amp;DMPLEX_MetricIntersection));
+<a name="line145">145: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMPlex/DMPlexGenerate.html">DMPlexGenerate</a>"</font>, DM_CLASSID, &amp;DMPLEX_Generate));
+<a name="line146">146: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexGetLocOff"</font>, DM_CLASSID, &amp;DMPLEX_GetLocalOffsets));
+
+<a name="line148">148: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"RebalBuildGraph"</font>, DM_CLASSID, &amp;DMPLEX_RebalBuildGraph));
+<a name="line149">149: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"RebalGatherGraph"</font>, DM_CLASSID, &amp;DMPLEX_RebalGatherGraph));
+<a name="line150">150: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"RebalPartition"</font>, DM_CLASSID, &amp;DMPLEX_RebalPartition));
+<a name="line151">151: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"RebalScatterPart"</font>, DM_CLASSID, &amp;DMPLEX_RebalScatterPart));
+<a name="line152">152: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"RebalRewriteSF"</font>, DM_CLASSID, &amp;DMPLEX_RebalRewriteSF));
+<a name="line153">153: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexUninterp"</font>, DM_CLASSID, &amp;DMPLEX_Uninterpolate));
+
+<a name="line155">155: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexTrSetUp"</font>, DM_CLASSID, &amp;DMPLEXTRANSFORM_SetUp));
+<a name="line156">156: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexTrApply"</font>, DM_CLASSID, &amp;DMPLEXTRANSFORM_Apply));
+<a name="line157">157: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexTrSizes"</font>, DM_CLASSID, &amp;DMPLEXTRANSFORM_SetConeSizes));
+<a name="line158">158: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexTrCones"</font>, DM_CLASSID, &amp;DMPLEXTRANSFORM_SetCones));
+<a name="line159">159: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexTrSF"</font>, DM_CLASSID, &amp;DMPLEXTRANSFORM_CreateSF));
+<a name="line160">160: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexTrLabels"</font>, DM_CLASSID, &amp;DMPLEXTRANSFORM_CreateLabels));
+<a name="line161">161: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMPlexTrCoords"</font>, DM_CLASSID, &amp;DMPLEXTRANSFORM_SetCoordinates));
+
+<a name="line163">163: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"<a href="../../../manualpages/DMSwarm/DMSwarmMigrate.html">DMSwarmMigrate</a>"</font>, DM_CLASSID, &amp;DMSWARM_Migrate));
+<a name="line164">164: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmDETSetup"</font>, DM_CLASSID, &amp;DMSWARM_DataExchangerTopologySetup));
+<a name="line165">165: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmDExBegin"</font>, DM_CLASSID, &amp;DMSWARM_DataExchangerBegin));
+<a name="line166">166: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmDExEnd"</font>, DM_CLASSID, &amp;DMSWARM_DataExchangerEnd));
+<a name="line167">167: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmDESendCnt"</font>, DM_CLASSID, &amp;DMSWARM_DataExchangerSendCount));
+<a name="line168">168: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmDEPack"</font>, DM_CLASSID, &amp;DMSWARM_DataExchangerPack));
+<a name="line169">169: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmAddPnts"</font>, DM_CLASSID, &amp;DMSWARM_AddPoints));
+<a name="line170">170: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmRmvPnts"</font>, DM_CLASSID, &amp;DMSWARM_RemovePoints));
+<a name="line171">171: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmSort"</font>, DM_CLASSID, &amp;DMSWARM_Sort));
+<a name="line172">172: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMSwarmSetSizes"</font>, DM_CLASSID, &amp;DMSWARM_SetSizes));
+
+<a name="line174">174: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMNtLayoutSetUp"</font>, DM_CLASSID, &amp;DMNetwork_LayoutSetUp));
+<a name="line175">175: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMNtSetUp"</font>, DM_CLASSID, &amp;DMNetwork_SetUpNetwork));
+<a name="line176">176: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DMNtDistribute"</font>, DM_CLASSID, &amp;DMNetwork_Distribute));
+<a name="line177">177: </a>  <font color="#B22222">/* Process Info */</font>
+<a name="line178">178: </a>  {
+<a name="line179">179: </a>    <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classids[1];
+
+<a name="line181">181: </a>    classids[0] = DM_CLASSID;
+<a name="line182">182: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"dm"</font>, 1, classids));
+<a name="line183">183: </a>  }
+
+<a name="line185">185: </a>  <font color="#B22222">/* Process summary exclusions */</font>
+<a name="line186">186: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-log_exclude"</font>, logList, <font color="#4169E1">sizeof</font>(logList), &amp;opt));
+<a name="line187">187: </a>  <font color="#4169E1">if</font> (opt) {
+<a name="line188">188: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrInList.html">PetscStrInList</a>(<font color="#666666">"dm"</font>, logList, ',', &amp;pkg));
+<a name="line189">189: </a>    <font color="#4169E1">if</font> (pkg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventExcludeClass.html">PetscLogEventExcludeClass</a>(DM_CLASSID));
+<a name="line190">190: </a>  }
+
+<a name="line192">192: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGenerateRegisterAll.html">DMGenerateRegisterAll</a>());
+<a name="line193">193: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(DMGenerateRegisterDestroy));
+<a name="line194">194: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMGeomModelRegisterAll.html">DMGeomModelRegisterAll</a>());
+<a name="line195">195: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(DMGeomModelRegisterDestroy));
+<a name="line196">196: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMPlex/DMPlexTransformRegisterAll.html">DMPlexTransformRegisterAll</a>());
+<a name="line197">197: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(<a href="../../../manualpages/DMPlex/DMPlexTransformRegisterDestroy.html">DMPlexTransformRegisterDestroy</a>));
+<a name="line198">198: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DMLabel/DMLabelRegisterAll.html">DMLabelRegisterAll</a>());
+<a name="line199">199: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(<a href="../../../manualpages/DMLabel/DMLabelRegisterDestroy.html">DMLabelRegisterDestroy</a>));
+<a name="line200">200: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(<a href="../../../manualpages/DM/DMFinalizePackage.html">DMFinalizePackage</a>));
+<a name="line201">201: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line202">202: </a>}
+<a name="line203">203: </a>#include <A href="../../../include/petscfe.h.html">&lt;petscfe.h&gt;</A>
+
+<a name="line205">205: </a>static <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> PetscFEPackageInitialized = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line207">207: </a><font color="#B22222">/*@C</font>
+<a name="line208">208: </a><font color="#B22222">  <a href="../../../manualpages/DM/PetscFEFinalizePackage.html">PetscFEFinalizePackage</a> - This function finalizes everything in the `<a href="../../../manualpages/FE/PetscFE.html">PetscFE</a>` package. It is called</font>
+<a name="line209">209: </a><font color="#B22222">  from `<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>()`.</font>
+
+<a name="line211">211: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line213">213: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line214">214: </a><font color="#B22222">@*/</font>
+<a name="line215">215: </a><strong><font color="#4169E1"><a name="PetscFEFinalizePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/PetscFEFinalizePackage.html">PetscFEFinalizePackage</a>(void)</font></strong>
+<a name="line216">216: </a>{
+<a name="line217">217: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line218">218: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;PetscSpaceList));
+<a name="line219">219: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;PetscDualSpaceList));
+<a name="line220">220: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;PetscFEList));
+<a name="line221">221: </a>  PetscFEPackageInitialized       = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line222">222: </a>  PetscSpaceRegisterAllCalled     = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line223">223: </a>  PetscDualSpaceRegisterAllCalled = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line224">224: </a>  PetscFERegisterAllCalled        = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line225">225: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line226">226: </a>}
+
+<a name="line228">228: </a><font color="#B22222">/*@C</font>
+<a name="line229">229: </a><font color="#B22222">  <a href="../../../manualpages/DM/PetscFEInitializePackage.html">PetscFEInitializePackage</a> - This function initializes everything in the `<a href="../../../manualpages/FE/PetscFE.html">PetscFE</a>` package. It is called</font>
+<a name="line230">230: </a><font color="#B22222">  from `PetscDLLibraryRegister()` when using dynamic libraries, and on the first call to `<a href="../../../manualpages/SPACE/PetscSpaceCreate.html">PetscSpaceCreate</a>()`</font>
+<a name="line231">231: </a><font color="#B22222">  when using static libraries.</font>
+
+<a name="line233">233: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line235">235: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line236">236: </a><font color="#B22222">@*/</font>
+<a name="line237">237: </a><strong><font color="#4169E1"><a name="PetscFEInitializePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/PetscFEInitializePackage.html">PetscFEInitializePackage</a>(void)</font></strong>
+<a name="line238">238: </a>{
+<a name="line239">239: </a>  char      logList[256];
+<a name="line240">240: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> opt, pkg;
+
+<a name="line242">242: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line243">243: </a>  <font color="#4169E1">if</font> (PetscFEPackageInitialized) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line244">244: </a>  PetscFEPackageInitialized = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line246">246: </a>  <font color="#B22222">/* Register Classes */</font>
+<a name="line247">247: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Linear Space"</font>, &amp;PETSCSPACE_CLASSID));
+<a name="line248">248: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Dual Space"</font>, &amp;PETSCDUALSPACE_CLASSID));
+<a name="line249">249: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"FE Space"</font>, &amp;PETSCFE_CLASSID));
+<a name="line250">250: </a>  <font color="#B22222">/* Register Constructors */</font>
+<a name="line251">251: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscSpaceRegisterAll.html">PetscSpaceRegisterAll</a>());
+<a name="line252">252: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscDualSpaceRegisterAll.html">PetscDualSpaceRegisterAll</a>());
+<a name="line253">253: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscFERegisterAll.html">PetscFERegisterAll</a>());
+<a name="line254">254: </a>  <font color="#B22222">/* Register Events */</font>
+<a name="line255">255: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"DualSpaceSetUp"</font>, PETSCDUALSPACE_CLASSID, &amp;PETSCDUALSPACE_SetUp));
+<a name="line256">256: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventRegister.html">PetscLogEventRegister</a>(<font color="#666666">"FESetUp"</font>, PETSCFE_CLASSID, &amp;PETSCFE_SetUp));
+<a name="line257">257: </a>  <font color="#B22222">/* Process Info */</font>
+<a name="line258">258: </a>  {
+<a name="line259">259: </a>    <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classids[3];
+
+<a name="line261">261: </a>    classids[0] = PETSCFE_CLASSID;
+<a name="line262">262: </a>    classids[1] = PETSCSPACE_CLASSID;
+<a name="line263">263: </a>    classids[2] = PETSCDUALSPACE_CLASSID;
+<a name="line264">264: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"fe"</font>, 1, classids));
+<a name="line265">265: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"space"</font>, 1, &amp;classids[1]));
+<a name="line266">266: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"dualspace"</font>, 1, &amp;classids[2]));
+<a name="line267">267: </a>  }
+<a name="line268">268: </a>  <font color="#B22222">/* Process summary exclusions */</font>
+<a name="line269">269: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-log_exclude"</font>, logList, <font color="#4169E1">sizeof</font>(logList), &amp;opt));
+<a name="line270">270: </a>  <font color="#4169E1">if</font> (opt) {
+<a name="line271">271: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrInList.html">PetscStrInList</a>(<font color="#666666">"fe"</font>, logList, ',', &amp;pkg));
+<a name="line272">272: </a>    <font color="#4169E1">if</font> (pkg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventExcludeClass.html">PetscLogEventExcludeClass</a>(PETSCFE_CLASSID));
+<a name="line273">273: </a>  }
+<a name="line274">274: </a>  <font color="#B22222">/* Register package finalizer */</font>
+<a name="line275">275: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(<a href="../../../manualpages/DM/PetscFEFinalizePackage.html">PetscFEFinalizePackage</a>));
+<a name="line276">276: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line277">277: </a>}
+<a name="line278">278: </a>#include <A href="../../../include/petscfv.h.html">&lt;petscfv.h&gt;</A>
+
+<a name="line280">280: </a>static <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> PetscFVPackageInitialized = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line282">282: </a><font color="#B22222">/*@C</font>
+<a name="line283">283: </a><font color="#B22222">  <a href="../../../manualpages/DM/PetscFVFinalizePackage.html">PetscFVFinalizePackage</a> - This function finalizes everything in the `<a href="../../../manualpages/FV/PetscFV.html">PetscFV</a>` package. It is called</font>
+<a name="line284">284: </a><font color="#B22222">  from `<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>()`.</font>
+
+<a name="line286">286: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line288">288: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line289">289: </a><font color="#B22222">@*/</font>
+<a name="line290">290: </a><strong><font color="#4169E1"><a name="PetscFVFinalizePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/PetscFVFinalizePackage.html">PetscFVFinalizePackage</a>(void)</font></strong>
+<a name="line291">291: </a>{
+<a name="line292">292: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line293">293: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;PetscLimiterList));
+<a name="line294">294: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;PetscFVList));
+<a name="line295">295: </a>  PetscFVPackageInitialized     = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line296">296: </a>  PetscFVRegisterAllCalled      = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line297">297: </a>  PetscLimiterRegisterAllCalled = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line298">298: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line299">299: </a>}
+
+<a name="line301">301: </a><font color="#B22222">/*@C</font>
+<a name="line302">302: </a><font color="#B22222">  <a href="../../../manualpages/DM/PetscFVInitializePackage.html">PetscFVInitializePackage</a> - This function initializes everything in the `<a href="../../../manualpages/FV/PetscFV.html">PetscFV</a>` package. It is called</font>
+<a name="line303">303: </a><font color="#B22222">  from `PetscDLLibraryRegister()` when using dynamic libraries, and on the first call to `<a href="../../../manualpages/FV/PetscFVCreate.html">PetscFVCreate</a>()`</font>
+<a name="line304">304: </a><font color="#B22222">  when using static libraries.</font>
+
+<a name="line306">306: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line308">308: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line309">309: </a><font color="#B22222">@*/</font>
+<a name="line310">310: </a><strong><font color="#4169E1"><a name="PetscFVInitializePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/PetscFVInitializePackage.html">PetscFVInitializePackage</a>(void)</font></strong>
+<a name="line311">311: </a>{
+<a name="line312">312: </a>  char      logList[256];
+<a name="line313">313: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> opt, pkg;
+
+<a name="line315">315: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line316">316: </a>  <font color="#4169E1">if</font> (PetscFVPackageInitialized) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line317">317: </a>  PetscFVPackageInitialized = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line319">319: </a>  <font color="#B22222">/* Register Classes */</font>
+<a name="line320">320: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"FV Space"</font>, &amp;PETSCFV_CLASSID));
+<a name="line321">321: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Limiter"</font>, &amp;PETSCLIMITER_CLASSID));
+<a name="line322">322: </a>  <font color="#B22222">/* Register Constructors */</font>
+<a name="line323">323: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscFVRegisterAll.html">PetscFVRegisterAll</a>());
+<a name="line324">324: </a>  <font color="#B22222">/* Register Events */</font>
+<a name="line325">325: </a>  <font color="#B22222">/* Process Info */</font>
+<a name="line326">326: </a>  {
+<a name="line327">327: </a>    <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classids[2];
+
+<a name="line329">329: </a>    classids[0] = PETSCFV_CLASSID;
+<a name="line330">330: </a>    classids[1] = PETSCLIMITER_CLASSID;
+<a name="line331">331: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"fv"</font>, 1, classids));
+<a name="line332">332: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"limiter"</font>, 1, &amp;classids[1]));
+<a name="line333">333: </a>  }
+<a name="line334">334: </a>  <font color="#B22222">/* Process summary exclusions */</font>
+<a name="line335">335: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-log_exclude"</font>, logList, <font color="#4169E1">sizeof</font>(logList), &amp;opt));
+<a name="line336">336: </a>  <font color="#4169E1">if</font> (opt) {
+<a name="line337">337: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrInList.html">PetscStrInList</a>(<font color="#666666">"fv"</font>, logList, ',', &amp;pkg));
+<a name="line338">338: </a>    <font color="#4169E1">if</font> (pkg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventExcludeClass.html">PetscLogEventExcludeClass</a>(PETSCFV_CLASSID));
+<a name="line339">339: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrInList.html">PetscStrInList</a>(<font color="#666666">"limiter"</font>, logList, ',', &amp;pkg));
+<a name="line340">340: </a>    <font color="#4169E1">if</font> (pkg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventExcludeClass.html">PetscLogEventExcludeClass</a>(PETSCLIMITER_CLASSID));
+<a name="line341">341: </a>  }
+<a name="line342">342: </a>  <font color="#B22222">/* Register package finalizer */</font>
+<a name="line343">343: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(<a href="../../../manualpages/DM/PetscFVFinalizePackage.html">PetscFVFinalizePackage</a>));
+<a name="line344">344: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line345">345: </a>}
+<a name="line346">346: </a>#include <A href="../../../include/petscds.h.html">&lt;petscds.h&gt;</A>
+
+<a name="line348">348: </a>static <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> PetscDSPackageInitialized = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line350">350: </a><font color="#B22222">/*@C</font>
+<a name="line351">351: </a><font color="#B22222">  <a href="../../../manualpages/DM/PetscDSFinalizePackage.html">PetscDSFinalizePackage</a> - This function finalizes everything in the `<a href="../../../manualpages/DT/PetscDS.html">PetscDS</a>` package. It is called</font>
+<a name="line352">352: </a><font color="#B22222">  from `<a href="../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>()`.</font>
+
+<a name="line354">354: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line356">356: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line357">357: </a><font color="#B22222">@*/</font>
+<a name="line358">358: </a><strong><font color="#4169E1"><a name="PetscDSFinalizePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/PetscDSFinalizePackage.html">PetscDSFinalizePackage</a>(void)</font></strong>
+<a name="line359">359: </a>{
+<a name="line360">360: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line361">361: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscFunctionListDestroy.html">PetscFunctionListDestroy</a>(&amp;PetscDSList));
+<a name="line362">362: </a>  PetscDSPackageInitialized = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line363">363: </a>  PetscDSRegisterAllCalled  = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line364">364: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line365">365: </a>}
+
+<a name="line367">367: </a><font color="#B22222">/*@C</font>
+<a name="line368">368: </a><font color="#B22222">  <a href="../../../manualpages/DM/PetscDSInitializePackage.html">PetscDSInitializePackage</a> - This function initializes everything in the `<a href="../../../manualpages/DT/PetscDS.html">PetscDS</a>` package. It is called</font>
+<a name="line369">369: </a><font color="#B22222">  from `PetscDLLibraryRegister()` when using dynamic libraries, and on the first call to `<a href="../../../manualpages/DT/PetscDSCreate.html">PetscDSCreate</a>()`</font>
+<a name="line370">370: </a><font color="#B22222">  when using static libraries.</font>
+
+<a name="line372">372: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line374">374: </a><font color="#B22222">.seealso: `<a href="../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>()`</font>
+<a name="line375">375: </a><font color="#B22222">@*/</font>
+<a name="line376">376: </a><strong><font color="#4169E1"><a name="PetscDSInitializePackage"></a><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../manualpages/DM/PetscDSInitializePackage.html">PetscDSInitializePackage</a>(void)</font></strong>
+<a name="line377">377: </a>{
+<a name="line378">378: </a>  char      logList[256];
+<a name="line379">379: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> opt, pkg;
+
+<a name="line381">381: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line382">382: </a>  <font color="#4169E1">if</font> (PetscDSPackageInitialized) <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line383">383: </a>  PetscDSPackageInitialized = <a href="../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line385">385: </a>  <font color="#B22222">/* Register Classes */</font>
+<a name="line386">386: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Discrete System"</font>, &amp;PETSCDS_CLASSID));
+<a name="line387">387: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscClassIdRegister.html">PetscClassIdRegister</a>(<font color="#666666">"Weak Form"</font>, &amp;PETSCWEAKFORM_CLASSID));
+<a name="line388">388: </a>  <font color="#B22222">/* Register Constructors */</font>
+<a name="line389">389: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscDSRegisterAll.html">PetscDSRegisterAll</a>());
+<a name="line390">390: </a>  <font color="#B22222">/* Register Events */</font>
+<a name="line391">391: </a>  <font color="#B22222">/* Process Info */</font>
+<a name="line392">392: </a>  {
+<a name="line393">393: </a>    <a href="../../../manualpages/Sys/PetscClassId.html">PetscClassId</a> classids[1];
+
+<a name="line395">395: </a>    classids[0] = PETSCDS_CLASSID;
+<a name="line396">396: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscInfoProcessClass.html">PetscInfoProcessClass</a>(<font color="#666666">"ds"</font>, 1, classids));
+<a name="line397">397: </a>  }
+<a name="line398">398: </a>  <font color="#B22222">/* Process summary exclusions */</font>
+<a name="line399">399: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscOptionsGetString.html">PetscOptionsGetString</a>(NULL, NULL, <font color="#666666">"-log_exclude"</font>, logList, <font color="#4169E1">sizeof</font>(logList), &amp;opt));
+<a name="line400">400: </a>  <font color="#4169E1">if</font> (opt) {
+<a name="line401">401: </a>    <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscStrInList.html">PetscStrInList</a>(<font color="#666666">"ds"</font>, logList, ',', &amp;pkg));
+<a name="line402">402: </a>    <font color="#4169E1">if</font> (pkg) <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Log/PetscLogEventExcludeClass.html">PetscLogEventExcludeClass</a>(PETSCDS_CLASSID));
+<a name="line403">403: </a>  }
+<a name="line404">404: </a>  <font color="#B22222">/* Register package finalizer */</font>
+<a name="line405">405: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/Sys/PetscRegisterFinalize.html">PetscRegisterFinalize</a>(<a href="../../../manualpages/DM/PetscDSFinalizePackage.html">PetscDSFinalizePackage</a>));
+<a name="line406">406: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line407">407: </a>}
+
+<a name="line409">409: </a><font color="#A020F0">#if defined(PETSC_HAVE_DYNAMIC_LIBRARIES)</font>
+<a name="line410">410: </a><font color="#B22222">/*</font>
+<a name="line411">411: </a><font color="#B22222">  PetscDLLibraryRegister - This function is called when the dynamic library it is in is opened.</font>
+
+<a name="line413">413: </a><font color="#B22222">  This one registers all the mesh generators and partitioners that are in</font>
+<a name="line414">414: </a><font color="#B22222">  the basic <a href="../../../manualpages/DM/DM.html">DM</a> library.</font>
+
+<a name="line416">416: </a><font color="#B22222">*/</font>
+<a name="line417">417: </a><strong><font color="#4169E1"><a name="PetscDLLibraryRegister_petscdm"></a>PETSC_EXTERN <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscDLLibraryRegister_petscdm(void)</font></strong>
+<a name="line418">418: </a>{
+<a name="line419">419: </a>  <a href="../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line420">420: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/AO/AOInitializePackage.html">AOInitializePackage</a>());
+<a name="line421">421: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/MatGraphOperations/PetscPartitionerInitializePackage.html">PetscPartitionerInitializePackage</a>());
+<a name="line422">422: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMInitializePackage.html">DMInitializePackage</a>());
+<a name="line423">423: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscFEInitializePackage.html">PetscFEInitializePackage</a>());
+<a name="line424">424: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscFVInitializePackage.html">PetscFVInitializePackage</a>());
+<a name="line425">425: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/DMFieldInitializePackage.html">DMFieldInitializePackage</a>());
+<a name="line426">426: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../manualpages/DM/PetscDSInitializePackage.html">PetscDSInitializePackage</a>());
+<a name="line427">427: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line428">428: </a>}
+
+<a name="line430">430: </a><font color="#A020F0">#endif </font><font color="#B22222">/* PETSC_HAVE_DYNAMIC_LIBRARIES */</font><font color="#A020F0"></font>
+</pre>
+</body>
+
+</html>
+

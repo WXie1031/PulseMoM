@@ -1,0 +1,452 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/impls/plex/plexceed.c">Actual source code: plexceed.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:47+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/dmpleximpl.h.html">&lt;petsc/private/dmpleximpl.h&gt;</A>
+
+<a name="line3">  3: </a><strong><font color="#4169E1"><a name="DMGetPoints_Internal"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMGetPoints_Internal(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a> domainLabel, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> labelVal, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> height, <a href="../../../../manualpages/IS/IS.html">IS</a> *pointIS)</font></strong>
+<a name="line4">  4: </a>{
+<a name="line5">  5: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> depth;
+<a name="line6">  6: </a>  <a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a>  depthLabel;
+<a name="line7">  7: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>       depthIS;
+
+<a name="line9">  9: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetDepth.html">DMPlexGetDepth</a>(dm, &amp;depth));
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetDepthLabel.html">DMPlexGetDepthLabel</a>(dm, &amp;depthLabel));
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMLabel/DMLabelGetStratumIS.html">DMLabelGetStratumIS</a>(depthLabel, depth - height, &amp;depthIS));
+<a name="line13"> 13: </a>  <font color="#4169E1">if</font> (domainLabel) {
+<a name="line14"> 14: </a>    <a href="../../../../manualpages/IS/IS.html">IS</a> domainIS;
+
+<a name="line16"> 16: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMLabel/DMLabelGetStratumIS.html">DMLabelGetStratumIS</a>(domainLabel, labelVal, &amp;domainIS));
+<a name="line17"> 17: </a>    <font color="#4169E1">if</font> (domainIS) { <font color="#B22222">// domainIS is non-empty</font>
+<a name="line18"> 18: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISIntersect.html">ISIntersect</a>(depthIS, domainIS, pointIS));
+<a name="line19"> 19: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;domainIS));
+<a name="line20"> 20: </a>    } <font color="#4169E1">else</font> { <font color="#B22222">// domainIS is NULL (empty)</font>
+<a name="line21"> 21: </a>      *pointIS = NULL;
+<a name="line22"> 22: </a>    }
+<a name="line23"> 23: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;depthIS));
+<a name="line24"> 24: </a>  } <font color="#4169E1">else</font> {
+<a name="line25"> 25: </a>    *pointIS = depthIS;
+<a name="line26"> 26: </a>  }
+<a name="line27"> 27: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line28"> 28: </a>}
+
+<a name="line30"> 30: </a><font color="#B22222">/*@C</font>
+<a name="line31"> 31: </a><font color="#B22222">  <a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsets.html">DMPlexGetLocalOffsets</a> - Allocate and populate array of local offsets for each cell closure.</font>
+
+<a name="line33"> 33: </a><font color="#B22222">  Not collective</font>
+
+<a name="line35"> 35: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line36"> 36: </a><font color="#B22222">+ dm           - The `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` object</font>
+<a name="line37"> 37: </a><font color="#B22222">. domain_label - label for `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` domain, or NULL for whole domain</font>
+<a name="line38"> 38: </a><font color="#B22222">. label_value  - Stratum value</font>
+<a name="line39"> 39: </a><font color="#B22222">. height       - Height of target cells in `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` topology</font>
+<a name="line40"> 40: </a><font color="#B22222">- dm_field     - Index of `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` field</font>
+
+<a name="line42"> 42: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line43"> 43: </a><font color="#B22222">+ num_cells - Number of local cells</font>
+<a name="line44"> 44: </a><font color="#B22222">. cell_size - Size of each cell, given by cell_size * num_comp = num_dof</font>
+<a name="line45"> 45: </a><font color="#B22222">. num_comp  - Number of components per dof</font>
+<a name="line46"> 46: </a><font color="#B22222">. l_size    - Size of local vector</font>
+<a name="line47"> 47: </a><font color="#B22222">- offsets   - Allocated offsets array for cells</font>
+
+<a name="line49"> 49: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line51"> 51: </a><font color="#B22222">  Notes:</font>
+<a name="line52"> 52: </a><font color="#B22222">  Allocate and populate array of shape [num_cells, cell_size] defining offsets for each value (cell, node) for local vector of the `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` field. All offsets are in the range [0, l_size - 1].</font>
+
+<a name="line54"> 54: </a><font color="#B22222">  Caller is responsible for freeing the offsets array using `<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>()`.</font>
+
+<a name="line56"> 56: </a><font color="#B22222">.seealso: [](ch_unstructured), `<a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsetsSupport.html">DMPlexGetLocalOffsetsSupport</a>()`, `<a href="../../../../manualpages/DM/DM.html">DM</a>`, `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>`, `<a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a>`, `<a href="../../../../manualpages/DMPlex/DMPlexGetClosureIndices.html">DMPlexGetClosureIndices</a>()`, `<a href="../../../../manualpages/DMPlex/DMPlexSetClosurePermutationTensor.html">DMPlexSetClosurePermutationTensor</a>()`, `<a href="../../../../manualpages/DMPlex/DMPlexGetCeedRestriction.html">DMPlexGetCeedRestriction</a>()`</font>
+<a name="line57"> 57: </a><font color="#B22222">@*/</font>
+<a name="line58"> 58: </a><strong><font color="#4169E1"><a name="DMPlexGetLocalOffsets"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsets.html">DMPlexGetLocalOffsets</a>(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a> domain_label, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> label_value, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> height, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> dm_field, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *num_cells, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *cell_size, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *num_comp, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *l_size, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *offsets[])</font></strong>
+<a name="line59"> 59: </a>{
+<a name="line60"> 60: </a>  <a href="../../../../manualpages/DT/PetscDS.html">PetscDS</a>         ds = NULL;
+<a name="line61"> 61: </a>  <a href="../../../../manualpages/FE/PetscFE.html">PetscFE</a>         fe;
+<a name="line62"> 62: </a>  <a href="../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a>    section;
+<a name="line63"> 63: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        dim, ds_field = -1;
+<a name="line64"> 64: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       *restr_indices;
+<a name="line65"> 65: </a>  const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *iter_indices;
+<a name="line66"> 66: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>              iter_is;
+
+<a name="line68"> 68: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line70"> 70: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventBegin.html">PetscLogEventBegin</a>(DMPLEX_GetLocalOffsets, dm, 0, 0, 0));
+<a name="line71"> 71: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetDimension.html">DMGetDimension</a>(dm, &amp;dim));
+<a name="line72"> 72: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;section));
+<a name="line73"> 73: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionGetStorageSize.html">PetscSectionGetStorageSize</a>(section, l_size));
+<a name="line74"> 74: </a>  {
+<a name="line75"> 75: </a>    <a href="../../../../manualpages/IS/IS.html">IS</a>              field_is;
+<a name="line76"> 76: </a>    const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *fields;
+<a name="line77"> 77: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        num_fields;
+
+<a name="line79"> 79: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetRegionDS.html">DMGetRegionDS</a>(dm, domain_label, &amp;field_is, &amp;ds, NULL));
+<a name="line80"> 80: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(field_is, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Domain label does not have any fields associated with it"</font>);
+<a name="line81"> 81: </a>    <font color="#B22222">// Translate dm_field to ds_field</font>
+<a name="line82"> 82: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(field_is, &amp;fields));
+<a name="line83"> 83: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetSize.html">ISGetSize</a>(field_is, &amp;num_fields));
+<a name="line84"> 84: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; num_fields; i++) {
+<a name="line85"> 85: </a>      <font color="#4169E1">if</font> (dm_field == fields[i]) {
+<a name="line86"> 86: </a>        ds_field = i;
+<a name="line87"> 87: </a>        <font color="#4169E1">break</font>;
+<a name="line88"> 88: </a>      }
+<a name="line89"> 89: </a>    }
+<a name="line90"> 90: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(field_is, &amp;fields));
+<a name="line91"> 91: </a>  }
+<a name="line92"> 92: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ds_field != -1, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Could not find dm_field %"</font> PetscInt_FMT <font color="#666666">" in DS"</font>, dm_field);
+
+<a name="line94"> 94: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMGetPoints_Internal(dm, domain_label, label_value, height, &amp;iter_is));
+<a name="line95"> 95: </a>  <font color="#4169E1">if</font> (iter_is) {
+<a name="line96"> 96: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetLocalSize.html">ISGetLocalSize</a>(iter_is, num_cells));
+<a name="line97"> 97: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(iter_is, &amp;iter_indices));
+<a name="line98"> 98: </a>  } <font color="#4169E1">else</font> {
+<a name="line99"> 99: </a>    *num_cells   = 0;
+<a name="line100">100: </a>    iter_indices = NULL;
+<a name="line101">101: </a>  }
+
+<a name="line103">103: </a>  {
+<a name="line104">104: </a>    <a href="../../../../manualpages/DUALSPACE/PetscDualSpace.html">PetscDualSpace</a> dual_space;
+<a name="line105">105: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       num_dual_basis_vectors;
+
+<a name="line107">107: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DT/PetscDSGetDiscretization.html">PetscDSGetDiscretization</a>(ds, ds_field, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;fe));
+<a name="line108">108: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetHeightSubspace.html">PetscFEGetHeightSubspace</a>(fe, height, &amp;fe));
+<a name="line109">109: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(fe, <a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dm), <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Height %"</font> PetscInt_FMT <font color="#666666">" is invalid for DG discretizations"</font>, height);
+<a name="line110">110: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetDualSpace.html">PetscFEGetDualSpace</a>(fe, &amp;dual_space));
+<a name="line111">111: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DUALSPACE/PetscDualSpaceGetDimension.html">PetscDualSpaceGetDimension</a>(dual_space, &amp;num_dual_basis_vectors));
+<a name="line112">112: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DUALSPACE/PetscDualSpaceGetNumComponents.html">PetscDualSpaceGetNumComponents</a>(dual_space, num_comp));
+<a name="line113">113: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(num_dual_basis_vectors % *num_comp == 0, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"No support for number of dual basis vectors %"</font> PetscInt_FMT <font color="#666666">" not divisible by %"</font> PetscInt_FMT <font color="#666666">" components"</font>, num_dual_basis_vectors, *num_comp);
+<a name="line114">114: </a>    *cell_size = num_dual_basis_vectors / *num_comp;
+<a name="line115">115: </a>  }
+<a name="line116">116: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> restr_size = (*num_cells) * (*cell_size);
+<a name="line117">117: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(restr_size, &amp;restr_indices));
+<a name="line118">118: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> cell_offset = 0;
+
+<a name="line120">120: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> P = dim - height ? (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>)PetscPowReal(*cell_size, 1.0 / (dim - height)) : 0;
+<a name="line121">121: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0; p &lt; *num_cells; p++) {
+<a name="line122">122: </a>    <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> flip = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line123">123: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  c    = iter_indices[p];
+<a name="line124">124: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  num_indices, *indices;
+<a name="line125">125: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  field_offsets[17]; <font color="#B22222">// max number of fields plus 1</font>
+<a name="line126">126: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetClosureIndices.html">DMPlexGetClosureIndices</a>(dm, section, section, c, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;num_indices, &amp;indices, field_offsets, NULL));
+<a name="line127">127: </a>    <font color="#4169E1">if</font> (height &gt; 0) {
+<a name="line128">128: </a>      <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        num_cells_support, num_faces, start = -1;
+<a name="line129">129: </a>      const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *orients, *faces, *cells;
+<a name="line130">130: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupport.html">DMPlexGetSupport</a>(dm, c, &amp;cells));
+<a name="line131">131: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupportSize.html">DMPlexGetSupportSize</a>(dm, c, &amp;num_cells_support));
+<a name="line132">132: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(num_cells_support == 1, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Expected one cell in support of exterior face, but got %"</font> PetscInt_FMT <font color="#666666">" cells"</font>, num_cells_support);
+<a name="line133">133: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetCone.html">DMPlexGetCone</a>(dm, cells[0], &amp;faces));
+<a name="line134">134: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetConeSize.html">DMPlexGetConeSize</a>(dm, cells[0], &amp;num_faces));
+<a name="line135">135: </a>      <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; num_faces; i++) {
+<a name="line136">136: </a>        <font color="#4169E1">if</font> (faces[i] == c) start = i;
+<a name="line137">137: </a>      }
+<a name="line138">138: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(start &gt;= 0, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_CORRUPT</a>, <font color="#666666">"Could not find face %"</font> PetscInt_FMT <font color="#666666">" in cone of its support"</font>, c);
+<a name="line139">139: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetConeOrientation.html">DMPlexGetConeOrientation</a>(dm, cells[0], &amp;orients));
+<a name="line140">140: </a>      <font color="#4169E1">if</font> (orients[start] &lt; 0) flip = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line141">141: </a>    }
+
+<a name="line143">143: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; *cell_size; i++) {
+<a name="line144">144: </a>      <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = i;
+<a name="line145">145: </a>      <font color="#4169E1">if</font> (flip) {
+<a name="line146">146: </a>        <font color="#4169E1">if</font> (*cell_size == P) ii = *cell_size - 1 - i;
+<a name="line147">147: </a>        <font color="#4169E1">else</font> <font color="#4169E1">if</font> (*cell_size == P * P) {
+<a name="line148">148: </a>          <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> row = i / P, col = i % P;
+<a name="line149">149: </a>          ii = row + col * P;
+<a name="line150">150: </a>        } <font color="#4169E1">else</font> <a href="../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"No support for flipping point with cell size %"</font> PetscInt_FMT <font color="#666666">" != P (%"</font> PetscInt_FMT <font color="#666666">") or P^2"</font>, *cell_size, P);
+<a name="line151">151: </a>      }
+<a name="line152">152: </a>      <font color="#B22222">// Essential boundary conditions are encoded as -(loc+1), but we don't care so we decode.</font>
+<a name="line153">153: </a>      <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> loc                 = indices[field_offsets[dm_field] + ii * (*num_comp)];
+<a name="line154">154: </a>      loc                          = loc &lt; 0 ? -(loc + 1) : loc;
+<a name="line155">155: </a>      restr_indices[cell_offset++] = loc;
+<a name="line156">156: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(loc &gt;= 0 &amp;&amp; loc &lt; *l_size, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Location %"</font> PetscInt_FMT <font color="#666666">" not in [0, %"</font> PetscInt_FMT <font color="#666666">") local vector"</font>, loc, *l_size);
+<a name="line157">157: </a>    }
+<a name="line158">158: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexRestoreClosureIndices.html">DMPlexRestoreClosureIndices</a>(dm, section, section, c, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;num_indices, &amp;indices, field_offsets, NULL));
+<a name="line159">159: </a>  }
+<a name="line160">160: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(cell_offset == restr_size, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Shape mismatch, offsets array of shape (%"</font> PetscInt_FMT <font color="#666666">", %"</font> PetscInt_FMT <font color="#666666">") initialized for %"</font> PetscInt_FMT <font color="#666666">" nodes"</font>, *num_cells, *cell_size, cell_offset);
+<a name="line161">161: </a>  <font color="#4169E1">if</font> (iter_is) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(iter_is, &amp;iter_indices));
+<a name="line162">162: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;iter_is));
+
+<a name="line164">164: </a>  *offsets = restr_indices;
+<a name="line165">165: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Log/PetscLogEventEnd.html">PetscLogEventEnd</a>(DMPLEX_GetLocalOffsets, dm, 0, 0, 0));
+<a name="line166">166: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line167">167: </a>}
+
+<a name="line169">169: </a><font color="#B22222">/*@C</font>
+<a name="line170">170: </a><font color="#B22222">  <a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsetsSupport.html">DMPlexGetLocalOffsetsSupport</a> - Allocate and populate arrays of local offsets for each face support.</font>
+
+<a name="line172">172: </a><font color="#B22222">  Not collective</font>
+
+<a name="line174">174: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line175">175: </a><font color="#B22222">+ dm           - The `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` object</font>
+<a name="line176">176: </a><font color="#B22222">. domain_label - label for `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` domain, or NULL for whole domain</font>
+<a name="line177">177: </a><font color="#B22222">- label_value  - Stratum value</font>
+
+<a name="line179">179: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line180">180: </a><font color="#B22222">+ num_faces  - Number of local, non-boundary faces</font>
+<a name="line181">181: </a><font color="#B22222">. num_comp   - Number of components per dof</font>
+<a name="line182">182: </a><font color="#B22222">. l_size     - Size of local vector</font>
+<a name="line183">183: </a><font color="#B22222">. offsetsNeg - Allocated offsets array for cells on the inward normal side of each face</font>
+<a name="line184">184: </a><font color="#B22222">- offsetsPos - Allocated offsets array for cells on the outward normal side of each face</font>
+
+<a name="line186">186: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line188">188: </a><font color="#B22222">  Notes:</font>
+<a name="line189">189: </a><font color="#B22222">  Allocate and populate array of shape [num_cells, num_comp] defining offsets for each cell for local vector of the `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` field. All offsets are in the range [0, l_size - 1].</font>
+
+<a name="line191">191: </a><font color="#B22222">  Caller is responsible for freeing the offsets array using `<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>()`.</font>
+
+<a name="line193">193: </a><font color="#B22222">.seealso: [](ch_unstructured), `<a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsets.html">DMPlexGetLocalOffsets</a>()`, `<a href="../../../../manualpages/DM/DM.html">DM</a>`, `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>`, `<a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a>`, `<a href="../../../../manualpages/DMPlex/DMPlexGetClosureIndices.html">DMPlexGetClosureIndices</a>()`, `<a href="../../../../manualpages/DMPlex/DMPlexSetClosurePermutationTensor.html">DMPlexSetClosurePermutationTensor</a>()`, `<a href="../../../../manualpages/DMPlex/DMPlexGetCeedRestriction.html">DMPlexGetCeedRestriction</a>()`</font>
+<a name="line194">194: </a><font color="#B22222">@*/</font>
+<a name="line195">195: </a><strong><font color="#4169E1"><a name="DMPlexGetLocalOffsetsSupport"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsetsSupport.html">DMPlexGetLocalOffsetsSupport</a>(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a> domain_label, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> label_value, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *num_faces, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *num_comp, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *l_size, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **offsetsNeg, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **offsetsPos)</font></strong>
+<a name="line196">196: </a>{
+<a name="line197">197: </a>  <a href="../../../../manualpages/DT/PetscDS.html">PetscDS</a>         ds = NULL;
+<a name="line198">198: </a>  <a href="../../../../manualpages/FV/PetscFV.html">PetscFV</a>         fv;
+<a name="line199">199: </a>  <a href="../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a>    section;
+<a name="line200">200: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        dim, height = 1, dm_field = 0, ds_field = 0, Nf, NfInt = 0, Nc;
+<a name="line201">201: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>       *restr_indices_neg, *restr_indices_pos;
+<a name="line202">202: </a>  const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *iter_indices;
+<a name="line203">203: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>              iter_is;
+
+<a name="line205">205: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line207">207: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetDimension.html">DMGetDimension</a>(dm, &amp;dim));
+<a name="line208">208: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetRegionDS.html">DMGetRegionDS</a>(dm, domain_label, NULL, &amp;ds, NULL));
+<a name="line209">209: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;section));
+<a name="line210">210: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PetscSection/PetscSectionGetStorageSize.html">PetscSectionGetStorageSize</a>(section, l_size));
+
+<a name="line212">212: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMGetPoints_Internal(dm, domain_label, label_value, height, &amp;iter_is));
+<a name="line213">213: </a>  <font color="#4169E1">if</font> (iter_is) {
+<a name="line214">214: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(iter_is, &amp;iter_indices));
+<a name="line215">215: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetLocalSize.html">ISGetLocalSize</a>(iter_is, &amp;Nf));
+<a name="line216">216: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0, Ns; p &lt; Nf; ++p) {
+<a name="line217">217: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupportSize.html">DMPlexGetSupportSize</a>(dm, iter_indices[p], &amp;Ns));
+<a name="line218">218: </a>      <font color="#4169E1">if</font> (Ns == 2) ++NfInt;
+<a name="line219">219: </a>    }
+<a name="line220">220: </a>    *num_faces = NfInt;
+<a name="line221">221: </a>  } <font color="#4169E1">else</font> {
+<a name="line222">222: </a>    *num_faces   = 0;
+<a name="line223">223: </a>    iter_indices = NULL;
+<a name="line224">224: </a>  }
+
+<a name="line226">226: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DT/PetscDSGetDiscretization.html">PetscDSGetDiscretization</a>(ds, ds_field, (<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;fv));
+<a name="line227">227: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FV/PetscFVGetNumComponents.html">PetscFVGetNumComponents</a>(fv, &amp;Nc));
+<a name="line228">228: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(NfInt, &amp;restr_indices_neg));
+<a name="line229">229: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(NfInt, &amp;restr_indices_pos));
+<a name="line230">230: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> face_offset_neg = 0, face_offset_pos = 0;
+
+<a name="line232">232: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0; p &lt; Nf; ++p) {
+<a name="line233">233: </a>    const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  face = iter_indices[p];
+<a name="line234">234: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        num_indices, *indices;
+<a name="line235">235: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        field_offsets[17]; <font color="#B22222">// max number of fields plus 1</font>
+<a name="line236">236: </a>    const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *supp;
+<a name="line237">237: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        Ns, loc;
+
+<a name="line239">239: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupport.html">DMPlexGetSupport</a>(dm, face, &amp;supp));
+<a name="line240">240: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupportSize.html">DMPlexGetSupportSize</a>(dm, face, &amp;Ns));
+<a name="line241">241: </a>    <font color="#B22222">// Ignore boundary faces</font>
+<a name="line242">242: </a>    <font color="#B22222">//   TODO check for face on parallel boundary</font>
+<a name="line243">243: </a>    <font color="#4169E1">if</font> (Ns == 2) {
+<a name="line244">244: </a>      <font color="#B22222">// Essential boundary conditions are encoded as -(loc+1), but we don't care so we decode.</font>
+<a name="line245">245: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetClosureIndices.html">DMPlexGetClosureIndices</a>(dm, section, section, supp[0], <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;num_indices, &amp;indices, field_offsets, NULL));
+<a name="line246">246: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(num_indices == Nc, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Number of closure indices %"</font> PetscInt_FMT <font color="#666666">" != %"</font> PetscInt_FMT <font color="#666666">" number of FV components"</font>, num_indices, Nc);
+<a name="line247">247: </a>      loc                                  = indices[field_offsets[dm_field]];
+<a name="line248">248: </a>      loc                                  = loc &lt; 0 ? -(loc + 1) : loc;
+<a name="line249">249: </a>      restr_indices_neg[face_offset_neg++] = loc;
+<a name="line250">250: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(loc &gt;= 0 &amp;&amp; loc + Nc &lt;= *l_size, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Location %"</font> PetscInt_FMT <font color="#666666">" + Nc not in [0, %"</font> PetscInt_FMT <font color="#666666">") local vector"</font>, loc, *l_size);
+<a name="line251">251: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexRestoreClosureIndices.html">DMPlexRestoreClosureIndices</a>(dm, section, section, supp[0], <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;num_indices, &amp;indices, field_offsets, NULL));
+<a name="line252">252: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetClosureIndices.html">DMPlexGetClosureIndices</a>(dm, section, section, supp[1], <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;num_indices, &amp;indices, field_offsets, NULL));
+<a name="line253">253: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(num_indices == Nc, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_INCOMP</a>, <font color="#666666">"Number of closure indices %"</font> PetscInt_FMT <font color="#666666">" != %"</font> PetscInt_FMT <font color="#666666">" number of FV components"</font>, num_indices, Nc);
+<a name="line254">254: </a>      loc                                  = indices[field_offsets[dm_field]];
+<a name="line255">255: </a>      loc                                  = loc &lt; 0 ? -(loc + 1) : loc;
+<a name="line256">256: </a>      restr_indices_pos[face_offset_pos++] = loc;
+<a name="line257">257: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(loc &gt;= 0 &amp;&amp; loc + Nc &lt;= *l_size, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>, <font color="#666666">"Location %"</font> PetscInt_FMT <font color="#666666">" + Nc not in [0, %"</font> PetscInt_FMT <font color="#666666">") local vector"</font>, loc, *l_size);
+<a name="line258">258: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexRestoreClosureIndices.html">DMPlexRestoreClosureIndices</a>(dm, section, section, supp[1], <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;num_indices, &amp;indices, field_offsets, NULL));
+<a name="line259">259: </a>    }
+<a name="line260">260: </a>  }
+<a name="line261">261: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(face_offset_neg == NfInt, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Shape mismatch, neg offsets array of shape (%"</font> PetscInt_FMT <font color="#666666">") initialized for %"</font> PetscInt_FMT <font color="#666666">" nodes"</font>, NfInt, face_offset_neg);
+<a name="line262">262: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(face_offset_pos == NfInt, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Shape mismatch, pos offsets array of shape (%"</font> PetscInt_FMT <font color="#666666">") initialized for %"</font> PetscInt_FMT <font color="#666666">" nodes"</font>, NfInt, face_offset_pos);
+<a name="line263">263: </a>  <font color="#4169E1">if</font> (iter_is) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(iter_is, &amp;iter_indices));
+<a name="line264">264: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;iter_is));
+
+<a name="line266">266: </a>  *num_comp   = Nc;
+<a name="line267">267: </a>  *offsetsNeg = restr_indices_neg;
+<a name="line268">268: </a>  *offsetsPos = restr_indices_pos;
+<a name="line269">269: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line270">270: </a>}
+
+<a name="line272">272: </a><font color="#A020F0">#if defined(PETSC_HAVE_LIBCEED)</font>
+<a name="line273">273: </a>#include <A href="../../../../include/petscdmplexceed.h.html">&lt;petscdmplexceed.h&gt;</A>
+
+<a name="line275">275: </a><font color="#B22222">// Consumes the input petsc_indices and provides the output ceed_indices; no-copy when the sizes match.</font>
+<a name="line276">276: </a><strong><font color="#4169E1"><a name="PetscIntArrayIntoCeedInt_Private"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscIntArrayIntoCeedInt_Private(<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> length, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> max_bound, const char *max_bound_name, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> **petsc_indices, CeedInt **ceed_indices)</font></strong>
+<a name="line277">277: </a>{
+<a name="line278">278: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line279">279: </a>  <font color="#4169E1">if</font> (length) PetscAssertPointer(petsc_indices, 3);
+<a name="line280">280: </a>  PetscAssertPointer(ceed_indices, 4);
+<a name="line281">281: </a><font color="#A020F0">  #if defined(PETSC_USE_64BIT_INDICES)</font>
+<a name="line282">282: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(max_bound &lt;= PETSC_INT32_MAX, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"%s %"</font> PetscInt_FMT <font color="#666666">" does not fit in int32_t"</font>, max_bound_name, max_bound);
+<a name="line283">283: </a>  {
+<a name="line284">284: </a>    CeedInt *ceed_ind;
+<a name="line285">285: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(length, &amp;ceed_ind));
+<a name="line286">286: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; length; i++) ceed_ind[i] = (*petsc_indices)[i];
+<a name="line287">287: </a>    *ceed_indices = ceed_ind;
+<a name="line288">288: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(*petsc_indices));
+<a name="line289">289: </a>  }
+<a name="line290">290: </a><font color="#A020F0">  #else</font>
+<a name="line291">291: </a>  *ceed_indices  = *petsc_indices;
+<a name="line292">292: </a>  *petsc_indices = NULL;
+<a name="line293">293: </a><font color="#A020F0">  #endif</font>
+<a name="line294">294: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line295">295: </a>}
+
+<a name="line297">297: </a><font color="#B22222">/*@C</font>
+<a name="line298">298: </a><font color="#B22222">  <a href="../../../../manualpages/DMPlex/DMPlexGetCeedRestriction.html">DMPlexGetCeedRestriction</a> - Define the libCEED map from the local vector (Lvector) to the cells (Evector)</font>
+
+<a name="line300">300: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line301">301: </a><font color="#B22222">+  dm - The `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` object</font>
+<a name="line302">302: </a><font color="#B22222">.  domain_label - label for `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` domain, or NULL for the whole domain</font>
+<a name="line303">303: </a><font color="#B22222">.  label_value - Stratum value</font>
+<a name="line304">304: </a><font color="#B22222">.  height - Height of target cells in `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` topology</font>
+<a name="line305">305: </a><font color="#B22222">-  dm_field - Index of `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>` field</font>
+
+<a name="line307">307: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line308">308: </a><font color="#B22222">.  ERestrict - libCEED restriction from local vector to the cells</font>
+
+<a name="line310">310: </a><font color="#B22222">  Level: developer</font>
+
+<a name="line312">312: </a><font color="#B22222">.seealso: [](ch_unstructured), `<a href="../../../../manualpages/DM/DM.html">DM</a>`, `<a href="../../../../manualpages/DMPlex/DMPLEX.html">DMPLEX</a>`, `<a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a>`, `<a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsets.html">DMPlexGetLocalOffsets</a>()`</font>
+<a name="line313">313: </a><font color="#B22222">@*/</font>
+<a name="line314">314: </a><strong><font color="#4169E1"><a name="DMPlexGetCeedRestriction"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/DMPlex/DMPlexGetCeedRestriction.html">DMPlexGetCeedRestriction</a>(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, <a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a> domain_label, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> label_value, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> height, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> dm_field, CeedElemRestriction *ERestrict)</font></strong>
+<a name="line315">315: </a>{
+<a name="line316">316: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line318">318: </a>  PetscAssertPointer(ERestrict, 6);
+<a name="line319">319: </a>  <font color="#4169E1">if</font> (!dm-&gt;ceedERestrict) {
+<a name="line320">320: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>            num_cells, cell_size, num_comp, lvec_size, *restr_indices;
+<a name="line321">321: </a>    CeedElemRestriction elem_restr;
+<a name="line322">322: </a>    Ceed                ceed;
+
+<a name="line324">324: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsets.html">DMPlexGetLocalOffsets</a>(dm, domain_label, label_value, height, dm_field, &amp;num_cells, &amp;cell_size, &amp;num_comp, &amp;lvec_size, &amp;restr_indices));
+<a name="line325">325: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetCeed.html">DMGetCeed</a>(dm, &amp;ceed));
+<a name="line326">326: </a>    {
+<a name="line327">327: </a>      CeedInt *ceed_indices;
+<a name="line328">328: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscIntArrayIntoCeedInt_Private(num_cells * cell_size, lvec_size, <font color="#666666">"lvec_size"</font>, &amp;restr_indices, &amp;ceed_indices));
+<a name="line329">329: </a>      PetscCallCEED(CeedElemRestrictionCreate(ceed, num_cells, cell_size, num_comp, 1, lvec_size, CEED_MEM_HOST, CEED_COPY_VALUES, ceed_indices, &amp;elem_restr));
+<a name="line330">330: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(ceed_indices));
+<a name="line331">331: </a>    }
+<a name="line332">332: </a>    dm-&gt;ceedERestrict = elem_restr;
+<a name="line333">333: </a>  }
+<a name="line334">334: </a>  *ERestrict = dm-&gt;ceedERestrict;
+<a name="line335">335: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line336">336: </a>}
+
+<a name="line338">338: </a><strong><font color="#4169E1"><a name="DMPlexCreateCeedRestrictionFVM"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMPlexCreateCeedRestrictionFVM(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, CeedElemRestriction *erL, CeedElemRestriction *erR)</font></strong>
+<a name="line339">339: </a>{
+<a name="line340">340: </a>  Ceed      ceed;
+<a name="line341">341: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *offL, *offR;
+<a name="line342">342: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  num_faces, num_comp, lvec_size;
+
+<a name="line344">344: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line346">346: </a>  PetscAssertPointer(erL, 2);
+<a name="line347">347: </a>  PetscAssertPointer(erR, 3);
+<a name="line348">348: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetCeed.html">DMGetCeed</a>(dm, &amp;ceed));
+<a name="line349">349: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetLocalOffsetsSupport.html">DMPlexGetLocalOffsetsSupport</a>(dm, NULL, 0, &amp;num_faces, &amp;num_comp, &amp;lvec_size, &amp;offL, &amp;offR));
+<a name="line350">350: </a>  {
+<a name="line351">351: </a>    CeedInt *ceed_off;
+<a name="line352">352: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscIntArrayIntoCeedInt_Private(num_faces * 1, lvec_size, <font color="#666666">"lvec_size"</font>, &amp;offL, &amp;ceed_off));
+<a name="line353">353: </a>    PetscCallCEED(CeedElemRestrictionCreate(ceed, num_faces, 1, num_comp, 1, lvec_size, CEED_MEM_HOST, CEED_COPY_VALUES, ceed_off, erL));
+<a name="line354">354: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(ceed_off));
+<a name="line355">355: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscIntArrayIntoCeedInt_Private(num_faces * 1, lvec_size, <font color="#666666">"lvec_size"</font>, &amp;offR, &amp;ceed_off));
+<a name="line356">356: </a>    PetscCallCEED(CeedElemRestrictionCreate(ceed, num_faces, 1, num_comp, 1, lvec_size, CEED_MEM_HOST, CEED_COPY_VALUES, ceed_off, erR));
+<a name="line357">357: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(ceed_off));
+<a name="line358">358: </a>  }
+<a name="line359">359: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line360">360: </a>}
+
+<a name="line362">362: </a><font color="#B22222">// TODO <a href="../../../../manualpages/DMPlex/DMPlexComputeGeometryFVM.html">DMPlexComputeGeometryFVM</a>() also computes centroids and minimum radius</font>
+<a name="line363">363: </a><font color="#B22222">// TODO <a href="../../../../manualpages/DMPlex/DMPlexComputeGeometryFVM.html">DMPlexComputeGeometryFVM</a>() flips normal to match support orientation</font>
+<a name="line364">364: </a><font color="#B22222">// This function computes area-weights normals</font>
+<a name="line365">365: </a><strong><font color="#4169E1"><a name="DMPlexCeedComputeGeometryFVM"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> DMPlexCeedComputeGeometryFVM(<a href="../../../../manualpages/DM/DM.html">DM</a> dm, CeedVector qd)</font></strong>
+<a name="line366">366: </a>{
+<a name="line367">367: </a>  <a href="../../../../manualpages/DM/DMLabel.html">DMLabel</a>         domain_label = NULL;
+<a name="line368">368: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        label_value = 0, height = 1, Nf, cdim;
+<a name="line369">369: </a>  const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *iter_indices;
+<a name="line370">370: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>              iter_is;
+<a name="line371">371: </a>  CeedScalar     *qdata;
+
+<a name="line373">373: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line374">374: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DM/DMGetCoordinateDim.html">DMGetCoordinateDim</a>(dm, &amp;cdim));
+<a name="line375">375: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMGetPoints_Internal(dm, domain_label, label_value, height, &amp;iter_is));
+<a name="line376">376: </a>  <font color="#4169E1">if</font> (iter_is) {
+<a name="line377">377: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(iter_is, &amp;iter_indices));
+<a name="line378">378: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISGetLocalSize.html">ISGetLocalSize</a>(iter_is, &amp;Nf));
+<a name="line379">379: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0, Ns; p &lt; Nf; ++p) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupportSize.html">DMPlexGetSupportSize</a>(dm, iter_indices[p], &amp;Ns));
+<a name="line380">380: </a>  } <font color="#4169E1">else</font> {
+<a name="line381">381: </a>    iter_indices = NULL;
+<a name="line382">382: </a>  }
+
+<a name="line384">384: </a>  PetscCallCEED(CeedVectorSetValue(qd, 0.));
+<a name="line385">385: </a>  PetscCallCEED(CeedVectorGetArray(qd, CEED_MEM_HOST, &amp;qdata));
+<a name="line386">386: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0, off = 0; p &lt; Nf; ++p) {
+<a name="line387">387: </a>    const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  face = iter_indices[p];
+<a name="line388">388: </a>    const <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *supp;
+<a name="line389">389: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        suppSize;
+
+<a name="line391">391: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupport.html">DMPlexGetSupport</a>(dm, face, &amp;supp));
+<a name="line392">392: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetSupportSize.html">DMPlexGetSupportSize</a>(dm, face, &amp;suppSize));
+<a name="line393">393: </a>    <font color="#B22222">// Ignore boundary faces</font>
+<a name="line394">394: </a>    <font color="#B22222">//   TODO check for face on parallel boundary</font>
+<a name="line395">395: </a>    <font color="#4169E1">if</font> (suppSize == 2) {
+<a name="line396">396: </a>      <a href="../../../../manualpages/DM/DMPolytopeType.html">DMPolytopeType</a> ct;
+<a name="line397">397: </a>      <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>      area, fcentroid[3], centroids[2][3];
+
+<a name="line399">399: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexComputeCellGeometryFVM.html">DMPlexComputeCellGeometryFVM</a>(dm, face, &amp;area, fcentroid, &amp;qdata[off]));
+<a name="line400">400: </a>      <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; cdim; ++d) qdata[off + d] *= area;
+<a name="line401">401: </a>      off += cdim;
+<a name="line402">402: </a>      <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> s = 0; s &lt; suppSize; ++s) {
+<a name="line403">403: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetCellType.html">DMPlexGetCellType</a>(dm, supp[s], &amp;ct));
+<a name="line404">404: </a>        <font color="#4169E1">if</font> (ct == <a href="../../../../manualpages/DM/DMPolytopeType.html">DM_POLYTOPE_FV_GHOST</a>) <font color="#4169E1">continue</font>;
+<a name="line405">405: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexComputeCellGeometryFVM.html">DMPlexComputeCellGeometryFVM</a>(dm, supp[s], &amp;qdata[off + s], centroids[s], NULL));
+<a name="line406">406: </a>      }
+<a name="line407">407: </a>      <font color="#B22222">// Give FV ghosts the same volume as the opposite cell</font>
+<a name="line408">408: </a>      <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> s = 0; s &lt; suppSize; ++s) {
+<a name="line409">409: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DMPlex/DMPlexGetCellType.html">DMPlexGetCellType</a>(dm, supp[s], &amp;ct));
+<a name="line410">410: </a>        <font color="#4169E1">if</font> (ct != <a href="../../../../manualpages/DM/DMPolytopeType.html">DM_POLYTOPE_FV_GHOST</a>) <font color="#4169E1">continue</font>;
+<a name="line411">411: </a>        qdata[off + s] = qdata[off + (1 - s)];
+<a name="line412">412: </a>        <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; cdim; ++d) centroids[s][d] = fcentroid[d];
+<a name="line413">413: </a>      }
+<a name="line414">414: </a>      <font color="#B22222">// Flip normal orientation if necessary to match ordering in support</font>
+<a name="line415">415: </a>      {
+<a name="line416">416: </a>        CeedScalar *normal = &amp;qdata[off - cdim];
+<a name="line417">417: </a>        <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a>   l[3], r[3], v[3];
+
+<a name="line419">419: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMLocalizeCoordinateReal_Internal(dm, cdim, fcentroid, centroids[0], l));
+<a name="line420">420: </a>        <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(DMLocalizeCoordinateReal_Internal(dm, cdim, fcentroid, centroids[1], r));
+<a name="line421">421: </a>        DMPlex_WaxpyD_Internal(cdim, -1, l, r, v);
+<a name="line422">422: </a>        <font color="#4169E1">if</font> (DMPlex_DotRealD_Internal(cdim, normal, v) &lt; 0) {
+<a name="line423">423: </a>          <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; cdim; ++d) normal[d] = -normal[d];
+<a name="line424">424: </a>        }
+<a name="line425">425: </a>        <font color="#4169E1">if</font> (DMPlex_DotRealD_Internal(cdim, normal, v) &lt;= 0) {
+<a name="line426">426: </a>          <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(cdim != 2, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Direction for face %"</font> PetscInt_FMT <font color="#666666">" could not be fixed, normal (%g,%g) v (%g,%g)"</font>, face, (double)normal[0], (double)normal[1], (double)v[0], (double)v[1]);
+<a name="line427">427: </a>          <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(cdim != 3, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Direction for face %"</font> PetscInt_FMT <font color="#666666">" could not be fixed, normal (%g,%g,%g) v (%g,%g,%g)"</font>, face, (double)normal[0], (double)normal[1], (double)normal[2], (double)v[0], (double)v[1], (double)v[2]);
+<a name="line428">428: </a>          <a href="../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Direction for face %"</font> PetscInt_FMT <font color="#666666">" could not be fixed"</font>, face);
+<a name="line429">429: </a>        }
+<a name="line430">430: </a>      }
+<a name="line431">431: </a>      off += suppSize;
+<a name="line432">432: </a>    }
+<a name="line433">433: </a>  }
+<a name="line434">434: </a>  PetscCallCEED(CeedVectorRestoreArray(qd, &amp;qdata));
+<a name="line435">435: </a>  <font color="#4169E1">if</font> (iter_is) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(iter_is, &amp;iter_indices));
+<a name="line436">436: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;iter_is));
+<a name="line437">437: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line438">438: </a>}
+
+<a name="line440">440: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+

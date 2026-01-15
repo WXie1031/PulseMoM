@@ -1,0 +1,553 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/yaml/src/loader.c">Actual source code: loader.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#include </font><font color="#666666">"yaml_private.h"</font><font color="#A020F0"></font>
+
+<a name="line3">  3: </a><font color="#B22222">/*</font>
+<a name="line4">  4: </a><font color="#B22222"> * API functions.</font>
+<a name="line5">  5: </a><font color="#B22222"> */</font>
+
+<a name="line7">  7: </a><strong><font color="#4169E1">YAML_DECLARE(int)</font></strong>
+<a name="line8">  8: </a><strong><font color="#4169E1">yaml_parser_load(yaml_parser_t *parser, yaml_document_t *document)</font></strong>;
+
+<a name="line10"> 10: </a><font color="#B22222">/*</font>
+<a name="line11"> 11: </a><font color="#B22222"> * Error handling.</font>
+<a name="line12"> 12: </a><font color="#B22222"> */</font>
+
+<a name="line14"> 14: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line15"> 15: </a><strong><font color="#4169E1">yaml_parser_set_composer_error(yaml_parser_t *parser,</font></strong>
+<a name="line16"> 16: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>;
+
+<a name="line18"> 18: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line19"> 19: </a><strong><font color="#4169E1">yaml_parser_set_composer_error_context(yaml_parser_t *parser,</font></strong>
+<a name="line20"> 20: </a><strong><font color="#4169E1">        const char *context, yaml_mark_t context_mark,</font></strong>
+<a name="line21"> 21: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>;
+
+
+<a name="line24"> 24: </a><font color="#B22222">/*</font>
+<a name="line25"> 25: </a><font color="#B22222"> * Alias handling.</font>
+<a name="line26"> 26: </a><font color="#B22222"> */</font>
+
+<a name="line28"> 28: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line29"> 29: </a><strong><font color="#4169E1">yaml_parser_register_anchor(yaml_parser_t *parser,</font></strong>
+<a name="line30"> 30: </a><strong><font color="#4169E1">        int index, yaml_char_t *anchor)</font></strong>;
+
+<a name="line32"> 32: </a><font color="#B22222">/*</font>
+<a name="line33"> 33: </a><font color="#B22222"> * Clean up functions.</font>
+<a name="line34"> 34: </a><font color="#B22222"> */</font>
+
+<a name="line36"> 36: </a><strong><font color="#4169E1">static void</font></strong>
+<a name="line37"> 37: </a><strong><font color="#4169E1">yaml_parser_delete_aliases(yaml_parser_t *parser)</font></strong>;
+
+<a name="line39"> 39: </a><font color="#B22222">/*</font>
+<a name="line40"> 40: </a><font color="#B22222"> * Document loading context.</font>
+<a name="line41"> 41: </a><font color="#B22222"> */</font>
+<a name="line42"> 42: </a><font color="#4169E1"><a name="loader_ctx"></a>struct loader_ctx </font>{
+<a name="line43"> 43: </a>    int *start;
+<a name="line44"> 44: </a>    int *end;
+<a name="line45"> 45: </a>    int *top;
+<a name="line46"> 46: </a>};
+
+<a name="line48"> 48: </a><font color="#B22222">/*</font>
+<a name="line49"> 49: </a><font color="#B22222"> * Composer functions.</font>
+<a name="line50"> 50: </a><font color="#B22222"> */</font>
+<a name="line51"> 51: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line52"> 52: </a><strong><font color="#4169E1">yaml_parser_load_nodes(yaml_parser_t *parser, struct loader_ctx *ctx)</font></strong>;
+
+<a name="line54"> 54: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line55"> 55: </a><strong><font color="#4169E1">yaml_parser_load_document(yaml_parser_t *parser, yaml_event_t *event)</font></strong>;
+
+<a name="line57"> 57: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line58"> 58: </a><strong><font color="#4169E1">yaml_parser_load_alias(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line59"> 59: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>;
+
+<a name="line61"> 61: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line62"> 62: </a><strong><font color="#4169E1">yaml_parser_load_scalar(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line63"> 63: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>;
+
+<a name="line65"> 65: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line66"> 66: </a><strong><font color="#4169E1">yaml_parser_load_sequence(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line67"> 67: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>;
+
+<a name="line69"> 69: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line70"> 70: </a><strong><font color="#4169E1">yaml_parser_load_mapping(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line71"> 71: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>;
+
+<a name="line73"> 73: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line74"> 74: </a><strong><font color="#4169E1">yaml_parser_load_sequence_end(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line75"> 75: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>;
+
+<a name="line77"> 77: </a><strong><font color="#4169E1">static int</font></strong>
+<a name="line78"> 78: </a><strong><font color="#4169E1">yaml_parser_load_mapping_end(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line79"> 79: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>;
+
+<a name="line81"> 81: </a><font color="#B22222">/*</font>
+<a name="line82"> 82: </a><font color="#B22222"> * Load the next document of the stream.</font>
+<a name="line83"> 83: </a><font color="#B22222"> */</font>
+
+<a name="line85"> 85: </a><strong><font color="#4169E1"><a name="AML_DECLARE"></a>YAML_DECLARE(int)</font></strong>
+<a name="line86"> 86: </a><strong><font color="#4169E1">yaml_parser_load(yaml_parser_t *parser, yaml_document_t *document)</font></strong>
+<a name="line87"> 87: </a>{
+<a name="line88"> 88: </a>    yaml_event_t event;
+
+<a name="line90"> 90: </a>    assert(parser);     <font color="#B22222">/* Non-NULL parser object is expected. */</font>
+<a name="line91"> 91: </a>    assert(document);   <font color="#B22222">/* Non-NULL document object is expected. */</font>
+
+<a name="line93"> 93: </a>    memset(document, 0, <font color="#4169E1">sizeof</font>(yaml_document_t));
+<a name="line94"> 94: </a>    <font color="#4169E1">if</font> (!STACK_INIT(parser, document-&gt;nodes, yaml_node_t*))
+<a name="line95"> 95: </a>        <font color="#4169E1">goto</font> error;
+
+<a name="line97"> 97: </a>    <font color="#4169E1">if</font> (!parser-&gt;stream_start_produced) {
+<a name="line98"> 98: </a>        <font color="#4169E1">if</font> (!yaml_parser_parse(parser, &amp;event)) <font color="#4169E1">goto</font> error;
+<a name="line99"> 99: </a>        assert(event.type == YAML_STREAM_START_EVENT);
+<a name="line100">100: </a>                        <font color="#B22222">/* STREAM-START is expected. */</font>
+<a name="line101">101: </a>    }
+
+<a name="line103">103: </a>    <font color="#4169E1">if</font> (parser-&gt;stream_end_produced) <font color="#4169E1">return</font> 1;
+
+<a name="line105">105: </a>    <font color="#4169E1">if</font> (!yaml_parser_parse(parser, &amp;event)) <font color="#4169E1">goto</font> error;
+<a name="line106">106: </a>    <font color="#4169E1">if</font> (event.type == YAML_STREAM_END_EVENT) <font color="#4169E1">return</font> 1;
+
+<a name="line108">108: </a>    <font color="#4169E1">if</font> (!STACK_INIT(parser, parser-&gt;aliases, yaml_alias_data_t*))
+<a name="line109">109: </a>        <font color="#4169E1">goto</font> error;
+
+<a name="line111">111: </a>    parser-&gt;document = document;
+
+<a name="line113">113: </a>    <font color="#4169E1">if</font> (!yaml_parser_load_document(parser, &amp;event)) <font color="#4169E1">goto</font> error;
+
+<a name="line115">115: </a>    yaml_parser_delete_aliases(parser);
+<a name="line116">116: </a>    parser-&gt;document = NULL;
+
+<a name="line118">118: </a>    <font color="#4169E1">return</font> 1;
+
+<a name="line120">120: </a>error:
+
+<a name="line122">122: </a>    yaml_parser_delete_aliases(parser);
+<a name="line123">123: </a>    yaml_document_delete(document);
+<a name="line124">124: </a>    parser-&gt;document = NULL;
+
+<a name="line126">126: </a>    <font color="#4169E1">return</font> 0;
+<a name="line127">127: </a>}
+
+<a name="line129">129: </a><font color="#B22222">/*</font>
+<a name="line130">130: </a><font color="#B22222"> * Set composer error.</font>
+<a name="line131">131: </a><font color="#B22222"> */</font>
+
+<a name="line133">133: </a><strong><font color="#4169E1"><a name="yaml_parser_set_composer_error"></a>static int</font></strong>
+<a name="line134">134: </a><strong><font color="#4169E1">yaml_parser_set_composer_error(yaml_parser_t *parser,</font></strong>
+<a name="line135">135: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>
+<a name="line136">136: </a>{
+<a name="line137">137: </a>    parser-&gt;error = YAML_COMPOSER_ERROR;
+<a name="line138">138: </a>    parser-&gt;problem = problem;
+<a name="line139">139: </a>    parser-&gt;problem_mark = problem_mark;
+
+<a name="line141">141: </a>    <font color="#4169E1">return</font> 0;
+<a name="line142">142: </a>}
+
+<a name="line144">144: </a><font color="#B22222">/*</font>
+<a name="line145">145: </a><font color="#B22222"> * Set composer error with context.</font>
+<a name="line146">146: </a><font color="#B22222"> */</font>
+
+<a name="line148">148: </a><strong><font color="#4169E1"><a name="yaml_parser_set_composer_error_context"></a>static int</font></strong>
+<a name="line149">149: </a><strong><font color="#4169E1">yaml_parser_set_composer_error_context(yaml_parser_t *parser,</font></strong>
+<a name="line150">150: </a><strong><font color="#4169E1">        const char *context, yaml_mark_t context_mark,</font></strong>
+<a name="line151">151: </a><strong><font color="#4169E1">        const char *problem, yaml_mark_t problem_mark)</font></strong>
+<a name="line152">152: </a>{
+<a name="line153">153: </a>    parser-&gt;error = YAML_COMPOSER_ERROR;
+<a name="line154">154: </a>    parser-&gt;context = context;
+<a name="line155">155: </a>    parser-&gt;context_mark = context_mark;
+<a name="line156">156: </a>    parser-&gt;problem = problem;
+<a name="line157">157: </a>    parser-&gt;problem_mark = problem_mark;
+
+<a name="line159">159: </a>    <font color="#4169E1">return</font> 0;
+<a name="line160">160: </a>}
+
+<a name="line162">162: </a><font color="#B22222">/*</font>
+<a name="line163">163: </a><font color="#B22222"> * Delete the stack of aliases.</font>
+<a name="line164">164: </a><font color="#B22222"> */</font>
+
+<a name="line166">166: </a><strong><font color="#4169E1"><a name="yaml_parser_delete_aliases"></a>static void</font></strong>
+<a name="line167">167: </a><strong><font color="#4169E1">yaml_parser_delete_aliases(yaml_parser_t *parser)</font></strong>
+<a name="line168">168: </a>{
+<a name="line169">169: </a>    <font color="#4169E1">while</font> (!STACK_EMPTY(parser, parser-&gt;aliases)) yaml_free(POP(parser, parser-&gt;aliases).anchor);
+<a name="line170">170: </a>    STACK_DEL(parser, parser-&gt;aliases);
+<a name="line171">171: </a>}
+
+<a name="line173">173: </a><font color="#B22222">/*</font>
+<a name="line174">174: </a><font color="#B22222"> * Compose a document object.</font>
+<a name="line175">175: </a><font color="#B22222"> */</font>
+
+<a name="line177">177: </a><strong><font color="#4169E1"><a name="yaml_parser_load_document"></a>static int</font></strong>
+<a name="line178">178: </a><strong><font color="#4169E1">yaml_parser_load_document(yaml_parser_t *parser, yaml_event_t *event)</font></strong>
+<a name="line179">179: </a>{
+<a name="line180">180: </a>    <font color="#4169E1">struct loader_ctx</font> ctx = { NULL, NULL, NULL };
+
+<a name="line182">182: </a>    assert(event-&gt;type == YAML_DOCUMENT_START_EVENT);
+<a name="line183">183: </a>                        <font color="#B22222">/* DOCUMENT-START is expected. */</font>
+
+<a name="line185">185: </a>    parser-&gt;document-&gt;version_directive
+<a name="line186">186: </a>        = event-&gt;data.document_start.version_directive;
+<a name="line187">187: </a>    parser-&gt;document-&gt;tag_directives.start
+<a name="line188">188: </a>        = event-&gt;data.document_start.tag_directives.start;
+<a name="line189">189: </a>    parser-&gt;document-&gt;tag_directives.end
+<a name="line190">190: </a>        = event-&gt;data.document_start.tag_directives.end;
+<a name="line191">191: </a>    parser-&gt;document-&gt;start_implicit
+<a name="line192">192: </a>        = event-&gt;data.document_start.implicit;
+<a name="line193">193: </a>    parser-&gt;document-&gt;start_mark = event-&gt;start_mark;
+
+<a name="line195">195: </a>    <font color="#4169E1">if</font> (!STACK_INIT(parser, ctx, int*)) <font color="#4169E1">return</font> 0;
+<a name="line196">196: </a>    <font color="#4169E1">if</font> (!yaml_parser_load_nodes(parser, &amp;ctx)) {
+<a name="line197">197: </a>        STACK_DEL(parser, ctx);
+<a name="line198">198: </a>        <font color="#4169E1">return</font> 0;
+<a name="line199">199: </a>    }
+<a name="line200">200: </a>    STACK_DEL(parser, ctx);
+
+<a name="line202">202: </a>    <font color="#4169E1">return</font> 1;
+<a name="line203">203: </a>}
+
+<a name="line205">205: </a><font color="#B22222">/*</font>
+<a name="line206">206: </a><font color="#B22222"> * Compose a node tree.</font>
+<a name="line207">207: </a><font color="#B22222"> */</font>
+
+<a name="line209">209: </a><strong><font color="#4169E1"><a name="yaml_parser_load_nodes"></a>static int</font></strong>
+<a name="line210">210: </a><strong><font color="#4169E1">yaml_parser_load_nodes(yaml_parser_t *parser, struct loader_ctx *ctx)</font></strong>
+<a name="line211">211: </a>{
+<a name="line212">212: </a>    yaml_event_t event;
+
+<a name="line214">214: </a>    <font color="#4169E1">do</font> {
+<a name="line215">215: </a>        <font color="#4169E1">if</font> (!yaml_parser_parse(parser, &amp;event)) <font color="#4169E1">return</font> 0;
+
+<a name="line217">217: </a>        <font color="#4169E1">switch</font> (event.type) {
+<a name="line218">218: </a>            <font color="#4169E1">case</font> YAML_ALIAS_EVENT:
+<a name="line219">219: </a>                <font color="#4169E1">if</font> (!yaml_parser_load_alias(parser, &amp;event, ctx)) <font color="#4169E1">return</font> 0;
+<a name="line220">220: </a>                <font color="#4169E1">break</font>;
+<a name="line221">221: </a>            <font color="#4169E1">case</font> YAML_SCALAR_EVENT:
+<a name="line222">222: </a>                <font color="#4169E1">if</font> (!yaml_parser_load_scalar(parser, &amp;event, ctx)) <font color="#4169E1">return</font> 0;
+<a name="line223">223: </a>                <font color="#4169E1">break</font>;
+<a name="line224">224: </a>            <font color="#4169E1">case</font> YAML_SEQUENCE_START_EVENT:
+<a name="line225">225: </a>                <font color="#4169E1">if</font> (!yaml_parser_load_sequence(parser, &amp;event, ctx)) <font color="#4169E1">return</font> 0;
+<a name="line226">226: </a>                <font color="#4169E1">break</font>;
+<a name="line227">227: </a>            <font color="#4169E1">case</font> YAML_SEQUENCE_END_EVENT:
+<a name="line228">228: </a>                <font color="#4169E1">if</font> (!yaml_parser_load_sequence_end(parser, &amp;event, ctx))
+<a name="line229">229: </a>                    <font color="#4169E1">return</font> 0;
+<a name="line230">230: </a>                <font color="#4169E1">break</font>;
+<a name="line231">231: </a>            <font color="#4169E1">case</font> YAML_MAPPING_START_EVENT:
+<a name="line232">232: </a>                <font color="#4169E1">if</font> (!yaml_parser_load_mapping(parser, &amp;event, ctx)) <font color="#4169E1">return</font> 0;
+<a name="line233">233: </a>                <font color="#4169E1">break</font>;
+<a name="line234">234: </a>            <font color="#4169E1">case</font> YAML_MAPPING_END_EVENT:
+<a name="line235">235: </a>                <font color="#4169E1">if</font> (!yaml_parser_load_mapping_end(parser, &amp;event, ctx))
+<a name="line236">236: </a>                    <font color="#4169E1">return</font> 0;
+<a name="line237">237: </a>                <font color="#4169E1">break</font>;
+<a name="line238">238: </a>            <font color="#4169E1">default</font>:
+<a name="line239">239: </a>                assert(0);  <font color="#B22222">/* Could not happen. */</font>
+<a name="line240">240: </a>                <font color="#4169E1">return</font> 0;
+<a name="line241">241: </a>            <font color="#4169E1">case</font> YAML_DOCUMENT_END_EVENT:
+<a name="line242">242: </a>                <font color="#4169E1">break</font>;
+<a name="line243">243: </a>        }
+<a name="line244">244: </a>    } <font color="#4169E1">while</font> (event.type != YAML_DOCUMENT_END_EVENT);
+
+<a name="line246">246: </a>    parser-&gt;document-&gt;end_implicit = event.data.document_end.implicit;
+<a name="line247">247: </a>    parser-&gt;document-&gt;end_mark = event.end_mark;
+
+<a name="line249">249: </a>    <font color="#4169E1">return</font> 1;
+<a name="line250">250: </a>}
+
+<a name="line252">252: </a><font color="#B22222">/*</font>
+<a name="line253">253: </a><font color="#B22222"> * Add an anchor.</font>
+<a name="line254">254: </a><font color="#B22222"> */</font>
+
+<a name="line256">256: </a><strong><font color="#4169E1"><a name="yaml_parser_register_anchor"></a>static int</font></strong>
+<a name="line257">257: </a><strong><font color="#4169E1">yaml_parser_register_anchor(yaml_parser_t *parser,</font></strong>
+<a name="line258">258: </a><strong><font color="#4169E1">        int index, yaml_char_t *anchor)</font></strong>
+<a name="line259">259: </a>{
+<a name="line260">260: </a>    yaml_alias_data_t data;
+<a name="line261">261: </a>    yaml_alias_data_t *alias_data;
+
+<a name="line263">263: </a>    <font color="#4169E1">if</font> (!anchor) <font color="#4169E1">return</font> 1;
+
+<a name="line265">265: </a>    data.anchor = anchor;
+<a name="line266">266: </a>    data.index = index;
+<a name="line267">267: </a>    data.mark = parser-&gt;document-&gt;nodes.start[index-1].start_mark;
+
+<a name="line269">269: </a>    <font color="#4169E1">for</font> (alias_data = parser-&gt;aliases.start;
+<a name="line270">270: </a>            alias_data != parser-&gt;aliases.top; alias_data ++) {
+<a name="line271">271: </a>        <font color="#4169E1">if</font> (strcmp((char *)alias_data-&gt;anchor, (char *)anchor) == 0) {
+<a name="line272">272: </a>            yaml_free(anchor);
+<a name="line273">273: </a>            <font color="#4169E1">return</font> yaml_parser_set_composer_error_context(parser,
+<a name="line274">274: </a>                    <font color="#666666">"found duplicate anchor; first occurrence"</font>,
+<a name="line275">275: </a>                    alias_data-&gt;mark, <font color="#666666">"second occurrence"</font>, data.mark);
+<a name="line276">276: </a>        }
+<a name="line277">277: </a>    }
+
+<a name="line279">279: </a>    <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;aliases, data)) {
+<a name="line280">280: </a>        yaml_free(anchor);
+<a name="line281">281: </a>        <font color="#4169E1">return</font> 0;
+<a name="line282">282: </a>    }
+
+<a name="line284">284: </a>    <font color="#4169E1">return</font> 1;
+<a name="line285">285: </a>}
+
+<a name="line287">287: </a><font color="#B22222">/*</font>
+<a name="line288">288: </a><font color="#B22222"> * Compose node into its parent in the stree.</font>
+<a name="line289">289: </a><font color="#B22222"> */</font>
+
+<a name="line291">291: </a><strong><font color="#4169E1"><a name="yaml_parser_load_node_add"></a>static int</font></strong>
+<a name="line292">292: </a><strong><font color="#4169E1">yaml_parser_load_node_add(yaml_parser_t *parser, struct loader_ctx *ctx,</font></strong>
+<a name="line293">293: </a><strong><font color="#4169E1">        int index)</font></strong>
+<a name="line294">294: </a>{
+<a name="line295">295: </a>    <font color="#4169E1">struct yaml_node_s</font> *parent;
+<a name="line296">296: </a>    int parent_index;
+
+<a name="line298">298: </a>    <font color="#4169E1">if</font> (STACK_EMPTY(parser, *ctx)) {
+<a name="line299">299: </a>        <font color="#B22222">/* This is the root node, there's no tree to add it to. */</font>
+<a name="line300">300: </a>        <font color="#4169E1">return</font> 1;
+<a name="line301">301: </a>    }
+
+<a name="line303">303: </a>    parent_index = *((*ctx).top - 1);
+<a name="line304">304: </a>    parent = &amp;parser-&gt;document-&gt;nodes.start[parent_index-1];
+
+<a name="line306">306: </a>    <font color="#4169E1">switch</font> (parent-&gt;type) {
+<a name="line307">307: </a>        <font color="#4169E1">case</font> YAML_SEQUENCE_NODE:
+<a name="line308">308: </a>            <font color="#4169E1">if</font> (!STACK_LIMIT(parser, parent-&gt;data.sequence.items, INT_MAX-1))
+<a name="line309">309: </a>                <font color="#4169E1">return</font> 0;
+<a name="line310">310: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parent-&gt;data.sequence.items, index))
+<a name="line311">311: </a>                <font color="#4169E1">return</font> 0;
+<a name="line312">312: </a>            <font color="#4169E1">break</font>;
+<a name="line313">313: </a>        <font color="#4169E1">case</font> YAML_MAPPING_NODE: {
+<a name="line314">314: </a>            yaml_node_pair_t pair;
+<a name="line315">315: </a>            <font color="#4169E1">if</font> (!STACK_EMPTY(parser, parent-&gt;data.mapping.pairs)) {
+<a name="line316">316: </a>                yaml_node_pair_t *p = parent-&gt;data.mapping.pairs.top - 1;
+<a name="line317">317: </a>                <font color="#4169E1">if</font> (p-&gt;key != 0 &amp;&amp; p-&gt;value == 0) {
+<a name="line318">318: </a>                    p-&gt;value = index;
+<a name="line319">319: </a>                    <font color="#4169E1">break</font>;
+<a name="line320">320: </a>                }
+<a name="line321">321: </a>            }
+
+<a name="line323">323: </a>            pair.key = index;
+<a name="line324">324: </a>            pair.value = 0;
+<a name="line325">325: </a>            <font color="#4169E1">if</font> (!STACK_LIMIT(parser, parent-&gt;data.mapping.pairs, INT_MAX-1))
+<a name="line326">326: </a>                <font color="#4169E1">return</font> 0;
+<a name="line327">327: </a>            <font color="#4169E1">if</font> (!PUSH(parser, parent-&gt;data.mapping.pairs, pair))
+<a name="line328">328: </a>                <font color="#4169E1">return</font> 0;
+
+<a name="line330">330: </a>            <font color="#4169E1">break</font>;
+<a name="line331">331: </a>        }
+<a name="line332">332: </a>        <font color="#4169E1">default</font>:
+<a name="line333">333: </a>            assert(0); <font color="#B22222">/* Could not happen. */</font>
+<a name="line334">334: </a>            <font color="#4169E1">return</font> 0;
+<a name="line335">335: </a>    }
+<a name="line336">336: </a>    <font color="#4169E1">return</font> 1;
+<a name="line337">337: </a>}
+
+<a name="line339">339: </a><font color="#B22222">/*</font>
+<a name="line340">340: </a><font color="#B22222"> * Compose a node corresponding to an alias.</font>
+<a name="line341">341: </a><font color="#B22222"> */</font>
+
+<a name="line343">343: </a><strong><font color="#4169E1"><a name="yaml_parser_load_alias"></a>static int</font></strong>
+<a name="line344">344: </a><strong><font color="#4169E1">yaml_parser_load_alias(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line345">345: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>
+<a name="line346">346: </a>{
+<a name="line347">347: </a>    yaml_char_t *anchor = event-&gt;data.alias.anchor;
+<a name="line348">348: </a>    yaml_alias_data_t *alias_data;
+
+<a name="line350">350: </a>    <font color="#4169E1">for</font> (alias_data = parser-&gt;aliases.start;
+<a name="line351">351: </a>            alias_data != parser-&gt;aliases.top; alias_data ++) {
+<a name="line352">352: </a>        <font color="#4169E1">if</font> (strcmp((char *)alias_data-&gt;anchor, (char *)anchor) == 0) {
+<a name="line353">353: </a>            yaml_free(anchor);
+<a name="line354">354: </a>            <font color="#4169E1">return</font> yaml_parser_load_node_add(parser, ctx, alias_data-&gt;index);
+<a name="line355">355: </a>        }
+<a name="line356">356: </a>    }
+
+<a name="line358">358: </a>    yaml_free(anchor);
+<a name="line359">359: </a>    <font color="#4169E1">return</font> yaml_parser_set_composer_error(parser, <font color="#666666">"found undefined alias"</font>,
+<a name="line360">360: </a>            event-&gt;start_mark);
+<a name="line361">361: </a>}
+
+<a name="line363">363: </a><font color="#B22222">/*</font>
+<a name="line364">364: </a><font color="#B22222"> * Compose a scalar node.</font>
+<a name="line365">365: </a><font color="#B22222"> */</font>
+
+<a name="line367">367: </a><strong><font color="#4169E1"><a name="yaml_parser_load_scalar"></a>static int</font></strong>
+<a name="line368">368: </a><strong><font color="#4169E1">yaml_parser_load_scalar(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line369">369: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>
+<a name="line370">370: </a>{
+<a name="line371">371: </a>    yaml_node_t node;
+<a name="line372">372: </a>    int index;
+<a name="line373">373: </a>    yaml_char_t *tag = event-&gt;data.scalar.tag;
+
+<a name="line375">375: </a>    <font color="#4169E1">if</font> (!STACK_LIMIT(parser, parser-&gt;document-&gt;nodes, INT_MAX-1)) <font color="#4169E1">goto</font> error;
+
+<a name="line377">377: </a>    <font color="#4169E1">if</font> (!tag || strcmp((char *)tag, <font color="#666666">"!"</font>) == 0) {
+<a name="line378">378: </a>        yaml_free(tag);
+<a name="line379">379: </a>        tag = yaml_strdup((yaml_char_t *)YAML_DEFAULT_SCALAR_TAG);
+<a name="line380">380: </a>        <font color="#4169E1">if</font> (!tag) <font color="#4169E1">goto</font> error;
+<a name="line381">381: </a>    }
+
+<a name="line383">383: </a>    SCALAR_NODE_INIT(node, tag, event-&gt;data.scalar.value,
+<a name="line384">384: </a>            event-&gt;data.scalar.length, event-&gt;data.scalar.style,
+<a name="line385">385: </a>            event-&gt;start_mark, event-&gt;end_mark);
+
+<a name="line387">387: </a>    <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;document-&gt;nodes, node)) <font color="#4169E1">goto</font> error;
+
+<a name="line389">389: </a>    index = parser-&gt;document-&gt;nodes.top - parser-&gt;document-&gt;nodes.start;
+
+<a name="line391">391: </a>    <font color="#4169E1">if</font> (!yaml_parser_register_anchor(parser, index,
+<a name="line392">392: </a>                event-&gt;data.scalar.anchor)) <font color="#4169E1">return</font> 0;
+
+<a name="line394">394: </a>    <font color="#4169E1">return</font> yaml_parser_load_node_add(parser, ctx, index);
+
+<a name="line396">396: </a>error:
+<a name="line397">397: </a>    yaml_free(tag);
+<a name="line398">398: </a>    yaml_free(event-&gt;data.scalar.anchor);
+<a name="line399">399: </a>    yaml_free(event-&gt;data.scalar.value);
+<a name="line400">400: </a>    <font color="#4169E1">return</font> 0;
+<a name="line401">401: </a>}
+
+<a name="line403">403: </a><font color="#B22222">/*</font>
+<a name="line404">404: </a><font color="#B22222"> * Compose a sequence node.</font>
+<a name="line405">405: </a><font color="#B22222"> */</font>
+
+<a name="line407">407: </a><strong><font color="#4169E1"><a name="yaml_parser_load_sequence"></a>static int</font></strong>
+<a name="line408">408: </a><strong><font color="#4169E1">yaml_parser_load_sequence(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line409">409: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>
+<a name="line410">410: </a>{
+<a name="line411">411: </a>    yaml_node_t node;
+<a name="line412">412: </a>    <font color="#4169E1">struct</font> {
+<a name="line413">413: </a>        yaml_node_item_t *start;
+<a name="line414">414: </a>        yaml_node_item_t *end;
+<a name="line415">415: </a>        yaml_node_item_t *top;
+<a name="line416">416: </a>    } items = { NULL, NULL, NULL };
+<a name="line417">417: </a>    int index;
+<a name="line418">418: </a>    yaml_char_t *tag = event-&gt;data.sequence_start.tag;
+
+<a name="line420">420: </a>    <font color="#4169E1">if</font> (!STACK_LIMIT(parser, parser-&gt;document-&gt;nodes, INT_MAX-1)) <font color="#4169E1">goto</font> error;
+
+<a name="line422">422: </a>    <font color="#4169E1">if</font> (!tag || strcmp((char *)tag, <font color="#666666">"!"</font>) == 0) {
+<a name="line423">423: </a>        yaml_free(tag);
+<a name="line424">424: </a>        tag = yaml_strdup((yaml_char_t *)YAML_DEFAULT_SEQUENCE_TAG);
+<a name="line425">425: </a>        <font color="#4169E1">if</font> (!tag) <font color="#4169E1">goto</font> error;
+<a name="line426">426: </a>    }
+
+<a name="line428">428: </a>    <font color="#4169E1">if</font> (!STACK_INIT(parser, items, yaml_node_item_t*)) <font color="#4169E1">goto</font> error;
+
+<a name="line430">430: </a>    SEQUENCE_NODE_INIT(node, tag, items.start, items.end,
+<a name="line431">431: </a>            event-&gt;data.sequence_start.style,
+<a name="line432">432: </a>            event-&gt;start_mark, event-&gt;end_mark);
+
+<a name="line434">434: </a>    <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;document-&gt;nodes, node)) <font color="#4169E1">goto</font> error;
+
+<a name="line436">436: </a>    index = parser-&gt;document-&gt;nodes.top - parser-&gt;document-&gt;nodes.start;
+
+<a name="line438">438: </a>    <font color="#4169E1">if</font> (!yaml_parser_register_anchor(parser, index,
+<a name="line439">439: </a>                event-&gt;data.sequence_start.anchor)) <font color="#4169E1">return</font> 0;
+
+<a name="line441">441: </a>    <font color="#4169E1">if</font> (!yaml_parser_load_node_add(parser, ctx, index)) <font color="#4169E1">return</font> 0;
+
+<a name="line443">443: </a>    <font color="#4169E1">if</font> (!STACK_LIMIT(parser, *ctx, INT_MAX-1)) <font color="#4169E1">return</font> 0;
+<a name="line444">444: </a>    <font color="#4169E1">if</font> (!PUSH(parser, *ctx, index)) <font color="#4169E1">return</font> 0;
+
+<a name="line446">446: </a>    <font color="#4169E1">return</font> 1;
+
+<a name="line448">448: </a>error:
+<a name="line449">449: </a>    yaml_free(tag);
+<a name="line450">450: </a>    yaml_free(event-&gt;data.sequence_start.anchor);
+<a name="line451">451: </a>    <font color="#4169E1">return</font> 0;
+<a name="line452">452: </a>}
+
+<a name="line454">454: </a><strong><font color="#4169E1"><a name="yaml_parser_load_sequence_end"></a>static int</font></strong>
+<a name="line455">455: </a><strong><font color="#4169E1">yaml_parser_load_sequence_end(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line456">456: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>
+<a name="line457">457: </a>{
+<a name="line458">458: </a>    int index;
+
+<a name="line460">460: </a>    assert(((*ctx).top - (*ctx).start) &gt; 0);
+
+<a name="line462">462: </a>    index = *((*ctx).top - 1);
+<a name="line463">463: </a>    assert(parser-&gt;document-&gt;nodes.start[index-1].type == YAML_SEQUENCE_NODE);
+<a name="line464">464: </a>    parser-&gt;document-&gt;nodes.start[index-1].end_mark = event-&gt;end_mark;
+
+<a name="line466">466: </a>    (void)POP(parser, *ctx);
+
+<a name="line468">468: </a>    <font color="#4169E1">return</font> 1;
+<a name="line469">469: </a>}
+
+<a name="line471">471: </a><font color="#B22222">/*</font>
+<a name="line472">472: </a><font color="#B22222"> * Compose a mapping node.</font>
+<a name="line473">473: </a><font color="#B22222"> */</font>
+
+<a name="line475">475: </a><strong><font color="#4169E1"><a name="yaml_parser_load_mapping"></a>static int</font></strong>
+<a name="line476">476: </a><strong><font color="#4169E1">yaml_parser_load_mapping(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line477">477: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>
+<a name="line478">478: </a>{
+<a name="line479">479: </a>    yaml_node_t node;
+<a name="line480">480: </a>    <font color="#4169E1">struct</font> {
+<a name="line481">481: </a>        yaml_node_pair_t *start;
+<a name="line482">482: </a>        yaml_node_pair_t *end;
+<a name="line483">483: </a>        yaml_node_pair_t *top;
+<a name="line484">484: </a>    } pairs = { NULL, NULL, NULL };
+<a name="line485">485: </a>    int index;
+<a name="line486">486: </a>    yaml_char_t *tag = event-&gt;data.mapping_start.tag;
+
+<a name="line488">488: </a>    <font color="#4169E1">if</font> (!STACK_LIMIT(parser, parser-&gt;document-&gt;nodes, INT_MAX-1)) <font color="#4169E1">goto</font> error;
+
+<a name="line490">490: </a>    <font color="#4169E1">if</font> (!tag || strcmp((char *)tag, <font color="#666666">"!"</font>) == 0) {
+<a name="line491">491: </a>        yaml_free(tag);
+<a name="line492">492: </a>        tag = yaml_strdup((yaml_char_t *)YAML_DEFAULT_MAPPING_TAG);
+<a name="line493">493: </a>        <font color="#4169E1">if</font> (!tag) <font color="#4169E1">goto</font> error;
+<a name="line494">494: </a>    }
+
+<a name="line496">496: </a>    <font color="#4169E1">if</font> (!STACK_INIT(parser, pairs, yaml_node_pair_t*)) <font color="#4169E1">goto</font> error;
+
+<a name="line498">498: </a>    MAPPING_NODE_INIT(node, tag, pairs.start, pairs.end,
+<a name="line499">499: </a>            event-&gt;data.mapping_start.style,
+<a name="line500">500: </a>            event-&gt;start_mark, event-&gt;end_mark);
+
+<a name="line502">502: </a>    <font color="#4169E1">if</font> (!PUSH(parser, parser-&gt;document-&gt;nodes, node)) <font color="#4169E1">goto</font> error;
+
+<a name="line504">504: </a>    index = parser-&gt;document-&gt;nodes.top - parser-&gt;document-&gt;nodes.start;
+
+<a name="line506">506: </a>    <font color="#4169E1">if</font> (!yaml_parser_register_anchor(parser, index,
+<a name="line507">507: </a>                event-&gt;data.mapping_start.anchor)) <font color="#4169E1">return</font> 0;
+
+<a name="line509">509: </a>    <font color="#4169E1">if</font> (!yaml_parser_load_node_add(parser, ctx, index)) <font color="#4169E1">return</font> 0;
+
+<a name="line511">511: </a>    <font color="#4169E1">if</font> (!STACK_LIMIT(parser, *ctx, INT_MAX-1)) <font color="#4169E1">return</font> 0;
+<a name="line512">512: </a>    <font color="#4169E1">if</font> (!PUSH(parser, *ctx, index)) <font color="#4169E1">return</font> 0;
+
+<a name="line514">514: </a>    <font color="#4169E1">return</font> 1;
+
+<a name="line516">516: </a>error:
+<a name="line517">517: </a>    yaml_free(tag);
+<a name="line518">518: </a>    yaml_free(event-&gt;data.mapping_start.anchor);
+<a name="line519">519: </a>    <font color="#4169E1">return</font> 0;
+<a name="line520">520: </a>}
+
+<a name="line522">522: </a><strong><font color="#4169E1"><a name="yaml_parser_load_mapping_end"></a>static int</font></strong>
+<a name="line523">523: </a><strong><font color="#4169E1">yaml_parser_load_mapping_end(yaml_parser_t *parser, yaml_event_t *event,</font></strong>
+<a name="line524">524: </a><strong><font color="#4169E1">        struct loader_ctx *ctx)</font></strong>
+<a name="line525">525: </a>{
+<a name="line526">526: </a>    int index;
+
+<a name="line528">528: </a>    assert(((*ctx).top - (*ctx).start) &gt; 0);
+
+<a name="line530">530: </a>    index = *((*ctx).top - 1);
+<a name="line531">531: </a>    assert(parser-&gt;document-&gt;nodes.start[index-1].type == YAML_MAPPING_NODE);
+<a name="line532">532: </a>    parser-&gt;document-&gt;nodes.start[index-1].end_mark = event-&gt;end_mark;
+
+<a name="line534">534: </a>    (void)POP(parser, *ctx);
+
+<a name="line536">536: </a>    <font color="#4169E1">return</font> 1;
+<a name="line537">537: </a>}
+</pre>
+</body>
+
+</html>
+

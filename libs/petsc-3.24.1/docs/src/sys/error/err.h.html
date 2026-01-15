@@ -1,0 +1,47 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/error/err.h">Actual source code: err.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#4169E1"><a name="PetscErrorMemoryMessage"></a>static inline <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscErrorMemoryMessage(<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> n)</font></strong>
+<a name="line6">  6: </a>{
+<a name="line7">  7: </a>  <a href="../../../manualpages/Sys/PetscLogDouble.html">PetscLogDouble</a> mem, rss;
+<a name="line8">  8: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr;
+<a name="line9">  9: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>      flg1 = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, flg2 = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, flg3 = <a href="../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+
+<a name="line11"> 11: </a>  <font color="#4169E1">if</font> (n == <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MEM</a>) {
+<a name="line12"> 12: </a>    ierr = (*<a href="../../../manualpages/Sys/PetscErrorPrintf.html">PetscErrorPrintf</a>)(<font color="#666666">"Out of memory. This could be due to allocating\n"</font>);
+<a name="line13"> 13: </a>    ierr = (*<a href="../../../manualpages/Sys/PetscErrorPrintf.html">PetscErrorPrintf</a>)(<font color="#666666">"too large an object or bleeding by not properly\n"</font>);
+<a name="line14"> 14: </a>    ierr = (*<a href="../../../manualpages/Sys/PetscErrorPrintf.html">PetscErrorPrintf</a>)(<font color="#666666">"destroying unneeded objects.\n"</font>);
+<a name="line15"> 15: </a>  } <font color="#4169E1">else</font> {
+<a name="line16"> 16: </a>    ierr = (*<a href="../../../manualpages/Sys/PetscErrorPrintf.html">PetscErrorPrintf</a>)(<font color="#666666">"Memory leaked due to not properly destroying\n"</font>);
+<a name="line17"> 17: </a>    ierr = (*<a href="../../../manualpages/Sys/PetscErrorPrintf.html">PetscErrorPrintf</a>)(<font color="#666666">"unneeded objects.\n"</font>);
+<a name="line18"> 18: </a>  }
+<a name="line19"> 19: </a>  ierr = <a href="../../../manualpages/Sys/PetscMallocGetCurrentUsage.html">PetscMallocGetCurrentUsage</a>(&amp;mem);
+<a name="line20"> 20: </a>  ierr = <a href="../../../manualpages/Sys/PetscMemoryGetCurrentUsage.html">PetscMemoryGetCurrentUsage</a>(&amp;rss);
+<a name="line21"> 21: </a>  ierr = <a href="../../../manualpages/Sys/PetscOptionsGetBool.html">PetscOptionsGetBool</a>(NULL, NULL, <font color="#666666">"-on_error_malloc_dump"</font>, &amp;flg1, NULL);
+<a name="line22"> 22: </a>  ierr = <a href="../../../manualpages/Sys/PetscOptionsGetBool.html">PetscOptionsGetBool</a>(NULL, NULL, <font color="#666666">"-malloc_view"</font>, &amp;flg2, NULL);
+<a name="line23"> 23: </a>  ierr = <a href="../../../manualpages/Sys/PetscOptionsHasName.html">PetscOptionsHasName</a>(NULL, NULL, <font color="#666666">"-malloc_view_threshold"</font>, &amp;flg3);
+<a name="line24"> 24: </a>  <font color="#4169E1">if</font> (flg2 || flg3) ierr = <a href="../../../manualpages/Sys/PetscMallocView.html">PetscMallocView</a>(stdout);
+<a name="line25"> 25: </a>  <font color="#4169E1">else</font> {
+<a name="line26"> 26: </a>    ierr = (*<a href="../../../manualpages/Sys/PetscErrorPrintf.html">PetscErrorPrintf</a>)(<font color="#666666">"Memory allocated %.0f Memory used by process %.0f\n"</font>, mem, rss);
+<a name="line27"> 27: </a>    <font color="#4169E1">if</font> (flg1) ierr = <a href="../../../manualpages/Sys/PetscMallocDump.html">PetscMallocDump</a>(stdout);
+<a name="line28"> 28: </a>    <font color="#4169E1">else</font> ierr = (*<a href="../../../manualpages/Sys/PetscErrorPrintf.html">PetscErrorPrintf</a>)(<font color="#666666">"Try running with -on_error_malloc_dump or -malloc_view for info.\n"</font>);
+<a name="line29"> 29: </a>  }
+<a name="line30"> 30: </a>  <font color="#4169E1">return</font> ierr;
+<a name="line31"> 31: </a>}
+</pre>
+</body>
+
+</html>
+

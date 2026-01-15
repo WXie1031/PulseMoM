@@ -1,0 +1,1237 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/pc/impls/bjacobi/bjkokkos/bjkokkos.kokkos.cxx">Actual source code: bjkokkos.kokkos.cxx</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><strong><font color="#228B22">#define PETSC_SKIP_CXX_COMPLEX_FIX // Kokkos::complex does not need the <a href="../../../../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> fix</font></strong>
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petsc/private/pcbjkokkosimpl.h.html">&lt;petsc/private/pcbjkokkosimpl.h&gt;</A>
+
+<a name="line5">  5: </a>#include <A href="../../../../include/petsc/private/kspimpl.h.html">&lt;petsc/private/kspimpl.h&gt;</A>
+<a name="line6">  6: </a>#include <A href="../../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+<a name="line7">  7: </a>#include <A href="../../../../src/mat/impls/aij/mpi/mpiaij.h.html">&lt;../src/mat/impls/aij/mpi/mpiaij.h&gt;</A>
+<a name="line8">  8: </a>#include <A href="../../../../src/mat/impls/aij/seq/kokkos/aijkok.hpp.html">&lt;../src/mat/impls/aij/seq/kokkos/aijkok.hpp&gt;</A>
+<a name="line9">  9: </a>#include <A href="../../../../include/petscsection.h.html">&lt;petscsection.h&gt;</A>
+<a name="line10"> 10: </a>#include <A href="../../../../include/petscdmcomposite.h.html">&lt;petscdmcomposite.h&gt;</A>
+
+<a name="line12"> 12: </a>#include <A href="../../../../src/mat/impls/aij/seq/aij.h.html">&lt;../src/mat/impls/aij/seq/aij.h&gt;</A>
+<a name="line13"> 13: </a>#include <A href="../../../../src/mat/impls/aij/seq/kokkos/aijkok.hpp.html">&lt;../src/mat/impls/aij/seq/kokkos/aijkok.hpp&gt;</A>
+
+<a name="line15"> 15: </a>#include <A href="../../../../include/petscdevice_cupm.h.html">&lt;petscdevice_cupm.h&gt;</A>
+
+<a name="line17"> 17: </a><strong><font color="#4169E1"><a name="PCBJKOKKOSCreateKSP_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCBJKOKKOSCreateKSP_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line18"> 18: </a>{
+<a name="line19"> 19: </a>  const char    *prefix;
+<a name="line20"> 20: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+<a name="line21"> 21: </a>  <a href="../../../../../../manualpages/DM/DM.html">DM</a>             dm;
+
+<a name="line23"> 23: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line24"> 24: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), &amp;jac-&gt;ksp));
+<a name="line25"> 25: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPSetNestLevel.html">KSPSetNestLevel</a>(jac-&gt;ksp, pc-&gt;kspnestlevel));
+<a name="line26"> 26: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPSetErrorIfNotConverged.html">KSPSetErrorIfNotConverged</a>(jac-&gt;ksp, pc-&gt;erroriffailure));
+<a name="line27"> 27: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectIncrementTabLevel.html">PetscObjectIncrementTabLevel</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp, (<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, 1));
+<a name="line28"> 28: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/PC/PCGetOptionsPrefix.html">PCGetOptionsPrefix</a>(pc, &amp;prefix));
+<a name="line29"> 29: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPSetOptionsPrefix.html">KSPSetOptionsPrefix</a>(jac-&gt;ksp, prefix));
+<a name="line30"> 30: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPAppendOptionsPrefix.html">KSPAppendOptionsPrefix</a>(jac-&gt;ksp, <font color="#666666">"pc_bjkokkos_"</font>));
+<a name="line31"> 31: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/PC/PCGetDM.html">PCGetDM</a>(pc, &amp;dm));
+<a name="line32"> 32: </a>  <font color="#4169E1">if</font> (dm) {
+<a name="line33"> 33: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPSetDM.html">KSPSetDM</a>(jac-&gt;ksp, dm));
+<a name="line34"> 34: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPSetDMActive.html">KSPSetDMActive</a>(jac-&gt;ksp, <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line35"> 35: </a>  }
+<a name="line36"> 36: </a>  jac-&gt;reason       = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line37"> 37: </a>  jac-&gt;monitor      = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line38"> 38: </a>  jac-&gt;batch_target = 0;
+<a name="line39"> 39: </a>  jac-&gt;rank_target  = 0;
+<a name="line40"> 40: </a>  jac-&gt;nsolves_team = 1;
+<a name="line41"> 41: </a>  jac-&gt;ksp-&gt;max_it  = 50; <font color="#B22222">// this is really for GMRES w/o restarts</font>
+<a name="line42"> 42: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line43"> 43: </a>}
+
+<a name="line45"> 45: </a><font color="#B22222">// y <-- Ax</font>
+<a name="line46"> 46: </a><strong><font color="#4169E1"><a name="MatMult"></a>KOKKOS_INLINE_FUNCTION <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../../manualpages/Mat/MatMult.html">MatMult</a>(const team_member team, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aai, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aaj, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_Aaa, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *r, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *ic, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> start, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> end, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x_loc, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y_loc)</font></strong>
+<a name="line47"> 47: </a>{
+<a name="line48"> 48: </a>  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, start, end), [=](const int rowb) {
+<a name="line49"> 49: </a>    int                rowa = ic[rowb];
+<a name="line50"> 50: </a>    int                n    = glb_Aai[rowa + 1] - glb_Aai[rowa];
+<a name="line51"> 51: </a>    const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *aj   = glb_Aaj + glb_Aai[rowa]; <font color="#B22222">// global</font>
+<a name="line52"> 52: </a>    const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa   = glb_Aaa + glb_Aai[rowa];
+<a name="line53"> 53: </a>    <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>        sum;
+<a name="line54"> 54: </a>    Kokkos::parallel_reduce(Kokkos::ThreadVectorRange(team, n), [=](const int i, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;lsum) { lsum += aa[i] * x_loc[r[aj[i]] - start]; }, sum);
+<a name="line55"> 55: </a>    Kokkos::single(Kokkos::PerThread(team), [=]() { y_loc[rowb - start] = sum; });
+<a name="line56"> 56: </a>  });
+<a name="line57"> 57: </a>  team.team_barrier();
+<a name="line58"> 58: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line59"> 59: </a>}
+
+<a name="line61"> 61: </a><font color="#B22222">// temp buffer per thread with reduction at end?</font>
+<a name="line62"> 62: </a><strong><font color="#4169E1"><a name="MatMultTranspose"></a>KOKKOS_INLINE_FUNCTION <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../../manualpages/Mat/MatMultTranspose.html">MatMultTranspose</a>(const team_member team, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aai, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aaj, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_Aaa, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *r, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *ic, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> start, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> end, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *x_loc, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *y_loc)</font></strong>
+<a name="line63"> 63: </a>{
+<a name="line64"> 64: </a>  Kokkos::parallel_for(Kokkos::TeamVectorRange(team, end - start), [=](int i) { y_loc[i] = 0; });
+<a name="line65"> 65: </a>  team.team_barrier();
+<a name="line66"> 66: </a>  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, start, end), [=](const int rowb) {
+<a name="line67"> 67: </a>    int                rowa = ic[rowb];
+<a name="line68"> 68: </a>    int                n    = glb_Aai[rowa + 1] - glb_Aai[rowa];
+<a name="line69"> 69: </a>    const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *aj   = glb_Aaj + glb_Aai[rowa]; <font color="#B22222">// global</font>
+<a name="line70"> 70: </a>    const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa   = glb_Aaa + glb_Aai[rowa];
+<a name="line71"> 71: </a>    const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>  xx   = x_loc[rowb - start]; <font color="#B22222">// rowb = ic[rowa] = ic[r[rowb]]</font>
+<a name="line72"> 72: </a>    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, n), [=](const int &amp;i) {
+<a name="line73"> 73: </a>      <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> val = aa[i] * xx;
+<a name="line74"> 74: </a>      Kokkos::atomic_fetch_add(&amp;y_loc[r[aj[i]] - start], val);
+<a name="line75"> 75: </a>    });
+<a name="line76"> 76: </a>  });
+<a name="line77"> 77: </a>  team.team_barrier();
+<a name="line78"> 78: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line79"> 79: </a>}
+
+<a name="line81"> 81: </a><font color="#4169E1"><a name="Batch_MetaData_TAG"></a>typedef struct Batch_MetaData_TAG </font>{
+<a name="line82"> 82: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           flops;
+<a name="line83"> 83: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           its;
+<a name="line84"> 84: </a>  <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSPConvergedReason</a> reason;
+<a name="line85"> 85: </a>} Batch_MetaData;
+
+<a name="line87"> 87: </a><font color="#B22222">// Solve A(BB^-1)x = y with TFQMR. Right preconditioned to get un-preconditioned residual</font>
+<a name="line88"> 88: </a><strong><font color="#4169E1"><a name="BJSolve_TFQMR"></a>static KOKKOS_INLINE_FUNCTION <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BJSolve_TFQMR(const team_member team, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aai, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aaj, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_Aaa, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *r, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *ic, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *work_space_global, const int stride_global, const int nShareVec, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *work_space_shared, const int stride_shared, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> rtol, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> atol, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> dtol, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> maxit, Batch_MetaData *metad, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> start, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> end, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> glb_idiag[], const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_b, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_x, bool monitor)</font></strong>
+<a name="line89"> 89: </a>{
+<a name="line90"> 90: </a>  using Kokkos::parallel_for;
+<a name="line91"> 91: </a>  using Kokkos::parallel_reduce;
+<a name="line92"> 92: </a>  int                Nblk = end - start, it, m, stride = stride_shared, idx = 0;
+<a name="line93"> 93: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>          dp, dpold, w, dpest, tau, psi, cm, r0;
+<a name="line94"> 94: </a>  const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Diag = &amp;glb_idiag[start];
+<a name="line95"> 95: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>       *ptr  = work_space_shared, rho, rhoold, a, s, b, eta, etaold, psiold, cf, dpi;
+
+<a name="line97"> 97: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line98"> 98: </a>    ptr    = work_space_global;
+<a name="line99"> 99: </a>    stride = stride_global;
+<a name="line100">100: </a>  }
+<a name="line101">101: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *XX = ptr;
+<a name="line102">102: </a>  ptr += stride;
+<a name="line103">103: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line104">104: </a>    ptr    = work_space_global;
+<a name="line105">105: </a>    stride = stride_global;
+<a name="line106">106: </a>  }
+<a name="line107">107: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *R = ptr;
+<a name="line108">108: </a>  ptr += stride;
+<a name="line109">109: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line110">110: </a>    ptr    = work_space_global;
+<a name="line111">111: </a>    stride = stride_global;
+<a name="line112">112: </a>  }
+<a name="line113">113: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *RP = ptr;
+<a name="line114">114: </a>  ptr += stride;
+<a name="line115">115: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line116">116: </a>    ptr    = work_space_global;
+<a name="line117">117: </a>    stride = stride_global;
+<a name="line118">118: </a>  }
+<a name="line119">119: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *V = ptr;
+<a name="line120">120: </a>  ptr += stride;
+<a name="line121">121: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line122">122: </a>    ptr    = work_space_global;
+<a name="line123">123: </a>    stride = stride_global;
+<a name="line124">124: </a>  }
+<a name="line125">125: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *T = ptr;
+<a name="line126">126: </a>  ptr += stride;
+<a name="line127">127: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line128">128: </a>    ptr    = work_space_global;
+<a name="line129">129: </a>    stride = stride_global;
+<a name="line130">130: </a>  }
+<a name="line131">131: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Q = ptr;
+<a name="line132">132: </a>  ptr += stride;
+<a name="line133">133: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line134">134: </a>    ptr    = work_space_global;
+<a name="line135">135: </a>    stride = stride_global;
+<a name="line136">136: </a>  }
+<a name="line137">137: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *P = ptr;
+<a name="line138">138: </a>  ptr += stride;
+<a name="line139">139: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line140">140: </a>    ptr    = work_space_global;
+<a name="line141">141: </a>    stride = stride_global;
+<a name="line142">142: </a>  }
+<a name="line143">143: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *U = ptr;
+<a name="line144">144: </a>  ptr += stride;
+<a name="line145">145: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line146">146: </a>    ptr    = work_space_global;
+<a name="line147">147: </a>    stride = stride_global;
+<a name="line148">148: </a>  }
+<a name="line149">149: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *D = ptr;
+<a name="line150">150: </a>  ptr += stride;
+<a name="line151">151: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line152">152: </a>    ptr    = work_space_global;
+<a name="line153">153: </a>    stride = stride_global;
+<a name="line154">154: </a>  }
+<a name="line155">155: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *AUQ = V;
+
+<a name="line157">157: </a>  <font color="#B22222">// init: get b, zero x</font>
+<a name="line158">158: </a>  parallel_for(Kokkos::TeamVectorRange(team, start, end), [=](int rowb) {
+<a name="line159">159: </a>    int rowa         = ic[rowb];
+<a name="line160">160: </a>    R[rowb - start]  = glb_b[rowa];
+<a name="line161">161: </a>    XX[rowb - start] = 0;
+<a name="line162">162: </a>  });
+<a name="line163">163: </a>  team.team_barrier();
+<a name="line164">164: </a>  parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;lsum) { lsum += R[idx] * PetscConj(R[idx]); }, dpi);
+<a name="line165">165: </a>  team.team_barrier();
+<a name="line166">166: </a>  r0 = dp = PetscSqrtReal(<a href="../../../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(dpi));
+<a name="line167">167: </a>  <font color="#B22222">// diagnostics</font>
+<a name="line168">168: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line169">169: </a>  <font color="#4169E1">if</font> (monitor) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"%3d <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> Residual norm %14.12e\n"</font>, 0, (double)dp); });
+<a name="line170">170: </a><font color="#A020F0">#endif</font>
+<a name="line171">171: </a>  <font color="#4169E1">if</font> (dp &lt; atol) {
+<a name="line172">172: </a>    metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_ATOL_NORMAL_EQUATIONS</a>;
+<a name="line173">173: </a>    it            = 0;
+<a name="line174">174: </a>    <font color="#4169E1">goto</font> done;
+<a name="line175">175: </a>  }
+<a name="line176">176: </a>  <font color="#4169E1">if</font> (0 == maxit) {
+<a name="line177">177: </a>    metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_CONVERGED_ITS.html">KSP_CONVERGED_ITS</a>;
+<a name="line178">178: </a>    it            = 0;
+<a name="line179">179: </a>    <font color="#4169E1">goto</font> done;
+<a name="line180">180: </a>  }
+
+<a name="line182">182: </a>  <font color="#B22222">/* Make the initial Rp = R */</font>
+<a name="line183">183: </a>  parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { RP[idx] = R[idx]; });
+<a name="line184">184: </a>  team.team_barrier();
+<a name="line185">185: </a>  <font color="#B22222">/* Set the initial conditions */</font>
+<a name="line186">186: </a>  etaold = 0.0;
+<a name="line187">187: </a>  psiold = 0.0;
+<a name="line188">188: </a>  tau    = dp;
+<a name="line189">189: </a>  dpold  = dp;
+
+<a name="line191">191: </a>  <font color="#B22222">/* rhoold = (r,rp)     */</font>
+<a name="line192">192: </a>  parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;dot) { dot += R[idx] * PetscConj(RP[idx]); }, rhoold);
+<a name="line193">193: </a>  team.team_barrier();
+<a name="line194">194: </a>  parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line195">195: </a>    U[idx] = R[idx];
+<a name="line196">196: </a>    P[idx] = R[idx];
+<a name="line197">197: </a>    T[idx] = Diag[idx] * P[idx];
+<a name="line198">198: </a>    D[idx] = 0;
+<a name="line199">199: </a>  });
+<a name="line200">200: </a>  team.team_barrier();
+<a name="line201">201: </a>  static_cast&lt;void&gt;(<a href="../../../../../../manualpages/Mat/MatMult.html">MatMult</a>(team, glb_Aai, glb_Aaj, glb_Aaa, r, ic, start, end, T, V));
+
+<a name="line203">203: </a>  it = 0;
+<a name="line204">204: </a>  <font color="#4169E1">do</font> {
+<a name="line205">205: </a>    <font color="#B22222">/* s &lt;- (v,rp)          */</font>
+<a name="line206">206: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;dot) { dot += V[idx] * PetscConj(RP[idx]); }, s);
+<a name="line207">207: </a>    team.team_barrier();
+<a name="line208">208: </a>    <font color="#4169E1">if</font> (s == 0) {
+<a name="line209">209: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_HAPPY_BREAKDOWN</a>;
+<a name="line210">210: </a>      <font color="#4169E1">goto</font> done;
+<a name="line211">211: </a>    }
+<a name="line212">212: </a>    a = rhoold / s; <font color="#B22222">/* a &lt;- rho / s         */</font>
+<a name="line213">213: </a>    <font color="#B22222">/* q &lt;- u - a v    <a href="../../../../../../manualpages/Vec/VecWAXPY.html">VecWAXPY</a>(w,alpha,x,y): w = alpha x + y.     */</font>
+<a name="line214">214: </a>    <font color="#B22222">/* t &lt;- u + q           */</font>
+<a name="line215">215: </a>    parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line216">216: </a>      Q[idx] = U[idx] - a * V[idx];
+<a name="line217">217: </a>      T[idx] = U[idx] + Q[idx];
+<a name="line218">218: </a>    });
+<a name="line219">219: </a>    team.team_barrier();
+<a name="line220">220: </a>    <font color="#B22222">// KSP_PCApplyBAorAB</font>
+<a name="line221">221: </a>    parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { T[idx] = Diag[idx] * T[idx]; });
+<a name="line222">222: </a>    team.team_barrier();
+<a name="line223">223: </a>    static_cast&lt;void&gt;(<a href="../../../../../../manualpages/Mat/MatMult.html">MatMult</a>(team, glb_Aai, glb_Aaj, glb_Aaa, r, ic, start, end, T, AUQ));
+<a name="line224">224: </a>    <font color="#B22222">/* r &lt;- r - a K (u + q) */</font>
+<a name="line225">225: </a>    parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { R[idx] = R[idx] - a * AUQ[idx]; });
+<a name="line226">226: </a>    team.team_barrier();
+<a name="line227">227: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;lsum) { lsum += R[idx] * PetscConj(R[idx]); }, dpi);
+<a name="line228">228: </a>    team.team_barrier();
+<a name="line229">229: </a>    dp = PetscSqrtReal(<a href="../../../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(dpi));
+<a name="line230">230: </a>    <font color="#4169E1">for</font> (m = 0; m &lt; 2; m++) {
+<a name="line231">231: </a>      <font color="#4169E1">if</font> (!m) w = PetscSqrtReal(dp * dpold);
+<a name="line232">232: </a>      <font color="#4169E1">else</font> w = dp;
+<a name="line233">233: </a>      psi = w / tau;
+<a name="line234">234: </a>      cm  = 1.0 / PetscSqrtReal(1.0 + psi * psi);
+<a name="line235">235: </a>      tau = tau * psi * cm;
+<a name="line236">236: </a>      eta = cm * cm * a;
+<a name="line237">237: </a>      cf  = psiold * psiold * etaold / a;
+<a name="line238">238: </a>      <font color="#4169E1">if</font> (!m) {
+<a name="line239">239: </a>        <font color="#B22222">/* D = U + cf D */</font>
+<a name="line240">240: </a>        parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { D[idx] = U[idx] + cf * D[idx]; });
+<a name="line241">241: </a>      } <font color="#4169E1">else</font> {
+<a name="line242">242: </a>        <font color="#B22222">/* D = Q + cf D */</font>
+<a name="line243">243: </a>        parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { D[idx] = Q[idx] + cf * D[idx]; });
+<a name="line244">244: </a>      }
+<a name="line245">245: </a>      team.team_barrier();
+<a name="line246">246: </a>      parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { XX[idx] = XX[idx] + eta * D[idx]; });
+<a name="line247">247: </a>      team.team_barrier();
+<a name="line248">248: </a>      dpest = PetscSqrtReal(2 * it + m + 2.0) * tau;
+<a name="line249">249: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line250">250: </a>      <font color="#4169E1">if</font> (monitor &amp;&amp; m == 1) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"%3d <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> Residual norm %14.12e\n"</font>, it + 1, (double)dpest); });
+<a name="line251">251: </a><font color="#A020F0">#endif</font>
+<a name="line252">252: </a>      <font color="#4169E1">if</font> (dpest &lt; atol) {
+<a name="line253">253: </a>        metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_ATOL_NORMAL_EQUATIONS</a>;
+<a name="line254">254: </a>        <font color="#4169E1">goto</font> done;
+<a name="line255">255: </a>      }
+<a name="line256">256: </a>      <font color="#4169E1">if</font> (dpest / r0 &lt; rtol) {
+<a name="line257">257: </a>        metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_RTOL_NORMAL_EQUATIONS</a>;
+<a name="line258">258: </a>        <font color="#4169E1">goto</font> done;
+<a name="line259">259: </a>      }
+<a name="line260">260: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line261">261: </a>      <font color="#4169E1">if</font> (dpest / r0 &gt; dtol) {
+<a name="line262">262: </a>        metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_DIVERGED_DTOL.html">KSP_DIVERGED_DTOL</a>;
+<a name="line263">263: </a>        Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"ERROR block %d diverged: %d it, res=%e, r_0=%e\n"</font>, team.league_rank(), it, dpest, r0); });
+<a name="line264">264: </a>        <font color="#4169E1">goto</font> done;
+<a name="line265">265: </a>      }
+<a name="line266">266: </a><font color="#A020F0">#else</font>
+<a name="line267">267: </a>      <font color="#4169E1">if</font> (dpest / r0 &gt; dtol) {
+<a name="line268">268: </a>        metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_DIVERGED_DTOL.html">KSP_DIVERGED_DTOL</a>;
+<a name="line269">269: </a>        <font color="#4169E1">goto</font> done;
+<a name="line270">270: </a>      }
+<a name="line271">271: </a><font color="#A020F0">#endif</font>
+<a name="line272">272: </a>      <font color="#4169E1">if</font> (it + 1 == maxit) {
+<a name="line273">273: </a>        metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_CONVERGED_ITS.html">KSP_CONVERGED_ITS</a>;
+<a name="line274">274: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line275">275: </a>        Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"ERROR block %d diverged: TFQMR %d:%d it, res=%e, r_0=%e r_res=%e\n"</font>, team.league_rank(), it, m, dpest, r0, dpest / r0); });
+<a name="line276">276: </a><font color="#A020F0">#endif</font>
+<a name="line277">277: </a>        <font color="#4169E1">goto</font> done;
+<a name="line278">278: </a>      }
+<a name="line279">279: </a>      etaold = eta;
+<a name="line280">280: </a>      psiold = psi;
+<a name="line281">281: </a>    }
+
+<a name="line283">283: </a>    <font color="#B22222">/* rho &lt;- (r,rp)       */</font>
+<a name="line284">284: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;dot) { dot += R[idx] * PetscConj(RP[idx]); }, rho);
+<a name="line285">285: </a>    team.team_barrier();
+<a name="line286">286: </a>    <font color="#4169E1">if</font> (rho == 0) {
+<a name="line287">287: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_HAPPY_BREAKDOWN</a>;
+<a name="line288">288: </a>      <font color="#4169E1">goto</font> done;
+<a name="line289">289: </a>    }
+<a name="line290">290: </a>    b = rho / rhoold; <font color="#B22222">/* b &lt;- rho / rhoold   */</font>
+<a name="line291">291: </a>    <font color="#B22222">/* u &lt;- r + b q        */</font>
+<a name="line292">292: </a>    <font color="#B22222">/* p &lt;- u + b(q + b p) */</font>
+<a name="line293">293: </a>    parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line294">294: </a>      U[idx] = R[idx] + b * Q[idx];
+<a name="line295">295: </a>      Q[idx] = Q[idx] + b * P[idx];
+<a name="line296">296: </a>      P[idx] = U[idx] + b * Q[idx];
+<a name="line297">297: </a>    });
+<a name="line298">298: </a>    <font color="#B22222">/* v &lt;- K p  */</font>
+<a name="line299">299: </a>    team.team_barrier();
+<a name="line300">300: </a>    parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { T[idx] = Diag[idx] * P[idx]; });
+<a name="line301">301: </a>    team.team_barrier();
+<a name="line302">302: </a>    static_cast&lt;void&gt;(<a href="../../../../../../manualpages/Mat/MatMult.html">MatMult</a>(team, glb_Aai, glb_Aaj, glb_Aaa, r, ic, start, end, T, V));
+
+<a name="line304">304: </a>    rhoold = rho;
+<a name="line305">305: </a>    dpold  = dp;
+
+<a name="line307">307: </a>    it++;
+<a name="line308">308: </a>  } <font color="#4169E1">while</font> (it &lt; maxit);
+<a name="line309">309: </a>done:
+<a name="line310">310: </a>  <font color="#B22222">// <a href="../../../../../../manualpages/KSP/KSPUnwindPreconditioner.html">KSPUnwindPreconditioner</a></font>
+<a name="line311">311: </a>  parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) { XX[idx] = Diag[idx] * XX[idx]; });
+<a name="line312">312: </a>  team.team_barrier();
+<a name="line313">313: </a>  <font color="#B22222">// put x into Plex order</font>
+<a name="line314">314: </a>  parallel_for(Kokkos::TeamVectorRange(team, start, end), [=](int rowb) {
+<a name="line315">315: </a>    int rowa    = ic[rowb];
+<a name="line316">316: </a>    glb_x[rowa] = XX[rowb - start];
+<a name="line317">317: </a>  });
+<a name="line318">318: </a>  metad-&gt;its = it;
+<a name="line319">319: </a>  <font color="#4169E1">if</font> (1) {
+<a name="line320">320: </a>    int nnz;
+<a name="line321">321: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, start, end), [=](const int idx, int &amp;lsum) { lsum += (glb_Aai[idx + 1] - glb_Aai[idx]); }, nnz);
+<a name="line322">322: </a>    metad-&gt;flops = 2 * (metad-&gt;its * (10 * Nblk + 2 * nnz) + 5 * Nblk);
+<a name="line323">323: </a>  } <font color="#4169E1">else</font> {
+<a name="line324">324: </a>    metad-&gt;flops = 2 * (metad-&gt;its * (10 * Nblk + 2 * 50 * Nblk) + 5 * Nblk); <font color="#B22222">// guess</font>
+<a name="line325">325: </a>  }
+<a name="line326">326: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line327">327: </a>}
+
+<a name="line329">329: </a><font color="#B22222">// Solve Ax = y with biCG</font>
+<a name="line330">330: </a><strong><font color="#4169E1"><a name="BJSolve_BICG"></a>static KOKKOS_INLINE_FUNCTION <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> BJSolve_BICG(const team_member team, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aai, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *glb_Aaj, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_Aaa, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *r, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *ic, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *work_space_global, const int stride_global, const int nShareVec, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *work_space_shared, const int stride_shared, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> rtol, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> atol, <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a> dtol, <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> maxit, Batch_MetaData *metad, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> start, const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> end, const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> glb_idiag[], const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_b, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_x, bool monitor)</font></strong>
+<a name="line331">331: </a>{
+<a name="line332">332: </a>  using Kokkos::parallel_for;
+<a name="line333">333: </a>  using Kokkos::parallel_reduce;
+<a name="line334">334: </a>  int                Nblk = end - start, it, stride = stride_shared, idx = 0; <font color="#B22222">// start in shared mem</font>
+<a name="line335">335: </a>  <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>          dp, r0;
+<a name="line336">336: </a>  const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Di  = &amp;glb_idiag[start];
+<a name="line337">337: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>       *ptr = work_space_shared, dpi, a = 1.0, beta, betaold = 1.0, t1, t2;
+
+<a name="line339">339: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line340">340: </a>    ptr    = work_space_global;
+<a name="line341">341: </a>    stride = stride_global;
+<a name="line342">342: </a>  }
+<a name="line343">343: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *XX = ptr;
+<a name="line344">344: </a>  ptr += stride;
+<a name="line345">345: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line346">346: </a>    ptr    = work_space_global;
+<a name="line347">347: </a>    stride = stride_global;
+<a name="line348">348: </a>  }
+<a name="line349">349: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Rl = ptr;
+<a name="line350">350: </a>  ptr += stride;
+<a name="line351">351: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line352">352: </a>    ptr    = work_space_global;
+<a name="line353">353: </a>    stride = stride_global;
+<a name="line354">354: </a>  }
+<a name="line355">355: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Zl = ptr;
+<a name="line356">356: </a>  ptr += stride;
+<a name="line357">357: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line358">358: </a>    ptr    = work_space_global;
+<a name="line359">359: </a>    stride = stride_global;
+<a name="line360">360: </a>  }
+<a name="line361">361: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Pl = ptr;
+<a name="line362">362: </a>  ptr += stride;
+<a name="line363">363: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line364">364: </a>    ptr    = work_space_global;
+<a name="line365">365: </a>    stride = stride_global;
+<a name="line366">366: </a>  }
+<a name="line367">367: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Rr = ptr;
+<a name="line368">368: </a>  ptr += stride;
+<a name="line369">369: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line370">370: </a>    ptr    = work_space_global;
+<a name="line371">371: </a>    stride = stride_global;
+<a name="line372">372: </a>  }
+<a name="line373">373: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Zr = ptr;
+<a name="line374">374: </a>  ptr += stride;
+<a name="line375">375: </a>  <font color="#4169E1">if</font> (idx++ == nShareVec) {
+<a name="line376">376: </a>    ptr    = work_space_global;
+<a name="line377">377: </a>    stride = stride_global;
+<a name="line378">378: </a>  }
+<a name="line379">379: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *Pr = ptr;
+<a name="line380">380: </a>  ptr += stride;
+
+<a name="line382">382: </a>  <font color="#B22222">/*     r &lt;- b (x is 0) */</font>
+<a name="line383">383: </a>  parallel_for(Kokkos::TeamVectorRange(team, start, end), [=](int rowb) {
+<a name="line384">384: </a>    int rowa         = ic[rowb];
+<a name="line385">385: </a>    Rl[rowb - start] = Rr[rowb - start] = glb_b[rowa];
+<a name="line386">386: </a>    XX[rowb - start]                    = 0;
+<a name="line387">387: </a>  });
+<a name="line388">388: </a>  team.team_barrier();
+<a name="line389">389: </a>  <font color="#B22222">/*     z &lt;- Br         */</font>
+<a name="line390">390: </a>  parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line391">391: </a>    Zr[idx] = Di[idx] * Rr[idx];
+<a name="line392">392: </a>    Zl[idx] = Di[idx] * Rl[idx];
+<a name="line393">393: </a>  });
+<a name="line394">394: </a>  team.team_barrier();
+<a name="line395">395: </a>  <font color="#B22222">/*    dp &lt;- r'*r       */</font>
+<a name="line396">396: </a>  parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;lsum) { lsum += Rr[idx] * PetscConj(Rr[idx]); }, dpi);
+<a name="line397">397: </a>  team.team_barrier();
+<a name="line398">398: </a>  r0 = dp = PetscSqrtReal(<a href="../../../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(dpi));
+<a name="line399">399: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line400">400: </a>  <font color="#4169E1">if</font> (monitor) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"%3d <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> Residual norm %14.12e\n"</font>, 0, (double)dp); });
+<a name="line401">401: </a><font color="#A020F0">#endif</font>
+<a name="line402">402: </a>  <font color="#4169E1">if</font> (dp &lt; atol) {
+<a name="line403">403: </a>    metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_ATOL_NORMAL_EQUATIONS</a>;
+<a name="line404">404: </a>    it            = 0;
+<a name="line405">405: </a>    <font color="#4169E1">goto</font> done;
+<a name="line406">406: </a>  }
+<a name="line407">407: </a>  <font color="#4169E1">if</font> (0 == maxit) {
+<a name="line408">408: </a>    metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_CONVERGED_ITS.html">KSP_CONVERGED_ITS</a>;
+<a name="line409">409: </a>    it            = 0;
+<a name="line410">410: </a>    <font color="#4169E1">goto</font> done;
+<a name="line411">411: </a>  }
+
+<a name="line413">413: </a>  it = 0;
+<a name="line414">414: </a>  <font color="#4169E1">do</font> {
+<a name="line415">415: </a>    <font color="#B22222">/*     beta &lt;- r'z     */</font>
+<a name="line416">416: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;dot) { dot += Zr[idx] * PetscConj(Rl[idx]); }, beta);
+<a name="line417">417: </a>    team.team_barrier();
+<a name="line418">418: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &gt;= 6</font>
+<a name="line419">419: </a><font color="#A020F0">  #if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line420">420: </a>    Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"%7d beta = Z.R = %22.14e \n"</font>, i, (double)beta); });
+<a name="line421">421: </a><font color="#A020F0">  #endif</font>
+<a name="line422">422: </a><font color="#A020F0">#endif</font>
+<a name="line423">423: </a>    <font color="#4169E1">if</font> (beta == 0.0) {
+<a name="line424">424: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_HAPPY_BREAKDOWN</a>;
+<a name="line425">425: </a>      <font color="#4169E1">goto</font> done;
+<a name="line426">426: </a>    }
+<a name="line427">427: </a>    <font color="#4169E1">if</font> (it == 0) {
+<a name="line428">428: </a>      <font color="#B22222">/*     p &lt;- z          */</font>
+<a name="line429">429: </a>      parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line430">430: </a>        Pr[idx] = Zr[idx];
+<a name="line431">431: </a>        Pl[idx] = Zl[idx];
+<a name="line432">432: </a>      });
+<a name="line433">433: </a>    } <font color="#4169E1">else</font> {
+<a name="line434">434: </a>      t1 = beta / betaold;
+<a name="line435">435: </a>      <font color="#B22222">/*     p &lt;- z + b* p   */</font>
+<a name="line436">436: </a>      t2 = PetscConj(t1);
+<a name="line437">437: </a>      parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line438">438: </a>        Pr[idx] = t1 * Pr[idx] + Zr[idx];
+<a name="line439">439: </a>        Pl[idx] = t2 * Pl[idx] + Zl[idx];
+<a name="line440">440: </a>      });
+<a name="line441">441: </a>    }
+<a name="line442">442: </a>    team.team_barrier();
+<a name="line443">443: </a>    betaold = beta;
+<a name="line444">444: </a>    <font color="#B22222">/*     z &lt;- Kp         */</font>
+<a name="line445">445: </a>    static_cast&lt;void&gt;(<a href="../../../../../../manualpages/Mat/MatMult.html">MatMult</a>(team, glb_Aai, glb_Aaj, glb_Aaa, r, ic, start, end, Pr, Zr));
+<a name="line446">446: </a>    static_cast&lt;void&gt;(<a href="../../../../../../manualpages/Mat/MatMultTranspose.html">MatMultTranspose</a>(team, glb_Aai, glb_Aaj, glb_Aaa, r, ic, start, end, Pl, Zl));
+<a name="line447">447: </a>    <font color="#B22222">/*     dpi &lt;- z'p      */</font>
+<a name="line448">448: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;lsum) { lsum += Zr[idx] * PetscConj(Pl[idx]); }, dpi);
+<a name="line449">449: </a>    team.team_barrier();
+<a name="line450">450: </a>    <font color="#4169E1">if</font> (dpi == 0) {
+<a name="line451">451: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_HAPPY_BREAKDOWN</a>;
+<a name="line452">452: </a>      <font color="#4169E1">goto</font> done;
+<a name="line453">453: </a>    }
+<a name="line454">454: </a>    <font color="#B22222">//</font>
+<a name="line455">455: </a>    a  = beta / dpi; <font color="#B22222">/*     a = beta/p'z    */</font>
+<a name="line456">456: </a>    t1 = -a;
+<a name="line457">457: </a>    t2 = PetscConj(t1);
+<a name="line458">458: </a>    <font color="#B22222">/*     x &lt;- x + ap     */</font>
+<a name="line459">459: </a>    parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line460">460: </a>      XX[idx] = XX[idx] + a * Pr[idx];
+<a name="line461">461: </a>      Rr[idx] = Rr[idx] + t1 * Zr[idx];
+<a name="line462">462: </a>      Rl[idx] = Rl[idx] + t2 * Zl[idx];
+<a name="line463">463: </a>    });
+<a name="line464">464: </a>    team.team_barrier();
+<a name="line465">465: </a>    team.team_barrier();
+<a name="line466">466: </a>    <font color="#B22222">/*    dp &lt;- r'*r       */</font>
+<a name="line467">467: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, Nblk), [=](const int idx, <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> &amp;lsum) { lsum += Rr[idx] * PetscConj(Rr[idx]); }, dpi);
+<a name="line468">468: </a>    team.team_barrier();
+<a name="line469">469: </a>    dp = PetscSqrtReal(<a href="../../../../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(dpi));
+<a name="line470">470: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line471">471: </a>    <font color="#4169E1">if</font> (monitor) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"%3d <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> Residual norm %14.12e\n"</font>, it + 1, (double)dp); });
+<a name="line472">472: </a><font color="#A020F0">#endif</font>
+<a name="line473">473: </a>    <font color="#4169E1">if</font> (dp &lt; atol) {
+<a name="line474">474: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_ATOL_NORMAL_EQUATIONS</a>;
+<a name="line475">475: </a>      <font color="#4169E1">goto</font> done;
+<a name="line476">476: </a>    }
+<a name="line477">477: </a>    <font color="#4169E1">if</font> (dp / r0 &lt; rtol) {
+<a name="line478">478: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSPConvergedReason.html">KSP_CONVERGED_RTOL_NORMAL_EQUATIONS</a>;
+<a name="line479">479: </a>      <font color="#4169E1">goto</font> done;
+<a name="line480">480: </a>    }
+<a name="line481">481: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line482">482: </a>    <font color="#4169E1">if</font> (dp / r0 &gt; dtol) {
+<a name="line483">483: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_DIVERGED_DTOL.html">KSP_DIVERGED_DTOL</a>;
+<a name="line484">484: </a>      Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"ERROR block %d diverged: %d it, res=%e, r_0=%e (BICG does this)\n"</font>, team.league_rank(), it, dp, r0); });
+<a name="line485">485: </a>      <font color="#4169E1">goto</font> done;
+<a name="line486">486: </a>    }
+<a name="line487">487: </a><font color="#A020F0">#else</font>
+<a name="line488">488: </a>    <font color="#4169E1">if</font> (dp / r0 &gt; dtol) {
+<a name="line489">489: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_DIVERGED_DTOL.html">KSP_DIVERGED_DTOL</a>;
+<a name="line490">490: </a>      <font color="#4169E1">goto</font> done;
+<a name="line491">491: </a>    }
+<a name="line492">492: </a><font color="#A020F0">#endif</font>
+<a name="line493">493: </a>    <font color="#4169E1">if</font> (it + 1 == maxit) {
+<a name="line494">494: </a>      metad-&gt;reason = <a href="../../../../../../manualpages/KSP/KSP_CONVERGED_ITS.html">KSP_CONVERGED_ITS</a>; <font color="#B22222">// don't worry about hitting max iterations</font>
+<a name="line495">495: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line496">496: </a>      Kokkos::single(Kokkos::PerTeam(team), [=]() { printf(<font color="#666666">"ERROR block %d diverged: BICG %d it, res=%e, r_0=%e r_res=%e\n"</font>, team.league_rank(), it, dp, r0, dp / r0); });
+<a name="line497">497: </a><font color="#A020F0">#endif</font>
+<a name="line498">498: </a>      <font color="#4169E1">goto</font> done;
+<a name="line499">499: </a>    }
+<a name="line500">500: </a>    <font color="#B22222">/* z &lt;- Br  */</font>
+<a name="line501">501: </a>    parallel_for(Kokkos::TeamVectorRange(team, Nblk), [=](int idx) {
+<a name="line502">502: </a>      Zr[idx] = Di[idx] * Rr[idx];
+<a name="line503">503: </a>      Zl[idx] = Di[idx] * Rl[idx];
+<a name="line504">504: </a>    });
+
+<a name="line506">506: </a>    it++;
+<a name="line507">507: </a>  } <font color="#4169E1">while</font> (it &lt; maxit);
+<a name="line508">508: </a>done:
+<a name="line509">509: </a>  <font color="#B22222">// put x back into Plex order</font>
+<a name="line510">510: </a>  parallel_for(Kokkos::TeamVectorRange(team, start, end), [=](int rowb) {
+<a name="line511">511: </a>    int rowa    = ic[rowb];
+<a name="line512">512: </a>    glb_x[rowa] = XX[rowb - start];
+<a name="line513">513: </a>  });
+<a name="line514">514: </a>  metad-&gt;its = it;
+<a name="line515">515: </a>  <font color="#4169E1">if</font> (1) {
+<a name="line516">516: </a>    int nnz;
+<a name="line517">517: </a>    parallel_reduce(Kokkos::TeamVectorRange(team, start, end), [=](const int idx, int &amp;lsum) { lsum += (glb_Aai[idx + 1] - glb_Aai[idx]); }, nnz);
+<a name="line518">518: </a>    metad-&gt;flops = 2 * (metad-&gt;its * (10 * Nblk + 2 * nnz) + 5 * Nblk);
+<a name="line519">519: </a>  } <font color="#4169E1">else</font> {
+<a name="line520">520: </a>    metad-&gt;flops = 2 * (metad-&gt;its * (10 * Nblk + 2 * 50 * Nblk) + 5 * Nblk); <font color="#B22222">// guess</font>
+<a name="line521">521: </a>  }
+<a name="line522">522: </a>  <font color="#4169E1">return</font> <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line523">523: </a>}
+
+<a name="line525">525: </a><font color="#B22222">// <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> solver solve Ax = b; xout is output, bin is input</font>
+<a name="line526">526: </a><strong><font color="#4169E1"><a name="PCApply_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCApply_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> bin, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> xout)</font></strong>
+<a name="line527">527: </a>{
+<a name="line528">528: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+<a name="line529">529: </a>  <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>            A = pc-&gt;pmat, Aseq = A;
+<a name="line530">530: </a>  <a href="../../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a>    rank;
+
+<a name="line532">532: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line533">533: </a>  <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;rank));
+<a name="line534">534: </a>  <font color="#4169E1">if</font> (!A-&gt;spptr) Aseq = ((Mat_MPIAIJ *)A-&gt;data)-&gt;A; <font color="#B22222">// MPI</font>
+<a name="line535">535: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSeqAIJKokkosSyncDevice(Aseq));
+<a name="line536">536: </a>  {
+<a name="line537">537: </a>    <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           maxit = jac-&gt;ksp-&gt;max_it;
+<a name="line538">538: </a>    const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     conc = Kokkos::DefaultExecutionSpace().concurrency(), openmp = !!(conc &lt; 1000), team_size = (openmp == 0 &amp;&amp; PCBJKOKKOS_VEC_SIZE != 1) ? PCBJKOKKOS_TEAM_SIZE : 1;
+<a name="line539">539: </a>    const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     nwork = jac-&gt;nwork, nBlk = jac-&gt;nBlocks;
+<a name="line540">540: </a>    <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>       *glb_xdata = NULL, *dummy;
+<a name="line541">541: </a>    <a href="../../../../../../manualpages/Sys/PetscReal.html">PetscReal</a>          rtol = jac-&gt;ksp-&gt;rtol, atol = jac-&gt;ksp-&gt;abstol, dtol = jac-&gt;ksp-&gt;divtol;
+<a name="line542">542: </a>    const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_idiag = jac-&gt;d_idiag_k-&gt;data(), *glb_bdata = NULL;
+<a name="line543">543: </a>    const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *glb_Aai, *glb_Aaj, *d_bid_eqOffset = jac-&gt;d_bid_eqOffset_k-&gt;data();
+<a name="line544">544: </a>    const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *glb_Aaa;
+<a name="line545">545: </a>    const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *d_isicol = jac-&gt;d_isicol_k-&gt;data(), *d_isrow = jac-&gt;d_isrow_k-&gt;data();
+<a name="line546">546: </a>    <a href="../../../../../../manualpages/PC/PCFailedReason.html">PCFailedReason</a>     pcreason;
+<a name="line547">547: </a>    KSPIndex           ksp_type_idx = jac-&gt;ksp_type_idx;
+<a name="line548">548: </a>    <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>       mtype;
+<a name="line549">549: </a>    <a href="../../../../../../manualpages/Sys/PetscContainer.html">PetscContainer</a>     container;
+<a name="line550">550: </a>    <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           batch_sz;                <font color="#B22222">// the number of repeated DMs, [DM_e_1, DM_e_2, DM_e_batch_sz, DM_i_1, ...]</font>
+<a name="line551">551: </a>    <a href="../../../../../../manualpages/PetscSF/VecScatter.html">VecScatter</a>         plex_batch = NULL;       <font color="#B22222">// not used</font>
+<a name="line552">552: </a>    <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>                bvec;                    <font color="#B22222">// a copy of b for scatter (just alias to bin now)</font>
+<a name="line553">553: </a>    <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>          monitor  = jac-&gt;monitor; <font color="#B22222">// captured</font>
+<a name="line554">554: </a>    <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           view_bid = jac-&gt;batch_target;
+<a name="line555">555: </a>    <a href="../../../../../../manualpages/Mat/MatInfo.html">MatInfo</a>            info;
+
+<a name="line557">557: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSeqAIJGetCSRAndMemType.html">MatSeqAIJGetCSRAndMemType</a>(Aseq, &amp;glb_Aai, &amp;glb_Aaj, &amp;dummy, &amp;mtype));
+<a name="line558">558: </a>    jac-&gt;max_nits = 0;
+<a name="line559">559: </a>    glb_Aaa       = dummy;
+<a name="line560">560: </a>    <font color="#4169E1">if</font> (jac-&gt;rank_target != rank) view_bid = -1; <font color="#B22222">// turn off all but one process</font>
+<a name="line561">561: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatGetInfo.html">MatGetInfo</a>(A, <a href="../../../../../../manualpages/Mat/MatInfoType.html">MAT_LOCAL</a>, &amp;info));
+<a name="line562">562: </a>    <font color="#B22222">// get field major is to map plex IO to/from block/field major</font>
+<a name="line563">563: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <font color="#666666">"plex_batch_is"</font>, (<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;container));
+<a name="line564">564: </a>    <font color="#4169E1">if</font> (container) {
+<a name="line565">565: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(bin, &amp;bvec));
+<a name="line566">566: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscContainerGetPointer.html">PetscContainerGetPointer</a>(container, (void **)&amp;plex_batch));
+<a name="line567">567: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecScatterBegin.html">VecScatterBegin</a>(plex_batch, bin, bvec, <a href="../../../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, <a href="../../../../../../manualpages/Vec/SCATTER_FORWARD.html">SCATTER_FORWARD</a>));
+<a name="line568">568: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecScatterEnd.html">VecScatterEnd</a>(plex_batch, bin, bvec, <a href="../../../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, <a href="../../../../../../manualpages/Vec/SCATTER_FORWARD.html">SCATTER_FORWARD</a>));
+<a name="line569">569: </a>      <a href="../../../../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"No plex_batch_is -- require NO field major ordering for now"</font>);
+<a name="line570">570: </a>    } <font color="#4169E1">else</font> {
+<a name="line571">571: </a>      bvec = bin;
+<a name="line572">572: </a>    }
+<a name="line573">573: </a>    <font color="#B22222">// get x</font>
+<a name="line574">574: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetArrayAndMemType.html">VecGetArrayAndMemType</a>(xout, &amp;glb_xdata, &amp;mtype));
+<a name="line575">575: </a><font color="#A020F0">#if defined(PETSC_HAVE_CUDA)</font>
+<a name="line576">576: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(PetscMemTypeDevice(mtype), <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"No GPU data for x %d != %d"</font>, static_cast&lt;int&gt;(mtype), static_cast&lt;int&gt;(<a href="../../../../../../manualpages/Sys/PetscMemType.html">PETSC_MEMTYPE_DEVICE</a>));
+<a name="line577">577: </a><font color="#A020F0">#endif</font>
+<a name="line578">578: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetArrayReadAndMemType.html">VecGetArrayReadAndMemType</a>(bvec, &amp;glb_bdata, &amp;mtype));
+<a name="line579">579: </a><font color="#A020F0">#if defined(PETSC_HAVE_CUDA)</font>
+<a name="line580">580: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(PetscMemTypeDevice(mtype), <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"No GPU data for b"</font>);
+<a name="line581">581: </a><font color="#A020F0">#endif</font>
+<a name="line582">582: </a>    <font color="#B22222">// get batch size</font>
+<a name="line583">583: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectQuery.html">PetscObjectQuery</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <font color="#666666">"batch size"</font>, (<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a> *)&amp;container));
+<a name="line584">584: </a>    <font color="#4169E1">if</font> (container) {
+<a name="line585">585: </a>      <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *pNf = NULL;
+<a name="line586">586: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscContainerGetPointer.html">PetscContainerGetPointer</a>(container, (void **)&amp;pNf));
+<a name="line587">587: </a>      batch_sz = *pNf; <font color="#B22222">// number of times to repeat the DMs</font>
+<a name="line588">588: </a>    } <font color="#4169E1">else</font> batch_sz = 1;
+<a name="line589">589: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(nBlk % batch_sz == 0, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"batch_sz = %"</font> PetscInt_FMT <font color="#666666">", nBlk = %"</font> PetscInt_FMT, batch_sz, nBlk);
+<a name="line590">590: </a>    <font color="#4169E1">if</font> (ksp_type_idx == BATCH_KSP_GMRESKK_IDX) {
+<a name="line591">591: </a>      <font color="#B22222">// KK solver - move PETSc data into Kokkos Views, setup solver, solve, move data out of Kokkos, process metadata (convergence tests, etc.)</font>
+<a name="line592">592: </a><font color="#A020F0">#if defined(PETSC_HAVE_KOKKOS_KERNELS_BATCH)</font>
+<a name="line593">593: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PCApply_BJKOKKOSKERNELS(pc, glb_bdata, glb_xdata, glb_Aai, glb_Aaj, glb_Aaa, team_size, info, batch_sz, &amp;pcreason));
+<a name="line594">594: </a><font color="#A020F0">#else</font>
+<a name="line595">595: </a>      <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ksp_type_idx != BATCH_KSP_GMRESKK_IDX, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Type: BATCH_KSP_GMRES not supported for complex"</font>);
+<a name="line596">596: </a><font color="#A020F0">#endif</font>
+<a name="line597">597: </a>    } <font color="#4169E1">else</font> { <font color="#B22222">// Kokkos Krylov</font>
+<a name="line598">598: </a>      using scr_mem_t    = Kokkos::DefaultExecutionSpace::scratch_memory_space;
+<a name="line599">599: </a>      using vect2D_scr_t = Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> **, Kokkos::LayoutLeft, scr_mem_t&gt;;
+<a name="line600">600: </a>      Kokkos::View&lt;Batch_MetaData *, Kokkos::DefaultExecutionSpace&gt; d_metadata(<font color="#666666">"solver meta data"</font>, nBlk);
+<a name="line601">601: </a>      int                                                           stride_shared, stride_global, global_buff_words;
+<a name="line602">602: </a>      d_bid_eqOffset = jac-&gt;d_bid_eqOffset_k-&gt;data();
+<a name="line603">603: </a>      <font color="#B22222">// solve each block independently</font>
+<a name="line604">604: </a>      int scr_bytes_team_shared = 0, nShareVec = 0, nGlobBVec = 0;
+<a name="line605">605: </a>      <font color="#4169E1">if</font> (jac-&gt;const_block_size) { <font color="#B22222">// use shared memory for work vectors only if constant block size - TODO: test efficiency loss</font>
+<a name="line606">606: </a>        size_t      maximum_shared_mem_size = 64000;
+<a name="line607">607: </a>        <a href="../../../../../../manualpages/Sys/PetscDevice.html">PetscDevice</a> device;
+<a name="line608">608: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscDeviceGetDefault_Internal(&amp;device));
+<a name="line609">609: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Device/PetscDeviceGetAttribute.html">PetscDeviceGetAttribute</a>(device, <a href="../../../../../../manualpages/Sys/PetscDeviceAttribute.html">PETSC_DEVICE_ATTR_SIZE_T_SHARED_MEM_PER_BLOCK</a>, &amp;maximum_shared_mem_size));
+<a name="line610">610: </a>        stride_shared = jac-&gt;const_block_size;                                                   <font color="#B22222">// captured</font>
+<a name="line611">611: </a>        nShareVec     = maximum_shared_mem_size / (jac-&gt;const_block_size * <font color="#4169E1">sizeof</font>(<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>)); <font color="#B22222">// integer floor, number of vectors that fit in shared</font>
+<a name="line612">612: </a>        <font color="#4169E1">if</font> (nShareVec &gt; nwork) nShareVec = nwork;
+<a name="line613">613: </a>        <font color="#4169E1">else</font> nGlobBVec = nwork - nShareVec;
+<a name="line614">614: </a>        global_buff_words     = jac-&gt;n * nGlobBVec;
+<a name="line615">615: </a>        scr_bytes_team_shared = jac-&gt;const_block_size * nShareVec * <font color="#4169E1">sizeof</font>(<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>);
+<a name="line616">616: </a>      } <font color="#4169E1">else</font> {
+<a name="line617">617: </a>        scr_bytes_team_shared = 0;
+<a name="line618">618: </a>        stride_shared         = 0;
+<a name="line619">619: </a>        global_buff_words     = jac-&gt;n * nwork;
+<a name="line620">620: </a>        nGlobBVec             = nwork; <font color="#B22222">// not needed == fix</font>
+<a name="line621">621: </a>      }
+<a name="line622">622: </a>      stride_global = jac-&gt;n; <font color="#B22222">// captured</font>
+<a name="line623">623: </a><font color="#A020F0">#if defined(PETSC_HAVE_CUDA)</font>
+<a name="line624">624: </a>      nvtxRangePushA(<font color="#666666">"batch-kokkos-solve"</font>);
+<a name="line625">625: </a><font color="#A020F0">#endif</font>
+<a name="line626">626: </a>      Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *, Kokkos::DefaultExecutionSpace&gt; d_work_vecs_k(<font color="#666666">"workvectors"</font>, global_buff_words); <font color="#B22222">// global work vectors</font>
+<a name="line627">627: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &gt; 1</font>
+<a name="line628">628: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pc, <font color="#666666">"\tn = %d. %d shared bytes/team, %d global mem bytes, rtol=%e, num blocks %d, team_size=%d, %d vector threads, %d shared vectors, %d global vectors\n"</font>, (int)jac-&gt;n, scr_bytes_team_shared, global_buff_words, rtol, (int)nBlk, (int)team_size, PCBJKOKKOS_VEC_SIZE, nShareVec, nGlobBVec));
+<a name="line629">629: </a><font color="#A020F0">#endif</font>
+<a name="line630">630: </a>      <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *d_work_vecs = d_work_vecs_k.data();
+<a name="line631">631: </a>      Kokkos::parallel_for(
+<a name="line632">632: </a>        <font color="#666666">"Solve"</font>, Kokkos::TeamPolicy&lt;Kokkos::LaunchBounds&lt;256, 4&gt;&gt;(nBlk, team_size, PCBJKOKKOS_VEC_SIZE).set_scratch_size(PCBJKOKKOS_SHARED_LEVEL, Kokkos::PerTeam(scr_bytes_team_shared)), KOKKOS_LAMBDA(const team_member team) {
+<a name="line633">633: </a>          const int    blkID = team.league_rank(), start = d_bid_eqOffset[blkID], end = d_bid_eqOffset[blkID + 1];
+<a name="line634">634: </a>          vect2D_scr_t work_vecs_shared(team.team_scratch(PCBJKOKKOS_SHARED_LEVEL), end - start, nShareVec);
+<a name="line635">635: </a>          <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *work_buff_shared = work_vecs_shared.data();
+<a name="line636">636: </a>          <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *work_buff_global = &amp;d_work_vecs[start]; <font color="#B22222">// start inc'ed in</font>
+<a name="line637">637: </a>          bool         print            = monitor &amp;&amp; (blkID == view_bid);
+<a name="line638">638: </a>          <font color="#4169E1">switch</font> (ksp_type_idx) {
+<a name="line639">639: </a>          <font color="#4169E1">case</font> BATCH_KSP_BICG_IDX:
+<a name="line640">640: </a>            static_cast&lt;void&gt;(BJSolve_BICG(team, glb_Aai, glb_Aaj, glb_Aaa, d_isrow, d_isicol, work_buff_global, stride_global, nShareVec, work_buff_shared, stride_shared, rtol, atol, dtol, maxit, &amp;d_metadata[blkID], start, end, glb_idiag, glb_bdata, glb_xdata, print));
+<a name="line641">641: </a>            <font color="#4169E1">break</font>;
+<a name="line642">642: </a>          <font color="#4169E1">case</font> BATCH_KSP_TFQMR_IDX:
+<a name="line643">643: </a>            static_cast&lt;void&gt;(BJSolve_TFQMR(team, glb_Aai, glb_Aaj, glb_Aaa, d_isrow, d_isicol, work_buff_global, stride_global, nShareVec, work_buff_shared, stride_shared, rtol, atol, dtol, maxit, &amp;d_metadata[blkID], start, end, glb_idiag, glb_bdata, glb_xdata, print));
+<a name="line644">644: </a>            <font color="#4169E1">break</font>;
+<a name="line645">645: </a>          <font color="#4169E1">default</font>:
+<a name="line646">646: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line647">647: </a>            printf(<font color="#666666">"Unknown <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> type %d\n"</font>, ksp_type_idx);
+<a name="line648">648: </a><font color="#A020F0">#else</font>
+<a name="line649">649: </a>            <font color="#B22222">/* void */</font>;
+<a name="line650">650: </a><font color="#A020F0">#endif</font>
+<a name="line651">651: </a>          }
+<a name="line652">652: </a>        });
+<a name="line653">653: </a>      Kokkos::fence();
+<a name="line654">654: </a><font color="#A020F0">#if defined(PETSC_HAVE_CUDA)</font>
+<a name="line655">655: </a>      nvtxRangePop();
+<a name="line656">656: </a>      nvtxRangePushA(<font color="#666666">"Post-solve-metadata"</font>);
+<a name="line657">657: </a><font color="#A020F0">#endif</font>
+<a name="line658">658: </a>      auto h_metadata = Kokkos::create_mirror(Kokkos::HostSpace::memory_space(), d_metadata);
+<a name="line659">659: </a>      Kokkos::deep_copy(h_metadata, d_metadata);
+<a name="line660">660: </a>      <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> max_nnit = -1;
+<a name="line661">661: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &gt; 1</font>
+<a name="line662">662: </a>      <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> mbid = 0;
+<a name="line663">663: </a><font color="#A020F0">#endif</font>
+<a name="line664">664: </a>      int in[2], out[2];
+<a name="line665">665: </a>      <font color="#4169E1">if</font> (jac-&gt;reason) { <font color="#B22222">// -pc_bjkokkos_ksp_converged_reason</font>
+<a name="line666">666: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &gt;= 3</font>
+<a name="line667">667: </a><font color="#A020F0">  #if PCBJKOKKOS_VERBOSE_LEVEL &gt;= 4</font>
+<a name="line668">668: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <font color="#666666">"Iterations\n"</font>));
+<a name="line669">669: </a><font color="#A020F0">  #endif</font>
+<a name="line670">670: </a>        <font color="#B22222">// assume species major</font>
+<a name="line671">671: </a><font color="#A020F0">  #if PCBJKOKKOS_VERBOSE_LEVEL == 3</font>
+<a name="line672">672: </a>        <font color="#4169E1">if</font> (batch_sz != 1) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <font color="#666666">"%s: max iterations per species:"</font>, ksp_type_idx == BATCH_KSP_BICG_IDX ? <font color="#666666">"bicg"</font> : <font color="#666666">"tfqmr"</font>));
+<a name="line673">673: </a>        <font color="#4169E1">else</font> <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <font color="#666666">"    Linear solve converged due to %s iterations "</font>, ksp_type_idx == BATCH_KSP_BICG_IDX ? <font color="#666666">"bicg"</font> : <font color="#666666">"tfqmr"</font>));
+<a name="line674">674: </a><font color="#A020F0">  #endif</font>
+<a name="line675">675: </a>        <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> dmIdx = 0, head = 0, s = 0; dmIdx &lt; jac-&gt;num_dms; dmIdx += batch_sz) {
+<a name="line676">676: </a>          <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> f = 0, idx = head; f &lt; jac-&gt;dm_Nf[dmIdx]; f++, idx++, s++) {
+<a name="line677">677: </a>            <font color="#4169E1">for</font> (int bid = 0; bid &lt; batch_sz; bid++) {
+<a name="line678">678: </a><font color="#A020F0">  #if PCBJKOKKOS_VERBOSE_LEVEL &gt;= 4</font>
+<a name="line679">679: </a>              jac-&gt;max_nits += h_metadata[idx + bid * jac-&gt;dm_Nf[dmIdx]].its; <font color="#B22222">// report total number of iterations with high verbose</font>
+<a name="line680">680: </a>              <font color="#4169E1">if</font> (h_metadata[idx + bid * jac-&gt;dm_Nf[dmIdx]].its &gt; max_nnit) {
+<a name="line681">681: </a>                max_nnit = h_metadata[idx + bid * jac-&gt;dm_Nf[dmIdx]].its;
+<a name="line682">682: </a>                mbid     = bid;
+<a name="line683">683: </a>              }
+<a name="line684">684: </a><font color="#A020F0">  #else</font>
+<a name="line685">685: </a>              <font color="#4169E1">if</font> (h_metadata[idx + bid * jac-&gt;dm_Nf[dmIdx]].its &gt; max_nnit) {
+<a name="line686">686: </a>                jac-&gt;max_nits = max_nnit = h_metadata[idx + bid * jac-&gt;dm_Nf[dmIdx]].its;
+<a name="line687">687: </a>                mbid                     = bid;
+<a name="line688">688: </a>              }
+<a name="line689">689: </a><font color="#A020F0">  #endif</font>
+<a name="line690">690: </a>            }
+<a name="line691">691: </a><font color="#A020F0">  #if PCBJKOKKOS_VERBOSE_LEVEL &gt;= 4</font>
+<a name="line692">692: </a>            <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <font color="#666666">"%2"</font> PetscInt_FMT <font color="#666666">":"</font>, s));
+<a name="line693">693: </a>            <font color="#4169E1">for</font> (int bid = 0; bid &lt; batch_sz; bid++) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <font color="#666666">"%3"</font> PetscInt_FMT <font color="#666666">" "</font>, h_metadata[idx + bid * jac-&gt;dm_Nf[dmIdx]].its));
+<a name="line694">694: </a>            <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <font color="#666666">"\n"</font>));
+<a name="line695">695: </a><font color="#A020F0">  #else // == 3</font>
+<a name="line696">696: </a>            <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <font color="#666666">"%3"</font> PetscInt_FMT <font color="#666666">" "</font>, max_nnit));
+<a name="line697">697: </a><font color="#A020F0">  #endif</font>
+<a name="line698">698: </a>          }
+<a name="line699">699: </a>          head += batch_sz * jac-&gt;dm_Nf[dmIdx];
+<a name="line700">700: </a>        }
+<a name="line701">701: </a><font color="#A020F0">  #if PCBJKOKKOS_VERBOSE_LEVEL == 3</font>
+<a name="line702">702: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <font color="#666666">"\n"</font>));
+<a name="line703">703: </a><font color="#A020F0">  #endif</font>
+<a name="line704">704: </a><font color="#A020F0">#endif</font>
+<a name="line705">705: </a>        <font color="#4169E1">if</font> (max_nnit == -1) { <font color="#B22222">// < 3</font>
+<a name="line706">706: </a>          <font color="#4169E1">for</font> (int blkID = 0; blkID &lt; nBlk; blkID++) {
+<a name="line707">707: </a>            <font color="#4169E1">if</font> (h_metadata[blkID].its &gt; max_nnit) {
+<a name="line708">708: </a>              jac-&gt;max_nits = max_nnit = h_metadata[blkID].its;
+<a name="line709">709: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &gt; 1</font>
+<a name="line710">710: </a>              mbid = blkID;
+<a name="line711">711: </a><font color="#A020F0">#endif</font>
+<a name="line712">712: </a>            }
+<a name="line713">713: </a>          }
+<a name="line714">714: </a>        }
+<a name="line715">715: </a>        in[0] = max_nnit;
+<a name="line716">716: </a>        in[1] = rank;
+<a name="line717">717: </a>        <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="../../../../../../manualpages/Sys/MPIU_Allreduce.html">MPIU_Allreduce</a>(in, out, 1, MPI_2INT, MPI_MAXLOC, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A)));
+<a name="line718">718: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &gt; 1</font>
+<a name="line719">719: </a>        <font color="#4169E1">if</font> (0 == rank) {
+<a name="line720">720: </a>          <font color="#4169E1">if</font> (batch_sz != 1)
+<a name="line721">721: </a>            <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"[%d] Linear solve converged due to %s iterations %d (max), on block %"</font> PetscInt_FMT <font color="#666666">", species %"</font> PetscInt_FMT <font color="#666666">" (max)\n"</font>, out[1], KSPConvergedReasons[h_metadata[mbid].reason], out[0], mbid % batch_sz, mbid / batch_sz));
+<a name="line722">722: </a>          <font color="#4169E1">else</font> <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"[%d] Linear solve converged due to %s iterations %d (max), on block %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, out[1], KSPConvergedReasons[h_metadata[mbid].reason], out[0], mbid));
+<a name="line723">723: </a>        }
+<a name="line724">724: </a><font color="#A020F0">#endif</font>
+<a name="line725">725: </a>      }
+<a name="line726">726: </a>      <font color="#4169E1">for</font> (int blkID = 0; blkID &lt; nBlk; blkID++) {
+<a name="line727">727: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscLogGpuFlops.html">PetscLogGpuFlops</a>((<a href="../../../../../../manualpages/Sys/PetscLogDouble.html">PetscLogDouble</a>)h_metadata[blkID].flops));
+<a name="line728">728: </a>        <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(h_metadata[blkID].reason &gt;= 0 || !jac-&gt;ksp-&gt;errorifnotconverged, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_CONV_FAILED</a>, <font color="#666666">"ERROR reason=%s, its=%"</font> PetscInt_FMT <font color="#666666">". species %"</font> PetscInt_FMT <font color="#666666">", batch %"</font> PetscInt_FMT,
+<a name="line729">729: </a>                   KSPConvergedReasons[h_metadata[blkID].reason], h_metadata[blkID].its, blkID / batch_sz, blkID % batch_sz);
+<a name="line730">730: </a>      }
+<a name="line731">731: </a>      {
+<a name="line732">732: </a>        int errsum;
+<a name="line733">733: </a>        Kokkos::parallel_reduce(
+<a name="line734">734: </a>          nBlk,
+<a name="line735">735: </a>          KOKKOS_LAMBDA(const int idx, int &amp;lsum) {
+<a name="line736">736: </a>            <font color="#4169E1">if</font> (d_metadata[idx].reason &lt; 0) ++lsum;
+<a name="line737">737: </a>          },
+<a name="line738">738: </a>          errsum);
+<a name="line739">739: </a>        pcreason = errsum ? <a href="../../../../../../manualpages/PC/PCFailedReason.html">PC_SUBPC_ERROR</a> : <a href="../../../../../../manualpages/PC/PCFailedReason.html">PC_NOERROR</a>;
+<a name="line740">740: </a>        <font color="#4169E1">if</font> (!errsum &amp;&amp; !jac-&gt;max_nits) { <font color="#B22222">// set max its to give back to top <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a></font>
+<a name="line741">741: </a>          <font color="#4169E1">for</font> (int blkID = 0; blkID &lt; nBlk; blkID++) {
+<a name="line742">742: </a>            <font color="#4169E1">if</font> (h_metadata[blkID].its &gt; jac-&gt;max_nits) jac-&gt;max_nits = h_metadata[blkID].its;
+<a name="line743">743: </a>          }
+<a name="line744">744: </a>        } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (errsum) {
+<a name="line745">745: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"[%d] ERROR Kokkos batch solver did not converge in all solves\n"</font>, (int)rank));
+<a name="line746">746: </a>        }
+<a name="line747">747: </a>      }
+<a name="line748">748: </a><font color="#A020F0">#if defined(PETSC_HAVE_CUDA)</font>
+<a name="line749">749: </a>      nvtxRangePop();
+<a name="line750">750: </a><font color="#A020F0">#endif</font>
+<a name="line751">751: </a>    } <font color="#B22222">// end of Kokkos (not Kernels) solvers block</font>
+<a name="line752">752: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecRestoreArrayAndMemType.html">VecRestoreArrayAndMemType</a>(xout, &amp;glb_xdata));
+<a name="line753">753: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecRestoreArrayReadAndMemType.html">VecRestoreArrayReadAndMemType</a>(bvec, &amp;glb_bdata));
+<a name="line754">754: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/PC/PCSetFailedReason.html">PCSetFailedReason</a>(pc, pcreason));
+<a name="line755">755: </a>    <font color="#B22222">// map back to Plex space - not used</font>
+<a name="line756">756: </a>    <font color="#4169E1">if</font> (plex_batch) {
+<a name="line757">757: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(xout, bvec));
+<a name="line758">758: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecScatterBegin.html">VecScatterBegin</a>(plex_batch, bvec, xout, <a href="../../../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, <a href="../../../../../../manualpages/Vec/SCATTER_REVERSE.html">SCATTER_REVERSE</a>));
+<a name="line759">759: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecScatterEnd.html">VecScatterEnd</a>(plex_batch, bvec, xout, <a href="../../../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>, <a href="../../../../../../manualpages/Vec/SCATTER_REVERSE.html">SCATTER_REVERSE</a>));
+<a name="line760">760: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;bvec));
+<a name="line761">761: </a>    }
+<a name="line762">762: </a>  }
+<a name="line763">763: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line764">764: </a>}
+
+<a name="line766">766: </a><strong><font color="#4169E1"><a name="PCSetUp_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCSetUp_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line767">767: </a>{
+<a name="line768">768: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+<a name="line769">769: </a>  <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>            A = pc-&gt;pmat, Aseq = A; <font color="#B22222">// use filtered block matrix, really "P"</font>
+<a name="line770">770: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      flg;
+
+<a name="line772">772: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line773">773: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(A, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"No matrix - A is used above"</font>);
+<a name="line774">774: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompareAny.html">PetscObjectTypeCompareAny</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, &amp;flg, <a href="../../../../../../manualpages/Mat/MATSEQAIJKOKKOS.html">MATSEQAIJKOKKOS</a>, MATMPIAIJKOKKOS, <a href="../../../../../../manualpages/Mat/MATAIJKOKKOS.html">MATAIJKOKKOS</a>, <font color="#666666">""</font>));
+<a name="line775">775: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(flg, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"must use '-[dm_]mat_type aijkokkos -[dm_]vec_type kokkos' for -pc_type bjkokkos"</font>);
+<a name="line776">776: </a>  <font color="#4169E1">if</font> (!A-&gt;spptr) Aseq = ((Mat_MPIAIJ *)A-&gt;data)-&gt;A; <font color="#B22222">// MPI</font>
+<a name="line777">777: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSeqAIJKokkosSyncDevice(Aseq));
+<a name="line778">778: </a>  {
+<a name="line779">779: </a>    <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    Istart, Iend;
+<a name="line780">780: </a>    <a href="../../../../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> rank;
+<a name="line781">781: </a>    <a href="../../../../../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a>(<a href="http://www.mpich.org/static/docs/latest/www3/MPI_Comm_rank.html#MPI_Comm_rank">MPI_Comm_rank</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;rank));
+<a name="line782">782: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(A, &amp;Istart, &amp;Iend));
+<a name="line783">783: </a>    <font color="#4169E1">if</font> (!jac-&gt;vec_diag) {
+<a name="line784">784: </a>      <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>     *subX = NULL;
+<a name="line785">785: </a>      <a href="../../../../../../manualpages/DM/DM.html">DM</a>       pack, *subDM = NULL;
+<a name="line786">786: </a>      <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nDMs, n, *block_sizes = NULL;
+<a name="line787">787: </a>      <a href="../../../../../../manualpages/IS/IS.html">IS</a>       isrow, isicol;
+<a name="line788">788: </a>      { <font color="#B22222">// Permute the matrix to get a block diagonal system: d_isrow_k, d_isicol_k</font>
+<a name="line789">789: </a>        <a href="../../../../../../manualpages/Mat/MatOrderingType.html">MatOrderingType</a> rtype;
+<a name="line790">790: </a>        const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *rowindices, *icolindices;
+<a name="line791">791: </a>        rtype = MATORDERINGRCM;
+<a name="line792">792: </a>        <font color="#B22222">// get permutation. And invert. should we convert to local indices?</font>
+<a name="line793">793: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/MatGraphOperations/MatGetOrdering.html">MatGetOrdering</a>(Aseq, rtype, &amp;isrow, &amp;isicol)); <font color="#B22222">// only seems to work for seq matrix</font>
+<a name="line794">794: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;isrow));
+<a name="line795">795: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISInvertPermutation.html">ISInvertPermutation</a>(isicol, <a href="../../../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, &amp;isrow)); <font color="#B22222">// THIS <a href="../../../../../../manualpages/IS/IS.html">IS</a> BACKWARD -- isrow is inverse</font>
+<a name="line796">796: </a>        <font color="#B22222">// if (rank==1) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISView.html">ISView</a>(isicol, <a href="../../../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));</font>
+<a name="line797">797: </a>        <font color="#4169E1">if</font> (0) {
+<a name="line798">798: </a>          <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> mat_block_order; <font color="#B22222">// debug</font>
+<a name="line799">799: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISShift.html">ISShift</a>(isicol, Istart, isicol));
+<a name="line800">800: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatCreateSubMatrix.html">MatCreateSubMatrix</a>(A, isicol, isicol, <a href="../../../../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, &amp;mat_block_order));
+<a name="line801">801: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISShift.html">ISShift</a>(isicol, -Istart, isicol));
+<a name="line802">802: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatViewFromOptions.html">MatViewFromOptions</a>(mat_block_order, NULL, <font color="#666666">"-ksp_batch_reorder_view"</font>));
+<a name="line803">803: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;mat_block_order));
+<a name="line804">804: </a>        }
+<a name="line805">805: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isrow, &amp;rowindices)); <font color="#B22222">// local idx</font>
+<a name="line806">806: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isicol, &amp;icolindices));
+<a name="line807">807: </a>        const Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, Kokkos::HostSpace, Kokkos::MemoryTraits&lt;Kokkos::Unmanaged&gt;&gt; h_isrow_k((<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *)rowindices, A-&gt;rmap-&gt;n);
+<a name="line808">808: </a>        const Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, Kokkos::HostSpace, Kokkos::MemoryTraits&lt;Kokkos::Unmanaged&gt;&gt; h_isicol_k((<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *)icolindices, A-&gt;rmap-&gt;n);
+<a name="line809">809: </a>        jac-&gt;d_isrow_k  = new Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;(Kokkos::create_mirror(DefaultMemorySpace(), h_isrow_k));
+<a name="line810">810: </a>        jac-&gt;d_isicol_k = new Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *&gt;(Kokkos::create_mirror(DefaultMemorySpace(), h_isicol_k));
+<a name="line811">811: </a>        Kokkos::deep_copy(*jac-&gt;d_isrow_k, h_isrow_k);
+<a name="line812">812: </a>        Kokkos::deep_copy(*jac-&gt;d_isicol_k, h_isicol_k);
+<a name="line813">813: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isrow, &amp;rowindices));
+<a name="line814">814: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isicol, &amp;icolindices));
+<a name="line815">815: </a>        <font color="#B22222">// if (rank==1) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISView.html">ISView</a>(isicol, <a href="../../../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));</font>
+<a name="line816">816: </a>      }
+<a name="line817">817: </a>      <font color="#B22222">// get block sizes & allocate vec_diag</font>
+<a name="line818">818: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/PC/PCGetDM.html">PCGetDM</a>(pc, &amp;pack));
+<a name="line819">819: </a>      <font color="#4169E1">if</font> (pack) {
+<a name="line820">820: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pack, <a href="../../../../../../manualpages/DMComposite/DMCOMPOSITE.html">DMCOMPOSITE</a>, &amp;flg));
+<a name="line821">821: </a>        <font color="#4169E1">if</font> (flg) {
+<a name="line822">822: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/DMComposite/DMCompositeGetNumberDM.html">DMCompositeGetNumberDM</a>(pack, &amp;nDMs));
+<a name="line823">823: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/DM/DMCreateGlobalVector.html">DMCreateGlobalVector</a>(pack, &amp;jac-&gt;vec_diag));
+<a name="line824">824: </a>        } <font color="#4169E1">else</font> pack = NULL; <font color="#B22222">// flag for no <a href="../../../../../../manualpages/DM/DM.html">DM</a></font>
+<a name="line825">825: </a>      }
+<a name="line826">826: </a>      <font color="#4169E1">if</font> (!jac-&gt;vec_diag) { <font color="#B22222">// get 'nDMs' and sizes 'block_sizes' w/o DMComposite. TODO: User could provide ISs</font>
+<a name="line827">827: </a>        <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>        bsrt, bend, ncols, ntot = 0;
+<a name="line828">828: </a>        const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *colsA, nloc = Iend - Istart;
+<a name="line829">829: </a>        const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *rowindices, *icolindices;
+<a name="line830">830: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(nloc, &amp;block_sizes)); <font color="#B22222">// very inefficient, to big</font>
+<a name="line831">831: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isrow, &amp;rowindices));
+<a name="line832">832: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISGetIndices.html">ISGetIndices</a>(isicol, &amp;icolindices));
+<a name="line833">833: </a>        nDMs = 0;
+<a name="line834">834: </a>        bsrt = 0;
+<a name="line835">835: </a>        bend = 1;
+<a name="line836">836: </a>        <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> row_B = 0; row_B &lt; nloc; row_B++) { <font color="#B22222">// for all rows in block diagonal space</font>
+<a name="line837">837: </a>          <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> rowA = icolindices[row_B], minj = PETSC_INT_MAX, maxj = 0;
+<a name="line838">838: </a>          <font color="#B22222">//<a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, "\t[%d] rowA = %d\n",rank,rowA));</font>
+<a name="line839">839: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatGetRow.html">MatGetRow</a>(Aseq, rowA, &amp;ncols, &amp;colsA, NULL)); <font color="#B22222">// not sorted in permutation</font>
+<a name="line840">840: </a>          <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ncols, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Empty row not supported: %"</font> PetscInt_FMT, row_B);
+<a name="line841">841: </a>          <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> colj = 0; colj &lt; ncols; colj++) {
+<a name="line842">842: </a>            <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> colB = rowindices[colsA[colj]]; <font color="#B22222">// use local idx</font>
+<a name="line843">843: </a>            <font color="#B22222">//<a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, "\t\t[%d] colB = %d\n",rank,colB));</font>
+<a name="line844">844: </a>            <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(colB &gt;= 0 &amp;&amp; colB &lt; nloc, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"colB &lt; 0: %"</font> PetscInt_FMT, colB);
+<a name="line845">845: </a>            <font color="#4169E1">if</font> (colB &gt; maxj) maxj = colB;
+<a name="line846">846: </a>            <font color="#4169E1">if</font> (colB &lt; minj) minj = colB;
+<a name="line847">847: </a>          }
+<a name="line848">848: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatRestoreRow.html">MatRestoreRow</a>(Aseq, rowA, &amp;ncols, &amp;colsA, NULL));
+<a name="line849">849: </a>          <font color="#4169E1">if</font> (minj &gt;= bend) { <font color="#B22222">// first column is > max of last block -- new block or last block</font>
+<a name="line850">850: </a>            <font color="#B22222">//<a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), "\t\t finish block %d, N loc = %d (%d,%d)\n", nDMs+1, bend - bsrt,bsrt,bend));</font>
+<a name="line851">851: </a>            block_sizes[nDMs] = bend - bsrt;
+<a name="line852">852: </a>            ntot += block_sizes[nDMs];
+<a name="line853">853: </a>            <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(minj == bend, <a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"minj != bend: %"</font> PetscInt_FMT <font color="#666666">" != %"</font> PetscInt_FMT, minj, bend);
+<a name="line854">854: </a>            bsrt = bend;
+<a name="line855">855: </a>            bend++; <font color="#B22222">// start with size 1 in new block</font>
+<a name="line856">856: </a>            nDMs++;
+<a name="line857">857: </a>          }
+<a name="line858">858: </a>          <font color="#4169E1">if</font> (maxj + 1 &gt; bend) bend = maxj + 1;
+<a name="line859">859: </a>          <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(minj &gt;= bsrt || row_B == Iend - 1, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"%"</font> PetscInt_FMT <font color="#666666">") minj &lt; bsrt: %"</font> PetscInt_FMT <font color="#666666">" != %"</font> PetscInt_FMT, rowA, minj, bsrt);
+<a name="line860">860: </a>          <font color="#B22222">//<a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, "[%d] %d) row %d.%d) cols %d : %d ; bsrt = %d, bend = %d\n",rank,row_B,nDMs,rowA,minj,maxj,bsrt,bend));</font>
+<a name="line861">861: </a>        }
+<a name="line862">862: </a>        <font color="#B22222">// do last block</font>
+<a name="line863">863: </a>        <font color="#B22222">//<a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, "\t\t\t [%d] finish block %d, N loc = %d (%d,%d)\n", rank, nDMs+1, bend - bsrt,bsrt,bend));</font>
+<a name="line864">864: </a>        block_sizes[nDMs] = bend - bsrt;
+<a name="line865">865: </a>        ntot += block_sizes[nDMs];
+<a name="line866">866: </a>        nDMs++;
+<a name="line867">867: </a>        <font color="#B22222">// cleanup</font>
+<a name="line868">868: </a>        <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ntot == nloc, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"n total != n local: %"</font> PetscInt_FMT <font color="#666666">" != %"</font> PetscInt_FMT, ntot, nloc);
+<a name="line869">869: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isrow, &amp;rowindices));
+<a name="line870">870: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a>(isicol, &amp;icolindices));
+<a name="line871">871: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscRealloc.html">PetscRealloc</a>(<font color="#4169E1">sizeof</font>(<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>) * nDMs, &amp;block_sizes));
+<a name="line872">872: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatCreateVecs.html">MatCreateVecs</a>(A, &amp;jac-&gt;vec_diag, NULL));
+<a name="line873">873: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pc, <font color="#666666">"Setup Matrix based meta data (not DMComposite not attached to <a href="../../../../../../manualpages/PC/PC.html">PC</a>) %"</font> PetscInt_FMT <font color="#666666">" sub domains\n"</font>, nDMs));
+<a name="line874">874: </a>      }
+<a name="line875">875: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;isrow));
+<a name="line876">876: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/IS/ISDestroy.html">ISDestroy</a>(&amp;isicol));
+<a name="line877">877: </a>      jac-&gt;num_dms = nDMs;
+<a name="line878">878: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(jac-&gt;vec_diag, &amp;n));
+<a name="line879">879: </a>      jac-&gt;n         = n;
+<a name="line880">880: </a>      jac-&gt;d_idiag_k = new Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *, Kokkos::LayoutRight&gt;(<font color="#666666">"idiag"</font>, n);
+<a name="line881">881: </a>      <font color="#B22222">// options</font>
+<a name="line882">882: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PCBJKOKKOSCreateKSP_BJKOKKOS(pc));
+<a name="line883">883: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPSetFromOptions.html">KSPSetFromOptions</a>(jac-&gt;ksp));
+<a name="line884">884: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompareAny.html">PetscObjectTypeCompareAny</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp, &amp;flg, <a href="../../../../../../manualpages/KSP/KSPBICG.html">KSPBICG</a>, <font color="#666666">""</font>));
+<a name="line885">885: </a>      <font color="#4169E1">if</font> (flg) {
+<a name="line886">886: </a>        jac-&gt;ksp_type_idx = BATCH_KSP_BICG_IDX;
+<a name="line887">887: </a>        jac-&gt;nwork        = 7;
+<a name="line888">888: </a>      } <font color="#4169E1">else</font> {
+<a name="line889">889: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompareAny.html">PetscObjectTypeCompareAny</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp, &amp;flg, <a href="../../../../../../manualpages/KSP/KSPTFQMR.html">KSPTFQMR</a>, <font color="#666666">""</font>));
+<a name="line890">890: </a>        <font color="#4169E1">if</font> (flg) {
+<a name="line891">891: </a>          jac-&gt;ksp_type_idx = BATCH_KSP_TFQMR_IDX;
+<a name="line892">892: </a>          jac-&gt;nwork        = 10;
+<a name="line893">893: </a>        } <font color="#4169E1">else</font> {
+<a name="line894">894: </a><font color="#A020F0">#if defined(PETSC_HAVE_KOKKOS_KERNELS_BATCH)</font>
+<a name="line895">895: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompareAny.html">PetscObjectTypeCompareAny</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp, &amp;flg, <a href="../../../../../../manualpages/KSP/KSPGMRES.html">KSPGMRES</a>, <font color="#666666">""</font>));
+<a name="line896">896: </a>          <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(flg, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Unsupported batch ksp type"</font>);
+<a name="line897">897: </a>          jac-&gt;ksp_type_idx = BATCH_KSP_GMRESKK_IDX;
+<a name="line898">898: </a>          jac-&gt;nwork        = 0;
+<a name="line899">899: </a><font color="#A020F0">#else</font>
+<a name="line900">900: </a>          <a href="../../../../../../manualpages/KSP/KSPType.html">KSPType</a> ksptype;
+<a name="line901">901: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPGetType.html">KSPGetType</a>(jac-&gt;ksp, &amp;ksptype));
+<a name="line902">902: </a>          <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(flg, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Type: %s not supported in complex"</font>, ksptype);
+<a name="line903">903: </a><font color="#A020F0">#endif</font>
+<a name="line904">904: </a>        }
+<a name="line905">905: </a>      }
+<a name="line906">906: </a>      <a href="../../../../../../manualpages/Sys/PetscOptionsBegin.html">PetscOptionsBegin</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp), ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp)-&gt;prefix, <font color="#666666">"Options for Kokkos batch solver"</font>, <font color="#666666">"none"</font>);
+<a name="line907">907: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-ksp_converged_reason"</font>, <font color="#666666">""</font>, <font color="#666666">"bjkokkos.kokkos.cxx.c"</font>, jac-&gt;reason, &amp;jac-&gt;reason, NULL));
+<a name="line908">908: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsBool.html">PetscOptionsBool</a>(<font color="#666666">"-ksp_monitor"</font>, <font color="#666666">""</font>, <font color="#666666">"bjkokkos.kokkos.cxx.c"</font>, jac-&gt;monitor, &amp;jac-&gt;monitor, NULL));
+<a name="line909">909: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-ksp_batch_target"</font>, <font color="#666666">""</font>, <font color="#666666">"bjkokkos.kokkos.cxx.c"</font>, jac-&gt;batch_target, &amp;jac-&gt;batch_target, NULL));
+<a name="line910">910: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-ksp_rank_target"</font>, <font color="#666666">""</font>, <font color="#666666">"bjkokkos.kokkos.cxx.c"</font>, jac-&gt;rank_target, &amp;jac-&gt;rank_target, NULL));
+<a name="line911">911: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscOptionsInt.html">PetscOptionsInt</a>(<font color="#666666">"-ksp_batch_nsolves_team"</font>, <font color="#666666">""</font>, <font color="#666666">"bjkokkos.kokkos.cxx.c"</font>, jac-&gt;nsolves_team, &amp;jac-&gt;nsolves_team, NULL));
+<a name="line912">912: </a>      <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(jac-&gt;batch_target &lt; jac-&gt;num_dms, <a href="../../../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"-ksp_batch_target (%"</font> PetscInt_FMT <font color="#666666">") &gt;= number of DMs (%"</font> PetscInt_FMT <font color="#666666">")"</font>, jac-&gt;batch_target, jac-&gt;num_dms);
+<a name="line913">913: </a>      <a href="../../../../../../manualpages/Sys/PetscOptionsEnd.html">PetscOptionsEnd</a>();
+<a name="line914">914: </a>      <font color="#B22222">// get blocks - jac->d_bid_eqOffset_k</font>
+<a name="line915">915: </a>      <font color="#4169E1">if</font> (pack) {
+<a name="line916">916: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(<font color="#4169E1">sizeof</font>(*subX) * nDMs, &amp;subX));
+<a name="line917">917: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(<font color="#4169E1">sizeof</font>(*subDM) * nDMs, &amp;subDM));
+<a name="line918">918: </a>      }
+<a name="line919">919: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc.html">PetscMalloc</a>(<font color="#4169E1">sizeof</font>(*jac-&gt;dm_Nf) * nDMs, &amp;jac-&gt;dm_Nf));
+<a name="line920">920: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pc, <font color="#666666">"Have %"</font> PetscInt_FMT <font color="#666666">" blocks, n=%"</font> PetscInt_FMT <font color="#666666">" rtol=%g type = %s\n"</font>, nDMs, n, (double)jac-&gt;ksp-&gt;rtol, ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp)-&gt;type_name));
+<a name="line921">921: </a>      <font color="#4169E1">if</font> (pack) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/DMComposite/DMCompositeGetEntriesArray.html">DMCompositeGetEntriesArray</a>(pack, subDM));
+<a name="line922">922: </a>      jac-&gt;nBlocks = 0;
+<a name="line923">923: </a>      <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = 0; ii &lt; nDMs; ii++) {
+<a name="line924">924: </a>        <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> Nf;
+<a name="line925">925: </a>        <font color="#4169E1">if</font> (subDM) {
+<a name="line926">926: </a>          <a href="../../../../../../manualpages/DM/DM.html">DM</a>           dm = subDM[ii];
+<a name="line927">927: </a>          <a href="../../../../../../manualpages/PetscSection/PetscSection.html">PetscSection</a> section;
+<a name="line928">928: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>(dm, &amp;section));
+<a name="line929">929: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/PetscSection/PetscSectionGetNumFields.html">PetscSectionGetNumFields</a>(section, &amp;Nf));
+<a name="line930">930: </a>        } <font color="#4169E1">else</font> Nf = 1;
+<a name="line931">931: </a>        jac-&gt;nBlocks += Nf;
+<a name="line932">932: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &lt;= 2</font>
+<a name="line933">933: </a>        <font color="#4169E1">if</font> (ii == 0) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pc, <font color="#666666">"%"</font> PetscInt_FMT <font color="#666666">") %"</font> PetscInt_FMT <font color="#666666">" blocks (%"</font> PetscInt_FMT <font color="#666666">" total)\n"</font>, ii, Nf, jac-&gt;nBlocks));
+<a name="line934">934: </a><font color="#A020F0">#else</font>
+<a name="line935">935: </a>        <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pc, <font color="#666666">"%"</font> PetscInt_FMT <font color="#666666">") %"</font> PetscInt_FMT <font color="#666666">" blocks (%"</font> PetscInt_FMT <font color="#666666">" total)\n"</font>, ii, Nf, jac-&gt;nBlocks));
+<a name="line936">936: </a><font color="#A020F0">#endif</font>
+<a name="line937">937: </a>        jac-&gt;dm_Nf[ii] = Nf;
+<a name="line938">938: </a>      }
+<a name="line939">939: </a>      { <font color="#B22222">// d_bid_eqOffset_k</font>
+<a name="line940">940: </a>        Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, Kokkos::LayoutRight, Kokkos::HostSpace&gt; h_block_offsets(<font color="#666666">"block_offsets"</font>, jac-&gt;nBlocks + 1);
+<a name="line941">941: </a>        <font color="#4169E1">if</font> (pack) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/DMComposite/DMCompositeGetAccessArray.html">DMCompositeGetAccessArray</a>(pack, jac-&gt;vec_diag, nDMs, NULL, subX));
+<a name="line942">942: </a>        h_block_offsets[0]    = 0;
+<a name="line943">943: </a>        jac-&gt;const_block_size = -1;
+<a name="line944">944: </a>        <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> ii = 0, idx = 0; ii &lt; nDMs; ii++) {
+<a name="line945">945: </a>          <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> nloc, nblk;
+<a name="line946">946: </a>          <font color="#4169E1">if</font> (pack) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetSize.html">VecGetSize</a>(subX[ii], &amp;nloc));
+<a name="line947">947: </a>          <font color="#4169E1">else</font> nloc = block_sizes[ii];
+<a name="line948">948: </a>          nblk = nloc / jac-&gt;dm_Nf[ii];
+<a name="line949">949: </a>          <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(nloc % jac-&gt;dm_Nf[ii] == 0, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_USER</a>, <font color="#666666">"nloc%%jac-&gt;dm_Nf[ii] (%"</font> PetscInt_FMT <font color="#666666">") != 0 DMs"</font>, nloc % jac-&gt;dm_Nf[ii]);
+<a name="line950">950: </a>          <font color="#4169E1">for</font> (<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> jj = 0; jj &lt; jac-&gt;dm_Nf[ii]; jj++, idx++) {
+<a name="line951">951: </a>            h_block_offsets[idx + 1] = h_block_offsets[idx] + nblk;
+<a name="line952">952: </a><font color="#A020F0">#if PCBJKOKKOS_VERBOSE_LEVEL &lt;= 2</font>
+<a name="line953">953: </a>            <font color="#4169E1">if</font> (idx == 0) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pc, <font color="#666666">"Add first of %"</font> PetscInt_FMT <font color="#666666">" blocks with %"</font> PetscInt_FMT <font color="#666666">" equations\n"</font>, jac-&gt;nBlocks, nblk));
+<a name="line954">954: </a><font color="#A020F0">#else</font>
+<a name="line955">955: </a>            <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Log/PetscInfo.html">PetscInfo</a>(pc, <font color="#666666">"\t%"</font> PetscInt_FMT <font color="#666666">") Add block with %"</font> PetscInt_FMT <font color="#666666">" equations of %"</font> PetscInt_FMT <font color="#666666">"\n"</font>, idx + 1, nblk, jac-&gt;nBlocks));
+<a name="line956">956: </a><font color="#A020F0">#endif</font>
+<a name="line957">957: </a>            <font color="#4169E1">if</font> (jac-&gt;const_block_size == -1) jac-&gt;const_block_size = nblk;
+<a name="line958">958: </a>            <font color="#4169E1">else</font> <font color="#4169E1">if</font> (jac-&gt;const_block_size &gt; 0 &amp;&amp; jac-&gt;const_block_size != nblk) jac-&gt;const_block_size = 0;
+<a name="line959">959: </a>          }
+<a name="line960">960: </a>        }
+<a name="line961">961: </a>        <font color="#4169E1">if</font> (pack) {
+<a name="line962">962: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/DMComposite/DMCompositeRestoreAccessArray.html">DMCompositeRestoreAccessArray</a>(pack, jac-&gt;vec_diag, jac-&gt;nBlocks, NULL, subX));
+<a name="line963">963: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(subX));
+<a name="line964">964: </a>          <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(subDM));
+<a name="line965">965: </a>        }
+<a name="line966">966: </a>        jac-&gt;d_bid_eqOffset_k = new Kokkos::View&lt;<a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, Kokkos::LayoutRight&gt;(Kokkos::create_mirror(Kokkos::DefaultExecutionSpace::memory_space(), h_block_offsets));
+<a name="line967">967: </a>        Kokkos::deep_copy(*jac-&gt;d_bid_eqOffset_k, h_block_offsets);
+<a name="line968">968: </a>      }
+<a name="line969">969: </a>      <font color="#4169E1">if</font> (!pack) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(block_sizes));
+<a name="line970">970: </a>    }
+<a name="line971">971: </a>    { <font color="#B22222">// get jac->d_idiag_k (<a href="../../../../../../manualpages/PC/PC.html">PC</a> setup),</font>
+<a name="line972">972: </a>      const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *d_ai, *d_aj;
+<a name="line973">973: </a>      const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *d_aa;
+<a name="line974">974: </a>      const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     conc = Kokkos::DefaultExecutionSpace().concurrency(), openmp = !!(conc &lt; 1000), team_size = (openmp == 0 &amp;&amp; PCBJKOKKOS_VEC_SIZE != 1) ? PCBJKOKKOS_TEAM_SIZE : 1;
+<a name="line975">975: </a>      const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *d_bid_eqOffset = jac-&gt;d_bid_eqOffset_k-&gt;data(), *r = jac-&gt;d_isrow_k-&gt;data(), *ic = jac-&gt;d_isicol_k-&gt;data();
+<a name="line976">976: </a>      <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>       *d_idiag = jac-&gt;d_idiag_k-&gt;data(), *dummy;
+<a name="line977">977: </a>      <a href="../../../../../../manualpages/Sys/PetscMemType.html">PetscMemType</a>       mtype;
+<a name="line978">978: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSeqAIJGetCSRAndMemType.html">MatSeqAIJGetCSRAndMemType</a>(Aseq, &amp;d_ai, &amp;d_aj, &amp;dummy, &amp;mtype));
+<a name="line979">979: </a>      d_aa = dummy;
+<a name="line980">980: </a>      Kokkos::parallel_for(
+<a name="line981">981: </a>        <font color="#666666">"Diag"</font>, Kokkos::TeamPolicy&lt;&gt;(jac-&gt;nBlocks, team_size, PCBJKOKKOS_VEC_SIZE), KOKKOS_LAMBDA(const team_member team) {
+<a name="line982">982: </a>          const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> blkID = team.league_rank();
+<a name="line983">983: </a>          Kokkos::parallel_for(Kokkos::TeamThreadRange(team, d_bid_eqOffset[blkID], d_bid_eqOffset[blkID + 1]), [=](const int rowb) {
+<a name="line984">984: </a>            const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     rowa = ic[rowb], ai = d_ai[rowa], *aj = d_aj + ai; <font color="#B22222">// grab original data</font>
+<a name="line985">985: </a>            const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa   = d_aa + ai;
+<a name="line986">986: </a>            const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     nrow = d_ai[rowa + 1] - ai;
+<a name="line987">987: </a>            int                found;
+<a name="line988">988: </a>            Kokkos::parallel_reduce(
+<a name="line989">989: </a>              Kokkos::ThreadVectorRange(team, nrow),
+<a name="line990">990: </a>              [=](const int &amp;j, int &amp;count) {
+<a name="line991">991: </a>                const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a> colb = r[aj[j]];
+<a name="line992">992: </a>                <font color="#4169E1">if</font> (colb == rowb) {
+<a name="line993">993: </a>                  d_idiag[rowb] = 1. / aa[j];
+<a name="line994">994: </a>                  count++;
+<a name="line995">995: </a>                }
+<a name="line996">996: </a>              },
+<a name="line997">997: </a>              found);
+<a name="line998">998: </a><font color="#A020F0">#if defined(PETSC_USE_DEBUG) &amp;&amp; !defined(PETSC_HAVE_SYCL)</font>
+<a name="line999">999: </a>            <font color="#4169E1">if</font> (found != 1) Kokkos::single(Kokkos::PerThread(team), [=]() { printf(<font color="#666666">"ERRORrow %d) found = %d\n"</font>, rowb, found); });
+<a name="line1000">1000: </a><font color="#A020F0">#endif</font>
+<a name="line1001">1001: </a>          });
+<a name="line1002">1002: </a>        });
+<a name="line1003">1003: </a>    }
+<a name="line1004">1004: </a>  }
+<a name="line1005">1005: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1006">1006: </a>}
+
+<a name="line1008">1008: </a><font color="#B22222">/* Default destroy, if it has never been setup */</font>
+<a name="line1009">1009: </a><strong><font color="#4169E1"><a name="PCReset_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCReset_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line1010">1010: </a>{
+<a name="line1011">1011: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+
+<a name="line1013">1013: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1014">1014: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(&amp;jac-&gt;ksp));
+<a name="line1015">1015: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;jac-&gt;vec_diag));
+<a name="line1016">1016: </a>  <font color="#4169E1">if</font> (jac-&gt;d_bid_eqOffset_k) delete jac-&gt;d_bid_eqOffset_k;
+<a name="line1017">1017: </a>  <font color="#4169E1">if</font> (jac-&gt;d_idiag_k) delete jac-&gt;d_idiag_k;
+<a name="line1018">1018: </a>  <font color="#4169E1">if</font> (jac-&gt;d_isrow_k) delete jac-&gt;d_isrow_k;
+<a name="line1019">1019: </a>  <font color="#4169E1">if</font> (jac-&gt;d_isicol_k) delete jac-&gt;d_isicol_k;
+<a name="line1020">1020: </a>  jac-&gt;d_bid_eqOffset_k = NULL;
+<a name="line1021">1021: </a>  jac-&gt;d_idiag_k        = NULL;
+<a name="line1022">1022: </a>  jac-&gt;d_isrow_k        = NULL;
+<a name="line1023">1023: </a>  jac-&gt;d_isicol_k       = NULL;
+<a name="line1024">1024: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCBJKOKKOSGetKSP_C"</font>, NULL)); <font color="#B22222">// not published now (causes configure errors)</font>
+<a name="line1025">1025: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCBJKOKKOSSetKSP_C"</font>, NULL));
+<a name="line1026">1026: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(jac-&gt;dm_Nf));
+<a name="line1027">1027: </a>  jac-&gt;dm_Nf = NULL;
+<a name="line1028">1028: </a>  <font color="#4169E1">if</font> (jac-&gt;rowOffsets) delete jac-&gt;rowOffsets;
+<a name="line1029">1029: </a>  <font color="#4169E1">if</font> (jac-&gt;colIndices) delete jac-&gt;colIndices;
+<a name="line1030">1030: </a>  <font color="#4169E1">if</font> (jac-&gt;batch_b) delete jac-&gt;batch_b;
+<a name="line1031">1031: </a>  <font color="#4169E1">if</font> (jac-&gt;batch_x) delete jac-&gt;batch_x;
+<a name="line1032">1032: </a>  <font color="#4169E1">if</font> (jac-&gt;batch_values) delete jac-&gt;batch_values;
+<a name="line1033">1033: </a>  jac-&gt;rowOffsets   = NULL;
+<a name="line1034">1034: </a>  jac-&gt;colIndices   = NULL;
+<a name="line1035">1035: </a>  jac-&gt;batch_b      = NULL;
+<a name="line1036">1036: </a>  jac-&gt;batch_x      = NULL;
+<a name="line1037">1037: </a>  jac-&gt;batch_values = NULL;
+<a name="line1038">1038: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1039">1039: </a>}
+
+<a name="line1041">1041: </a><strong><font color="#4169E1"><a name="PCDestroy_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCDestroy_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line1042">1042: </a>{
+<a name="line1043">1043: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1044">1044: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PCReset_BJKOKKOS(pc));
+<a name="line1045">1045: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(pc-&gt;data));
+<a name="line1046">1046: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1047">1047: </a>}
+
+<a name="line1049">1049: </a><strong><font color="#4169E1"><a name="PCView_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCView_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer)</font></strong>
+<a name="line1050">1050: </a>{
+<a name="line1051">1051: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+<a name="line1052">1052: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      isascii;
+
+<a name="line1054">1054: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1055">1055: </a>  <font color="#4169E1">if</font> (!jac-&gt;ksp) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PCBJKOKKOSCreateKSP_BJKOKKOS(pc));
+<a name="line1056">1056: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)viewer, <a href="../../../../../../manualpages/Viewer/PETSCVIEWERASCII.html">PETSCVIEWERASCII</a>, &amp;isascii));
+<a name="line1057">1057: </a>  <font color="#4169E1">if</font> (isascii) {
+<a name="line1058">1058: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"  Batched device linear solver: Krylov (<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>) method with Jacobi preconditioning\n"</font>));
+<a name="line1059">1059: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"\t\tnwork = %"</font> PetscInt_FMT <font color="#666666">", rel tol = %e, abs tol = %e, div tol = %e, max it =%"</font> PetscInt_FMT <font color="#666666">", type = %s\n"</font>, jac-&gt;nwork, jac-&gt;ksp-&gt;rtol, jac-&gt;ksp-&gt;abstol, jac-&gt;ksp-&gt;divtol, jac-&gt;ksp-&gt;max_it,
+<a name="line1060">1060: </a>                                     ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)jac-&gt;ksp)-&gt;type_name));
+<a name="line1061">1061: </a>  }
+<a name="line1062">1062: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1063">1063: </a>}
+
+<a name="line1065">1065: </a><strong><font color="#4169E1"><a name="PCSetFromOptions_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCSetFromOptions_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, PetscOptionItems PetscOptionsObject)</font></strong>
+<a name="line1066">1066: </a>{
+<a name="line1067">1067: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1068">1068: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadBegin.html">PetscOptionsHeadBegin</a>(PetscOptionsObject, <font color="#666666">"<a href="../../../../../../manualpages/PC/PC.html">PC</a> BJKOKKOS options"</font>);
+<a name="line1069">1069: </a>  <a href="../../../../../../manualpages/Sys/PetscOptionsHeadEnd.html">PetscOptionsHeadEnd</a>();
+<a name="line1070">1070: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1071">1071: </a>}
+
+<a name="line1073">1073: </a><strong><font color="#4169E1"><a name="PCBJKOKKOSSetKSP_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCBJKOKKOSSetKSP_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line1074">1074: </a>{
+<a name="line1075">1075: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+
+<a name="line1077">1077: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1078">1078: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)ksp));
+<a name="line1079">1079: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(&amp;jac-&gt;ksp));
+<a name="line1080">1080: </a>  jac-&gt;ksp = ksp;
+<a name="line1081">1081: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1082">1082: </a>}
+
+<a name="line1084">1084: </a><font color="#B22222">/*@</font>
+<a name="line1085">1085: </a><font color="#B22222">  <a href="../../../../../../manualpages/PC/PCBJKOKKOSSetKSP.html">PCBJKOKKOSSetKSP</a> - Sets the `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` context for `<a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a>`</font>
+
+<a name="line1087">1087: </a><font color="#B22222">  Collective</font>
+
+<a name="line1089">1089: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line1090">1090: </a><font color="#B22222">+ pc  - the `<a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a>` preconditioner context</font>
+<a name="line1091">1091: </a><font color="#B22222">- ksp - the `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` solver</font>
+
+<a name="line1093">1093: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line1095">1095: </a><font color="#B22222">  Notes:</font>
+<a name="line1096">1096: </a><font color="#B22222">  The `<a href="../../../../../../manualpages/PC/PC.html">PC</a>` and the `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` must have the same communicator</font>
+
+<a name="line1098">1098: </a><font color="#B22222">  If the `<a href="../../../../../../manualpages/PC/PC.html">PC</a>` is not `<a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a>` this function returns without doing anything</font>
+
+<a name="line1100">1100: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../../manualpages/PC/PCBJKOKKOSGetKSP.html">PCBJKOKKOSGetKSP</a>()`, `<a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a>`</font>
+<a name="line1101">1101: </a><font color="#B22222">@*/</font>
+<a name="line1102">1102: </a><strong><font color="#4169E1"><a name="PCBJKOKKOSSetKSP"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../../manualpages/PC/PCBJKOKKOSSetKSP.html">PCBJKOKKOSSetKSP</a>(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp)</font></strong>
+<a name="line1103">1103: </a>{
+<a name="line1104">1104: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1107">1107: </a>  PetscCheckSameComm(pc, 1, ksp, 2);
+<a name="line1108">1108: </a>  <a href="../../../../../../manualpages/Sys/PetscTryMethod.html">PetscTryMethod</a>(pc, <font color="#666666">"PCBJKOKKOSSetKSP_C"</font>, (<a href="../../../../../../manualpages/PC/PC.html">PC</a>, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>), (pc, ksp));
+<a name="line1109">1109: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1110">1110: </a>}
+
+<a name="line1112">1112: </a><strong><font color="#4169E1"><a name="PCBJKOKKOSGetKSP_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCBJKOKKOSGetKSP_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> *ksp)</font></strong>
+<a name="line1113">1113: </a>{
+<a name="line1114">1114: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+
+<a name="line1116">1116: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1117">1117: </a>  <font color="#4169E1">if</font> (!jac-&gt;ksp) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PCBJKOKKOSCreateKSP_BJKOKKOS(pc));
+<a name="line1118">1118: </a>  *ksp = jac-&gt;ksp;
+<a name="line1119">1119: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1120">1120: </a>}
+
+<a name="line1122">1122: </a><font color="#B22222">/*@</font>
+<a name="line1123">1123: </a><font color="#B22222">  <a href="../../../../../../manualpages/PC/PCBJKOKKOSGetKSP.html">PCBJKOKKOSGetKSP</a> - Gets the `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` context for the `<a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a>` preconditioner</font>
+
+<a name="line1125">1125: </a><font color="#B22222">  Not Collective but `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` returned is parallel if `<a href="../../../../../../manualpages/PC/PC.html">PC</a>` was parallel</font>
+
+<a name="line1127">1127: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line1128">1128: </a><font color="#B22222">. pc - the preconditioner context</font>
+
+<a name="line1130">1130: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line1131">1131: </a><font color="#B22222">. ksp - the `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` solver</font>
+
+<a name="line1133">1133: </a><font color="#B22222">  Level: advanced</font>
+
+<a name="line1135">1135: </a><font color="#B22222">  Notes:</font>
+<a name="line1136">1136: </a><font color="#B22222">  You must call `<a href="../../../../../../manualpages/KSP/KSPSetUp.html">KSPSetUp</a>()` before calling `<a href="../../../../../../manualpages/PC/PCBJKOKKOSGetKSP.html">PCBJKOKKOSGetKSP</a>()`.</font>
+
+<a name="line1138">1138: </a><font color="#B22222">  If the `<a href="../../../../../../manualpages/PC/PC.html">PC</a>` is not a `<a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a>` object it raises an error</font>
+
+<a name="line1140">1140: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a>`, `<a href="../../../../../../manualpages/PC/PCBJKOKKOSSetKSP.html">PCBJKOKKOSSetKSP</a>()`</font>
+<a name="line1141">1141: </a><font color="#B22222">@*/</font>
+<a name="line1142">1142: </a><strong><font color="#4169E1"><a name="PCBJKOKKOSGetKSP"></a><a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../../../manualpages/PC/PCBJKOKKOSGetKSP.html">PCBJKOKKOSGetKSP</a>(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> *ksp)</font></strong>
+<a name="line1143">1143: </a>{
+<a name="line1144">1144: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1146">1146: </a>  PetscAssertPointer(ksp, 2);
+<a name="line1147">1147: </a>  <a href="../../../../../../manualpages/Sys/PetscUseMethod.html">PetscUseMethod</a>(pc, <font color="#666666">"PCBJKOKKOSGetKSP_C"</font>, (<a href="../../../../../../manualpages/PC/PC.html">PC</a>, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> *), (pc, ksp));
+<a name="line1148">1148: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1149">1149: </a>}
+
+<a name="line1151">1151: </a><strong><font color="#4169E1"><a name="PCPostSolve_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCPostSolve_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> b, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x)</font></strong>
+<a name="line1152">1152: </a>{
+<a name="line1153">1153: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+
+<a name="line1155">1155: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1157">1157: </a>  ksp-&gt;its = jac-&gt;max_nits;
+<a name="line1158">1158: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1159">1159: </a>}
+
+<a name="line1161">1161: </a><strong><font color="#4169E1"><a name="PCPreSolve_BJKOKKOS"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCPreSolve_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc, <a href="../../../../../../manualpages/KSP/KSP.html">KSP</a> ksp, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> b, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> x)</font></strong>
+<a name="line1162">1162: </a>{
+<a name="line1163">1163: </a>  PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc-&gt;data;
+
+<a name="line1165">1165: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1167">1167: </a>  jac-&gt;ksp-&gt;errorifnotconverged = ksp-&gt;errorifnotconverged;
+<a name="line1168">1168: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1169">1169: </a>}
+
+<a name="line1171">1171: </a><font color="#B22222">/*MC</font>
+<a name="line1172">1172: </a><font color="#B22222">     <a href="../../../../../../manualpages/PC/PCBJKOKKOS.html">PCBJKOKKOS</a> - A batched Krylov/block Jacobi solver that runs a solve of each diagaonl block of a block diagonal `<a href="../../../../../../manualpages/Mat/MATSEQAIJ.html">MATSEQAIJ</a>` in a Kokkos thread group</font>
+
+<a name="line1174">1174: </a><font color="#B22222">   Options Database Key:</font>
+<a name="line1175">1175: </a><font color="#B22222">.  -pc_bjkokkos_ - options prefix for its `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` options</font>
+
+<a name="line1177">1177: </a><font color="#B22222">   Level: intermediate</font>
+
+<a name="line1179">1179: </a><font color="#B22222">   Note:</font>
+<a name="line1180">1180: </a><font color="#B22222">   For use with `-ksp_type preonly` to bypass any computation on the CPU</font>
+
+<a name="line1182">1182: </a><font color="#B22222">   Developer Notes:</font>
+<a name="line1183">1183: </a><font color="#B22222">   The entire Krylov (TFQMR or BICG) with diagonal preconditioning for each block of a block diagnaol matrix runs in a Kokkos thread group (eg, one block per SM on NVIDIA). It supports taking a non-block diagonal matrix but this is not tested. One should create an explicit block diagonal matrix and use that as the matrix for constructing the preconditioner in the outer `<a href="../../../../../../manualpages/KSP/KSP.html">KSP</a>` solver. Variable block size are supported and tested in src/ts/utils/dmplexlandau/tutorials/ex[1|2].c</font>
+
+<a name="line1185">1185: </a><font color="#B22222">.seealso: [](ch_ksp), `<a href="../../../../../../manualpages/PC/PCCreate.html">PCCreate</a>()`, `<a href="../../../../../../manualpages/PC/PCSetType.html">PCSetType</a>()`, `<a href="../../../../../../manualpages/PC/PCType.html">PCType</a>`, `<a href="../../../../../../manualpages/PC/PC.html">PC</a>`, `<a href="../../../../../../manualpages/PC/PCBJACOBI.html">PCBJACOBI</a>`,</font>
+<a name="line1186">1186: </a><font color="#B22222">          `<a href="../../../../../../manualpages/PC/PCSHELL.html">PCSHELL</a>`, `<a href="../../../../../../manualpages/PC/PCCOMPOSITE.html">PCCOMPOSITE</a>`, `<a href="../../../../../../manualpages/PC/PCSetUseAmat.html">PCSetUseAmat</a>()`, `<a href="../../../../../../manualpages/PC/PCBJKOKKOSGetKSP.html">PCBJKOKKOSGetKSP</a>()`</font>
+<a name="line1187">1187: </a><font color="#B22222">M*/</font>
+
+<a name="line1189">1189: </a><strong><font color="#4169E1"><a name="PCCreate_BJKOKKOS"></a>PETSC_EXTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCCreate_BJKOKKOS(<a href="../../../../../../manualpages/PC/PC.html">PC</a> pc)</font></strong>
+<a name="line1190">1190: </a>{
+<a name="line1191">1191: </a>  PC_PCBJKOKKOS *jac;
+
+<a name="line1193">1193: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line1194">1194: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;jac));
+<a name="line1195">1195: </a>  pc-&gt;data = (void *)jac;
+
+<a name="line1197">1197: </a>  jac-&gt;ksp              = NULL;
+<a name="line1198">1198: </a>  jac-&gt;vec_diag         = NULL;
+<a name="line1199">1199: </a>  jac-&gt;d_bid_eqOffset_k = NULL;
+<a name="line1200">1200: </a>  jac-&gt;d_idiag_k        = NULL;
+<a name="line1201">1201: </a>  jac-&gt;d_isrow_k        = NULL;
+<a name="line1202">1202: </a>  jac-&gt;d_isicol_k       = NULL;
+<a name="line1203">1203: </a>  jac-&gt;nBlocks          = 1;
+<a name="line1204">1204: </a>  jac-&gt;max_nits         = 0;
+
+<a name="line1206">1206: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMemzero.html">PetscMemzero</a>(pc-&gt;ops, <font color="#4169E1">sizeof</font>(<font color="#4169E1">struct _PCOps</font>)));
+<a name="line1207">1207: </a>  pc-&gt;ops-&gt;apply          = PCApply_BJKOKKOS;
+<a name="line1208">1208: </a>  pc-&gt;ops-&gt;applytranspose = NULL;
+<a name="line1209">1209: </a>  pc-&gt;ops-&gt;setup          = PCSetUp_BJKOKKOS;
+<a name="line1210">1210: </a>  pc-&gt;ops-&gt;reset          = PCReset_BJKOKKOS;
+<a name="line1211">1211: </a>  pc-&gt;ops-&gt;destroy        = PCDestroy_BJKOKKOS;
+<a name="line1212">1212: </a>  pc-&gt;ops-&gt;setfromoptions = PCSetFromOptions_BJKOKKOS;
+<a name="line1213">1213: </a>  pc-&gt;ops-&gt;view           = PCView_BJKOKKOS;
+<a name="line1214">1214: </a>  pc-&gt;ops-&gt;postsolve      = PCPostSolve_BJKOKKOS;
+<a name="line1215">1215: </a>  pc-&gt;ops-&gt;presolve       = PCPreSolve_BJKOKKOS;
+
+<a name="line1217">1217: </a>  jac-&gt;rowOffsets   = NULL;
+<a name="line1218">1218: </a>  jac-&gt;colIndices   = NULL;
+<a name="line1219">1219: </a>  jac-&gt;batch_b      = NULL;
+<a name="line1220">1220: </a>  jac-&gt;batch_x      = NULL;
+<a name="line1221">1221: </a>  jac-&gt;batch_values = NULL;
+
+<a name="line1223">1223: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCBJKOKKOSGetKSP_C"</font>, PCBJKOKKOSGetKSP_BJKOKKOS));
+<a name="line1224">1224: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)pc, <font color="#666666">"PCBJKOKKOSSetKSP_C"</font>, PCBJKOKKOSSetKSP_BJKOKKOS));
+<a name="line1225">1225: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line1226">1226: </a>}
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,185 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/ksp/tests/ex57.c">Actual source code: ex57.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#B22222">/*</font>
+<a name="line2">  2: </a><font color="#B22222">    Tests <a href="../../../../manualpages/PC/PCFIELDSPLIT.html">PCFIELDSPLIT</a> and hence VecGetRestoreArray_Nest() usage in <a href="../../../../manualpages/PetscSF/VecScatter.html">VecScatter</a></font>
+
+<a name="line4">  4: </a><font color="#B22222">    Example contributed by: Mike Wick &lt;michael.wick.1980@gmail.com&gt;</font>
+<a name="line5">  5: </a><font color="#B22222">*/</font>
+<a name="line6">  6: </a>#include <A href="../../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+
+<a name="line8">  8: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line9">  9: </a>{
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>         A;
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>         subA[9];
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/IS/IS.html">IS</a>          isg[3];
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    row, col, mstart, mend;
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> val;
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         subb[3];
+<a name="line16"> 16: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         b;
+<a name="line17"> 17: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         r;
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/KSP/KSP.html">KSP</a>         ksp;
+<a name="line19"> 19: </a>  <a href="../../../../manualpages/PC/PC.html">PC</a>          pc;
+
+<a name="line21"> 21: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line22"> 22: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, NULL));
+
+<a name="line24"> 24: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 5, 5, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[0]));
+<a name="line25"> 25: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[0], &amp;mstart, &amp;mend));
+<a name="line26"> 26: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line27"> 27: </a>    val = 1.0;
+<a name="line28"> 28: </a>    col = row;
+<a name="line29"> 29: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[0], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line30"> 30: </a>  }
+<a name="line31"> 31: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[0], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line32"> 32: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[0], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line34"> 34: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 5, 3, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[1]));
+<a name="line35"> 35: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[1], &amp;mstart, &amp;mend));
+<a name="line36"> 36: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line37"> 37: </a>    col = 1;
+<a name="line38"> 38: </a>    val = 0.0;
+<a name="line39"> 39: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[1], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line40"> 40: </a>  }
+<a name="line41"> 41: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[1], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line42"> 42: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[1], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line44"> 44: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 5, 4, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[2]));
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[2], &amp;mstart, &amp;mend));
+<a name="line46"> 46: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line47"> 47: </a>    col = 1;
+<a name="line48"> 48: </a>    val = 0.0;
+<a name="line49"> 49: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[2], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line50"> 50: </a>  }
+<a name="line51"> 51: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[2], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line52"> 52: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[2], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line54"> 54: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 3, 5, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[3]));
+<a name="line55"> 55: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[3], &amp;mstart, &amp;mend));
+<a name="line56"> 56: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line57"> 57: </a>    col = row;
+<a name="line58"> 58: </a>    val = 0.0;
+<a name="line59"> 59: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[3], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line60"> 60: </a>  }
+<a name="line61"> 61: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[3], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line62"> 62: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[3], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line64"> 64: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 3, 3, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[4]));
+<a name="line65"> 65: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[4], &amp;mstart, &amp;mend));
+<a name="line66"> 66: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line67"> 67: </a>    col = row;
+<a name="line68"> 68: </a>    val = 4.0;
+<a name="line69"> 69: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[4], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line70"> 70: </a>  }
+<a name="line71"> 71: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[4], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line72"> 72: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[4], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line74"> 74: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 3, 4, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[5]));
+<a name="line75"> 75: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[5], &amp;mstart, &amp;mend));
+<a name="line76"> 76: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line77"> 77: </a>    col = row;
+<a name="line78"> 78: </a>    val = 0.0;
+<a name="line79"> 79: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[5], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line80"> 80: </a>  }
+<a name="line81"> 81: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[5], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line82"> 82: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[5], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line84"> 84: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 4, 5, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[6]));
+<a name="line85"> 85: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[6], &amp;mstart, &amp;mend));
+<a name="line86"> 86: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line87"> 87: </a>    col = 2;
+<a name="line88"> 88: </a>    val = 0.0;
+<a name="line89"> 89: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[6], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line90"> 90: </a>  }
+<a name="line91"> 91: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[6], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line92"> 92: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[6], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line94"> 94: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 4, 3, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[7]));
+<a name="line95"> 95: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[7], &amp;mstart, &amp;mend));
+<a name="line96"> 96: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line97"> 97: </a>    col = 1;
+<a name="line98"> 98: </a>    val = 0.0;
+<a name="line99"> 99: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[7], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line100">100: </a>  }
+<a name="line101">101: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[7], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line102">102: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[7], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line104">104: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateFromOptions.html">MatCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 4, 4, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;subA[8]));
+<a name="line105">105: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatGetOwnershipRange.html">MatGetOwnershipRange</a>(subA[8], &amp;mstart, &amp;mend));
+<a name="line106">106: </a>  <font color="#4169E1">for</font> (row = mstart; row &lt; mend; ++row) {
+<a name="line107">107: </a>    col = row;
+<a name="line108">108: </a>    val = 8.0;
+<a name="line109">109: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(subA[8], 1, &amp;row, 1, &amp;col, &amp;val, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line110">110: </a>  }
+<a name="line111">111: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(subA[8], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line112">112: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(subA[8], <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line114">114: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateNest.html">MatCreateNest</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 3, NULL, 3, NULL, subA, &amp;A));
+<a name="line115">115: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatNestGetISs.html">MatNestGetISs</a>(A, isg, NULL));
+<a name="line116">116: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreateFromOptions.html">VecCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 5, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, &amp;subb[0]));
+<a name="line117">117: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSet.html">VecSet</a>(subb[0], 1.0));
+
+<a name="line119">119: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreateFromOptions.html">VecCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 3, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, &amp;subb[1]));
+<a name="line120">120: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSet.html">VecSet</a>(subb[1], 2.0));
+
+<a name="line122">122: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreateFromOptions.html">VecCreateFromOptions</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, 1, 4, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, &amp;subb[2]));
+<a name="line123">123: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSet.html">VecSet</a>(subb[2], 3.0));
+
+<a name="line125">125: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreateNest.html">VecCreateNest</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 3, NULL, subb, &amp;b));
+<a name="line126">126: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>(b, &amp;r));
+<a name="line127">127: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCopy.html">VecCopy</a>(b, r));
+
+<a name="line129">129: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatMult.html">MatMult</a>(A, b, r));
+<a name="line130">130: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSet.html">VecSet</a>(b, 0.0));
+
+<a name="line132">132: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPCreate.html">KSPCreate</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;ksp));
+<a name="line133">133: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSetOperators.html">KSPSetOperators</a>(ksp, A, A));
+<a name="line134">134: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSetFromOptions.html">KSPSetFromOptions</a>(ksp));
+<a name="line135">135: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPGetPC.html">KSPGetPC</a>(ksp, &amp;pc));
+<a name="line136">136: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCFieldSplitSetIS.html">PCFieldSplitSetIS</a>(pc, <font color="#666666">"a"</font>, isg[0]));
+<a name="line137">137: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCFieldSplitSetIS.html">PCFieldSplitSetIS</a>(pc, <font color="#666666">"b"</font>, isg[1]));
+<a name="line138">138: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCFieldSplitSetIS.html">PCFieldSplitSetIS</a>(pc, <font color="#666666">"c"</font>, isg[2]));
+
+<a name="line140">140: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPSolve.html">KSPSolve</a>(ksp, r, b));
+<a name="line141">141: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPView.html">KSPView</a>(ksp, <a href="../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_WORLD.html">PETSC_VIEWER_STDOUT_WORLD</a>));
+
+<a name="line143">143: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[0]));
+<a name="line144">144: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[1]));
+<a name="line145">145: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[2]));
+<a name="line146">146: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[3]));
+<a name="line147">147: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[4]));
+<a name="line148">148: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[5]));
+<a name="line149">149: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[6]));
+<a name="line150">150: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[7]));
+<a name="line151">151: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;subA[8]));
+<a name="line152">152: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;A));
+<a name="line153">153: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;subb[0]));
+<a name="line154">154: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;subb[1]));
+<a name="line155">155: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;subb[2]));
+<a name="line156">156: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;b));
+<a name="line157">157: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;r));
+<a name="line158">158: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/KSP/KSPDestroy.html">KSPDestroy</a>(&amp;ksp));
+
+<a name="line160">160: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line161">161: </a>  <font color="#4169E1">return</font> 0;
+<a name="line162">162: </a>}
+
+<a name="line164">164: </a><font color="#B22222">/*TEST</font>
+
+<a name="line166">166: </a><font color="#B22222">    test:</font>
+<a name="line167">167: </a><font color="#B22222">      args: -pc_type fieldsplit -ksp_monitor</font>
+
+<a name="line169">169: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

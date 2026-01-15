@@ -1,0 +1,361 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/impls/aij/seq/spqr/aijspqr.c">Actual source code: aijspqr.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../src/mat/impls/aij/seq/aij.h.html">&lt;../src/mat/impls/aij/seq/aij.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../src/mat/impls/sbaij/seq/cholmod/cholmodimpl.h.html">&lt;../src/mat/impls/sbaij/seq/cholmod/cholmodimpl.h&gt;</A>
+
+<a name="line5">  5: </a>EXTERN_C_BEGIN
+<a name="line6">  6: </a><font color="#A020F0">#include &lt;SuiteSparseQR_C.h&gt;</font>
+<a name="line7">  7: </a>EXTERN_C_END
+
+<a name="line9">  9: </a><font color="#B22222">/*</font>
+<a name="line10"> 10: </a><font color="#B22222">  If A is a <a href="../../../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a> or <a href="../../../../../../manualpages/Mat/MATNORMAL.html">MATNORMAL</a> format that it pulls the underlying matrix out</font>
+<a name="line11"> 11: </a><font color="#B22222">  and performs the factorization on that matrix</font>
+<a name="line12"> 12: </a><font color="#B22222">*/</font>
+<a name="line13"> 13: </a><strong><font color="#4169E1"><a name="MatWrapCholmod_SPQR_seqaij"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatWrapCholmod_SPQR_seqaij(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> values, cholmod_sparse *C, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *aijalloc, <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *valloc)</font></strong>
+<a name="line14"> 14: </a>{
+<a name="line15"> 15: </a>  Mat_SeqAIJ        *aij;
+<a name="line16"> 16: </a>  <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>                AT, B = NULL;
+<a name="line17"> 17: </a>  <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>                left, right;
+<a name="line18"> 18: </a>  const <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *aa, *L = NULL;
+<a name="line19"> 19: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>       *ca, scale;
+<a name="line20"> 20: </a>  const <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    *ai, *aj;
+<a name="line21"> 21: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>           n = A-&gt;cmap-&gt;n, i, j, k, nz;
+<a name="line22"> 22: </a>  SuiteSparse_long  *ci, *cj; <font color="#B22222">/* SuiteSparse_long is the only choice for SPQR */</font>
+<a name="line23"> 23: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>          vain = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, flg;
+
+<a name="line25"> 25: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line26"> 26: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <a href="../../../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>, &amp;flg));
+<a name="line27"> 27: </a>  <font color="#4169E1">if</font> (flg) {
+<a name="line28"> 28: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatNormalHermitianGetMat.html">MatNormalHermitianGetMat</a>(A, &amp;AT));
+<a name="line29"> 29: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (!<a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)) {
+<a name="line30"> 30: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <a href="../../../../../../manualpages/Mat/MATNORMAL.html">MATNORMAL</a>, &amp;flg));
+<a name="line31"> 31: </a>    <font color="#4169E1">if</font> (flg) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatNormalGetMat.html">MatNormalGetMat</a>(A, &amp;AT));
+<a name="line32"> 32: </a>  }
+<a name="line33"> 33: </a>  <font color="#4169E1">if</font> (flg) {
+<a name="line34"> 34: </a>    B = A;
+<a name="line35"> 35: </a>    A = AT;
+<a name="line36"> 36: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatShellGetScalingShifts.html">MatShellGetScalingShifts</a>(B, (<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)MAT_SHELL_NOT_ALLOWED, &amp;scale, (<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, &amp;left, &amp;right, (<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED));
+<a name="line37"> 37: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(left == right, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Cannot call SuiteSparseQR if <a href="../../../../../../manualpages/Mat/MatDiagonalScale.html">MatDiagonalScale</a>() has been called on the input <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> with L != R"</font>);
+<a name="line38"> 38: </a>    <font color="#4169E1">if</font> (values &amp;&amp; left) {
+<a name="line39"> 39: </a>      <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetArrayRead.html">VecGetArrayRead</a>(left, &amp;L));
+<a name="line40"> 40: </a><font color="#A020F0">#if <a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)</font>
+<a name="line41"> 41: </a>      <font color="#4169E1">for</font> (j = 0; j &lt; n; j++)
+<a name="line42"> 42: </a>        <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(<a href="../../../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(<a href="../../../../../../manualpages/Sys/PetscImaginaryPart.html">PetscImaginaryPart</a>(L[j])) &lt; <a href="../../../../../../manualpages/Sys/PETSC_MACHINE_EPSILON.html">PETSC_MACHINE_EPSILON</a>, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_SUP</a>, <font color="#666666">"Cannot call SuiteSparseQR if <a href="../../../../../../manualpages/Mat/MatDiagonalScale.html">MatDiagonalScale</a>() has been called on the input <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> with a complex <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a>"</font>);
+<a name="line43"> 43: </a><font color="#A020F0">#endif</font>
+<a name="line44"> 44: </a>    }
+<a name="line45"> 45: </a>  }
+<a name="line46"> 46: </a>  <font color="#B22222">/* cholmod_sparse is compressed sparse column */</font>
+<a name="line47"> 47: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatIsSymmetric.html">MatIsSymmetric</a>(A, 0.0, &amp;flg));
+<a name="line48"> 48: </a>  <font color="#4169E1">if</font> (flg) {
+<a name="line49"> 49: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A));
+<a name="line50"> 50: </a>    AT = A;
+<a name="line51"> 51: </a>  } <font color="#4169E1">else</font> {
+<a name="line52"> 52: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatTranspose.html">MatTranspose</a>(A, <a href="../../../../../../manualpages/Mat/MatReuse.html">MAT_INITIAL_MATRIX</a>, &amp;AT));
+<a name="line53"> 53: </a>  }
+<a name="line54"> 54: </a>  aij = (Mat_SeqAIJ *)AT-&gt;data;
+<a name="line55"> 55: </a>  ai  = aij-&gt;j;
+<a name="line56"> 56: </a>  aj  = aij-&gt;i;
+<a name="line57"> 57: </a>  <font color="#4169E1">for</font> (j = 0, nz = 0; j &lt; n; j++) nz += aj[j + 1] - aj[j];
+<a name="line58"> 58: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc2.html">PetscMalloc2</a>(n + 1, &amp;cj, nz, &amp;ci));
+<a name="line59"> 59: </a>  <font color="#4169E1">if</font> (values) {
+<a name="line60"> 60: </a>    vain = <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line61"> 61: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(nz, &amp;ca));
+<a name="line62"> 62: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSeqAIJGetArrayRead.html">MatSeqAIJGetArrayRead</a>(AT, &amp;aa));
+<a name="line63"> 63: </a>  }
+<a name="line64"> 64: </a>  <font color="#4169E1">for</font> (j = 0, k = 0; j &lt; n; j++) {
+<a name="line65"> 65: </a>    cj[j] = k;
+<a name="line66"> 66: </a>    <font color="#4169E1">for</font> (i = aj[j]; i &lt; aj[j + 1]; i++, k++) {
+<a name="line67"> 67: </a>      ci[k] = ai[i];
+<a name="line68"> 68: </a>      <font color="#4169E1">if</font> (values) {
+<a name="line69"> 69: </a>        ca[k] = aa[i];
+<a name="line70"> 70: </a>        <font color="#4169E1">if</font> (L) ca[k] *= L[j];
+<a name="line71"> 71: </a>      }
+<a name="line72"> 72: </a>    }
+<a name="line73"> 73: </a>  }
+<a name="line74"> 74: </a>  cj[j]     = k;
+<a name="line75"> 75: </a>  *aijalloc = <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line76"> 76: </a>  *valloc   = vain;
+<a name="line77"> 77: </a>  <font color="#4169E1">if</font> (values) {
+<a name="line78"> 78: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSeqAIJRestoreArrayRead.html">MatSeqAIJRestoreArrayRead</a>(AT, &amp;aa));
+<a name="line79"> 79: </a>    <font color="#4169E1">if</font> (L) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecRestoreArrayRead.html">VecRestoreArrayRead</a>(left, &amp;L));
+<a name="line80"> 80: </a>  }
+
+<a name="line82"> 82: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscMemzero.html">PetscMemzero</a>(C, <font color="#4169E1">sizeof</font>(*C)));
+
+<a name="line84"> 84: </a>  C-&gt;nrow   = (size_t)AT-&gt;cmap-&gt;n;
+<a name="line85"> 85: </a>  C-&gt;ncol   = (size_t)AT-&gt;rmap-&gt;n;
+<a name="line86"> 86: </a>  C-&gt;nzmax  = (size_t)nz;
+<a name="line87"> 87: </a>  C-&gt;p      = cj;
+<a name="line88"> 88: </a>  C-&gt;i      = ci;
+<a name="line89"> 89: </a>  C-&gt;x      = values ? ca : 0;
+<a name="line90"> 90: </a>  C-&gt;stype  = 0;
+<a name="line91"> 91: </a>  C-&gt;itype  = CHOLMOD_LONG;
+<a name="line92"> 92: </a>  C-&gt;xtype  = values ? CHOLMOD_SCALAR_TYPE : CHOLMOD_PATTERN;
+<a name="line93"> 93: </a>  C-&gt;dtype  = CHOLMOD_DOUBLE;
+<a name="line94"> 94: </a>  C-&gt;sorted = 1;
+<a name="line95"> 95: </a>  C-&gt;packed = 1;
+
+<a name="line97"> 97: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;AT));
+<a name="line98"> 98: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line99"> 99: </a>}
+
+<a name="line101">101: </a><strong><font color="#4169E1"><a name="MatFactorGetSolverType_seqaij_SPQR"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatFactorGetSolverType_seqaij_SPQR(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/Mat/MatSolverType.html">MatSolverType</a> *type)</font></strong>
+<a name="line102">102: </a>{
+<a name="line103">103: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line104">104: </a>  *type = <a href="../../../../../../manualpages/Mat/MATSOLVERSPQR.html">MATSOLVERSPQR</a>;
+<a name="line105">105: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line106">106: </a>}
+
+<a name="line108">108: </a><strong><font color="#228B22">#define GET_ARRAY_READ  0</font></strong>
+<a name="line109">109: </a><strong><font color="#228B22">#define GET_ARRAY_WRITE 1</font></strong>
+
+<a name="line111">111: </a><strong><font color="#4169E1"><a name="MatSolve_SPQR_Internal"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolve_SPQR_Internal(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, cholmod_dense *cholB, cholmod_dense **_Y_handle)</font></strong>
+<a name="line112">112: </a>{
+<a name="line113">113: </a>  Mat_CHOLMOD   *chol     = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line114">114: </a>  cholmod_dense *Y_handle = NULL, *QTB_handle = NULL, *Z_handle = NULL;
+
+<a name="line116">116: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line117">117: </a>  <font color="#4169E1">if</font> (!chol-&gt;normal) {
+<a name="line118">118: </a>    QTB_handle = SuiteSparseQR_C_qmult(SPQR_QTX, chol-&gt;spqrfact, cholB, chol-&gt;common);
+<a name="line119">119: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(QTB_handle, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"SuiteSparseQR_C_qmult failed"</font>);
+<a name="line120">120: </a>    Y_handle = SuiteSparseQR_C_solve(SPQR_RETX_EQUALS_B, chol-&gt;spqrfact, QTB_handle, chol-&gt;common);
+<a name="line121">121: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(Y_handle, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"SuiteSparseQR_C_solve failed"</font>);
+<a name="line122">122: </a>  } <font color="#4169E1">else</font> {
+<a name="line123">123: </a>    Z_handle = SuiteSparseQR_C_solve(SPQR_RTX_EQUALS_ETB, chol-&gt;spqrfact, cholB, chol-&gt;common);
+<a name="line124">124: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(Z_handle, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"SuiteSparseQR_C_solve failed"</font>);
+<a name="line125">125: </a>    Y_handle = SuiteSparseQR_C_solve(SPQR_RETX_EQUALS_B, chol-&gt;spqrfact, Z_handle, chol-&gt;common);
+<a name="line126">126: </a>    <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(Y_handle, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"SuiteSparseQR_C_solve failed"</font>);
+<a name="line127">127: </a>    PetscCallExternal(!cholmod_l_free_dense, &amp;Z_handle, chol-&gt;common);
+<a name="line128">128: </a>  }
+<a name="line129">129: </a>  *_Y_handle = Y_handle;
+<a name="line130">130: </a>  PetscCallExternal(!cholmod_l_free_dense, &amp;QTB_handle, chol-&gt;common);
+<a name="line131">131: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line132">132: </a>}
+
+<a name="line134">134: </a><strong><font color="#4169E1"><a name="MatSolve_SPQR"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolve_SPQR(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X)</font></strong>
+<a name="line135">135: </a>{
+<a name="line136">136: </a>  Mat_CHOLMOD  *chol = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line137">137: </a>  cholmod_dense cholB, *Y_handle = NULL;
+<a name="line138">138: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      n;
+<a name="line139">139: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>  *v;
+
+<a name="line141">141: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line142">142: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line143">143: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSolve_SPQR_Internal(F, &amp;cholB, &amp;Y_handle));
+<a name="line144">144: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(X, &amp;n));
+<a name="line145">145: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetArrayWrite.html">VecGetArrayWrite</a>(X, &amp;v));
+<a name="line146">146: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(v, (<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)Y_handle-&gt;x, n));
+<a name="line147">147: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecRestoreArrayWrite.html">VecRestoreArrayWrite</a>(X, &amp;v));
+<a name="line148">148: </a>  PetscCallExternal(!cholmod_l_free_dense, &amp;Y_handle, chol-&gt;common);
+<a name="line149">149: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecUnWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line150">150: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecScale.html">VecScale</a>(X, chol-&gt;scale));
+<a name="line151">151: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line152">152: </a>}
+
+<a name="line154">154: </a><strong><font color="#4169E1"><a name="MatMatSolve_SPQR"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMatSolve_SPQR(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> X)</font></strong>
+<a name="line155">155: </a>{
+<a name="line156">156: </a>  Mat_CHOLMOD  *chol = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line157">157: </a>  cholmod_dense cholB, *Y_handle = NULL;
+<a name="line158">158: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>  *v;
+<a name="line159">159: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      lda;
+
+<a name="line161">161: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line162">162: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatDenseWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line163">163: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSolve_SPQR_Internal(F, &amp;cholB, &amp;Y_handle));
+<a name="line164">164: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDenseGetArrayWrite.html">MatDenseGetArrayWrite</a>(X, &amp;v));
+<a name="line165">165: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDenseGetLDA.html">MatDenseGetLDA</a>(X, &amp;lda));
+<a name="line166">166: </a>  <font color="#4169E1">if</font> ((size_t)lda == Y_handle-&gt;d) {
+<a name="line167">167: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(v, (<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)Y_handle-&gt;x, lda * Y_handle-&gt;ncol));
+<a name="line168">168: </a>  } <font color="#4169E1">else</font> {
+<a name="line169">169: </a>    <font color="#4169E1">for</font> (size_t j = 0; j &lt; Y_handle-&gt;ncol; j++) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(&amp;v[j * lda], &amp;(((<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)Y_handle-&gt;x)[j * Y_handle-&gt;d]), Y_handle-&gt;nrow));
+<a name="line170">170: </a>  }
+<a name="line171">171: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDenseRestoreArrayWrite.html">MatDenseRestoreArrayWrite</a>(X, &amp;v));
+<a name="line172">172: </a>  PetscCallExternal(!cholmod_l_free_dense, &amp;Y_handle, chol-&gt;common);
+<a name="line173">173: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatDenseUnWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line174">174: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatScale.html">MatScale</a>(X, chol-&gt;scale));
+<a name="line175">175: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line176">176: </a>}
+
+<a name="line178">178: </a><strong><font color="#4169E1"><a name="MatSolveTranspose_SPQR_Internal"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolveTranspose_SPQR_Internal(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, cholmod_dense *cholB, cholmod_dense **_Y_handle)</font></strong>
+<a name="line179">179: </a>{
+<a name="line180">180: </a>  Mat_CHOLMOD   *chol     = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line181">181: </a>  cholmod_dense *Y_handle = NULL, *RTB_handle = NULL;
+
+<a name="line183">183: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line184">184: </a>  RTB_handle = SuiteSparseQR_C_solve(SPQR_RTX_EQUALS_ETB, chol-&gt;spqrfact, cholB, chol-&gt;common);
+<a name="line185">185: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(RTB_handle, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"SuiteSparseQR_C_solve failed"</font>);
+<a name="line186">186: </a>  Y_handle = SuiteSparseQR_C_qmult(SPQR_QX, chol-&gt;spqrfact, RTB_handle, chol-&gt;common);
+<a name="line187">187: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(Y_handle, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"SuiteSparseQR_C_qmult failed"</font>);
+<a name="line188">188: </a>  *_Y_handle = Y_handle;
+<a name="line189">189: </a>  PetscCallExternal(!cholmod_l_free_dense, &amp;RTB_handle, chol-&gt;common);
+<a name="line190">190: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line191">191: </a>}
+
+<a name="line193">193: </a><strong><font color="#4169E1"><a name="MatSolveTranspose_SPQR"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatSolveTranspose_SPQR(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> B, <a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> X)</font></strong>
+<a name="line194">194: </a>{
+<a name="line195">195: </a>  Mat_CHOLMOD  *chol = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line196">196: </a>  cholmod_dense cholB, *Y_handle = NULL;
+<a name="line197">197: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      n;
+<a name="line198">198: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>  *v;
+
+<a name="line200">200: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line201">201: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line202">202: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSolveTranspose_SPQR_Internal(F, &amp;cholB, &amp;Y_handle));
+<a name="line203">203: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetLocalSize.html">VecGetLocalSize</a>(X, &amp;n));
+<a name="line204">204: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecGetArrayWrite.html">VecGetArrayWrite</a>(X, &amp;v));
+<a name="line205">205: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(v, (<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)Y_handle-&gt;x, n));
+<a name="line206">206: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Vec/VecRestoreArrayWrite.html">VecRestoreArrayWrite</a>(X, &amp;v));
+<a name="line207">207: </a>  PetscCallExternal(!cholmod_l_free_dense, &amp;Y_handle, chol-&gt;common);
+<a name="line208">208: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecUnWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line209">209: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line210">210: </a>}
+
+<a name="line212">212: </a><strong><font color="#4169E1"><a name="MatMatSolveTranspose_SPQR"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatMatSolveTranspose_SPQR(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> B, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> X)</font></strong>
+<a name="line213">213: </a>{
+<a name="line214">214: </a>  Mat_CHOLMOD  *chol = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line215">215: </a>  cholmod_dense cholB, *Y_handle = NULL;
+<a name="line216">216: </a>  <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>  *v;
+<a name="line217">217: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>      lda;
+
+<a name="line219">219: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line220">220: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatDenseWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line221">221: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatSolveTranspose_SPQR_Internal(F, &amp;cholB, &amp;Y_handle));
+<a name="line222">222: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDenseGetArrayWrite.html">MatDenseGetArrayWrite</a>(X, &amp;v));
+<a name="line223">223: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDenseGetLDA.html">MatDenseGetLDA</a>(X, &amp;lda));
+<a name="line224">224: </a>  <font color="#4169E1">if</font> ((size_t)lda == Y_handle-&gt;d) {
+<a name="line225">225: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(v, (<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)Y_handle-&gt;x, lda * Y_handle-&gt;ncol));
+<a name="line226">226: </a>  } <font color="#4169E1">else</font> {
+<a name="line227">227: </a>    <font color="#4169E1">for</font> (size_t j = 0; j &lt; Y_handle-&gt;ncol; j++) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscArraycpy.html">PetscArraycpy</a>(&amp;v[j * lda], &amp;(((<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)Y_handle-&gt;x)[j * Y_handle-&gt;d]), Y_handle-&gt;nrow));
+<a name="line228">228: </a>  }
+<a name="line229">229: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatDenseRestoreArrayWrite.html">MatDenseRestoreArrayWrite</a>(X, &amp;v));
+<a name="line230">230: </a>  PetscCallExternal(!cholmod_l_free_dense, &amp;Y_handle, chol-&gt;common);
+<a name="line231">231: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(MatDenseUnWrapCholmod(B, GET_ARRAY_READ, &amp;cholB));
+<a name="line232">232: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line233">233: </a>}
+
+<a name="line235">235: </a><strong><font color="#4169E1"><a name="MatQRFactorNumeric_SPQR"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatQRFactorNumeric_SPQR(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, const <a href="../../../../../../manualpages/Mat/MatFactorInfo.html">MatFactorInfo</a> *info)</font></strong>
+<a name="line236">236: </a>{
+<a name="line237">237: </a>  Mat_CHOLMOD   *chol = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line238">238: </a>  cholmod_sparse cholA;
+<a name="line239">239: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      aijalloc, valloc;
+<a name="line240">240: </a>  int            err;
+
+<a name="line242">242: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line243">243: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <a href="../../../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>, &amp;chol-&gt;normal));
+<a name="line244">244: </a>  <font color="#4169E1">if</font> (!chol-&gt;normal &amp;&amp; !<a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <a href="../../../../../../manualpages/Mat/MATNORMAL.html">MATNORMAL</a>, &amp;chol-&gt;normal));
+<a name="line245">245: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*chol-&gt;Wrap)(A, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;cholA, &amp;aijalloc, &amp;valloc));
+<a name="line246">246: </a>  err = !SuiteSparseQR_C_numeric(<a href="../../../../../../manualpages/Sys/PETSC_SMALL.html">PETSC_SMALL</a>, &amp;cholA, chol-&gt;spqrfact, chol-&gt;common);
+<a name="line247">247: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(!err, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"SPQR factorization failed with status %d"</font>, chol-&gt;common-&gt;status);
+
+<a name="line249">249: </a>  <font color="#4169E1">if</font> (aijalloc) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(cholA.p, cholA.i));
+<a name="line250">250: </a>  <font color="#4169E1">if</font> (valloc) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(cholA.x));
+
+<a name="line252">252: </a>  F-&gt;ops-&gt;solve    = MatSolve_SPQR;
+<a name="line253">253: </a>  F-&gt;ops-&gt;matsolve = MatMatSolve_SPQR;
+<a name="line254">254: </a>  <font color="#4169E1">if</font> (chol-&gt;normal) {
+<a name="line255">255: </a>    <a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> scale;
+
+<a name="line257">257: </a>    <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatShellGetScalingShifts.html">MatShellGetScalingShifts</a>(A, (<a href="../../../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *)MAT_SHELL_NOT_ALLOWED, &amp;scale, (<a href="../../../../../../manualpages/Vec/Vec.html">Vec</a> *)MAT_SHELL_NOT_ALLOWED, NULL, NULL, (<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED, (<a href="../../../../../../manualpages/IS/IS.html">IS</a> *)MAT_SHELL_NOT_ALLOWED));
+<a name="line258">258: </a>    F-&gt;ops-&gt;solvetranspose    = MatSolve_SPQR;
+<a name="line259">259: </a>    F-&gt;ops-&gt;matsolvetranspose = MatMatSolve_SPQR;
+<a name="line260">260: </a>    chol-&gt;scale               = 1.0 / scale;
+<a name="line261">261: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (A-&gt;cmap-&gt;n == A-&gt;rmap-&gt;n) {
+<a name="line262">262: </a>    F-&gt;ops-&gt;solvetranspose    = MatSolveTranspose_SPQR;
+<a name="line263">263: </a>    F-&gt;ops-&gt;matsolvetranspose = MatMatSolveTranspose_SPQR;
+<a name="line264">264: </a>    chol-&gt;scale               = 1.0;
+<a name="line265">265: </a>  }
+<a name="line266">266: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line267">267: </a>}
+
+<a name="line269">269: </a><strong><font color="#4169E1"><a name="MatQRFactorSymbolic_SPQR"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatQRFactorSymbolic_SPQR(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> F, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/IS/IS.html">IS</a> perm, const <a href="../../../../../../manualpages/Mat/MatFactorInfo.html">MatFactorInfo</a> *info)</font></strong>
+<a name="line270">270: </a>{
+<a name="line271">271: </a>  Mat_CHOLMOD   *chol = (Mat_CHOLMOD *)F-&gt;data;
+<a name="line272">272: </a>  cholmod_sparse cholA;
+<a name="line273">273: </a>  <a href="../../../../../../manualpages/Sys/PetscBool.html">PetscBool</a>      aijalloc, valloc;
+
+<a name="line275">275: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line276">276: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <a href="../../../../../../manualpages/Mat/MATNORMALHERMITIAN.html">MATNORMALHERMITIAN</a>, &amp;chol-&gt;normal));
+<a name="line277">277: </a>  <font color="#4169E1">if</font> (!chol-&gt;normal &amp;&amp; !<a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectTypeCompare.html">PetscObjectTypeCompare</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A, <a href="../../../../../../manualpages/Mat/MATNORMAL.html">MATNORMAL</a>, &amp;chol-&gt;normal));
+<a name="line278">278: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>((*chol-&gt;Wrap)(A, <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, &amp;cholA, &amp;aijalloc, &amp;valloc));
+<a name="line279">279: </a>  <font color="#4169E1">if</font> (<a href="../../../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_DEBUG)) PetscCallExternal(!cholmod_l_check_sparse, &amp;cholA, chol-&gt;common);
+<a name="line280">280: </a>  <font color="#4169E1">if</font> (chol-&gt;spqrfact) PetscCallExternal(!SuiteSparseQR_C_free, &amp;chol-&gt;spqrfact, chol-&gt;common);
+<a name="line281">281: </a>  chol-&gt;spqrfact = SuiteSparseQR_C_symbolic(SPQR_ORDERING_DEFAULT, 1, &amp;cholA, chol-&gt;common);
+<a name="line282">282: </a>  <a href="../../../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(chol-&gt;spqrfact, <a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F), <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"CHOLMOD analysis failed using internal ordering with status %d"</font>, chol-&gt;common-&gt;status);
+
+<a name="line284">284: </a>  <font color="#4169E1">if</font> (aijalloc) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree2.html">PetscFree2</a>(cholA.p, cholA.i));
+<a name="line285">285: </a>  <font color="#4169E1">if</font> (valloc) <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(cholA.x));
+
+<a name="line287">287: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)F, <font color="#666666">"MatQRFactorNumeric_C"</font>, MatQRFactorNumeric_SPQR));
+<a name="line288">288: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line289">289: </a>}
+
+<a name="line291">291: </a><font color="#B22222">/*MC</font>
+<a name="line292">292: </a><font color="#B22222">  <a href="../../../../../../manualpages/Mat/MATSOLVERSPQR.html">MATSOLVERSPQR</a></font>
+
+<a name="line294">294: </a><font color="#B22222">  A matrix solver type providing direct solvers, QR factorizations, for sequential `<a href="../../../../../../manualpages/Mat/MATSEQAIJ.html">MATSEQAIJ</a>` and `<a href="../../../../../../manualpages/Mat/MATNORMAL.html">MATNORMAL</a>` matrices (that contain a `<a href="../../../../../../manualpages/Mat/MATSEQAIJ.html">MATSEQAIJ</a>`).</font>
+<a name="line295">295: </a><font color="#B22222">  via the external package SPQR.</font>
+
+<a name="line297">297: </a><font color="#B22222">  Use `./configure --download-suitesparse` to install PETSc to use SPQR</font>
+
+<a name="line299">299: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line301">301: </a><font color="#B22222">  Note:</font>
+<a name="line302">302: </a><font color="#B22222">  SPQR is part of SuiteSparse &lt;http://faculty.cse.tamu.edu/davis/suitesparse.html&gt;</font>
+
+<a name="line304">304: </a><font color="#B22222">.seealso: [](ch_matrices), `<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>`, `<a href="../../../../../../manualpages/PC/PCQR.html">PCQR</a>`, `<a href="../../../../../../manualpages/PC/PCFactorSetMatSolverType.html">PCFactorSetMatSolverType</a>()`, `<a href="../../../../../../manualpages/Mat/MatSolverType.html">MatSolverType</a>`</font>
+<a name="line305">305: </a><font color="#B22222">M*/</font>
+
+<a name="line307">307: </a><strong><font color="#4169E1"><a name="MatGetFactor_seqaij_spqr"></a>PETSC_INTERN <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> MatGetFactor_seqaij_spqr(<a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> A, <a href="../../../../../../manualpages/Mat/MatFactorType.html">MatFactorType</a> ftype, <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a> *F)</font></strong>
+<a name="line308">308: </a>{
+<a name="line309">309: </a>  <a href="../../../../../../manualpages/Mat/Mat.html">Mat</a>          B;
+<a name="line310">310: </a>  Mat_CHOLMOD *chol;
+<a name="line311">311: </a>  <a href="../../../../../../manualpages/Sys/PetscInt.html">PetscInt</a>     m = A-&gt;rmap-&gt;n, n = A-&gt;cmap-&gt;n;
+<a name="line312">312: </a>  const char  *prefix;
+
+<a name="line314">314: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line315">315: </a>  <font color="#B22222">/* Create the factorization matrix F */</font>
+<a name="line316">316: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatCreate.html">MatCreate</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)A), &amp;B));
+<a name="line317">317: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetSizes.html">MatSetSizes</a>(B, <a href="../../../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, <a href="../../../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, m, n));
+<a name="line318">318: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<font color="#666666">"spqr"</font>, &amp;((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B)-&gt;type_name));
+<a name="line319">319: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatGetOptionsPrefix.html">MatGetOptionsPrefix</a>(A, &amp;prefix));
+<a name="line320">320: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetOptionsPrefix.html">MatSetOptionsPrefix</a>(B, prefix));
+<a name="line321">321: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Mat/MatSetUp.html">MatSetUp</a>(B));
+<a name="line322">322: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscNew.html">PetscNew</a>(&amp;chol));
+
+<a name="line324">324: </a>  chol-&gt;Wrap = MatWrapCholmod_SPQR_seqaij;
+<a name="line325">325: </a>  B-&gt;data    = chol;
+
+<a name="line327">327: </a>  B-&gt;ops-&gt;getinfo = MatGetInfo_CHOLMOD;
+<a name="line328">328: </a>  B-&gt;ops-&gt;view    = MatView_CHOLMOD;
+<a name="line329">329: </a>  B-&gt;ops-&gt;destroy = MatDestroy_CHOLMOD;
+
+<a name="line331">331: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B, <font color="#666666">"MatFactorGetSolverType_C"</font>, MatFactorGetSolverType_seqaij_SPQR));
+<a name="line332">332: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscObjectComposeFunction.html">PetscObjectComposeFunction</a>((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)B, <font color="#666666">"MatQRFactorSymbolic_C"</font>, MatQRFactorSymbolic_SPQR));
+
+<a name="line334">334: </a>  B-&gt;factortype   = <a href="../../../../../../manualpages/Mat/MatFactorType.html">MAT_FACTOR_QR</a>;
+<a name="line335">335: </a>  B-&gt;assembled    = <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line336">336: </a>  B-&gt;preallocated = <a href="../../../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+
+<a name="line338">338: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(B-&gt;solvertype));
+<a name="line339">339: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../../../../manualpages/Mat/MATSOLVERCHOLMOD.html">MATSOLVERCHOLMOD</a>, &amp;B-&gt;solvertype));
+<a name="line340">340: </a>  B-&gt;canuseordering = <a href="../../../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line341">341: </a>  <a href="../../../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(CholmodStart(B));
+<a name="line342">342: </a>  chol-&gt;common-&gt;itype = CHOLMOD_LONG;
+<a name="line343">343: </a>  *F                  = B;
+<a name="line344">344: </a>  <a href="../../../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line345">345: </a>}
+</pre>
+</body>
+
+</html>
+

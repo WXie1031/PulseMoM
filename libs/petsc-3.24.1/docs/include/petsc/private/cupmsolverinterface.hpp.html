@@ -1,0 +1,308 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsc/private/cupmsolverinterface.hpp">Actual source code: cupmsolverinterface.hpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:44+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a>#include <A href="../../../include/petsc/private/cupmblasinterface.hpp.html">&lt;petsc/private/cupmblasinterface.hpp&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../include/petsc/private/petscadvancedmacros.h.html">&lt;petsc/private/petscadvancedmacros.h&gt;</A>
+
+<a name="line6">  6: </a>namespace Petsc
+<a name="line7">  7: </a>{
+
+<a name="line9">  9: </a>namespace device
+<a name="line10"> 10: </a>{
+
+<a name="line12"> 12: </a>namespace cupm
+<a name="line13"> 13: </a>{
+
+<a name="line15"> 15: </a>namespace impl
+<a name="line16"> 16: </a>{
+
+<a name="line18"> 18: </a><strong><font color="#228B22">#define PetscCallCUPMSOLVER_(__abort_fn__, __comm__, ...) \</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  do { \</font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">    <a href="../../../manualpages/Sys/PetscStackUpdateLine.html">PetscStackUpdateLine</a>; \</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">    const cupmSolverError_t cupmsolver_stat_p_ = __VA_ARGS__; \</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">    if (<a href="../../../manualpages/Sys/PetscUnlikely.html">PetscUnlikely</a>(cupmsolver_stat_p_ != CUPMSOLVER_STATUS_SUCCESS)) { \</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">      if (((cupmsolver_stat_p_ == CUPMSOLVER_STATUS_NOT_INITIALIZED) || (cupmsolver_stat_p_ == CUPMSOLVER_STATUS_ALLOC_FAILED) || (cupmsolver_stat_p_ == CUPMSOLVER_STATUS_INTERNAL_ERROR)) &amp;&amp; <a href="../../../manualpages/Device/PetscDeviceInitialized.html">PetscDeviceInitialized</a>(PETSC_DEVICE_CUPM())) { \</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">        __abort_fn__(__comm__, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU_RESOURCE</a>, \</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">                     </font><font color="#666666">"%s error %d (%s). "</font><font color="#228B22"> \</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">                     </font><font color="#666666">"This indicates the GPU may have run out resources"</font><font color="#228B22">, \</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">                     cupmSolverName(), static_cast&lt;<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>&gt;(cupmsolver_stat_p_), cupmSolverGetErrorName(cupmsolver_stat_p_)); \</font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">      } \</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">      __abort_fn__(__comm__, <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_GPU</a>, </font><font color="#666666">"%s error %d (%s)"</font><font color="#228B22">, cupmSolverName(), static_cast&lt;<a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>&gt;(cupmsolver_stat_p_), cupmSolverGetErrorName(cupmsolver_stat_p_)); \</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">    } \</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">  } while (0)</font></strong>
+
+<a name="line33"> 33: </a><strong><font color="#228B22">#define PetscCallCUPMSOLVER(...)             PetscCallCUPMSOLVER_(<a href="../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>, <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, __VA_ARGS__)</font></strong>
+<a name="line34"> 34: </a><strong><font color="#228B22">#define PetscCallCUPMSOLVERAbort(comm_, ...) PetscCallCUPMSOLVER_(<a href="../../../manualpages/Sys/SETERRABORT.html">SETERRABORT</a>, comm_, __VA_ARGS__)</font></strong>
+
+<a name="line36"> 36: </a><font color="#A020F0">#ifndef PetscConcat3</font>
+<a name="line37"> 37: </a><strong><font color="#228B22">  #define PetscConcat3(a, b, c) <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(<a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(a, b), c)</font></strong>
+<a name="line38"> 38: </a><font color="#A020F0">#endif</font>
+
+<a name="line40"> 40: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_COMPLEX)</font>
+<a name="line41"> 41: </a><strong><font color="#228B22">  #define PETSC_CUPMSOLVER_FP_TYPE_SPECIAL un</font></strong>
+<a name="line42"> 42: </a><font color="#A020F0">#else</font>
+<a name="line43"> 43: </a><strong><font color="#228B22">  #define PETSC_CUPMSOLVER_FP_TYPE_SPECIAL or</font></strong>
+<a name="line44"> 44: </a><font color="#A020F0">#endif // USE_COMPLEX</font>
+
+<a name="line46"> 46: </a><strong><font color="#228B22">#define PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupm_name, their_prefix, fp_type, suffix) PETSC_CUPM_ALIAS_FUNCTION(cupm_name, PetscConcat3(their_prefix, fp_type, suffix))</font></strong>
+
+<a name="line48"> 48: </a>template &lt;DeviceType&gt;
+<a name="line49"> 49: </a><font color="#4169E1"><a name="SolverInterfaceImpl"></a>struct SolverInterfaceImpl</font>;
+
+<a name="line51"> 51: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line52"> 52: </a>template &lt;&gt;
+<a name="line53"> 53: </a><font color="#4169E1"><a name="PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL"></a>struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL </font>SolverInterfaceImpl&lt;DeviceType::CUDA&gt; : BlasInterface&lt;DeviceType::CUDA&gt; {
+<a name="line54"> 54: </a>  <font color="#B22222">// typedefs</font>
+<a name="line55"> 55: </a>  using cupmSolverHandle_t    = cusolverDnHandle_t;
+<a name="line56"> 56: </a>  using cupmSolverError_t     = cusolverStatus_t;
+<a name="line57"> 57: </a>  using cupmSolverFillMode_t  = cublasFillMode_t;
+<a name="line58"> 58: </a>  using cupmSolverOperation_t = cublasOperation_t;
+
+<a name="line60"> 60: </a>  <font color="#B22222">// error codes</font>
+<a name="line61"> 61: </a>  static const auto CUPMSOLVER_STATUS_SUCCESS         = CUSOLVER_STATUS_SUCCESS;
+<a name="line62"> 62: </a>  static const auto CUPMSOLVER_STATUS_NOT_INITIALIZED = CUSOLVER_STATUS_NOT_INITIALIZED;
+<a name="line63"> 63: </a>  static const auto CUPMSOLVER_STATUS_ALLOC_FAILED    = CUSOLVER_STATUS_ALLOC_FAILED;
+<a name="line64"> 64: </a>  static const auto CUPMSOLVER_STATUS_INTERNAL_ERROR  = CUSOLVER_STATUS_INTERNAL_ERROR;
+
+<a name="line66"> 66: </a>  <font color="#B22222">// enums</font>
+<a name="line67"> 67: </a>  <font color="#B22222">// Why do these exist just to alias the CUBLAS versions? Because AMD -- in their boundless</font>
+<a name="line68"> 68: </a>  <font color="#B22222">// wisdom -- decided to do so for hipSOLVER...</font>
+<a name="line69"> 69: </a>  <font color="#B22222">// https://github.com/ROCmSoftwarePlatform/hipSOLVER/blob/develop/library/include/internal/hipsolver-types.h</font>
+<a name="line70"> 70: </a>  static const auto CUPMSOLVER_OP_T            = CUBLAS_OP_T;
+<a name="line71"> 71: </a>  static const auto CUPMSOLVER_OP_N            = CUBLAS_OP_N;
+<a name="line72"> 72: </a>  static const auto CUPMSOLVER_OP_C            = CUBLAS_OP_C;
+<a name="line73"> 73: </a>  static const auto CUPMSOLVER_FILL_MODE_LOWER = CUBLAS_FILL_MODE_LOWER;
+<a name="line74"> 74: </a>  static const auto CUPMSOLVER_FILL_MODE_UPPER = CUBLAS_FILL_MODE_UPPER;
+<a name="line75"> 75: </a>  static const auto CUPMSOLVER_SIDE_LEFT       = CUBLAS_SIDE_LEFT;
+<a name="line76"> 76: </a>  static const auto CUPMSOLVER_SIDE_RIGHT      = CUBLAS_SIDE_RIGHT;
+
+<a name="line78"> 78: </a>  <font color="#B22222">// utility functions</font>
+<a name="line79"> 79: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverCreate, cusolverDnCreate)
+<a name="line80"> 80: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverDestroy, cusolverDnDestroy)
+<a name="line81"> 81: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverSetStream, cusolverDnSetStream)
+<a name="line82"> 82: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverGetStream, cusolverDnGetStream)
+
+<a name="line84"> 84: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotrf_bufferSize, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, potrf_bufferSize)
+<a name="line85"> 85: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotrf, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, potrf)
+
+<a name="line87"> 87: </a>  using cupmBlasInt_t = typename BlasInterface&lt;DeviceType::CUDA&gt;::cupmBlasInt_t;
+<a name="line88"> 88: </a>  using cupmScalar_t  = typename Interface&lt;DeviceType::CUDA&gt;::cupmScalar_t;
+
+<a name="line90"> 90: </a>  <font color="#B22222">// to match hipSOLVER version (rocm 5.4.3, CUDA 12.0.1):</font>
+<a name="line91"> 91: </a>  <font color="#B22222">//</font>
+<a name="line92"> 92: </a>  <font color="#B22222">// hipsolverStatus_t hipsolverDpotrs_bufferSize(</font>
+<a name="line93"> 93: </a>  <font color="#B22222">//   hipsolverHandle_t handle, hipsolverFillMode_t uplo, int n, int nrhs, double *A, int lda,</font>
+<a name="line94"> 94: </a>  <font color="#B22222">//   double *B, int ldb, int *lwork</font>
+<a name="line95"> 95: </a>  <font color="#B22222">// )</font>
+<a name="line96"> 96: </a>  <font color="#B22222">//</font>
+<a name="line97"> 97: </a>  <font color="#B22222">// hipsolverStatus_t hipsolverDpotrs(</font>
+<a name="line98"> 98: </a>  <font color="#B22222">//   hipsolverHandle_t handle, hipsolverFillMode_t uplo, int n, int nrhs, double *A, int lda,</font>
+<a name="line99"> 99: </a>  <font color="#B22222">//   double *B, int ldb, double *work, int lwork, int *devInfo</font>
+<a name="line100">100: </a>  <font color="#B22222">// )</font>
+<a name="line101">101: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static cupmSolverError_t cupmSolverXpotrs_bufferSize(cupmSolverHandle_t <font color="#B22222">/* handle */</font>, cupmSolverFillMode_t <font color="#B22222">/* uplo */</font>, cupmBlasInt_t <font color="#B22222">/* n */</font>, cupmBlasInt_t <font color="#B22222">/* nrhs */</font>, cupmScalar_t * <font color="#B22222">/* A */</font>, cupmBlasInt_t <font color="#B22222">/* lda */</font>, cupmScalar_t * <font color="#B22222">/* B */</font>, cupmBlasInt_t <font color="#B22222">/* ldb */</font>, cupmBlasInt_t *lwork) noexcept
+<a name="line102">102: </a>  {
+<a name="line103">103: </a>    *lwork = 0;
+<a name="line104">104: </a>    <font color="#4169E1">return</font> CUPMSOLVER_STATUS_SUCCESS;
+<a name="line105">105: </a>  }
+
+<a name="line107">107: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotrs_p, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, potrs)
+
+<a name="line109">109: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static cupmSolverError_t cupmSolverXpotrs(cupmSolverHandle_t handle, cupmSolverFillMode_t uplo, cupmBlasInt_t n, cupmBlasInt_t nrhs, const cupmScalar_t *A, cupmBlasInt_t lda, cupmScalar_t *B, cupmBlasInt_t ldb, cupmScalar_t * <font color="#B22222">/* work */</font>, cupmBlasInt_t <font color="#B22222">/* lwork */</font>, cupmBlasInt_t *dev_info) noexcept
+<a name="line110">110: </a>  {
+<a name="line111">111: </a>    <font color="#4169E1">return</font> cupmSolverXpotrs_p(handle, uplo, n, nrhs, A, lda, B, ldb, dev_info);
+<a name="line112">112: </a>  }
+
+<a name="line114">114: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotri_bufferSize, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, potri_bufferSize)
+<a name="line115">115: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotri, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, potri)
+
+<a name="line117">117: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXsytrf_bufferSize, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, sytrf_bufferSize)
+<a name="line118">118: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXsytrf, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, sytrf)
+
+<a name="line120">120: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgetrf_bufferSize, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, getrf_bufferSize)
+<a name="line121">121: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgetrf_p, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, getrf)
+<a name="line122">122: </a>  <font color="#B22222">// to match hipSOLVER version (rocm 5.4.3, CUDA 12.0.1):</font>
+<a name="line123">123: </a>  <font color="#B22222">//</font>
+<a name="line124">124: </a>  <font color="#B22222">// hipsolverStatus_t hipsolverDgetrf(</font>
+<a name="line125">125: </a>  <font color="#B22222">//   hipsolverHandle_t handle, int m, int n, double *A, int lda, double *work, int lwork,</font>
+<a name="line126">126: </a>  <font color="#B22222">//   int *devIpiv, int *devInfo</font>
+<a name="line127">127: </a>  <font color="#B22222">// )</font>
+<a name="line128">128: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static cupmSolverError_t cupmSolverXgetrf(cupmSolverHandle_t handle, cupmBlasInt_t m, cupmBlasInt_t n, cupmScalar_t *A, cupmBlasInt_t lda, cupmScalar_t *work, cupmBlasInt_t <font color="#B22222">/* lwork */</font>, cupmBlasInt_t *dev_ipiv, cupmBlasInt_t *dev_info) noexcept
+<a name="line129">129: </a>  {
+<a name="line130">130: </a>    <font color="#4169E1">return</font> cupmSolverXgetrf_p(handle, m, n, A, lda, work, dev_ipiv, dev_info);
+<a name="line131">131: </a>  }
+
+<a name="line133">133: </a>  <font color="#B22222">// to match hipSOLVER version (rocm 5.4.3, CUDA 12.0.1):</font>
+<a name="line134">134: </a>  <font color="#B22222">//</font>
+<a name="line135">135: </a>  <font color="#B22222">// hipsolverStatus_t hipsolverDgetrs_bufferSize(</font>
+<a name="line136">136: </a>  <font color="#B22222">//   hipsolverHandle_t handle, hipsolverOperation_t trans, int n, int nrhs, double *A,</font>
+<a name="line137">137: </a>  <font color="#B22222">//   int lda, int *devIpiv, double *B, int ldb, int *lwork</font>
+<a name="line138">138: </a>  <font color="#B22222">// )</font>
+<a name="line139">139: </a>  <font color="#B22222">//</font>
+<a name="line140">140: </a>  <font color="#B22222">// hipsolverStatus_t hipsolverDgetrs(</font>
+<a name="line141">141: </a>  <font color="#B22222">//   hipsolverHandle_t handle, hipsolverOperation_t trans, int n, int nrhs, double *A,</font>
+<a name="line142">142: </a>  <font color="#B22222">//   int lda, int *devIpiv, double *B, int ldb, double *work, int lwork, int *devInfo</font>
+<a name="line143">143: </a>  <font color="#B22222">// )</font>
+<a name="line144">144: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static cupmSolverError_t cupmSolverXgetrs_bufferSize(cupmSolverHandle_t <font color="#B22222">/* handle */</font>, cupmSolverOperation_t <font color="#B22222">/* op */</font>, cupmBlasInt_t <font color="#B22222">/* n */</font>, cupmBlasInt_t <font color="#B22222">/* nrhs */</font>, cupmScalar_t * <font color="#B22222">/* A */</font>, cupmBlasInt_t <font color="#B22222">/* lda */</font>, cupmBlasInt_t * <font color="#B22222">/* devIpiv */</font>, cupmScalar_t * <font color="#B22222">/* B */</font>, cupmBlasInt_t <font color="#B22222">/* ldb */</font>, cupmBlasInt_t *lwork) noexcept
+<a name="line145">145: </a>  {
+<a name="line146">146: </a>    *lwork = 0;
+<a name="line147">147: </a>    <font color="#4169E1">return</font> CUPMSOLVER_STATUS_SUCCESS;
+<a name="line148">148: </a>  }
+
+<a name="line150">150: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgetrs_p, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, getrs)
+
+<a name="line152">152: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static cupmSolverError_t cupmSolverXgetrs(cupmSolverHandle_t handle, cupmSolverOperation_t op, cupmBlasInt_t n, cupmBlasInt_t nrhs, cupmScalar_t *A, cupmBlasInt_t lda, cupmBlasInt_t *dev_ipiv, cupmScalar_t *B, cupmBlasInt_t ldb, cupmScalar_t * <font color="#B22222">/* work */</font>, cupmBlasInt_t <font color="#B22222">/* lwork */</font>, cupmBlasInt_t *dev_info) noexcept
+<a name="line153">153: </a>  {
+<a name="line154">154: </a>    <font color="#4169E1">return</font> cupmSolverXgetrs_p(handle, op, n, nrhs, A, lda, dev_ipiv, B, ldb, dev_info);
+<a name="line155">155: </a>  }
+
+<a name="line157">157: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgeqrf_bufferSize, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, geqrf_bufferSize)
+<a name="line158">158: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgeqrf, cusolverDn, PETSC_CUPMBLAS_FP_TYPE_U, geqrf)
+
+<a name="line160">160: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXormqr_bufferSize, cusolverDn, <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_FP_TYPE_U, PETSC_CUPMSOLVER_FP_TYPE_SPECIAL), mqr_bufferSize)
+<a name="line161">161: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXormqr, cusolverDn, <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_FP_TYPE_U, PETSC_CUPMSOLVER_FP_TYPE_SPECIAL), mqr)
+
+<a name="line163">163: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static const char *cupmSolverGetErrorName(cupmSolverError_t status) noexcept { <font color="#4169E1">return</font> PetscCUSolverGetErrorName(status); }
+<a name="line164">164: </a>};
+<a name="line165">165: </a><font color="#A020F0">#endif</font>
+
+<a name="line167">167: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line168">168: </a>template &lt;&gt;
+<a name="line169">169: </a><font color="#4169E1"><a name="PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL"></a>struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL </font>SolverInterfaceImpl&lt;DeviceType::HIP&gt; : BlasInterface&lt;DeviceType::HIP&gt; {
+<a name="line170">170: </a>  <font color="#B22222">// typedefs</font>
+<a name="line171">171: </a>  using cupmSolverHandle_t    = hipsolverHandle_t;
+<a name="line172">172: </a>  using cupmSolverError_t     = hipsolverStatus_t;
+<a name="line173">173: </a>  using cupmSolverFillMode_t  = hipsolverFillMode_t;
+<a name="line174">174: </a>  using cupmSolverOperation_t = hipsolverOperation_t;
+
+<a name="line176">176: </a>  <font color="#B22222">// error codes</font>
+<a name="line177">177: </a>  static const auto CUPMSOLVER_STATUS_SUCCESS         = HIPSOLVER_STATUS_SUCCESS;
+<a name="line178">178: </a>  static const auto CUPMSOLVER_STATUS_NOT_INITIALIZED = HIPSOLVER_STATUS_NOT_INITIALIZED;
+<a name="line179">179: </a>  static const auto CUPMSOLVER_STATUS_ALLOC_FAILED    = HIPSOLVER_STATUS_ALLOC_FAILED;
+<a name="line180">180: </a>  static const auto CUPMSOLVER_STATUS_INTERNAL_ERROR  = HIPSOLVER_STATUS_INTERNAL_ERROR;
+
+<a name="line182">182: </a>  <font color="#B22222">// enums</font>
+<a name="line183">183: </a>  static const auto CUPMSOLVER_OP_T            = HIPSOLVER_OP_T;
+<a name="line184">184: </a>  static const auto CUPMSOLVER_OP_N            = HIPSOLVER_OP_N;
+<a name="line185">185: </a>  static const auto CUPMSOLVER_OP_C            = HIPSOLVER_OP_C;
+<a name="line186">186: </a>  static const auto CUPMSOLVER_FILL_MODE_LOWER = HIPSOLVER_FILL_MODE_LOWER;
+<a name="line187">187: </a>  static const auto CUPMSOLVER_FILL_MODE_UPPER = HIPSOLVER_FILL_MODE_UPPER;
+<a name="line188">188: </a>  static const auto CUPMSOLVER_SIDE_LEFT       = HIPSOLVER_SIDE_LEFT;
+<a name="line189">189: </a>  static const auto CUPMSOLVER_SIDE_RIGHT      = HIPSOLVER_SIDE_RIGHT;
+
+<a name="line191">191: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverCreate, hipsolverCreate)
+<a name="line192">192: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverDestroy, hipsolverDestroy)
+<a name="line193">193: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverSetStream, hipsolverSetStream)
+<a name="line194">194: </a>  PETSC_CUPM_ALIAS_FUNCTION(cupmSolverGetStream, hipsolverGetStream)
+
+<a name="line196">196: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotrf_bufferSize, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, potrf_bufferSize)
+<a name="line197">197: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotrf, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, potrf)
+
+<a name="line199">199: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotrs_bufferSize, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, potrs_bufferSize)
+<a name="line200">200: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotrs, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, potrs)
+
+<a name="line202">202: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotri_bufferSize, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, potri_bufferSize)
+<a name="line203">203: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXpotri, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, potri)
+
+<a name="line205">205: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXsytrf_bufferSize, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, sytrf_bufferSize)
+<a name="line206">206: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXsytrf, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, sytrf)
+
+<a name="line208">208: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgetrf_bufferSize, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, getrf_bufferSize)
+<a name="line209">209: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgetrf, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, getrf)
+
+<a name="line211">211: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgetrs_bufferSize, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, getrs_bufferSize)
+<a name="line212">212: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgetrs, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, getrs)
+
+<a name="line214">214: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgeqrf_bufferSize, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, geqrf_bufferSize)
+<a name="line215">215: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXgeqrf, hipsolver, PETSC_CUPMBLAS_FP_TYPE_U, geqrf)
+
+<a name="line217">217: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXormqr_bufferSize, hipsolver, <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_FP_TYPE_U, PETSC_CUPMSOLVER_FP_TYPE_SPECIAL), mqr_bufferSize)
+<a name="line218">218: </a>  PETSC_CUPMSOLVER_ALIAS_BLAS_FUNCTION(cupmSolverXormqr, hipsolver, <a href="../../../manualpages/Sys/PetscConcat.html">PetscConcat</a>(PETSC_CUPMBLAS_FP_TYPE_U, PETSC_CUPMSOLVER_FP_TYPE_SPECIAL), mqr)
+
+<a name="line220">220: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static const char *cupmSolverGetErrorName(cupmSolverError_t status) noexcept { <font color="#4169E1">return</font> PetscHIPSolverGetErrorName(status); }
+<a name="line221">221: </a>};
+<a name="line222">222: </a><font color="#A020F0">#endif</font>
+
+<a name="line224">224: </a><strong><font color="#228B22">#define PETSC_CUPMSOLVER_IMPL_CLASS_HEADER(T) \</font></strong>
+<a name="line225">225: </a><strong><font color="#228B22">  PETSC_CUPMBLAS_INHERIT_INTERFACE_TYPEDEFS_USING(T); \</font></strong>
+<a name="line226">226: </a><strong><font color="#228B22">  </font><font color="#B22222">/* introspection */</font><font color="#228B22"> \</font></strong>
+<a name="line227">227: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverGetErrorName; \</font></strong>
+<a name="line228">228: </a><strong><font color="#228B22">  </font><font color="#B22222">/* types */</font><font color="#228B22"> \</font></strong>
+<a name="line229">229: </a><strong><font color="#228B22">  using cupmSolverHandle_t    = typename ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverHandle_t; \</font></strong>
+<a name="line230">230: </a><strong><font color="#228B22">  using cupmSolverError_t     = typename ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverError_t; \</font></strong>
+<a name="line231">231: </a><strong><font color="#228B22">  using cupmSolverFillMode_t  = typename ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverFillMode_t; \</font></strong>
+<a name="line232">232: </a><strong><font color="#228B22">  using cupmSolverOperation_t = typename ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverOperation_t; \</font></strong>
+<a name="line233">233: </a><strong><font color="#228B22">  </font><font color="#B22222">/* error codes */</font><font color="#228B22"> \</font></strong>
+<a name="line234">234: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_STATUS_SUCCESS; \</font></strong>
+<a name="line235">235: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_STATUS_NOT_INITIALIZED; \</font></strong>
+<a name="line236">236: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_STATUS_ALLOC_FAILED; \</font></strong>
+<a name="line237">237: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_STATUS_INTERNAL_ERROR; \</font></strong>
+<a name="line238">238: </a><strong><font color="#228B22">  </font><font color="#B22222">/* values */</font><font color="#228B22"> \</font></strong>
+<a name="line239">239: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_OP_T; \</font></strong>
+<a name="line240">240: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_OP_N; \</font></strong>
+<a name="line241">241: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_OP_C; \</font></strong>
+<a name="line242">242: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_FILL_MODE_LOWER; \</font></strong>
+<a name="line243">243: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_FILL_MODE_UPPER; \</font></strong>
+<a name="line244">244: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_SIDE_LEFT; \</font></strong>
+<a name="line245">245: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::CUPMSOLVER_SIDE_RIGHT; \</font></strong>
+<a name="line246">246: </a><strong><font color="#228B22">  </font><font color="#B22222">/* utility functions */</font><font color="#228B22"> \</font></strong>
+<a name="line247">247: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverCreate; \</font></strong>
+<a name="line248">248: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverDestroy; \</font></strong>
+<a name="line249">249: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverGetStream; \</font></strong>
+<a name="line250">250: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverSetStream; \</font></strong>
+<a name="line251">251: </a><strong><font color="#228B22">  </font><font color="#B22222">/* blas functions */</font><font color="#228B22"> \</font></strong>
+<a name="line252">252: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXpotrf_bufferSize; \</font></strong>
+<a name="line253">253: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXpotrf; \</font></strong>
+<a name="line254">254: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXpotrs_bufferSize; \</font></strong>
+<a name="line255">255: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXpotrs; \</font></strong>
+<a name="line256">256: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXpotri_bufferSize; \</font></strong>
+<a name="line257">257: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXpotri; \</font></strong>
+<a name="line258">258: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXsytrf_bufferSize; \</font></strong>
+<a name="line259">259: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXsytrf; \</font></strong>
+<a name="line260">260: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXgetrf_bufferSize; \</font></strong>
+<a name="line261">261: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXgetrf; \</font></strong>
+<a name="line262">262: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXgetrs_bufferSize; \</font></strong>
+<a name="line263">263: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXgetrs; \</font></strong>
+<a name="line264">264: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXgeqrf_bufferSize; \</font></strong>
+<a name="line265">265: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXgeqrf; \</font></strong>
+<a name="line266">266: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXormqr_bufferSize; \</font></strong>
+<a name="line267">267: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterfaceImpl&lt;T&gt;::cupmSolverXormqr</font></strong>
+
+<a name="line269">269: </a>template &lt;DeviceType T&gt;
+<a name="line270">270: </a><font color="#4169E1"><a name="SolverInterface"></a>struct SolverInterface </font>: SolverInterfaceImpl&lt;T&gt; {
+<a name="line271">271: </a>  <a href="../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static constexpr const char *cupmSolverName() noexcept { <font color="#4169E1">return</font> T == DeviceType::CUDA ? <font color="#666666">"cusolverDn"</font> : <font color="#666666">"hipsolver"</font>; }
+<a name="line272">272: </a>};
+
+<a name="line274">274: </a><strong><font color="#228B22">#define PETSC_CUPMSOLVER_INHERIT_INTERFACE_TYPEDEFS_USING(T) \</font></strong>
+<a name="line275">275: </a><strong><font color="#228B22">  PETSC_CUPMSOLVER_IMPL_CLASS_HEADER(T); \</font></strong>
+<a name="line276">276: </a><strong><font color="#228B22">  using ::Petsc::device::cupm::impl::SolverInterface&lt;T&gt;::cupmSolverName</font></strong>
+
+<a name="line278">278: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_CUDA)</font>
+<a name="line279">279: </a>extern template <font color="#4169E1">struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL</font> SolverInterface&lt;DeviceType::CUDA&gt;;
+<a name="line280">280: </a><font color="#A020F0">#endif</font>
+
+<a name="line282">282: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(HAVE_HIP)</font>
+<a name="line283">283: </a>extern template <font color="#4169E1">struct PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL</font> SolverInterface&lt;DeviceType::HIP&gt;;
+<a name="line284">284: </a><font color="#A020F0">#endif</font>
+
+<a name="line286">286: </a>} <font color="#B22222">// namespace impl</font>
+
+<a name="line288">288: </a>} <font color="#B22222">// namespace cupm</font>
+
+<a name="line290">290: </a>} <font color="#B22222">// namespace device</font>
+
+<a name="line292">292: </a>} <font color="#B22222">// namespace Petsc</font>
+</pre>
+</body>
+
+</html>
+

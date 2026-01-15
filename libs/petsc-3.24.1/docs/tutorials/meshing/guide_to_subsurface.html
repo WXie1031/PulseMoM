@@ -1,0 +1,799 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Meshing for Subsurface Flows in PETSc &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/meshing/guide_to_subsurface';</script>
+    <link rel="icon" href="../../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Time, Accuracy, Speed Analysis (TAS)" href="../performance/guide_to_TAS.html" />
+    <link rel="prev" title="Tutorials, by Mathematical Problem" href="../handson.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manual/index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../guide_to_examples_by_physics.html">Tutorials, by Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../handson.html">Tutorials, by Mathematical Problem</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Meshing for Subsurface Flows in PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../performance/guide_to_TAS.html">Time, Accuracy, Speed Analysis (TAS)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../in_person.html">In-Person Tutorials</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Meshing for...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="meshing-for-subsurface-flows-in-petsc">
+<h1>Meshing for Subsurface Flows in PETSc<a class="headerlink" href="#meshing-for-subsurface-flows-in-petsc" title="Link to this heading">#</a></h1>
+<p>This tutorials guides users in creating meshes for the TDyCore simulation framework for subsurface flows. The user inputs a surface mesh, a refinement prescription, and an extrusion prescription in order to create the simulation mesh.</p>
+<p>Reading the ASCII Output</p>
+<p>For example, a very simple mesh would start with a square surface mesh divided into two triangles, which is then extruded to form two triangular prisms. This is the first test in the DMPlex tutorial code ex10,</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>-f<span class="w"> </span>./gmakefile<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nv">search</span><span class="o">=</span><span class="s2">&quot;dm_impls_plex_tutorials-ex10_0&quot;</span>
+</pre></div>
+</div>
+<p>which outputs</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../../manualpages/DM/DM.html">DM</a></span><span class="w"> </span><span class="n">Object</span><span class="o">:</span><span class="w"> </span><span class="n">Mesh</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="n">MPI</span><span class="w"> </span><span class="n">process</span>
+<span class="w">  </span><span class="nl">type</span><span class="p">:</span><span class="w"> </span><span class="n">plex</span>
+<span class="n">Mesh</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="n">dimensions</span><span class="o">:</span>
+<span class="w">  </span><span class="n">Number</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="mi">0</span><span class="o">-</span><span class="n">cells</span><span class="w"> </span><span class="n">per</span><span class="w"> </span><span class="n">rank</span><span class="o">:</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">  </span><span class="n">Number</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="mi">1</span><span class="o">-</span><span class="n">cells</span><span class="w"> </span><span class="n">per</span><span class="w"> </span><span class="n">rank</span><span class="o">:</span><span class="w"> </span><span class="mi">14</span><span class="w"> </span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="w">  </span><span class="n">Number</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="mi">2</span><span class="o">-</span><span class="n">cells</span><span class="w"> </span><span class="n">per</span><span class="w"> </span><span class="n">rank</span><span class="o">:</span><span class="w"> </span><span class="mi">9</span><span class="w"> </span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="w">  </span><span class="n">Number</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="mi">3</span><span class="o">-</span><span class="n">cells</span><span class="w"> </span><span class="n">per</span><span class="w"> </span><span class="n">rank</span><span class="o">:</span><span class="w"> </span><span class="mi">2</span>
+<span class="nl">Labels</span><span class="p">:</span>
+<span class="w">  </span><span class="nl">celltype</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="w"> </span><span class="n">strata</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">value</span><span class="o">/</span><span class="n">size</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="w"> </span><span class="p">(</span><span class="mi">8</span><span class="p">),</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">(</span><span class="mi">10</span><span class="p">),</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="p">(</span><span class="mi">4</span><span class="p">),</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="p">(</span><span class="mi">4</span><span class="p">),</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="p">(</span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="mi">9</span><span class="w"> </span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="w">  </span><span class="nl">depth</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="n">strata</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">value</span><span class="o">/</span><span class="n">size</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="w"> </span><span class="p">(</span><span class="mi">8</span><span class="p">),</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">(</span><span class="mi">14</span><span class="p">),</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="p">(</span><span class="mi">9</span><span class="p">),</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="w">  </span><span class="nl">marker</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="n">strata</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">value</span><span class="o">/</span><span class="n">size</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="p">(</span><span class="mi">24</span><span class="p">))</span>
+<span class="w">  </span><span class="n">Face</span><span class="w"> </span><span class="n">Sets</span><span class="o">:</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="n">strata</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">value</span><span class="o">/</span><span class="n">size</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="p">),</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="p">),</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="p">),</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>We can see that there are two 3-cells, meaning three-dimensional cells, and from the <code class="docutils notranslate"><span class="pre">celltype</span></code> label we see that those cells have celltype 9, meaning they are triangular prisms. The original surface mesh had 5 edges, so we would expect 10 edges for the two surfaces and four edges connecting those surfaces. This is exactly what we see, since there are 14 1-cells, but 4 of them noted in parentheses are tensor cells created by extrusion. We can see this another way in the celltype label, where there are ten mesh points of type 1, meaning segments, and four mesh points of type 2, meaning tensor products of a vertex and segment. Similarly, there are 9 2-cells, but 5 of them stretch between the two surfaces, meaning they are tensor products of two segments.</p>
+<p>Regular Refinement of Simplex Meshes</p>
+<p>We can regularly refine the surface before extrusion using <code class="docutils notranslate"><span class="pre">-dm_refine</span> <span class="pre">&lt;k&gt;</span></code>, where <code class="docutils notranslate"><span class="pre">k</span></code> is the number of refinements,</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>-f<span class="w"> </span>./gmakefile<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nv">search</span><span class="o">=</span><span class="s2">&quot;dm_impls_plex_tutorials-ex10_1&quot;</span><span class="w"> </span><span class="nv">EXTRA_OPTIONS</span><span class="o">=</span><span class="s2">&quot;-srf_dm_refine 2 -srf_dm_view draw -draw_save </span><span class="nv">$PETSC_DIR</span><span class="s2">/surface.png -draw_save_single_file&quot;</span>
+</pre></div>
+</div>
+<p>which produces the following surface</p>
+<figure class="align-center" id="id1">
+<img alt="../../_images/surface.png" src="../../_images/surface.png" />
+<figcaption>
+<p><span class="caption-number">Fig. 31 </span><span class="caption-text"><strong>Surface mesh refined twice</strong></span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>and the extruded mesh can be visualized using VTK. Here I make the image using Paraview, and give the extrusion 3 layers</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>-f<span class="w"> </span>./gmakefile<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nv">search</span><span class="o">=</span><span class="s2">&quot;dm_impls_plex_tutorials-ex10_1&quot;</span><span class="w"> </span><span class="nv">EXTRA_OPTIONS</span><span class="o">=</span><span class="s2">&quot;-dm_view hdf5:</span><span class="nv">$PETSC_DIR</span><span class="s2">/mesh.h5 -dm_extrude 3&quot;</span>
+<span class="gp">$ </span><span class="nv">$PETSC_DIR</span>/lib/petsc/bin/petsc_gen_xmdf.py<span class="w"> </span>mesh.h5
+</pre></div>
+</div>
+<figure class="align-center" id="id2">
+<img alt="../../_images/extrusion.png" src="../../_images/extrusion.png" />
+<figcaption>
+<p><span class="caption-number">Fig. 32 </span><span class="caption-text"><strong>Extruded mesh with refined surface</strong></span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>We can similarly look at this in parallel. Test 2 uses three refinements and three extrusion layers on five processes</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>-f<span class="w"> </span>./gmakefile<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nv">search</span><span class="o">=</span><span class="s2">&quot;dm_impls_plex_tutorials-ex10_2&quot;</span><span class="w"> </span><span class="nv">EXTRA_OPTIONS</span><span class="o">=</span><span class="s2">&quot;-dm_view hdf5:</span><span class="nv">$PETSC_DIR</span><span class="s2">/mesh.h5 -dm_partition_view -petscpartitioner_type parmetis&quot;</span>
+<span class="gp">$ </span><span class="nv">$PETSC_DIR</span>/lib/petsc/bin/petsc_gen_xmdf.py<span class="w"> </span>mesh.h5
+</pre></div>
+</div>
+<figure class="align-center" id="id3">
+<img alt="../../_images/extrusionParallel.png" src="../../_images/extrusionParallel.png" />
+<figcaption>
+<p><span class="caption-number">Fig. 33 </span><span class="caption-text"><strong>Parallel extruded mesh with refined surface</strong></span><a class="headerlink" href="#id3" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>Adaptive Refinement of Simplex Meshes</p>
+<p>Adaptive refinement of simplicial meshes is somewhat tricky when we demand that the meshes be conforming, as we do in this case. We would like different grid cells to have different levels of refinement, for example headwaters cells in a watershed be refined twice, while river channel cells be refined four times. In order to differentiate between cells, we first mark the cells on the surface using a <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DMLabel.html">DMLabel</a></span></code>. We can do this programmatically,</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a></span><span class="w"> </span><span class="nf">CreateDomainLabel</span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DM.html">DM</a></span><span class="w"> </span><span class="n">dm</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="n"><a href="../../manualpages/DM/DMLabel.html">DMLabel</a></span><span class="w">  </span><span class="n">label</span><span class="p">;</span>
+<span class="w">  </span><span class="n"><a href="../../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">cStart</span><span class="p">,</span><span class="w"> </span><span class="n">cEnd</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n"><a href="../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a></span><span class="p">;</span>
+<span class="w">  </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMGetCoordinatesLocalSetUp.html">DMGetCoordinatesLocalSetUp</a></span><span class="p">(</span><span class="n">dm</span><span class="p">));</span>
+<span class="w">  </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMCreateLabel.html">DMCreateLabel</a></span><span class="p">(</span><span class="n">dm</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Cell Sets&quot;</span><span class="p">));</span>
+<span class="w">  </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMGetLabel.html">DMGetLabel</a></span><span class="p">(</span><span class="n">dm</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Cell Sets&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">label</span><span class="p">));</span>
+<span class="w">  </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMPlex/DMPlexGetHeightStratum.html">DMPlexGetHeightStratum</a></span><span class="p">(</span><span class="n">dm</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">cStart</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">cEnd</span><span class="p">));</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cStart</span><span class="p">;</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">cEnd</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscReal.html">PetscReal</a></span><span class="w"> </span><span class="n">centroid</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span><span class="w"> </span><span class="n">volume</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMPlex/DMPlexComputeCellGeometryFVM.html">DMPlexComputeCellGeometryFVM</a></span><span class="p">(</span><span class="n">dm</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">volume</span><span class="p">,</span><span class="w"> </span><span class="n">centroid</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">));</span>
+<span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">centroid</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+<span class="w">    </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">centroid</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<span class="w">    </span><span class="cm">/* Headwaters are (0.0,0.25)--(0.1,0.75) */</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mf">0.0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">0.1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mf">0.25</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mf">0.75</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelSetValue.html">DMLabelSetValue</a></span><span class="p">(</span><span class="n">label</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">));</span>
+<span class="w">      </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="cm">/* River channel is (0.1,0.45)--(1.0,0.55) */</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mf">0.1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mf">1.0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mf">0.45</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mf">0.55</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelSetValue.html">DMLabelSetValue</a></span><span class="p">(</span><span class="n">label</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">));</span>
+<span class="w">      </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="n"><a href="../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a></span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>or you can label the mesh using a GUI, such as GMsh, and PETSc will read the label values from the input file.</p>
+<p>We next create a label marking each cell in the mesh with an action, such as <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DMAdaptFlag.html">DM_ADAPT_REFINE</a></span></code> or <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/DM/DMAdaptFlag.html">DM_ADAPT_COARSEN</a></span></code>. We do this based on a volume constraint, namely that cells with a certain label value should have a certain volume. You could, of course, choose a more complex strategy, but here we just want a clear criterion. We can give volume constraints for label value <code class="docutils notranslate"><span class="pre">v</span></code> using the command line argument <code class="docutils notranslate"><span class="pre">-volume_constraint_&lt;v&gt;</span> <span class="pre">&lt;vol&gt;</span></code>. The mesh is then refined iteratively, checking the volume constraints each time,</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">adapt</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/DM/DM.html">DM</a></span><span class="w">       </span><span class="n">dmAdapt</span><span class="p">;</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/DM/DMLabel.html">DMLabel</a></span><span class="w">  </span><span class="n">adaptLabel</span><span class="p">;</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">nAdaptLoc</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span><span class="w"> </span><span class="n">nAdapt</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+
+<span class="w">    </span><span class="n">adapt</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a></span><span class="p">;</span>
+<span class="w">    </span><span class="n">nAdaptLoc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nAdaptLoc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="n">nAdapt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nAdapt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="cm">/* Adaptation is not preserving the domain label */</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMHasLabel.html">DMHasLabel</a></span><span class="p">(</span><span class="n">dmCur</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Cell Sets&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">hasLabel</span><span class="p">));</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">hasLabel</span><span class="p">)</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n">CreateDomainLabel</span><span class="p">(</span><span class="n">dmCur</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMGetLabel.html">DMGetLabel</a></span><span class="p">(</span><span class="n">dmCur</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Cell Sets&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">label</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelGetValueIS.html">DMLabelGetValueIS</a></span><span class="p">(</span><span class="n">label</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">vIS</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/IS/ISDuplicate.html">ISDuplicate</a></span><span class="p">(</span><span class="n">vIS</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">valueIS</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/IS/ISDestroy.html">ISDestroy</a></span><span class="p">(</span><span class="o">&amp;</span><span class="n">vIS</span><span class="p">));</span>
+<span class="w">    </span><span class="cm">/* Sorting directly the label&#39;s value <a href="../../manualpages/IS/IS.html">IS</a> would corrupt the label so we duplicate the <a href="../../manualpages/IS/IS.html">IS</a> first */</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/IS/ISSort.html">ISSort</a></span><span class="p">(</span><span class="n">valueIS</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/IS/ISGetLocalSize.html">ISGetLocalSize</a></span><span class="p">(</span><span class="n">valueIS</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">Nv</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/IS/ISGetIndices.html">ISGetIndices</a></span><span class="p">(</span><span class="n">valueIS</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">values</span><span class="p">));</span>
+<span class="w">    </span><span class="cm">/* Construct adaptation label */</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelCreate.html">DMLabelCreate</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a></span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adapt&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">adaptLabel</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMPlex/DMPlexGetHeightStratum.html">DMPlexGetHeightStratum</a></span><span class="p">(</span><span class="n">dmCur</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">cStart</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">cEnd</span><span class="p">));</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cStart</span><span class="p">;</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">cEnd</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscReal.html">PetscReal</a></span><span class="w"> </span><span class="n">volume</span><span class="p">,</span><span class="w"> </span><span class="n">centroid</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w">  </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">vidx</span><span class="p">;</span>
+
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMPlex/DMPlexComputeCellGeometryFVM.html">DMPlexComputeCellGeometryFVM</a></span><span class="p">(</span><span class="n">dmCur</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">volume</span><span class="p">,</span><span class="w"> </span><span class="n">centroid</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">));</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelGetValue.html">DMLabelGetValue</a></span><span class="p">(</span><span class="n">label</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">value</span><span class="p">));</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">value</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/Sys/PetscFindInt.html">PetscFindInt</a></span><span class="p">(</span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">Nv</span><span class="p">,</span><span class="w"> </span><span class="n">values</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">vidx</span><span class="p">));</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCheck.html">PetscCheck</a></span><span class="p">(</span><span class="n">vidx</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a></span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a></span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Value %&quot;</span><span class="w"> </span><span class="n">PetscInt_FMT</span><span class="w"> </span><span class="s">&quot; for cell %&quot;</span><span class="w"> </span><span class="n">PetscInt_FMT</span><span class="w"> </span><span class="s">&quot; does not exist in label&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">);</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">volume</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">volConst</span><span class="p">[</span><span class="n">vidx</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelSetValue.html">DMLabelSetValue</a></span><span class="p">(</span><span class="n">adaptLabel</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../../manualpages/DM/DMAdaptFlag.html">DM_ADAPT_REFINE</a></span><span class="p">));</span>
+<span class="w">        </span><span class="o">++</span><span class="n">nAdaptLoc</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">volume</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">volConst</span><span class="p">[</span><span class="n">vidx</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">ratio</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelSetValue.html">DMLabelSetValue</a></span><span class="p">(</span><span class="n">adaptLabel</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../../manualpages/DM/DMAdaptFlag.html">DM_ADAPT_COARSEN</a></span><span class="p">));</span>
+<span class="w">        </span><span class="o">++</span><span class="n">nAdaptLoc</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/IS/ISRestoreIndices.html">ISRestoreIndices</a></span><span class="p">(</span><span class="n">valueIS</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">values</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/IS/ISDestroy.html">ISDestroy</a></span><span class="p">(</span><span class="o">&amp;</span><span class="n">valueIS</span><span class="p">));</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCallMPI.html">PetscCallMPI</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/Sys/MPIU_Allreduce.html">MPIU_Allreduce</a></span><span class="p">(</span><span class="o">&amp;</span><span class="n">nAdaptLoc</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">nAdapt</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/MPIU_INT.html">MPIU_INT</a></span><span class="p">,</span><span class="w"> </span><span class="n">MPI_SUM</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a></span><span class="p">((</span><span class="n"><a href="../../manualpages/Sys/PetscObject.html">PetscObject</a></span><span class="p">)</span><span class="n">dmCur</span><span class="p">)));</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">nAdapt</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/Log/PetscInfo.html">PetscInfo</a></span><span class="p">(</span><span class="n">dmCur</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Adapted mesh, marking %&quot;</span><span class="w"> </span><span class="n">PetscInt_FMT</span><span class="w"> </span><span class="s">&quot; cells for refinement, and %&quot;</span><span class="w"> </span><span class="n">PetscInt_FMT</span><span class="w"> </span><span class="s">&quot; cells for coarsening</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">nAdapt</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">nAdapt</span><span class="p">[</span><span class="mi">1</span><span class="p">]));</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMAdaptLabel.html">DMAdaptLabel</a></span><span class="p">(</span><span class="n">dmCur</span><span class="p">,</span><span class="w"> </span><span class="n">adaptLabel</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">dmAdapt</span><span class="p">));</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMDestroy.html">DMDestroy</a></span><span class="p">(</span><span class="o">&amp;</span><span class="n">dmCur</span><span class="p">));</span>
+<span class="w">      </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DM/DMViewFromOptions.html">DMViewFromOptions</a></span><span class="p">(</span><span class="n">dmAdapt</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;-adapt_dm_view&quot;</span><span class="p">));</span>
+<span class="w">      </span><span class="n">dmCur</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dmAdapt</span><span class="p">;</span>
+<span class="w">      </span><span class="n">adapt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n"><a href="../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a></span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n"><a href="../../manualpages/Sys/PetscCall.html">PetscCall</a></span><span class="p">(</span><span class="n"><a href="../../manualpages/DMLabel/DMLabelDestroy.html">DMLabelDestroy</a></span><span class="p">(</span><span class="o">&amp;</span><span class="n">adaptLabel</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Test 3 from <code class="docutils notranslate"><span class="pre">ex10</span></code> constrains the headwater cells (with marker 1) to have volume less than 0.01, and the river channel cells (with marker 2) to be smaller than 0.000625</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="nl">suffix</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">    </span><span class="nl">requires</span><span class="p">:</span><span class="w"> </span><span class="n">triangle</span>
+<span class="w">    </span><span class="nl">args</span><span class="p">:</span><span class="w"> </span><span class="o">-</span><span class="n">init_dm_plex_dim</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">-</span><span class="n">init_dm_plex_box_faces</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="w"> </span><span class="o">-</span><span class="n">adapt</span><span class="w"> </span><span class="o">-</span><span class="n">volume_constraint_1</span><span class="w"> </span><span class="mf">0.01</span><span class="w"> </span><span class="o">-</span><span class="n">volume_constraint_2</span><span class="w"> </span><span class="mf">0.000625</span><span class="w"> </span><span class="o">-</span><span class="n">dm_extrude</span><span class="w"> </span><span class="mi">10</span>
+</pre></div>
+</div>
+<p>We can look at a parallel run using extra options for the test system</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>-f<span class="w"> </span>./gmakefile<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nv">search</span><span class="o">=</span><span class="s2">&quot;dm_impls_plex_tutorials-ex10_3&quot;</span><span class="w"> </span><span class="nv">EXTRA_OPTIONS</span><span class="o">=</span><span class="s2">&quot;-dm_view hdf5:</span><span class="nv">$PETSC_DIR</span><span class="s2">/mesh.h5 -dm_partition_view -petscpartitioner_type parmetis&quot;</span><span class="w"> </span><span class="nv">NP</span><span class="o">=</span><span class="m">5</span>
+<span class="gp">$ </span><span class="nv">$PETSC_DIR</span>/lib/petsc/bin/petsc_gen_xmdf.py<span class="w"> </span>mesh.h5
+</pre></div>
+</div>
+<figure class="align-center" id="id4">
+<img alt="../../_images/extrusionAdaptiveParallel.png" src="../../_images/extrusionAdaptiveParallel.png" />
+<figcaption>
+<p><span class="caption-number">Fig. 34 </span><span class="caption-text"><strong>Parallel extruded mesh with adaptively refined surface</strong></span><a class="headerlink" href="#id4" title="Link to this image">#</a></p>
+</figcaption>
+</figure>
+<p>By turning on <code class="docutils notranslate"><span class="pre"><a href="../../manualpages/Log/PetscInfo.html">PetscInfo</a></span></code>, we can see what decisions the refiner is making</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make<span class="w"> </span>-f<span class="w"> </span>./gmakefile<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="nv">search</span><span class="o">=</span><span class="s2">&quot;dm_impls_plex_tutorials-ex10_3&quot;</span><span class="w"> </span><span class="nv">EXTRA_OPTIONS</span><span class="o">=</span><span class="s2">&quot;-info :dm&quot;</span>
+<span class="gp">#       </span>&gt;<span class="w"> </span><span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>AdaptMesh<span class="o">()</span>:<span class="w"> </span>Adapted<span class="w"> </span>mesh,<span class="w"> </span>marking<span class="w"> </span><span class="m">12</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>refinement,<span class="w"> </span>and<span class="w"> </span><span class="m">0</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>coarsening
+<span class="gp">#       </span>&gt;<span class="w"> </span><span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>AdaptMesh<span class="o">()</span>:<span class="w"> </span>Adapted<span class="w"> </span>mesh,<span class="w"> </span>marking<span class="w"> </span><span class="m">29</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>refinement,<span class="w"> </span>and<span class="w"> </span><span class="m">0</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>coarsening
+<span class="gp">#       </span>&gt;<span class="w"> </span><span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>AdaptMesh<span class="o">()</span>:<span class="w"> </span>Adapted<span class="w"> </span>mesh,<span class="w"> </span>marking<span class="w"> </span><span class="m">84</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>refinement,<span class="w"> </span>and<span class="w"> </span><span class="m">0</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>coarsening
+<span class="gp">#       </span>&gt;<span class="w"> </span><span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>AdaptMesh<span class="o">()</span>:<span class="w"> </span>Adapted<span class="w"> </span>mesh,<span class="w"> </span>marking<span class="w"> </span><span class="m">10</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>refinement,<span class="w"> </span>and<span class="w"> </span><span class="m">0</span><span class="w"> </span>cells<span class="w"> </span><span class="k">for</span><span class="w"> </span>coarsening
+</pre></div>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../handson.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Tutorials, by Mathematical Problem</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../performance/guide_to_TAS.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Time, Accuracy, Speed Analysis (TAS)</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/tutorials/meshing/guide_to_subsurface.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../../_sources/tutorials/meshing/guide_to_subsurface.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

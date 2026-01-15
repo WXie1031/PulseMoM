@@ -1,0 +1,68 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/vec/tests/ex3k.kokkos.cxx">Actual source code: ex3k.kokkos.cxx</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:21+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Tests <a href="../../../../manualpages/Vec/VecKokkosPlaceArray.html">VecKokkosPlaceArray</a>().\n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petscvec.h.html">&lt;petscvec.h&gt;</A>
+<a name="line4">  4: </a><font color="#A020F0">#include &lt;Kokkos_Core.hpp&gt;</font>
+
+<a name="line6">  6: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line7">  7: </a>{
+<a name="line8">  8: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  n = 10;
+<a name="line9">  9: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>       x, y;
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> norm;
+
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line14"> 14: </a>  {
+<a name="line15"> 15: </a>    <font color="#B22222">// Create a VecKokkos x and init it</font>
+<a name="line16"> 16: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreate.html">VecCreate</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;x));
+<a name="line17"> 17: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetSizes.html">VecSetSizes</a>(x, n, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>));
+<a name="line18"> 18: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetType.html">VecSetType</a>(x, <a href="../../../../manualpages/Vec/VECKOKKOS.html">VECKOKKOS</a>));
+<a name="line19"> 19: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSet.html">VecSet</a>(x, 4.0));
+
+<a name="line21"> 21: </a>    <font color="#B22222">// Allocate a Kokkos View kv and init it with a different value</font>
+<a name="line22"> 22: </a>    auto kv = Kokkos::View&lt;<a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *&gt;(<font color="#666666">"kv"</font>, n);
+<a name="line23"> 23: </a>    <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(Kokkos::deep_copy(kv, 2.0));
+
+<a name="line25"> 25: </a>    <font color="#B22222">// Use kv's array to replace the device array in x</font>
+<a name="line26"> 26: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecKokkosPlaceArray.html">VecKokkosPlaceArray</a>(x, kv.data())); <font color="#B22222">// x = {2.0, 2.0, ...}</font>
+<a name="line27"> 27: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecScale.html">VecScale</a>(x, 0.5));                  <font color="#B22222">// x = {1.0, 1.0, ...}</font>
+<a name="line28"> 28: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecKokkosResetArray.html">VecKokkosResetArray</a>(x));            <font color="#B22222">// x = {4.0, 4.0, ...}, kv = {1,0, 1.0, ...}</font>
+
+<a name="line30"> 30: </a>    <font color="#B22222">// Create a vector y with kv</font>
+<a name="line31"> 31: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreateMPIKokkosWithArray.html">VecCreateMPIKokkosWithArray</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, 1, n, <a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>, kv.data(), &amp;y));
+
+<a name="line33"> 33: </a>    <font color="#B22222">// Check both x and y have correct values</font>
+<a name="line34"> 34: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAXPY.html">VecAXPY</a>(x, -4.0, y)); <font color="#B22222">// x -= 4 * y</font>
+<a name="line35"> 35: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecNorm.html">VecNorm</a>(x, <a href="../../../../manualpages/Vec/NORM_2.html">NORM_2</a>, &amp;norm));
+<a name="line36"> 36: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(norm &lt; <a href="../../../../manualpages/Sys/PETSC_SMALL.html">PETSC_SMALL</a>, <a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Test failed with <a href="../../../../manualpages/Vec/VecKokkosPlaceArray.html">VecKokkosPlaceArray</a>"</font>);
+
+<a name="line38"> 38: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;x));
+<a name="line39"> 39: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;y));
+<a name="line40"> 40: </a>  }
+<a name="line41"> 41: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line42"> 42: </a>  <font color="#4169E1">return</font> 0;
+<a name="line43"> 43: </a>}
+
+<a name="line45"> 45: </a><font color="#B22222">/*TEST</font>
+
+<a name="line47"> 47: </a><font color="#B22222">    test:</font>
+<a name="line48"> 48: </a><font color="#B22222">      requires: kokkos_kernels</font>
+<a name="line49"> 49: </a><font color="#B22222">      nsize: {{1 2}}</font>
+<a name="line50"> 50: </a><font color="#B22222">      output_file: output/empty.out</font>
+
+<a name="line52"> 52: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

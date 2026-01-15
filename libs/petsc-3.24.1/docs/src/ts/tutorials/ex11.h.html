@@ -1,0 +1,893 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ts/tutorials/ex11.h">Actual source code: ex11.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:16+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../include/petscdm.h.html">&lt;petscdm.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../include/petscdmceed.h.html">&lt;petscdmceed.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#ifdef __CUDACC_RTC__</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define PETSC_HAVE_LIBCEED</font></strong>
+<a name="line6">  6: </a><font color="#B22222">// Define PETSc types to be equal to Ceed types</font>
+<a name="line7">  7: </a><font color="#4169E1">typedef CeedInt <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>;</font>
+<a name="line8">  8: </a><font color="#4169E1">typedef CeedScalar <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>;</font>
+<a name="line9">  9: </a><font color="#4169E1">typedef CeedScalar <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>;</font>
+<a name="line10"> 10: </a><font color="#4169E1">typedef CeedInt <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>;</font>
+<a name="line11"> 11: </a>  <font color="#B22222">// Define things we are missing from PETSc headers</font>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #undef <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a></font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>   0</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a> MPI_COMM_SELF</font></strong>
+<a name="line15"> 15: </a><strong><font color="#228B22">  #undef <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a></font></strong>
+<a name="line16"> 16: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a></font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  #undef <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a></font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(x) return x</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  #undef <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a></font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(a)              a</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>() return</font></strong>
+<a name="line22"> 22: </a>  <font color="#B22222">//   Math definitions</font>
+<a name="line23"> 23: </a><strong><font color="#228B22">  #undef PetscSqrtReal</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">  #define PetscSqrtReal(x) sqrt(x)</font></strong>
+<a name="line25"> 25: </a><strong><font color="#228B22">  #undef PetscSqrtScalar</font></strong>
+<a name="line26"> 26: </a><strong><font color="#228B22">  #define PetscSqrtScalar(x) sqrt(x)</font></strong>
+<a name="line27"> 27: </a><strong><font color="#228B22">  #undef <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a></font></strong>
+<a name="line28"> 28: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(x)          (x * x)</font></strong>
+<a name="line29"> 29: </a><strong><font color="#228B22">  #define PetscSqrReal(x)      (x * x)</font></strong>
+<a name="line30"> 30: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(x)      abs(x)</font></strong>
+<a name="line31"> 31: </a><strong><font color="#228B22">  #define PetscAbsScalar(x)    abs(x)</font></strong>
+<a name="line32"> 32: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(x, y)       x &gt; y ? x : y</font></strong>
+<a name="line33"> 33: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(x, y)       x &lt; y ? x : y</font></strong>
+<a name="line34"> 34: </a><strong><font color="#228B22">  #define <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(a)     a</font></strong>
+<a name="line35"> 35: </a><strong><font color="#228B22">  #define PetscPowScalar(a, b) pow(a, b)</font></strong>
+<a name="line36"> 36: </a><font color="#A020F0">#endif</font>
+
+<a name="line38"> 38: </a><strong><font color="#228B22">#define DIM 2 </font><font color="#B22222">/* Geometric dimension */</font><font color="#228B22"></font></strong>
+
+<a name="line40"> 40: </a><font color="#B22222">/* Represents continuum physical equations. */</font>
+<a name="line41"> 41: </a><font color="#4169E1">typedef struct _n_Physics *Physics;</font>
+
+<a name="line43"> 43: </a><font color="#B22222">/* Physical model includes boundary conditions, initial conditions, and functionals of interest. It is</font>
+<a name="line44"> 44: </a><font color="#B22222"> * discretization-independent, but its members depend on the scenario being solved. */</font>
+<a name="line45"> 45: </a><font color="#4169E1">typedef struct _n_Model *Model;</font>
+
+<a name="line47"> 47: </a><font color="#4169E1"><a name="FieldDescription"></a>struct FieldDescription </font>{
+<a name="line48"> 48: </a>  const char *name;
+<a name="line49"> 49: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    dof;
+<a name="line50"> 50: </a>};
+
+<a name="line52"> 52: </a><font color="#4169E1"><a name="_n_Physics"></a>struct _n_Physics </font>{
+<a name="line53"> 53: </a>  void (*riemann)(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>[], const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>[], const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a>[], void *);
+<a name="line54"> 54: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>                       dof;      <font color="#B22222">/* number of degrees of freedom per cell */</font>
+<a name="line55"> 55: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>                      maxspeed; <font color="#B22222">/* kludge to pick initial time step, need to add monitoring and step control */</font>
+<a name="line56"> 56: </a>  void                          *data;
+<a name="line57"> 57: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>                       nfields;
+<a name="line58"> 58: </a>  const <font color="#4169E1">struct FieldDescription</font> *field_desc;
+<a name="line59"> 59: </a>};
+
+<a name="line61"> 61: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line62"> 62: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> gravity;
+<a name="line63"> 63: </a>  <font color="#4169E1">struct</font> {
+<a name="line64"> 64: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Height;
+<a name="line65"> 65: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Speed;
+<a name="line66"> 66: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Energy;
+<a name="line67"> 67: </a>  } functional;
+<a name="line68"> 68: </a>} Physics_SW;
+
+<a name="line70"> 70: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line71"> 71: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> h;
+<a name="line72"> 72: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> uh[DIM];
+<a name="line73"> 73: </a>} SWNode;
+<a name="line74"> 74: </a><font color="#4169E1">typedef</font> <font color="#4169E1">union</font>
+<a name="line75"> 75: </a>{
+<a name="line76"> 76: </a>  SWNode    swnode;
+<a name="line77"> 77: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> vals[DIM + 1];
+<a name="line78"> 78: </a>} SWNodeUnion;
+
+<a name="line80"> 80: </a><font color="#4169E1">typedef</font> <font color="#4169E1">enum</font> {
+<a name="line81"> 81: </a>  EULER_IV_SHOCK,
+<a name="line82"> 82: </a>  EULER_SS_SHOCK,
+<a name="line83"> 83: </a>  EULER_SHOCK_TUBE,
+<a name="line84"> 84: </a>  EULER_LINEAR_WAVE
+<a name="line85"> 85: </a>} EulerType;
+
+<a name="line87"> 87: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line88"> 88: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> gamma;
+<a name="line89"> 89: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> rhoR;
+<a name="line90"> 90: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> amach;
+<a name="line91"> 91: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> itana;
+<a name="line92"> 92: </a>  EulerType type;
+<a name="line93"> 93: </a>  <font color="#4169E1">struct</font> {
+<a name="line94"> 94: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Density;
+<a name="line95"> 95: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Momentum;
+<a name="line96"> 96: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Energy;
+<a name="line97"> 97: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Pressure;
+<a name="line98"> 98: </a>    <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Speed;
+<a name="line99"> 99: </a>  } monitor;
+<a name="line100">100: </a>} Physics_Euler;
+
+<a name="line102">102: </a><font color="#4169E1">typedef</font> <font color="#4169E1">struct</font> {
+<a name="line103">103: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> r;
+<a name="line104">104: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> ru[DIM];
+<a name="line105">105: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> E;
+<a name="line106">106: </a>} EulerNode;
+<a name="line107">107: </a><font color="#4169E1">typedef</font> <font color="#4169E1">union</font>
+<a name="line108">108: </a>{
+<a name="line109">109: </a>  EulerNode eulernode;
+<a name="line110">110: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> vals[DIM + 2];
+<a name="line111">111: </a>} EulerNodeUnion;
+
+<a name="line113">113: </a><strong><font color="#4169E1"><a name="Dot2Real"></a>static inline <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> Dot2Real(const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *y)</font></strong>
+<a name="line114">114: </a>{
+<a name="line115">115: </a>  <font color="#4169E1">return</font> x[0] * y[0] + x[1] * y[1];
+<a name="line116">116: </a>}
+<a name="line117">117: </a><strong><font color="#4169E1"><a name="Norm2Real"></a>static inline <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> Norm2Real(const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x)</font></strong>
+<a name="line118">118: </a>{
+<a name="line119">119: </a>  <font color="#4169E1">return</font> PetscSqrtReal(<a href="../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(Dot2Real(x, x)));
+<a name="line120">120: </a>}
+<a name="line121">121: </a><strong><font color="#4169E1"><a name="Normalize2Real"></a>static inline void Normalize2Real(<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x)</font></strong>
+<a name="line122">122: </a>{
+<a name="line123">123: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> a = 1. / Norm2Real(x);
+<a name="line124">124: </a>  x[0] *= a;
+<a name="line125">125: </a>  x[1] *= a;
+<a name="line126">126: </a>}
+<a name="line127">127: </a><strong><font color="#4169E1"><a name="Scale2Real"></a>static inline void Scale2Real(<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> a, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *y)</font></strong>
+<a name="line128">128: </a>{
+<a name="line129">129: </a>  y[0] = a * x[0];
+<a name="line130">130: </a>  y[1] = a * x[1];
+<a name="line131">131: </a>}
+
+<a name="line133">133: </a><strong><font color="#4169E1"><a name="DotDIMReal"></a>static inline <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> DotDIMReal(const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *y)</font></strong>
+<a name="line134">134: </a>{
+<a name="line135">135: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  i;
+<a name="line136">136: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> prod = 0.0;
+
+<a name="line138">138: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; DIM; i++) prod += x[i] * y[i];
+<a name="line139">139: </a>  <font color="#4169E1">return</font> prod;
+<a name="line140">140: </a>}
+<a name="line141">141: </a><strong><font color="#4169E1"><a name="NormDIM"></a>static inline <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> NormDIM(const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x)</font></strong>
+<a name="line142">142: </a>{
+<a name="line143">143: </a>  <font color="#4169E1">return</font> PetscSqrtReal(<a href="../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(DotDIMReal(x, x)));
+<a name="line144">144: </a>}
+<a name="line145">145: </a><strong><font color="#4169E1"><a name="Waxpy2Real"></a>static inline void Waxpy2Real(<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> a, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *x, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *y, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *w)</font></strong>
+<a name="line146">146: </a>{
+<a name="line147">147: </a>  w[0] = a * x[0] + y[0];
+<a name="line148">148: </a>  w[1] = a * x[1] + y[1];
+<a name="line149">149: </a>}
+
+<a name="line151">151: </a><font color="#B22222">/*</font>
+<a name="line152">152: </a><font color="#B22222"> * h_t + div(uh) = 0</font>
+<a name="line153">153: </a><font color="#B22222"> * (uh)_t + div (u\otimes uh + g h^2 / 2 I) = 0</font>
+<a name="line154">154: </a><font color="#B22222"> *</font>
+<a name="line155">155: </a><font color="#B22222"> * */</font>
+<a name="line156">156: </a><strong><font color="#4169E1"><a name="SWFlux"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SWFlux(Physics phys, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *n, const SWNode *x, SWNode *f)</font></strong>
+<a name="line157">157: </a>{
+<a name="line158">158: </a>  Physics_SW *sw = (Physics_SW *)phys-&gt;data;
+<a name="line159">159: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>   uhn, u[DIM];
+<a name="line160">160: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>    i;
+
+<a name="line162">162: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line163">163: </a>  Scale2Real(1. / x-&gt;h, x-&gt;uh, u);
+<a name="line164">164: </a>  uhn  = x-&gt;uh[0] * n[0] + x-&gt;uh[1] * n[1];
+<a name="line165">165: </a>  f-&gt;h = uhn;
+<a name="line166">166: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; DIM; i++) f-&gt;uh[i] = u[i] * uhn + sw-&gt;gravity * <a href="../../../manualpages/Sys/PetscSqr.html">PetscSqr</a>(x-&gt;h) * n[i];
+<a name="line167">167: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line168">168: </a>}
+
+<a name="line170">170: </a><strong><font color="#4169E1"><a name="PhysicsRiemann_SW_Rusanov"></a>static void PhysicsRiemann_SW_Rusanov(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Nf, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *qp, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *n, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xL, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xR, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> numConstants, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> constants[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *flux, Physics phys)</font></strong>
+<a name="line171">171: </a>{
+<a name="line172">172: </a>  Physics_SW *sw = (Physics_SW *)phys-&gt;data;
+<a name="line173">173: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>   cL, cR, speed;
+<a name="line174">174: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>   nn[DIM];
+<a name="line175">175: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line176">176: </a>  const SWNode *uL = (const SWNode *)xL, *uR = (const SWNode *)xR;
+<a name="line177">177: </a><font color="#A020F0">#else</font>
+<a name="line178">178: </a>  SWNodeUnion   uLreal, uRreal;
+<a name="line179">179: </a>  const SWNode *uL = &amp;uLreal.swnode;
+<a name="line180">180: </a>  const SWNode *uR = &amp;uRreal.swnode;
+<a name="line181">181: </a><font color="#A020F0">#endif</font>
+<a name="line182">182: </a>  SWNodeUnion    fL, fR;
+<a name="line183">183: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       i;
+<a name="line184">184: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>      zero = 0.;
+<a name="line185">185: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr;
+
+<a name="line187">187: </a><font color="#A020F0">#if defined(PETSC_USE_COMPLEX)</font>
+<a name="line188">188: </a>  uLreal.swnode.h = 0;
+<a name="line189">189: </a>  uRreal.swnode.h = 0;
+<a name="line190">190: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; i++) uLreal.vals[i] = <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(xL[i]);
+<a name="line191">191: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; i++) uRreal.vals[i] = <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(xR[i]);
+<a name="line192">192: </a><font color="#A020F0">#endif</font>
+
+<a name="line194">194: </a>  <font color="#4169E1">if</font> (uL-&gt;h &lt; 0 || uR-&gt;h &lt; 0) {
+<a name="line195">195: </a>    <font color="#B22222">// reconstructed thickness is negative</font>
+<a name="line196">196: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line197">197: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; ++i) flux[i] = zero / zero;
+<a name="line198">198: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line199">199: </a>    <font color="#4169E1">return</font>;
+<a name="line200">200: </a>  }
+
+<a name="line202">202: </a>  nn[0] = n[0];
+<a name="line203">203: </a>  nn[1] = n[1];
+<a name="line204">204: </a>  Normalize2Real(nn);
+<a name="line205">205: </a>  ierr = SWFlux(phys, nn, uL, &amp;fL.swnode);
+<a name="line206">206: </a>  <font color="#4169E1">if</font> (ierr) {
+<a name="line207">207: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line208">208: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; ++i) fL.vals[i] = zero / zero;
+<a name="line209">209: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line210">210: </a>  }
+<a name="line211">211: </a>  ierr = SWFlux(phys, nn, uR, &amp;fR.swnode);
+<a name="line212">212: </a>  <font color="#4169E1">if</font> (ierr) {
+<a name="line213">213: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line214">214: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; ++i) fR.vals[i] = zero / zero;
+<a name="line215">215: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line216">216: </a>  }
+<a name="line217">217: </a>  cL    = PetscSqrtReal(sw-&gt;gravity * uL-&gt;h);
+<a name="line218">218: </a>  cR    = PetscSqrtReal(sw-&gt;gravity * uR-&gt;h); <font color="#B22222">/* gravity wave speed */</font>
+<a name="line219">219: </a>  speed = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(<a href="../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(Dot2Real(uL-&gt;uh, nn) / uL-&gt;h) + cL, <a href="../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(Dot2Real(uR-&gt;uh, nn) / uR-&gt;h) + cR);
+<a name="line220">220: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; i++) flux[i] = (0.5 * (fL.vals[i] + fR.vals[i]) + 0.5 * speed * (xL[i] - xR[i])) * Norm2Real(n);
+<a name="line221">221: </a><font color="#A020F0">#if 0</font>
+<a name="line222">222: </a>  <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Rusanov Flux (%g)\n"</font>, sw-&gt;gravity);
+<a name="line223">223: </a>  <font color="#4169E1">for</font> (<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> j = 0; j &lt; 3; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g |\n"</font>, flux[j]);
+<a name="line224">224: </a><font color="#A020F0">#endif</font>
+<a name="line225">225: </a>}
+
+<a name="line227">227: </a><font color="#A020F0">#ifdef PETSC_HAVE_LIBCEED</font>
+<a name="line228">228: </a><strong><font color="#4169E1"><a name="EED_QFUNCTION"></a>CEED_QFUNCTION(PhysicsRiemann_SW_Rusanov_CEED)(void *ctx, CeedInt Q, const CeedScalar *const in[], CeedScalar *const out[])</font></strong>
+<a name="line229">229: </a>{
+<a name="line230">230: </a>  const CeedScalar *xL = in[0], *xR = in[1], *geom = in[2];
+<a name="line231">231: </a>  CeedScalar       *cL = out[0], *cR = out[1];
+<a name="line232">232: </a>  const Physics_SW *sw = (Physics_SW *)ctx;
+<a name="line233">233: </a>  <font color="#4169E1">struct _n_Physics</font> phys;
+<a name="line234">234: </a><font color="#A020F0">  #if 0</font>
+<a name="line235">235: </a>  const CeedScalar *info = in[3];
+<a name="line236">236: </a><font color="#A020F0">  #endif</font>
+
+<a name="line238">238: </a>  phys.data = (void *)sw;
+<a name="line239">239: </a>  CeedPragmaSIMD <font color="#4169E1">for</font> (CeedInt i = 0; i &lt; Q; ++i)
+<a name="line240">240: </a>  {
+<a name="line241">241: </a>    const CeedScalar qL[3] = {xL[i + Q * 0], xL[i + Q * 1], xL[i + Q * 2]};
+<a name="line242">242: </a>    const CeedScalar qR[3] = {xR[i + Q * 0], xR[i + Q * 1], xR[i + Q * 2]};
+<a name="line243">243: </a>    const CeedScalar n[2]  = {geom[i + Q * 0], geom[i + Q * 1]};
+<a name="line244">244: </a>    CeedScalar       flux[3];
+
+<a name="line246">246: </a><font color="#A020F0">  #if 0</font>
+<a name="line247">247: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Face %d Normal\n"</font>, (int)info[i + Q * 0]);
+<a name="line248">248: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g |\n"</font>, n[j]);
+<a name="line249">249: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: left state\n"</font>, (int)info[i + Q * 1]);
+<a name="line250">250: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 1; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g |\n"</font>, qL[j]);
+<a name="line251">251: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: right state\n"</font>, (int)info[i + Q * 2]);
+<a name="line252">252: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 1; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g |\n"</font>, qR[j]);
+<a name="line253">253: </a><font color="#A020F0">  #endif</font>
+<a name="line254">254: </a>    PhysicsRiemann_SW_Rusanov(DIM, DIM + 1, NULL, n, qL, qR, 0, NULL, flux, &amp;phys);
+<a name="line255">255: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; 3; ++j) {
+<a name="line256">256: </a>      cL[i + Q * j] = -flux[j] / geom[i + Q * 2];
+<a name="line257">257: </a>      cR[i + Q * j] = flux[j] / geom[i + Q * 3];
+<a name="line258">258: </a>    }
+<a name="line259">259: </a><font color="#A020F0">  #if 0</font>
+<a name="line260">260: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: left flux\n"</font>, (int)info[i + Q * 1]);
+<a name="line261">261: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 1; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g | (%g)\n"</font>, cL[i + Q * j], geom[i + Q * 2]);
+<a name="line262">262: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: right flux\n"</font>, (int)info[i + Q * 2]);
+<a name="line263">263: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 1; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g | (%g)\n"</font>, cR[i + Q * j], geom[i + Q * 3]);
+<a name="line264">264: </a><font color="#A020F0">  #endif</font>
+<a name="line265">265: </a>  }
+<a name="line266">266: </a>  <font color="#4169E1">return</font> CEED_ERROR_SUCCESS;
+<a name="line267">267: </a>}
+<a name="line268">268: </a><font color="#A020F0">#endif</font>
+
+<a name="line270">270: </a><strong><font color="#4169E1"><a name="PhysicsRiemann_SW_HLL"></a>static void PhysicsRiemann_SW_HLL(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Nf, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *qp, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *n, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xL, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xR, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> numConstants, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> constants[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *flux, Physics phys)</font></strong>
+<a name="line271">271: </a>{
+<a name="line272">272: </a>  Physics_SW *sw = (Physics_SW *)phys-&gt;data;
+<a name="line273">273: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>   aL, aR;
+<a name="line274">274: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>   nn[DIM];
+<a name="line275">275: </a><font color="#A020F0">#if !defined(PETSC_USE_COMPLEX)</font>
+<a name="line276">276: </a>  const SWNode *uL = (const SWNode *)xL, *uR = (const SWNode *)xR;
+<a name="line277">277: </a><font color="#A020F0">#else</font>
+<a name="line278">278: </a>  SWNodeUnion   uLreal, uRreal;
+<a name="line279">279: </a>  const SWNode *uL = &amp;uLreal.swnode;
+<a name="line280">280: </a>  const SWNode *uR = &amp;uRreal.swnode;
+<a name="line281">281: </a><font color="#A020F0">#endif</font>
+<a name="line282">282: </a>  SWNodeUnion    fL, fR;
+<a name="line283">283: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       i;
+<a name="line284">284: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>      zero = 0.;
+<a name="line285">285: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr;
+
+<a name="line287">287: </a><font color="#A020F0">#if defined(PETSC_USE_COMPLEX)</font>
+<a name="line288">288: </a>  uLreal.swnode.h = 0;
+<a name="line289">289: </a>  uRreal.swnode.h = 0;
+<a name="line290">290: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; i++) uLreal.vals[i] = <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(xL[i]);
+<a name="line291">291: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; i++) uRreal.vals[i] = <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(xR[i]);
+<a name="line292">292: </a><font color="#A020F0">#endif</font>
+<a name="line293">293: </a>  <font color="#4169E1">if</font> (uL-&gt;h &lt;= 0 || uR-&gt;h &lt;= 0) {
+<a name="line294">294: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line295">295: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; i++) flux[i] = zero;
+<a name="line296">296: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line297">297: </a>    <font color="#4169E1">return</font>;
+<a name="line298">298: </a>  } <font color="#B22222">/* <a href="../../../manualpages/Sys/SETERRQ.html">SETERRQ</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>,<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_OUTOFRANGE</a>,"Reconstructed thickness is negative"); */</font>
+<a name="line299">299: </a>  nn[0] = n[0];
+<a name="line300">300: </a>  nn[1] = n[1];
+<a name="line301">301: </a>  Normalize2Real(nn);
+<a name="line302">302: </a>  ierr = SWFlux(phys, nn, uL, &amp;fL.swnode);
+<a name="line303">303: </a>  <font color="#4169E1">if</font> (ierr) {
+<a name="line304">304: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line305">305: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; ++i) fL.vals[i] = zero / zero;
+<a name="line306">306: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line307">307: </a>  }
+<a name="line308">308: </a>  ierr = SWFlux(phys, nn, uR, &amp;fR.swnode);
+<a name="line309">309: </a>  <font color="#4169E1">if</font> (ierr) {
+<a name="line310">310: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line311">311: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 1 + dim; ++i) fR.vals[i] = zero / zero;
+<a name="line312">312: </a>    <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line313">313: </a>  }
+<a name="line314">314: </a>  <font color="#B22222">/* gravity wave speed */</font>
+<a name="line315">315: </a>  aL = PetscSqrtReal(sw-&gt;gravity * uL-&gt;h);
+<a name="line316">316: </a>  aR = PetscSqrtReal(sw-&gt;gravity * uR-&gt;h);
+<a name="line317">317: </a>  <font color="#B22222">// Defining u_tilda and v_tilda as u and v</font>
+<a name="line318">318: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> u_L, u_R;
+<a name="line319">319: </a>  u_L = Dot2Real(uL-&gt;uh, nn) / uL-&gt;h;
+<a name="line320">320: </a>  u_R = Dot2Real(uR-&gt;uh, nn) / uR-&gt;h;
+<a name="line321">321: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> sL, sR;
+<a name="line322">322: </a>  sL = <a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(u_L - aL, u_R - aR);
+<a name="line323">323: </a>  sR = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(u_L + aL, u_R + aR);
+<a name="line324">324: </a>  <font color="#4169E1">if</font> (sL &gt; zero) {
+<a name="line325">325: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; dim + 1; i++) flux[i] = fL.vals[i] * Norm2Real(n);
+<a name="line326">326: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (sR &lt; zero) {
+<a name="line327">327: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; dim + 1; i++) flux[i] = fR.vals[i] * Norm2Real(n);
+<a name="line328">328: </a>  } <font color="#4169E1">else</font> {
+<a name="line329">329: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; dim + 1; i++) flux[i] = ((sR * fL.vals[i] - sL * fR.vals[i] + sR * sL * (xR[i] - xL[i])) / (sR - sL)) * Norm2Real(n);
+<a name="line330">330: </a>  }
+<a name="line331">331: </a>}
+
+<a name="line333">333: </a><strong><font color="#4169E1"><a name="Pressure_PG"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> Pressure_PG(const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> gamma, const EulerNode *x, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *p)</font></strong>
+<a name="line334">334: </a>{
+<a name="line335">335: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> ru2;
+
+<a name="line337">337: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line338">338: </a>  ru2  = DotDIMReal(x-&gt;ru, x-&gt;ru);
+<a name="line339">339: </a>  (*p) = (x-&gt;E - 0.5 * ru2 / x-&gt;r) * (gamma - 1.0); <font color="#B22222">/* (E - rho V^2/2)(gamma-1) = e rho (gamma-1) */</font>
+<a name="line340">340: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line341">341: </a>}
+
+<a name="line343">343: </a><strong><font color="#4169E1"><a name="SpeedOfSound_PG"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> SpeedOfSound_PG(const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> gamma, const EulerNode *x, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *c)</font></strong>
+<a name="line344">344: </a>{
+<a name="line345">345: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> p;
+
+<a name="line347">347: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line348">348: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(Pressure_PG(gamma, x, &amp;p));
+<a name="line349">349: </a>  <font color="#B22222">/* gamma = heat capacity ratio */</font>
+<a name="line350">350: </a>  (*c) = PetscSqrtReal(gamma * p / x-&gt;r);
+<a name="line351">351: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line352">352: </a>}
+
+<a name="line354">354: </a><font color="#B22222">/*</font>
+<a name="line355">355: </a><font color="#B22222"> * x = (rho,rho*(u_1),...,rho*e)^T</font>
+<a name="line356">356: </a><font color="#B22222"> * x_t+div(f_1(x))+...+div(f_DIM(x)) = 0</font>
+<a name="line357">357: </a><font color="#B22222"> *</font>
+<a name="line358">358: </a><font color="#B22222"> * f_i(x) = u_i*x+(0,0,...,p,...,p*u_i)^T</font>
+<a name="line359">359: </a><font color="#B22222"> *</font>
+<a name="line360">360: </a><font color="#B22222"> */</font>
+<a name="line361">361: </a><strong><font color="#4169E1"><a name="EulerFlux"></a>static <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> EulerFlux(Physics phys, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *n, const EulerNode *x, EulerNode *f)</font></strong>
+<a name="line362">362: </a>{
+<a name="line363">363: </a>  Physics_Euler *eu = (Physics_Euler *)phys-&gt;data;
+<a name="line364">364: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>      nu, p;
+<a name="line365">365: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>       i;
+
+<a name="line367">367: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line368">368: </a>  <a href="../../../manualpages/Sys/PetscCall.html">PetscCall</a>(Pressure_PG(eu-&gt;gamma, x, &amp;p));
+<a name="line369">369: </a>  nu   = DotDIMReal(x-&gt;ru, n);
+<a name="line370">370: </a>  f-&gt;r = nu;                                                     <font color="#B22222">/* A rho u */</font>
+<a name="line371">371: </a>  nu /= x-&gt;r;                                                    <font color="#B22222">/* A u */</font>
+<a name="line372">372: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; DIM; i++) f-&gt;ru[i] = nu * x-&gt;ru[i] + n[i] * p; <font color="#B22222">/* r u^2 + p */</font>
+<a name="line373">373: </a>  f-&gt;E = nu * (x-&gt;E + p);                                        <font color="#B22222">/* u(e+p) */</font>
+<a name="line374">374: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line375">375: </a>}
+
+<a name="line377">377: </a><font color="#B22222">/* Godunov fluxs */</font>
+<a name="line378">378: </a><strong><font color="#4169E1"><a name="cvmgp_"></a>static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> cvmgp_(<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *a, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *b, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *test)</font></strong>
+<a name="line379">379: </a>{
+<a name="line380">380: </a>  <font color="#B22222">/* System generated locals */</font>
+<a name="line381">381: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> ret_val;
+
+<a name="line383">383: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*test) &gt; 0.) <font color="#4169E1">goto</font> L10;
+<a name="line384">384: </a>  ret_val = *b;
+<a name="line385">385: </a>  <font color="#4169E1">return</font> ret_val;
+<a name="line386">386: </a>L10:
+<a name="line387">387: </a>  ret_val = *a;
+<a name="line388">388: </a>  <font color="#4169E1">return</font> ret_val;
+<a name="line389">389: </a>} <font color="#B22222">/* cvmgp_ */</font>
+
+<a name="line391">391: </a><strong><font color="#4169E1"><a name="cvmgm_"></a>static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> cvmgm_(<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *a, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *b, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *test)</font></strong>
+<a name="line392">392: </a>{
+<a name="line393">393: </a>  <font color="#B22222">/* System generated locals */</font>
+<a name="line394">394: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> ret_val;
+
+<a name="line396">396: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*test) &lt; 0.) <font color="#4169E1">goto</font> L10;
+<a name="line397">397: </a>  ret_val = *b;
+<a name="line398">398: </a>  <font color="#4169E1">return</font> ret_val;
+<a name="line399">399: </a>L10:
+<a name="line400">400: </a>  ret_val = *a;
+<a name="line401">401: </a>  <font color="#4169E1">return</font> ret_val;
+<a name="line402">402: </a>} <font color="#B22222">/* cvmgm_ */</font>
+
+<a name="line404">404: </a><strong><font color="#4169E1"><a name="riem1mdt"></a>static int riem1mdt(<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *gaml, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *gamr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *pl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *uxl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *pr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *uxr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rstarl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rstarr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *pstar, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *ustar)</font></strong>
+<a name="line405">405: </a>{
+<a name="line406">406: </a>  <font color="#B22222">/* Initialized data */</font>
+
+<a name="line408">408: </a>  static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> smallp = 1e-8;
+
+<a name="line410">410: </a>  <font color="#B22222">/* System generated locals */</font>
+<a name="line411">411: </a>  int         i__1;
+<a name="line412">412: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> d__1, d__2;
+
+<a name="line414">414: </a>  <font color="#B22222">/* Local variables */</font>
+<a name="line415">415: </a>  static int         i0;
+<a name="line416">416: </a>  static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> cl, cr, wl, zl, wr, zr, pst, durl, skpr1, skpr2;
+<a name="line417">417: </a>  static int         iwave;
+<a name="line418">418: </a>  static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> gascl4, gascr4, cstarl, dpstar, cstarr;
+<a name="line419">419: </a>  <font color="#B22222">/* static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> csqrl, csqrr, gascl1, gascl2, gascl3, gascr1, gascr2, gascr3; */</font>
+<a name="line420">420: </a>  static int         iterno;
+<a name="line421">421: </a>  static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> ustarl, ustarr, rarepr1, rarepr2;
+
+<a name="line423">423: </a>  <font color="#B22222">/* gascl1 = *gaml - 1.; */</font>
+<a name="line424">424: </a>  <font color="#B22222">/* gascl2 = (*gaml + 1.) * .5; */</font>
+<a name="line425">425: </a>  <font color="#B22222">/* gascl3 = gascl2 / *gaml; */</font>
+<a name="line426">426: </a>  gascl4 = 1. / (*gaml - 1.);
+
+<a name="line428">428: </a>  <font color="#B22222">/* gascr1 = *gamr - 1.; */</font>
+<a name="line429">429: </a>  <font color="#B22222">/* gascr2 = (*gamr + 1.) * .5; */</font>
+<a name="line430">430: </a>  <font color="#B22222">/* gascr3 = gascr2 / *gamr; */</font>
+<a name="line431">431: </a>  gascr4 = 1. / (*gamr - 1.);
+<a name="line432">432: </a>  iterno = 10;
+<a name="line433">433: </a>  <font color="#B22222">/*        find pstar: */</font>
+<a name="line434">434: </a>  cl = PetscSqrtScalar(*gaml * *pl / *rl);
+<a name="line435">435: </a>  cr = PetscSqrtScalar(*gamr * *pr / *rr);
+<a name="line436">436: </a>  wl = *rl * cl;
+<a name="line437">437: </a>  wr = *rr * cr;
+<a name="line438">438: </a>  <font color="#B22222">/* csqrl = wl * wl; */</font>
+<a name="line439">439: </a>  <font color="#B22222">/* csqrr = wr * wr; */</font>
+<a name="line440">440: </a>  *pstar  = (wl * *pr + wr * *pl) / (wl + wr);
+<a name="line441">441: </a>  *pstar  = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar), <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(smallp));
+<a name="line442">442: </a>  pst     = *pl / *pr;
+<a name="line443">443: </a>  skpr1   = cr * (pst - 1.) * PetscSqrtScalar(2. / (*gamr * (*gamr - 1. + (*gamr + 1.) * pst)));
+<a name="line444">444: </a>  d__1    = (*gamr - 1.) / (*gamr * 2.);
+<a name="line445">445: </a>  rarepr2 = gascr4 * 2. * cr * (1. - PetscPowScalar(pst, d__1));
+<a name="line446">446: </a>  pst     = *pr / *pl;
+<a name="line447">447: </a>  skpr2   = cl * (pst - 1.) * PetscSqrtScalar(2. / (*gaml * (*gaml - 1. + (*gaml + 1.) * pst)));
+<a name="line448">448: </a>  d__1    = (*gaml - 1.) / (*gaml * 2.);
+<a name="line449">449: </a>  rarepr1 = gascl4 * 2. * cl * (1. - PetscPowScalar(pst, d__1));
+<a name="line450">450: </a>  durl    = *uxr - *uxl;
+<a name="line451">451: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pr) &lt; <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pl)) {
+<a name="line452">452: </a>    <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(durl) &gt;= <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(rarepr1)) {
+<a name="line453">453: </a>      iwave = 100;
+<a name="line454">454: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(durl) &lt;= <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(-skpr1)) {
+<a name="line455">455: </a>      iwave = 300;
+<a name="line456">456: </a>    } <font color="#4169E1">else</font> {
+<a name="line457">457: </a>      iwave = 400;
+<a name="line458">458: </a>    }
+<a name="line459">459: </a>  } <font color="#4169E1">else</font> {
+<a name="line460">460: </a>    <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(durl) &gt;= <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(rarepr2)) {
+<a name="line461">461: </a>      iwave = 100;
+<a name="line462">462: </a>    } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(durl) &lt;= <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(-skpr2)) {
+<a name="line463">463: </a>      iwave = 300;
+<a name="line464">464: </a>    } <font color="#4169E1">else</font> {
+<a name="line465">465: </a>      iwave = 200;
+<a name="line466">466: </a>    }
+<a name="line467">467: </a>  }
+<a name="line468">468: </a>  <font color="#4169E1">if</font> (iwave == 100) {
+<a name="line469">469: </a>    <font color="#B22222">/*     1-wave: rarefaction wave, 3-wave: rarefaction wave */</font>
+<a name="line470">470: </a>    <font color="#B22222">/*     case (100) */</font>
+<a name="line471">471: </a>    i__1 = iterno;
+<a name="line472">472: </a>    <font color="#4169E1">for</font> (i0 = 1; i0 &lt;= i__1; ++i0) {
+<a name="line473">473: </a>      d__1    = *pstar / *pl;
+<a name="line474">474: </a>      d__2    = 1. / *gaml;
+<a name="line475">475: </a>      *rstarl = *rl * PetscPowScalar(d__1, d__2);
+<a name="line476">476: </a>      cstarl  = PetscSqrtScalar(*gaml * *pstar / *rstarl);
+<a name="line477">477: </a>      ustarl  = *uxl - gascl4 * 2. * (cstarl - cl);
+<a name="line478">478: </a>      zl      = *rstarl * cstarl;
+<a name="line479">479: </a>      d__1    = *pstar / *pr;
+<a name="line480">480: </a>      d__2    = 1. / *gamr;
+<a name="line481">481: </a>      *rstarr = *rr * PetscPowScalar(d__1, d__2);
+<a name="line482">482: </a>      cstarr  = PetscSqrtScalar(*gamr * *pstar / *rstarr);
+<a name="line483">483: </a>      ustarr  = *uxr + gascr4 * 2. * (cstarr - cr);
+<a name="line484">484: </a>      zr      = *rstarr * cstarr;
+<a name="line485">485: </a>      dpstar  = zl * zr * (ustarr - ustarl) / (zl + zr);
+<a name="line486">486: </a>      *pstar -= dpstar;
+<a name="line487">487: </a>      *pstar = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar), <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(smallp));
+<a name="line488">488: </a>      <font color="#4169E1">if</font> (PetscAbsScalar(dpstar) / <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar) &lt;= 1e-8) {
+<a name="line489">489: </a><font color="#A020F0">#if 0</font>
+<a name="line490">490: </a>        <font color="#4169E1">break</font>;
+<a name="line491">491: </a><font color="#A020F0">#endif</font>
+<a name="line492">492: </a>      }
+<a name="line493">493: </a>    }
+<a name="line494">494: </a>    <font color="#B22222">/*     1-wave: shock wave, 3-wave: rarefaction wave */</font>
+<a name="line495">495: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (iwave == 200) {
+<a name="line496">496: </a>    <font color="#B22222">/*     case (200) */</font>
+<a name="line497">497: </a>    i__1 = iterno;
+<a name="line498">498: </a>    <font color="#4169E1">for</font> (i0 = 1; i0 &lt;= i__1; ++i0) {
+<a name="line499">499: </a>      pst     = *pstar / *pl;
+<a name="line500">500: </a>      ustarl  = *uxl - (pst - 1.) * cl * PetscSqrtScalar(2. / (*gaml * (*gaml - 1. + (*gaml + 1.) * pst)));
+<a name="line501">501: </a>      zl      = *pl / cl * PetscSqrtScalar(*gaml * 2. * (*gaml - 1. + (*gaml + 1.) * pst)) * (*gaml - 1. + (*gaml + 1.) * pst) / (*gaml * 3. - 1. + (*gaml + 1.) * pst);
+<a name="line502">502: </a>      d__1    = *pstar / *pr;
+<a name="line503">503: </a>      d__2    = 1. / *gamr;
+<a name="line504">504: </a>      *rstarr = *rr * PetscPowScalar(d__1, d__2);
+<a name="line505">505: </a>      cstarr  = PetscSqrtScalar(*gamr * *pstar / *rstarr);
+<a name="line506">506: </a>      zr      = *rstarr * cstarr;
+<a name="line507">507: </a>      ustarr  = *uxr + gascr4 * 2. * (cstarr - cr);
+<a name="line508">508: </a>      dpstar  = zl * zr * (ustarr - ustarl) / (zl + zr);
+<a name="line509">509: </a>      *pstar -= dpstar;
+<a name="line510">510: </a>      *pstar = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar), <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(smallp));
+<a name="line511">511: </a>      <font color="#4169E1">if</font> (PetscAbsScalar(dpstar) / <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar) &lt;= 1e-8) {
+<a name="line512">512: </a><font color="#A020F0">#if 0</font>
+<a name="line513">513: </a>        <font color="#4169E1">break</font>;
+<a name="line514">514: </a><font color="#A020F0">#endif</font>
+<a name="line515">515: </a>      }
+<a name="line516">516: </a>    }
+<a name="line517">517: </a>    <font color="#B22222">/*     1-wave: shock wave, 3-wave: shock */</font>
+<a name="line518">518: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (iwave == 300) {
+<a name="line519">519: </a>    <font color="#B22222">/*     case (300) */</font>
+<a name="line520">520: </a>    i__1 = iterno;
+<a name="line521">521: </a>    <font color="#4169E1">for</font> (i0 = 1; i0 &lt;= i__1; ++i0) {
+<a name="line522">522: </a>      pst    = *pstar / *pl;
+<a name="line523">523: </a>      ustarl = *uxl - (pst - 1.) * cl * PetscSqrtScalar(2. / (*gaml * (*gaml - 1. + (*gaml + 1.) * pst)));
+<a name="line524">524: </a>      zl     = *pl / cl * PetscSqrtScalar(*gaml * 2. * (*gaml - 1. + (*gaml + 1.) * pst)) * (*gaml - 1. + (*gaml + 1.) * pst) / (*gaml * 3. - 1. + (*gaml + 1.) * pst);
+<a name="line525">525: </a>      pst    = *pstar / *pr;
+<a name="line526">526: </a>      ustarr = *uxr + (pst - 1.) * cr * PetscSqrtScalar(2. / (*gamr * (*gamr - 1. + (*gamr + 1.) * pst)));
+<a name="line527">527: </a>      zr     = *pr / cr * PetscSqrtScalar(*gamr * 2. * (*gamr - 1. + (*gamr + 1.) * pst)) * (*gamr - 1. + (*gamr + 1.) * pst) / (*gamr * 3. - 1. + (*gamr + 1.) * pst);
+<a name="line528">528: </a>      dpstar = zl * zr * (ustarr - ustarl) / (zl + zr);
+<a name="line529">529: </a>      *pstar -= dpstar;
+<a name="line530">530: </a>      *pstar = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar), <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(smallp));
+<a name="line531">531: </a>      <font color="#4169E1">if</font> (PetscAbsScalar(dpstar) / <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar) &lt;= 1e-8) {
+<a name="line532">532: </a><font color="#A020F0">#if 0</font>
+<a name="line533">533: </a>        <font color="#4169E1">break</font>;
+<a name="line534">534: </a><font color="#A020F0">#endif</font>
+<a name="line535">535: </a>      }
+<a name="line536">536: </a>    }
+<a name="line537">537: </a>    <font color="#B22222">/*     1-wave: rarefaction wave, 3-wave: shock */</font>
+<a name="line538">538: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (iwave == 400) {
+<a name="line539">539: </a>    <font color="#B22222">/*     case (400) */</font>
+<a name="line540">540: </a>    i__1 = iterno;
+<a name="line541">541: </a>    <font color="#4169E1">for</font> (i0 = 1; i0 &lt;= i__1; ++i0) {
+<a name="line542">542: </a>      d__1    = *pstar / *pl;
+<a name="line543">543: </a>      d__2    = 1. / *gaml;
+<a name="line544">544: </a>      *rstarl = *rl * PetscPowScalar(d__1, d__2);
+<a name="line545">545: </a>      cstarl  = PetscSqrtScalar(*gaml * *pstar / *rstarl);
+<a name="line546">546: </a>      ustarl  = *uxl - gascl4 * 2. * (cstarl - cl);
+<a name="line547">547: </a>      zl      = *rstarl * cstarl;
+<a name="line548">548: </a>      pst     = *pstar / *pr;
+<a name="line549">549: </a>      ustarr  = *uxr + (pst - 1.) * cr * PetscSqrtScalar(2. / (*gamr * (*gamr - 1. + (*gamr + 1.) * pst)));
+<a name="line550">550: </a>      zr      = *pr / cr * PetscSqrtScalar(*gamr * 2. * (*gamr - 1. + (*gamr + 1.) * pst)) * (*gamr - 1. + (*gamr + 1.) * pst) / (*gamr * 3. - 1. + (*gamr + 1.) * pst);
+<a name="line551">551: </a>      dpstar  = zl * zr * (ustarr - ustarl) / (zl + zr);
+<a name="line552">552: </a>      *pstar -= dpstar;
+<a name="line553">553: </a>      *pstar = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar), <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(smallp));
+<a name="line554">554: </a>      <font color="#4169E1">if</font> (PetscAbsScalar(dpstar) / <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar) &lt;= 1e-8) {
+<a name="line555">555: </a><font color="#A020F0">#if 0</font>
+<a name="line556">556: </a>              <font color="#4169E1">break</font>;
+<a name="line557">557: </a><font color="#A020F0">#endif</font>
+<a name="line558">558: </a>      }
+<a name="line559">559: </a>    }
+<a name="line560">560: </a>  }
+
+<a name="line562">562: </a>  *ustar = (zl * ustarr + zr * ustarl) / (zl + zr);
+<a name="line563">563: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar) &gt; <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pl)) {
+<a name="line564">564: </a>    pst     = *pstar / *pl;
+<a name="line565">565: </a>    *rstarl = ((*gaml + 1.) * pst + *gaml - 1.) / ((*gaml - 1.) * pst + *gaml + 1.) * *rl;
+<a name="line566">566: </a>  }
+<a name="line567">567: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pstar) &gt; <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*pr)) {
+<a name="line568">568: </a>    pst     = *pstar / *pr;
+<a name="line569">569: </a>    *rstarr = ((*gamr + 1.) * pst + *gamr - 1.) / ((*gamr - 1.) * pst + *gamr + 1.) * *rr;
+<a name="line570">570: </a>  }
+<a name="line571">571: </a>  <font color="#4169E1">return</font> iwave;
+<a name="line572">572: </a>}
+
+<a name="line574">574: </a><strong><font color="#4169E1"><a name="sign"></a>static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> sign(<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> x)</font></strong>
+<a name="line575">575: </a>{
+<a name="line576">576: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(x) &gt; 0) <font color="#4169E1">return</font> 1.0;
+<a name="line577">577: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(x) &lt; 0) <font color="#4169E1">return</font> -1.0;
+<a name="line578">578: </a>  <font color="#4169E1">return</font> 0.0;
+<a name="line579">579: </a>}
+<a name="line580">580: </a><font color="#B22222">/*        Riemann Solver */</font>
+<a name="line581">581: </a><font color="#B22222">/* -------------------------------------------------------------------- */</font>
+<a name="line582">582: </a><strong><font color="#4169E1"><a name="riemannsolver"></a>static int riemannsolver(<a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xcen, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xp, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *dtt, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *uxl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *pl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *utl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *ubl, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *gaml, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rho1l, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *uxr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *pr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *utr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *ubr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *gamr, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rho1r, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rx, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *uxm, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *px, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *utx, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *ubx, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *gam, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *rho1)</font></strong>
+<a name="line583">583: </a>{
+<a name="line584">584: </a>  <font color="#B22222">/* System generated locals */</font>
+<a name="line585">585: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> d__1, d__2;
+
+<a name="line587">587: </a>  <font color="#B22222">/* Local variables */</font>
+<a name="line588">588: </a>  static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> s, c0, p0, r0, u0, w0, x0, x2, ri, cx, sgn0, wsp0, gasc1, gasc2, gasc3, gasc4;
+<a name="line589">589: </a>  static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> cstar, pstar, rstar, ustar, xstar, wspst, ushock, streng, rstarl, rstarr, rstars;
+<a name="line590">590: </a>  int                iwave;
+
+<a name="line592">592: </a>  <font color="#4169E1">if</font> (*rl == *rr &amp;&amp; *pr == *pl &amp;&amp; *uxl == *uxr &amp;&amp; *gaml == *gamr) {
+<a name="line593">593: </a>    *rx  = *rl;
+<a name="line594">594: </a>    *px  = *pl;
+<a name="line595">595: </a>    *uxm = *uxl;
+<a name="line596">596: </a>    *gam = *gaml;
+<a name="line597">597: </a>    x2   = *xcen + *uxm * *dtt;
+
+<a name="line599">599: </a>    <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*xp) &gt;= <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(x2)) {
+<a name="line600">600: </a>      *utx  = *utr;
+<a name="line601">601: </a>      *ubx  = *ubr;
+<a name="line602">602: </a>      *rho1 = *rho1r;
+<a name="line603">603: </a>    } <font color="#4169E1">else</font> {
+<a name="line604">604: </a>      *utx  = *utl;
+<a name="line605">605: </a>      *ubx  = *ubl;
+<a name="line606">606: </a>      *rho1 = *rho1l;
+<a name="line607">607: </a>    }
+<a name="line608">608: </a>    <font color="#4169E1">return</font> 0;
+<a name="line609">609: </a>  }
+<a name="line610">610: </a>  iwave = riem1mdt(gaml, gamr, rl, pl, uxl, rr, pr, uxr, &amp;rstarl, &amp;rstarr, &amp;pstar, &amp;ustar);
+
+<a name="line612">612: </a>  x2   = *xcen + ustar * *dtt;
+<a name="line613">613: </a>  d__1 = *xp - x2;
+<a name="line614">614: </a>  sgn0 = sign(d__1);
+<a name="line615">615: </a>  <font color="#B22222">/*            x is in 3-wave if sgn0 = 1 */</font>
+<a name="line616">616: </a>  <font color="#B22222">/*            x is in 1-wave if sgn0 = -1 */</font>
+<a name="line617">617: </a>  r0     = cvmgm_(rl, rr, &amp;sgn0);
+<a name="line618">618: </a>  p0     = cvmgm_(pl, pr, &amp;sgn0);
+<a name="line619">619: </a>  u0     = cvmgm_(uxl, uxr, &amp;sgn0);
+<a name="line620">620: </a>  *gam   = cvmgm_(gaml, gamr, &amp;sgn0);
+<a name="line621">621: </a>  gasc1  = *gam - 1.;
+<a name="line622">622: </a>  gasc2  = (*gam + 1.) * .5;
+<a name="line623">623: </a>  gasc3  = gasc2 / *gam;
+<a name="line624">624: </a>  gasc4  = 1. / (*gam - 1.);
+<a name="line625">625: </a>  c0     = PetscSqrtScalar(*gam * p0 / r0);
+<a name="line626">626: </a>  streng = pstar - p0;
+<a name="line627">627: </a>  w0     = *gam * r0 * p0 * (gasc3 * streng / p0 + 1.);
+<a name="line628">628: </a>  rstars = r0 / (1. - r0 * streng / w0);
+<a name="line629">629: </a>  d__1   = p0 / pstar;
+<a name="line630">630: </a>  d__2   = -1. / *gam;
+<a name="line631">631: </a>  rstarr = r0 * PetscPowScalar(d__1, d__2);
+<a name="line632">632: </a>  rstar  = cvmgm_(&amp;rstarr, &amp;rstars, &amp;streng);
+<a name="line633">633: </a>  w0     = PetscSqrtScalar(w0);
+<a name="line634">634: </a>  cstar  = PetscSqrtScalar(*gam * pstar / rstar);
+<a name="line635">635: </a>  wsp0   = u0 + sgn0 * c0;
+<a name="line636">636: </a>  wspst  = ustar + sgn0 * cstar;
+<a name="line637">637: </a>  ushock = ustar + sgn0 * w0 / rstar;
+<a name="line638">638: </a>  wspst  = cvmgp_(&amp;ushock, &amp;wspst, &amp;streng);
+<a name="line639">639: </a>  wsp0   = cvmgp_(&amp;ushock, &amp;wsp0, &amp;streng);
+<a name="line640">640: </a>  x0     = *xcen + wsp0 * *dtt;
+<a name="line641">641: </a>  xstar  = *xcen + wspst * *dtt;
+<a name="line642">642: </a>  <font color="#B22222">/*           using gas formula to evaluate rarefaction wave */</font>
+<a name="line643">643: </a>  <font color="#B22222">/*            ri : reiman invariant */</font>
+<a name="line644">644: </a>  ri   = u0 - sgn0 * 2. * gasc4 * c0;
+<a name="line645">645: </a>  cx   = sgn0 * .5 * gasc1 / gasc2 * ((*xp - *xcen) / *dtt - ri);
+<a name="line646">646: </a>  *uxm = ri + sgn0 * 2. * gasc4 * cx;
+<a name="line647">647: </a>  s    = p0 / PetscPowScalar(r0, *gam);
+<a name="line648">648: </a>  d__1 = cx * cx / (*gam * s);
+<a name="line649">649: </a>  *rx  = PetscPowScalar(d__1, gasc4);
+<a name="line650">650: </a>  *px  = cx * cx * *rx / *gam;
+<a name="line651">651: </a>  d__1 = sgn0 * (x0 - *xp);
+<a name="line652">652: </a>  *rx  = cvmgp_(rx, &amp;r0, &amp;d__1);
+<a name="line653">653: </a>  d__1 = sgn0 * (x0 - *xp);
+<a name="line654">654: </a>  *px  = cvmgp_(px, &amp;p0, &amp;d__1);
+<a name="line655">655: </a>  d__1 = sgn0 * (x0 - *xp);
+<a name="line656">656: </a>  *uxm = cvmgp_(uxm, &amp;u0, &amp;d__1);
+<a name="line657">657: </a>  d__1 = sgn0 * (xstar - *xp);
+<a name="line658">658: </a>  *rx  = cvmgm_(rx, &amp;rstar, &amp;d__1);
+<a name="line659">659: </a>  d__1 = sgn0 * (xstar - *xp);
+<a name="line660">660: </a>  *px  = cvmgm_(px, &amp;pstar, &amp;d__1);
+<a name="line661">661: </a>  d__1 = sgn0 * (xstar - *xp);
+<a name="line662">662: </a>  *uxm = cvmgm_(uxm, &amp;ustar, &amp;d__1);
+<a name="line663">663: </a>  <font color="#4169E1">if</font> (<a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(*xp) &gt;= <a href="../../../manualpages/Sys/PetscRealPart.html">PetscRealPart</a>(x2)) {
+<a name="line664">664: </a>    *utx  = *utr;
+<a name="line665">665: </a>    *ubx  = *ubr;
+<a name="line666">666: </a>    *rho1 = *rho1r;
+<a name="line667">667: </a>  } <font color="#4169E1">else</font> {
+<a name="line668">668: </a>    *utx  = *utl;
+<a name="line669">669: </a>    *ubx  = *ubl;
+<a name="line670">670: </a>    *rho1 = *rho1l;
+<a name="line671">671: </a>  }
+<a name="line672">672: </a>  <font color="#4169E1">return</font> iwave;
+<a name="line673">673: </a>}
+
+<a name="line675">675: </a><strong><font color="#4169E1"><a name="godunovflux"></a>static int godunovflux(const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *ul, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *ur, <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *flux, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *nn, int ndim, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> gamma)</font></strong>
+<a name="line676">676: </a>{
+<a name="line677">677: </a>  <font color="#B22222">/* System generated locals */</font>
+<a name="line678">678: </a>  int         i__1, iwave;
+<a name="line679">679: </a>  <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> d__1, d__2, d__3;
+
+<a name="line681">681: </a>  <font color="#B22222">/* Local variables */</font>
+<a name="line682">682: </a>  static int         k;
+<a name="line683">683: </a>  static <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> bn[3], fn, ft, tg[3], pl, rl, pm, pr, rr, xp, ubl, ubm, ubr, dtt, unm, tmp, utl, utm, uxl, utr, uxr, gaml, gamm, gamr, xcen, rhom, rho1l, rho1m, rho1r;
+
+<a name="line685">685: </a>  <font color="#B22222">/* Function Body */</font>
+<a name="line686">686: </a>  xcen = 0.;
+<a name="line687">687: </a>  xp   = 0.;
+<a name="line688">688: </a>  i__1 = ndim;
+<a name="line689">689: </a>  <font color="#4169E1">for</font> (k = 1; k &lt;= i__1; ++k) {
+<a name="line690">690: </a>    tg[k - 1] = 0.;
+<a name="line691">691: </a>    bn[k - 1] = 0.;
+<a name="line692">692: </a>  }
+<a name="line693">693: </a>  dtt = 1.;
+<a name="line694">694: </a>  <font color="#4169E1">if</font> (ndim == 3) {
+<a name="line695">695: </a>    <font color="#4169E1">if</font> (nn[0] == 0. &amp;&amp; nn[1] == 0.) {
+<a name="line696">696: </a>      tg[0] = 1.;
+<a name="line697">697: </a>    } <font color="#4169E1">else</font> {
+<a name="line698">698: </a>      tg[0] = -nn[1];
+<a name="line699">699: </a>      tg[1] = nn[0];
+<a name="line700">700: </a>    }
+<a name="line701">701: </a>    <font color="#B22222">/*           tmp=dsqrt(tg(1)**2+tg(2)**2) */</font>
+<a name="line702">702: </a>    <font color="#B22222">/*           tg=tg/tmp */</font>
+<a name="line703">703: </a>    bn[0] = -nn[2] * tg[1];
+<a name="line704">704: </a>    bn[1] = nn[2] * tg[0];
+<a name="line705">705: </a>    bn[2] = nn[0] * tg[1] - nn[1] * tg[0];
+<a name="line706">706: </a>    <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line707">707: </a>    d__1 = bn[0];
+<a name="line708">708: </a>    <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line709">709: </a>    d__2 = bn[1];
+<a name="line710">710: </a>    <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line711">711: </a>    d__3 = bn[2];
+<a name="line712">712: </a>    tmp  = PetscSqrtScalar(d__1 * d__1 + d__2 * d__2 + d__3 * d__3);
+<a name="line713">713: </a>    i__1 = ndim;
+<a name="line714">714: </a>    <font color="#4169E1">for</font> (k = 1; k &lt;= i__1; ++k) bn[k - 1] /= tmp;
+<a name="line715">715: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (ndim == 2) {
+<a name="line716">716: </a>    tg[0] = -nn[1];
+<a name="line717">717: </a>    tg[1] = nn[0];
+<a name="line718">718: </a>    <font color="#B22222">/*           tmp=dsqrt(tg(1)**2+tg(2)**2) */</font>
+<a name="line719">719: </a>    <font color="#B22222">/*           tg=tg/tmp */</font>
+<a name="line720">720: </a>    bn[0] = 0.;
+<a name="line721">721: </a>    bn[1] = 0.;
+<a name="line722">722: </a>    bn[2] = 1.;
+<a name="line723">723: </a>  }
+<a name="line724">724: </a>  rl   = ul[0];
+<a name="line725">725: </a>  rr   = ur[0];
+<a name="line726">726: </a>  uxl  = 0.;
+<a name="line727">727: </a>  uxr  = 0.;
+<a name="line728">728: </a>  utl  = 0.;
+<a name="line729">729: </a>  utr  = 0.;
+<a name="line730">730: </a>  ubl  = 0.;
+<a name="line731">731: </a>  ubr  = 0.;
+<a name="line732">732: </a>  i__1 = ndim;
+<a name="line733">733: </a>  <font color="#4169E1">for</font> (k = 1; k &lt;= i__1; ++k) {
+<a name="line734">734: </a>    uxl += ul[k] * nn[k - 1];
+<a name="line735">735: </a>    uxr += ur[k] * nn[k - 1];
+<a name="line736">736: </a>    utl += ul[k] * tg[k - 1];
+<a name="line737">737: </a>    utr += ur[k] * tg[k - 1];
+<a name="line738">738: </a>    ubl += ul[k] * bn[k - 1];
+<a name="line739">739: </a>    ubr += ur[k] * bn[k - 1];
+<a name="line740">740: </a>  }
+<a name="line741">741: </a>  uxl /= rl;
+<a name="line742">742: </a>  uxr /= rr;
+<a name="line743">743: </a>  utl /= rl;
+<a name="line744">744: </a>  utr /= rr;
+<a name="line745">745: </a>  ubl /= rl;
+<a name="line746">746: </a>  ubr /= rr;
+
+<a name="line748">748: </a>  gaml = gamma;
+<a name="line749">749: </a>  gamr = gamma;
+<a name="line750">750: </a>  <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line751">751: </a>  d__1 = uxl;
+<a name="line752">752: </a>  <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line753">753: </a>  d__2 = utl;
+<a name="line754">754: </a>  <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line755">755: </a>  d__3 = ubl;
+<a name="line756">756: </a>  pl   = (gamma - 1.) * (ul[ndim + 1] - rl * .5 * (d__1 * d__1 + d__2 * d__2 + d__3 * d__3));
+<a name="line757">757: </a>  <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line758">758: </a>  d__1 = uxr;
+<a name="line759">759: </a>  <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line760">760: </a>  d__2 = utr;
+<a name="line761">761: </a>  <font color="#B22222">/* Computing 2nd power */</font>
+<a name="line762">762: </a>  d__3  = ubr;
+<a name="line763">763: </a>  pr    = (gamma - 1.) * (ur[ndim + 1] - rr * .5 * (d__1 * d__1 + d__2 * d__2 + d__3 * d__3));
+<a name="line764">764: </a>  rho1l = rl;
+<a name="line765">765: </a>  rho1r = rr;
+
+<a name="line767">767: </a>  iwave = riemannsolver(&amp;xcen, &amp;xp, &amp;dtt, &amp;rl, &amp;uxl, &amp;pl, &amp;utl, &amp;ubl, &amp;gaml, &amp;rho1l, &amp;rr, &amp;uxr, &amp;pr, &amp;utr, &amp;ubr, &amp;gamr, &amp;rho1r, &amp;rhom, &amp;unm, &amp;pm, &amp;utm, &amp;ubm, &amp;gamm, &amp;rho1m);
+
+<a name="line769">769: </a>  flux[0] = rhom * unm;
+<a name="line770">770: </a>  fn      = rhom * unm * unm + pm;
+<a name="line771">771: </a>  ft      = rhom * unm * utm;
+<a name="line772">772: </a>  <font color="#B22222">/*           flux(2)=fn*nn(1)+ft*nn(2) */</font>
+<a name="line773">773: </a>  <font color="#B22222">/*           flux(3)=fn*tg(1)+ft*tg(2) */</font>
+<a name="line774">774: </a>  flux[1] = fn * nn[0] + ft * tg[0];
+<a name="line775">775: </a>  flux[2] = fn * nn[1] + ft * tg[1];
+<a name="line776">776: </a>  <font color="#B22222">/*           flux(2)=rhom*unm*(unm)+pm */</font>
+<a name="line777">777: </a>  <font color="#B22222">/*           flux(3)=rhom*(unm)*utm */</font>
+<a name="line778">778: </a>  <font color="#4169E1">if</font> (ndim == 3) flux[3] = rhom * unm * ubm;
+<a name="line779">779: </a>  flux[ndim + 1] = (rhom * .5 * (unm * unm + utm * utm + ubm * ubm) + gamm / (gamm - 1.) * pm) * unm;
+<a name="line780">780: </a>  <font color="#4169E1">return</font> iwave;
+<a name="line781">781: </a>} <font color="#B22222">/* godunovflux_ */</font>
+
+<a name="line783">783: </a><font color="#B22222">/* <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>* =&gt; EulerNode* conversion */</font>
+<a name="line784">784: </a><strong><font color="#4169E1"><a name="PhysicsRiemann_Euler_Godunov"></a>static void PhysicsRiemann_Euler_Godunov(<a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> dim, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> Nf, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *qp, const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *n, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xL, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *xR, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> numConstants, const <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> constants[], <a href="../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> *flux, Physics phys)</font></strong>
+<a name="line785">785: </a>{
+<a name="line786">786: </a>  Physics_Euler  *eu    = (Physics_Euler *)phys-&gt;data;
+<a name="line787">787: </a>  const <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> gamma = eu-&gt;gamma;
+<a name="line788">788: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>       zero  = 0.;
+<a name="line789">789: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>       cL, cR, speed, velL, velR, nn[DIM], s2;
+<a name="line790">790: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>        i;
+<a name="line791">791: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a>  ierr;
+
+<a name="line793">793: </a>  <a href="../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line794">794: </a>  <font color="#4169E1">for</font> (i = 0, s2 = 0.; i &lt; DIM; i++) {
+<a name="line795">795: </a>    nn[i] = n[i];
+<a name="line796">796: </a>    s2 += nn[i] * nn[i];
+<a name="line797">797: </a>  }
+<a name="line798">798: </a>  s2 = PetscSqrtReal(s2); <font color="#B22222">/* |n|_2 = sum(n^2)^1/2 */</font>
+<a name="line799">799: </a>  <font color="#4169E1">for</font> (i = 0.; i &lt; DIM; i++) nn[i] /= s2;
+<a name="line800">800: </a>  <font color="#4169E1">if</font> (0) { <font color="#B22222">/* Rusanov */</font>
+<a name="line801">801: </a>    const EulerNode *uL = (const EulerNode *)xL, *uR = (const EulerNode *)xR;
+<a name="line802">802: </a>    EulerNodeUnion   fL, fR;
+<a name="line803">803: </a>    ierr = EulerFlux(phys, nn, uL, &amp;fL.eulernode);
+<a name="line804">804: </a>    <font color="#4169E1">if</font> (ierr) {
+<a name="line805">805: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line806">806: </a>      <font color="#4169E1">for</font> (i = 0; i &lt; 2 + dim; i++) fL.vals[i] = zero / zero;
+<a name="line807">807: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line808">808: </a>    }
+<a name="line809">809: </a>    ierr = EulerFlux(phys, nn, uR, &amp;fR.eulernode);
+<a name="line810">810: </a>    <font color="#4169E1">if</font> (ierr) {
+<a name="line811">811: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line812">812: </a>      <font color="#4169E1">for</font> (i = 0; i &lt; 2 + dim; i++) fR.vals[i] = zero / zero;
+<a name="line813">813: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line814">814: </a>    }
+<a name="line815">815: </a>    ierr = SpeedOfSound_PG(gamma, uL, &amp;cL);
+<a name="line816">816: </a>    <font color="#4169E1">if</font> (ierr) {
+<a name="line817">817: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line818">818: </a>      cL = zero / zero;
+<a name="line819">819: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line820">820: </a>    }
+<a name="line821">821: </a>    ierr = SpeedOfSound_PG(gamma, uR, &amp;cR);
+<a name="line822">822: </a>    <font color="#4169E1">if</font> (ierr) {
+<a name="line823">823: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPush.html">PetscFPTrapPush</a>(<a href="../../../manualpages/Sys/PetscFPTrap.html">PETSC_FP_TRAP_OFF</a>));
+<a name="line824">824: </a>      cR = zero / zero;
+<a name="line825">825: </a>      <a href="../../../manualpages/Sys/PetscCallVoid.html">PetscCallVoid</a>(<a href="../../../manualpages/Sys/PetscFPTrapPop.html">PetscFPTrapPop</a>());
+<a name="line826">826: </a>    }
+<a name="line827">827: </a>    velL  = DotDIMReal(uL-&gt;ru, nn) / uL-&gt;r;
+<a name="line828">828: </a>    velR  = DotDIMReal(uR-&gt;ru, nn) / uR-&gt;r;
+<a name="line829">829: </a>    speed = <a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(velR + cR, velL + cL);
+<a name="line830">830: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 2 + dim; i++) flux[i] = 0.5 * ((fL.vals[i] + fR.vals[i]) + speed * (xL[i] - xR[i])) * s2;
+<a name="line831">831: </a>  } <font color="#4169E1">else</font> {
+<a name="line832">832: </a>    <font color="#B22222">/* int iwave =  */</font>
+<a name="line833">833: </a>    godunovflux(xL, xR, flux, nn, DIM, gamma);
+<a name="line834">834: </a>    <font color="#4169E1">for</font> (i = 0; i &lt; 2 + dim; i++) flux[i] *= s2;
+<a name="line835">835: </a>  }
+<a name="line836">836: </a>  <a href="../../../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>();
+<a name="line837">837: </a>}
+
+<a name="line839">839: </a><font color="#A020F0">#ifdef PETSC_HAVE_LIBCEED</font>
+<a name="line840">840: </a><strong><font color="#4169E1"><a name="EED_QFUNCTION"></a>CEED_QFUNCTION(PhysicsRiemann_Euler_Godunov_CEED)(void *ctx, CeedInt Q, const CeedScalar *const in[], CeedScalar *const out[])</font></strong>
+<a name="line841">841: </a>{
+<a name="line842">842: </a>  const CeedScalar    *xL = in[0], *xR = in[1], *geom = in[2];
+<a name="line843">843: </a>  CeedScalar          *cL = out[0], *cR = out[1];
+<a name="line844">844: </a>  const Physics_Euler *eu = (Physics_Euler *)ctx;
+<a name="line845">845: </a>  <font color="#4169E1">struct _n_Physics</font>    phys;
+
+<a name="line847">847: </a>  phys.data = (void *)eu;
+<a name="line848">848: </a>  CeedPragmaSIMD <font color="#4169E1">for</font> (CeedInt i = 0; i &lt; Q; ++i)
+<a name="line849">849: </a>  {
+<a name="line850">850: </a>    const CeedScalar qL[DIM + 2] = {xL[i + Q * 0], xL[i + Q * 1], xL[i + Q * 2], xL[i + Q * 3]};
+<a name="line851">851: </a>    const CeedScalar qR[DIM + 2] = {xR[i + Q * 0], xR[i + Q * 1], xR[i + Q * 2], xR[i + Q * 3]};
+<a name="line852">852: </a>    const CeedScalar n[DIM]      = {geom[i + Q * 0], geom[i + Q * 1]};
+<a name="line853">853: </a>    CeedScalar       flux[DIM + 2];
+
+<a name="line855">855: </a><font color="#A020F0">  #if 0</font>
+<a name="line856">856: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Normal\n"</font>, 0);
+<a name="line857">857: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g |\n"</font>, n[j]);
+<a name="line858">858: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: left state\n"</font>, 0);
+<a name="line859">859: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 2; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g |\n"</font>, qL[j]);
+<a name="line860">860: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: right state\n"</font>, 0);
+<a name="line861">861: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 2; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g |\n"</font>, qR[j]);
+<a name="line862">862: </a><font color="#A020F0">  #endif</font>
+<a name="line863">863: </a>    PhysicsRiemann_Euler_Godunov(DIM, DIM + 2, NULL, n, qL, qR, 0, NULL, flux, &amp;phys);
+<a name="line864">864: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 2; ++j) {
+<a name="line865">865: </a>      cL[i + Q * j] = -flux[j] / geom[i + Q * 2];
+<a name="line866">866: </a>      cR[i + Q * j] = flux[j] / geom[i + Q * 3];
+<a name="line867">867: </a>    }
+<a name="line868">868: </a><font color="#A020F0">  #if 0</font>
+<a name="line869">869: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: left flux\n"</font>, 0);
+<a name="line870">870: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 2; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g | (%g)\n"</font>, cL[i + Q * j], geom[i + Q * 2]);
+<a name="line871">871: </a>    <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"Cell %d Element Residual: right flux\n"</font>, 0);
+<a name="line872">872: </a>    <font color="#4169E1">for</font> (CeedInt j = 0; j &lt; DIM + 2; ++j) <a href="../../../manualpages/Sys/PetscPrintf.html">PetscPrintf</a>(<a href="../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <font color="#666666">"  | %g | (%g)\n"</font>, cR[i + Q * j], geom[i + Q * 3]);
+<a name="line873">873: </a><font color="#A020F0">  #endif</font>
+<a name="line874">874: </a>  }
+<a name="line875">875: </a>  <font color="#4169E1">return</font> CEED_ERROR_SUCCESS;
+<a name="line876">876: </a>}
+<a name="line877">877: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+

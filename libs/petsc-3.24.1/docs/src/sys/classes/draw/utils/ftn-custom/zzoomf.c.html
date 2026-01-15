@@ -1,0 +1,42 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/classes/draw/utils/ftn-custom/zzoomf.c">Actual source code: zzoomf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:08+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscdraw.h.html">&lt;petscdraw.h&gt;</A>
+
+<a name="line4">  4: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line5">  5: </a><strong><font color="#228B22">  #define petscdrawzoom_ PETSCDRAWZOOM</font></strong>
+<a name="line6">  6: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define petscdrawzoom_ petscdrawzoom</font></strong>
+<a name="line8">  8: </a><font color="#A020F0">#endif</font>
+
+<a name="line10"> 10: </a><strong><font color="#4169E1">typedef void (*FCN)(<a href="../../../../../../manualpages/Draw/PetscDraw.html">PetscDraw</a> *, void *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *)</font></strong>; <font color="#B22222">/* force argument to next function to not be extern C*/</font>
+
+<a name="line12"> 12: </a><strong><font color="#4169E1"><a name="ourdrawzoom"></a>static <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourdrawzoom(<a href="../../../../../../manualpages/Draw/PetscDraw.html">PetscDraw</a> draw, void *ctx)</font></strong>
+<a name="line13"> 13: </a>{
+<a name="line14"> 14: </a>  <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr = <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+
+<a name="line16"> 16: </a>  (*(void (*)(<a href="../../../../../../manualpages/Draw/PetscDraw.html">PetscDraw</a> *, void *, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *))(((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)draw)-&gt;fortran_func_pointers[0]))(&amp;draw, ctx, &amp;ierr);
+<a name="line17"> 17: </a>  <font color="#4169E1">return</font> ierr;
+<a name="line18"> 18: </a>}
+
+<a name="line20"> 20: </a><strong><font color="#4169E1"><a name="petscdrawzoom_"></a>PETSC_EXTERN void petscdrawzoom_(<a href="../../../../../../manualpages/Draw/PetscDraw.html">PetscDraw</a> *draw, FCN f, void *ctx, <a href="../../../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line21"> 21: </a>{
+<a name="line22"> 22: </a>  PetscObjectAllocateFortranPointers(*draw, 1);
+<a name="line23"> 23: </a>  ((<a href="../../../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)*draw)-&gt;fortran_func_pointers[0] = (<a href="../../../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)f;
+
+<a name="line25"> 25: </a>  *ierr = <a href="../../../../../../manualpages/Draw/PetscDrawZoom.html">PetscDrawZoom</a>(*draw, ourdrawzoom, ctx);
+<a name="line26"> 26: </a>}
+</pre>
+</body>
+
+</html>
+

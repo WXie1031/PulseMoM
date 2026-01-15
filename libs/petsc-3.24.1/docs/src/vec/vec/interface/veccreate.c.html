@@ -1,0 +1,124 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/vec/vec/interface/veccreate.c">Actual source code: veccreate.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:20+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/vecimpl.h.html">&lt;petsc/private/vecimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../src/vec/vec/impls/mpi/pvecimpl.h.html">&lt;../src/vec/vec/impls/mpi/pvecimpl.h&gt;</A>
+
+<a name="line4">  4: </a><strong><font color="#4169E1"><a name="VecCreate_Common_Private"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecCreate_Common_Private(<a href="../../../../manualpages/Vec/Vec.html">Vec</a> v)</font></strong>
+<a name="line5">  5: </a>{
+<a name="line6">  6: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line7">  7: </a>  v-&gt;array_gotten = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line8">  8: </a>  v-&gt;petscnative  = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line9">  9: </a>  v-&gt;offloadmask  = <a href="../../../../manualpages/Sys/PetscOffloadMask.html">PETSC_OFFLOAD_UNALLOCATED</a>;
+<a name="line10"> 10: </a><font color="#A020F0">#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA) || defined(PETSC_HAVE_HIP)</font>
+<a name="line11"> 11: </a>  v-&gt;minimum_bytes_pinned_memory = 0;
+<a name="line12"> 12: </a>  v-&gt;pinned_memory               = <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>;
+<a name="line13"> 13: </a><font color="#A020F0">#endif</font>
+<a name="line14"> 14: </a><font color="#A020F0">#if defined(PETSC_HAVE_DEVICE)</font>
+<a name="line15"> 15: </a>  v-&gt;boundtocpu = <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>;
+<a name="line16"> 16: </a><font color="#A020F0">#endif</font>
+<a name="line17"> 17: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscStrallocpy.html">PetscStrallocpy</a>(<a href="../../../../manualpages/Sys/PETSCRANDER48.html">PETSCRANDER48</a>, &amp;v-&gt;defaultrandtype));
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line19"> 19: </a>}
+
+<a name="line21"> 21: </a><font color="#B22222">/*@</font>
+<a name="line22"> 22: </a><font color="#B22222">  <a href="../../../../manualpages/Vec/VecCreate.html">VecCreate</a> - Creates an empty vector object. The type can then be set with `<a href="../../../../manualpages/Vec/VecSetType.html">VecSetType</a>()`,</font>
+<a name="line23"> 23: </a><font color="#B22222">  or `<a href="../../../../manualpages/Vec/VecSetFromOptions.html">VecSetFromOptions</a>().`</font>
+
+<a name="line25"> 25: </a><font color="#B22222">  Collective</font>
+
+<a name="line27"> 27: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line28"> 28: </a><font color="#B22222">. comm - The communicator for the vector object</font>
+
+<a name="line30"> 30: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line31"> 31: </a><font color="#B22222">. vec - The vector object</font>
+
+<a name="line33"> 33: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line35"> 35: </a><font color="#B22222">  Notes:</font>
+<a name="line36"> 36: </a><font color="#B22222">  If you never  call `<a href="../../../../manualpages/Vec/VecSetType.html">VecSetType</a>()` or `<a href="../../../../manualpages/Vec/VecSetFromOptions.html">VecSetFromOptions</a>()` it will generate an</font>
+<a name="line37"> 37: </a><font color="#B22222">  error when you try to use the vector.</font>
+
+<a name="line39"> 39: </a><font color="#B22222">.seealso: [](ch_vectors), `<a href="../../../../manualpages/Vec/Vec.html">Vec</a>`, `<a href="../../../../manualpages/Vec/VecSetType.html">VecSetType</a>()`, `<a href="../../../../manualpages/Vec/VecSetSizes.html">VecSetSizes</a>()`, `<a href="../../../../manualpages/Vec/VecCreateMPIWithArray.html">VecCreateMPIWithArray</a>()`, `<a href="../../../../manualpages/Vec/VecCreateMPI.html">VecCreateMPI</a>()`, `<a href="../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>()`,</font>
+<a name="line40"> 40: </a><font color="#B22222">          `<a href="../../../../manualpages/Vec/VecDuplicateVecs.html">VecDuplicateVecs</a>()`, `<a href="../../../../manualpages/Vec/VecCreateGhost.html">VecCreateGhost</a>()`, `<a href="../../../../manualpages/Vec/VecCreateSeq.html">VecCreateSeq</a>()`, `<a href="../../../../manualpages/Vec/VecPlaceArray.html">VecPlaceArray</a>()`</font>
+<a name="line41"> 41: </a><font color="#B22222">@*/</font>
+<a name="line42"> 42: </a><strong><font color="#4169E1"><a name="VecCreate"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/Vec/VecCreate.html">VecCreate</a>(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *vec)</font></strong>
+<a name="line43"> 43: </a>{
+<a name="line44"> 44: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> v;
+
+<a name="line46"> 46: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line47"> 47: </a>  PetscAssertPointer(vec, 2);
+<a name="line48"> 48: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecInitializePackage.html">VecInitializePackage</a>());
+
+<a name="line50"> 50: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscHeaderCreate.html">PetscHeaderCreate</a>(v, VEC_CLASSID, <font color="#666666">"<a href="../../../../manualpages/Vec/Vec.html">Vec</a>"</font>, <font color="#666666">"Vector"</font>, <font color="#666666">"<a href="../../../../manualpages/Vec/Vec.html">Vec</a>"</font>, comm, <a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>, <a href="../../../../manualpages/Vec/VecView.html">VecView</a>));
+<a name="line51"> 51: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/IS/PetscLayoutCreate.html">PetscLayoutCreate</a>(comm, &amp;v-&gt;map));
+<a name="line52"> 52: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecCreate_Common_Private(v));
+<a name="line53"> 53: </a>  *vec = v;
+<a name="line54"> 54: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line55"> 55: </a>}
+
+<a name="line57"> 57: </a><font color="#B22222">/*@</font>
+<a name="line58"> 58: </a><font color="#B22222">  <a href="../../../../manualpages/Vec/VecCreateFromOptions.html">VecCreateFromOptions</a> - Creates a vector whose type is set from the options database</font>
+
+<a name="line60"> 60: </a><font color="#B22222">  Collective</font>
+
+<a name="line62"> 62: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line63"> 63: </a><font color="#B22222">+ comm   - The communicator for the vector object</font>
+<a name="line64"> 64: </a><font color="#B22222">. prefix - [optional] prefix for the options database</font>
+<a name="line65"> 65: </a><font color="#B22222">. bs     - the block size (commonly 1)</font>
+<a name="line66"> 66: </a><font color="#B22222">. m      - the local size (or `<a href="../../../../manualpages/Sys/PETSC_DECIDE.html">PETSC_DECIDE</a>`)</font>
+<a name="line67"> 67: </a><font color="#B22222">- n      - the global size (or `<a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>`)</font>
+
+<a name="line69"> 69: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line70"> 70: </a><font color="#B22222">. vec - The vector object</font>
+
+<a name="line72"> 72: </a><font color="#B22222">  Options Database Keys:</font>
+<a name="line73"> 73: </a><font color="#B22222">. -vec_type - see `<a href="../../../../manualpages/Vec/VecType.html">VecType</a>`, for example `seq`, `mpi`, `cuda`, defaults to `mpi`</font>
+
+<a name="line75"> 75: </a><font color="#B22222">  Level: beginner</font>
+
+<a name="line77"> 77: </a><font color="#B22222">.seealso: [](ch_vectors), `<a href="../../../../manualpages/Vec/Vec.html">Vec</a>`, `<a href="../../../../manualpages/Vec/VecSetType.html">VecSetType</a>()`, `<a href="../../../../manualpages/Vec/VecSetSizes.html">VecSetSizes</a>()`, `<a href="../../../../manualpages/Vec/VecCreateMPIWithArray.html">VecCreateMPIWithArray</a>()`, `<a href="../../../../manualpages/Vec/VecCreateMPI.html">VecCreateMPI</a>()`, `<a href="../../../../manualpages/Vec/VecDuplicate.html">VecDuplicate</a>()`,</font>
+<a name="line78"> 78: </a><font color="#B22222">          `<a href="../../../../manualpages/Vec/VecDuplicateVecs.html">VecDuplicateVecs</a>()`, `<a href="../../../../manualpages/Vec/VecCreateGhost.html">VecCreateGhost</a>()`, `<a href="../../../../manualpages/Vec/VecCreateSeq.html">VecCreateSeq</a>()`, `<a href="../../../../manualpages/Vec/VecPlaceArray.html">VecPlaceArray</a>()`, `<a href="../../../../manualpages/Vec/VecCreate.html">VecCreate</a>()`, `<a href="../../../../manualpages/Vec/VecType.html">VecType</a>`</font>
+<a name="line79"> 79: </a><font color="#B22222">@*/</font>
+<a name="line80"> 80: </a><strong><font color="#4169E1"><a name="VecCreateFromOptions"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> <a href="../../../../manualpages/Vec/VecCreateFromOptions.html">VecCreateFromOptions</a>(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, const char *prefix, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> bs, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> m, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *vec)</font></strong>
+<a name="line81"> 81: </a>{
+<a name="line82"> 82: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line83"> 83: </a>  PetscAssertPointer(vec, 6);
+<a name="line84"> 84: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreate.html">VecCreate</a>(comm, vec));
+<a name="line85"> 85: </a>  <font color="#4169E1">if</font> (prefix) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetOptionsPrefix.html">VecSetOptionsPrefix</a>(*vec, prefix));
+<a name="line86"> 86: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetBlockSize.html">VecSetBlockSize</a>(*vec, bs));
+<a name="line87"> 87: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetSizes.html">VecSetSizes</a>(*vec, m, n));
+<a name="line88"> 88: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetFromOptions.html">VecSetFromOptions</a>(*vec));
+<a name="line89"> 89: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line90"> 90: </a>}
+
+<a name="line92"> 92: </a><font color="#B22222">/* Create a vector with the given layout.  The reference count of the input layout will be increased by 1 */</font>
+<a name="line93"> 93: </a><strong><font color="#4169E1"><a name="VecCreateWithLayout_Private"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> VecCreateWithLayout_Private(<a href="../../../../manualpages/IS/PetscLayout.html">PetscLayout</a> map, <a href="../../../../manualpages/Vec/Vec.html">Vec</a> *vec)</font></strong>
+<a name="line94"> 94: </a>{
+<a name="line95"> 95: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a> v;
+
+<a name="line97"> 97: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line98"> 98: </a>  PetscAssertPointer(vec, 2);
+<a name="line99"> 99: </a>  *vec = NULL;
+<a name="line100">100: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecInitializePackage.html">VecInitializePackage</a>());
+<a name="line101">101: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscHeaderCreate.html">PetscHeaderCreate</a>(v, VEC_CLASSID, <font color="#666666">"<a href="../../../../manualpages/Vec/Vec.html">Vec</a>"</font>, <font color="#666666">"Vector"</font>, <font color="#666666">"<a href="../../../../manualpages/Vec/Vec.html">Vec</a>"</font>, map-&gt;comm, <a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>, <a href="../../../../manualpages/Vec/VecView.html">VecView</a>));
+<a name="line102">102: </a>  v-&gt;map = map;
+<a name="line103">103: </a>  map-&gt;refcnt++;
+<a name="line104">104: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(VecCreate_Common_Private(v));
+<a name="line105">105: </a>  v-&gt;bstash.bs = map-&gt;bs;
+<a name="line106">106: </a>  *vec         = v;
+<a name="line107">107: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line108">108: </a>}
+</pre>
+</body>
+
+</html>
+

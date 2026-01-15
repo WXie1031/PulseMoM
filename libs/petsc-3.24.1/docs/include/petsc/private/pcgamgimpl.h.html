@@ -1,0 +1,107 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsc/private/pcgamgimpl.h">Actual source code: pcgamgimpl.h</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:45+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+<a name="line2">  2: </a>#include <A href="../../../include/petscksp.h.html">&lt;petscksp.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../include/petsc/private/pcimpl.h.html">&lt;petsc/private/pcimpl.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../include/petsc/private/pcmgimpl.h.html">&lt;petsc/private/pcmgimpl.h&gt;</A>
+<a name="line5">  5: </a>#include <A href="../../../include/petscmatcoarsen.h.html">&lt;petscmatcoarsen.h&gt;</A>
+<a name="line6">  6: </a>#include <A href="../../../include/petsc/private/matimpl.h.html">&lt;petsc/private/matimpl.h&gt;</A>
+
+<a name="line8">  8: </a><font color="#4169E1"><a name="_PCGAMGOps"></a>struct _PCGAMGOps </font>{
+<a name="line9">  9: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*creategraph)(<a href="../../../manualpages/PC/PC.html">PC</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a> *);
+<a name="line10"> 10: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*coarsen)(<a href="../../../manualpages/PC/PC.html">PC</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a> *, PetscCoarsenData **);
+<a name="line11"> 11: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*prolongator)(<a href="../../../manualpages/PC/PC.html">PC</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a>, PetscCoarsenData *, <a href="../../../manualpages/Mat/Mat.html">Mat</a> *);
+<a name="line12"> 12: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*optprolongator)(<a href="../../../manualpages/PC/PC.html">PC</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a> *);
+<a name="line13"> 13: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*createlevel)(<a href="../../../manualpages/PC/PC.html">PC</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../manualpages/Mat/Mat.html">Mat</a> *, <a href="../../../manualpages/Sys/PetscMPIInt.html">PetscMPIInt</a> *, <a href="../../../manualpages/IS/IS.html">IS</a> *, <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>);
+<a name="line14"> 14: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*createdefaultdata)(<a href="../../../manualpages/PC/PC.html">PC</a>, <a href="../../../manualpages/Mat/Mat.html">Mat</a>); <font color="#B22222">/* for data methods that have a default (SA) */</font>
+<a name="line15"> 15: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*setfromoptions)(<a href="../../../manualpages/PC/PC.html">PC</a>, PetscOptionItems);
+<a name="line16"> 16: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*destroy)(<a href="../../../manualpages/PC/PC.html">PC</a>);
+<a name="line17"> 17: </a>  <a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> (*view)(<a href="../../../manualpages/PC/PC.html">PC</a>, <a href="../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>);
+<a name="line18"> 18: </a>};
+<a name="line19"> 19: </a><font color="#B22222">/* Private context for the GAMG preconditioner */</font>
+<a name="line20"> 20: </a><font color="#4169E1"><a name="gamg_TAG"></a>typedef struct gamg_TAG </font>{
+<a name="line21"> 21: </a>  <a href="../../../manualpages/PC/PCGAMGType.html">PCGAMGType</a>       type;
+<a name="line22"> 22: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>         Nlevels;
+<a name="line23"> 23: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>        repart;
+<a name="line24"> 24: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>        reuse_prol;
+<a name="line25"> 25: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>        use_aggs_in_asm;
+<a name="line26"> 26: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>        use_parallel_coarse_grid_solver;
+<a name="line27"> 27: </a>  <a href="../../../manualpages/PC/PCGAMGLayoutType.html">PCGAMGLayoutType</a> layout_type;
+<a name="line28"> 28: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a>        cpu_pin_coarse_grids;
+<a name="line29"> 29: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>         min_eq_proc;
+<a name="line30"> 30: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>         asm_hem_aggs;
+<a name="line31"> 31: </a>  <a href="../../../manualpages/Mat/MatCoarsen.html">MatCoarsen</a>       asm_crs; <font color="#B22222">/* used to generate ASM aggregates */</font>
+<a name="line32"> 32: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>         coarse_eq_limit;
+<a name="line33"> 33: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>        threshold_scale;
+<a name="line34"> 34: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>        threshold[PETSC_MG_MAXLEVELS]; <font color="#B22222">/* common quantity to many AMG methods so keep it up here */</font>
+<a name="line35"> 35: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>         level_reduction_factors[PETSC_MG_MAXLEVELS];
+<a name="line36"> 36: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>         current_level; <font color="#B22222">/* stash construction state */</font>
+<a name="line37"> 37: </a>  <font color="#B22222">/* these 4 are all related to the method data and should be in the subctx */</font>
+<a name="line38"> 38: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   data_sz; <font color="#B22222">/* nloc*data_rows*data_cols */</font>
+<a name="line39"> 39: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   data_cell_rows;
+<a name="line40"> 40: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   data_cell_cols;
+<a name="line41"> 41: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   orig_data_cell_rows;
+<a name="line42"> 42: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>   orig_data_cell_cols;
+<a name="line43"> 43: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *data;      <font color="#B22222">/* [data_sz] blocked vector of vertex data on fine grid (coordinates/nullspace) */</font>
+<a name="line44"> 44: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *orig_data; <font color="#B22222">/* cache data */</font>
+
+<a name="line46"> 46: </a>  <font color="#4169E1">struct _PCGAMGOps</font> *ops;
+<a name="line47"> 47: </a>  char              *gamg_type_name;
+
+<a name="line49"> 49: </a>  void *subctx;
+
+<a name="line51"> 51: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> use_sa_esteig;
+<a name="line52"> 52: </a>  <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> emin, emax;
+<a name="line53"> 53: </a>  <a href="../../../manualpages/Sys/PetscBool.html">PetscBool</a> recompute_esteig;
+<a name="line54"> 54: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  injection_index_size;
+<a name="line55"> 55: </a>  <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>  injection_index[MAT_COARSEN_STRENGTH_INDEX_SIZE];
+<a name="line56"> 56: </a>} PC_GAMG;
+
+<a name="line58"> 58: </a><font color="#B22222">/* hooks create derivied classes */</font>
+<a name="line59"> 59: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCCreateGAMG_GEO(<a href="../../../manualpages/PC/PC.html">PC</a>)</font></strong>;
+<a name="line60"> 60: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCCreateGAMG_AGG(<a href="../../../manualpages/PC/PC.html">PC</a>)</font></strong>;
+<a name="line61"> 61: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCCreateGAMG_Classical(<a href="../../../manualpages/PC/PC.html">PC</a>)</font></strong>;
+
+<a name="line63"> 63: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCDestroy_GAMG(<a href="../../../manualpages/PC/PC.html">PC</a>)</font></strong>;
+
+<a name="line65"> 65: </a><font color="#B22222">/* helper methods */</font>
+<a name="line66"> 66: </a><strong><font color="#4169E1"><a href="../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PCGAMGGetDataWithGhosts(<a href="../../../manualpages/Mat/Mat.html">Mat</a>, <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a>, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>[], <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> *, <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> **)</font></strong>;
+
+<a name="line68"> 68: </a><font color="#4169E1">enum</font> tag {
+<a name="line69"> 69: </a>  GAMG_SETUP = 0,
+<a name="line70"> 70: </a>  GAMG_MESH,
+<a name="line71"> 71: </a>  GAMG_MATRIX,
+<a name="line72"> 72: </a>  GAMG_GRAPH,
+<a name="line73"> 73: </a>  GAMG_COARSEN,
+<a name="line74"> 74: </a>  GAMG_SQUARE,
+<a name="line75"> 75: </a>  GAMG_MIS,
+<a name="line76"> 76: </a>  GAMG_PROL,
+<a name="line77"> 77: </a>  GAMG_PROLA,
+<a name="line78"> 78: </a>  GAMG_PROLB,
+<a name="line79"> 79: </a>  GAMG_OPT,
+<a name="line80"> 80: </a>  GAMG_OPTSM,
+<a name="line81"> 81: </a>  GAMG_LEVEL,
+<a name="line82"> 82: </a>  GAMG_PTAP,
+<a name="line83"> 83: </a>  GAMG_REDUCE,
+<a name="line84"> 84: </a>  GAMG_REPART,
+<a name="line85"> 85: </a>  SET13,
+<a name="line86"> 86: </a>  SET14,
+<a name="line87"> 87: </a>  SET15,
+<a name="line88"> 88: </a>  GAMG_NUM_SET
+<a name="line89"> 89: </a>};
+<a name="line90"> 90: </a>PETSC_EXTERN <a href="../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> petsc_gamg_setup_events[GAMG_NUM_SET];
+<a name="line91"> 91: </a>PETSC_EXTERN <a href="../../../manualpages/Log/PetscLogEvent.html">PetscLogEvent</a> petsc_gamg_setup_matmat_events[PETSC_MG_MAXLEVELS][3];
+</pre>
+</body>
+
+</html>
+

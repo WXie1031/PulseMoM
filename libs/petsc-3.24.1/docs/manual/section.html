@@ -1,0 +1,1022 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>PetscSection: Connecting Grids to Data &#8212; PETSc 3.24.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=bd9e20870c6007c4c509" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/katex-math.css?v=91adb8b6" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=dbe1606d" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=bd9e20870c6007c4c509"></script>
+
+    <script src="../_static/documentation_options.js?v=d1c46438"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=a56c686a"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/katex.min.js?v=be8ff15f"></script>
+    <script src="../_static/auto-render.min.js?v=ad136472"></script>
+    <script src="../_static/katex_autorenderer.js?v=bebc588a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'manual/section';</script>
+    <link rel="icon" href="../_static/petsc_favicon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="DMPlex: Unstructured Grids" href="dmplex.html" />
+    <link rel="prev" title="DM Basics" href="dmbase.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+    <meta name="docbuild:last-update" content="2025-10-29T13:28:48-0500 (v3.24.1)"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <header>
+  
+    <div class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/PETSc-TAO_RGB.svg" class="logo__image only-light" alt="PETSc 3.24.1 documentation - Home"/>
+    <script>document.write(`<img src="../_static/PETSc-TAO_RGB_white.svg" class="logo__image only-dark" alt="PETSc 3.24.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </div>
+  
+  </header>
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../overview/index.html">
+                        Overview
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../install/index.html">
+                        Install
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials/index.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="index.html">
+                        User-Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../manualpages/index.html">
+                        C/Fortran API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../petsc4py/index.html">
+                        petsc4py API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../faq/index.html">
+                        FAQ
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../community/index.html">
+                        Community
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../developers/index.html">
+                        Developers
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../miscellaneous/index.html">
+                        Misc.
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://gitlab.com/petsc/petsc" title="GitLab" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fab fa-gitlab fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitLab</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../overview/nutshell.html">PETSc in a nutshell</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/features.html">Supported Systems</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../overview/gpu_roadmap.html">GPU Support Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/vector_table.html">Summary of Vector Types Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/matrix_table.html">Summary of Matrix Types Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/linear_solve_table.html">Summary of Sparse Linear Solvers Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/nonlinear_solve_table.html">Summary of Nonlinear Solvers Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/integrator_table.html">Summary of Time Integrators Available In PETSc</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/tao_solve_table.html">Summary of Tao Solvers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/discrete_table.html">Summary of Discretization Management Systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/plex_transform_table.html">Summary of Unstructured Mesh Transformations</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">User-Guide</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="introduction.html">Introduction to PETSc</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="about_this_manual.html">About This Manual</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+
+
+
+
+
+
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="programming.html">The Solvers in PETSc/TAO</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="vec.html">Vectors and Parallel Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mat.html">Matrices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ksp.html">KSP: Linear System Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snes.html">SNES: Nonlinear Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ts.html">TS: Scalable ODE and DAE Solvers</a></li>
+
+<li class="toctree-l3"><a class="reference internal" href="tao.html">TAO: Optimization Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="regressor.html">PetscRegressor: Regression Solvers</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current active has-children"><a class="reference internal" href="dm.html">DM: Interfacing Between Solvers and Models/Discretizations</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="dmbase.html">DM Basics</a></li>
+<li class="toctree-l3 current active"><a class="current reference internal" href="#">PetscSection: Connecting Grids to Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dmplex.html">DMPlex: Unstructured Grids</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dmstag.html">DMSTAG: Staggered, Structured Grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dmnetwork.html">Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dt.html">PetscDT: Discretization Technology in PETSc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fe.html">PetscFE: Finite Element Infrastructure in PETSc</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="additional.html">Additional Information</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="fortran.html">PETSc for Fortran Users</a></li>
+<li class="toctree-l3"><a class="reference internal" href="versionchecking.html">Checking the PETSc version</a></li>
+<li class="toctree-l3"><a class="reference internal" href="matlab.html">Using MATLAB with PETSc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance.html">Hints for Performance Tuning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="streams.html">STREAMS: Example Study</a></li>
+<li class="toctree-l3"><a class="reference internal" href="blas-lapack.html">The Use of BLAS and LAPACK in PETSc and external libraries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="other.html">Other PETSc Features</a></li>
+
+<li class="toctree-l3"><a class="reference internal" href="advanced.html">Advanced Features of Matrices and Solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tests.html">Running PETSc Tests</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../manualpages/index.html">C/Fortran API</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Vector.html">Vectors and Index Sets</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Vec/index.html">Vector Operations (Vec)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/IS/index.html">Index sets (IS)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Matrix.html">Matrices and Matrix Operations</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Mat/index.html">Matrix Operations (Mat)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/MatGraphOperations/index.html">Matrix colorings (MatColoring), orderings (MatOrdering), partitionings (MatPartitioning), and coarsening (MatCoarsen)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/MatFD/index.html">Finite difference computation of Jacobians (MatFD)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/DataLayout.html">Data Layout and Communication</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscSF/index.html">Star Forest Communication (PetscSF)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscSection/index.html">Section Data Layout (PetscSection)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/AO/index.html">Application Orderings (AO)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/DataManagement.html">Data Management between Vec and Mat, and Distributed Mesh Data Structures</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-10"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DM/index.html">Data Management (DM)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMDA/index.html">Structured Grids (DMDA)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMStag/index.html">Staggered, Structured Grids (DMSTAG)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMPlex/index.html">Unstructured Grids and Cell Complexes (DMPLEX)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMNetwork/index.html">Graphs and Networks (DMNETWORK)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMForest/index.html">A Forest of Trees and Structured Adaptive Refinement (DMFOREST)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMPatch/index.html">Sequences of parallel mesh patches (DMPATCH)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMSwarm/index.html">Particle Discretizations (DMSWARM)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMMOAB/index.html">MOAB Mesh Representation (DMMOAB)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMLabel/index.html">Selecting Parts of Meshes (DMLabel)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMPRODUCT/index.html">Tensor products of meshes (DMRODUCT)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DMComposite/index.html">DMComposite</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Discretization.html">Discretization and Function Spaces</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-11"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DT/index.html">Discretization Technology and Quadrature (DT)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/SPACE/index.html">Function Spaces (PetscSpace)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/DUALSPACE/index.html">Dual Spaces (PetscDualSpace)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/FE/index.html">Finite Elements (PetscFE)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/FV/index.html">Finite Volumes (PetscFV)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PF/index.html">Defining your own mathematical functions (PF)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/LANDAU/index.html">Landau Collision Operator</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/LinearSolvers.html">Linear Solvers and Preconditioners</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-12"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/KSP/index.html">Linear Solvers and Krylov Methods (KSP)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PC/index.html">Preconditioners (PC)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/NonlinearSolvers.html">Nonlinear Solvers</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-13"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/SNES/index.html">Nonlinear Solvers (SNES)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/SNESFAS/index.html">Full Approximation Scheme (FAS) nonlinear multigrid</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Timestepping.html">Forward and Adjoint Timestepping</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-14"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/TS/index.html">Time Stepping ODE and DAE Solvers (TS)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Sensitivity/index.html">Sensitivity Analysis for ODE and DAE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Characteristic/index.html">Semi-Lagrangian Solves using the Method of Characteristics</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Optimization.html">Optimization</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-15"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Tao/index.html">Optimization Solvers (Tao)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/TaoLineSearch/index.html">Optimization Line Search (TaoLineSearch)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/MachineLearning.html">Machine Learning</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-16"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscRegressor/index.html">Regression Analysis and Classification (PetscRegressor)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/Visualization.html">Graphics and Visualization</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-17"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Draw/index.html">Graphics (Draw)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Viewer/index.html">Viewing Objects (Viewer)</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../manualpages/System.html">System Routines, Profiling, Data Structures</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-18"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Sys/index.html">PETSc Options, IO, and System Utilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/PetscH/index.html">Hash Tables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Log/index.html">Profiling and Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Device/index.html">Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Matlab/index.html">Matlab</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/Bag/index.html">Bag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../manualpages/BM/index.html">Benchmarks (BM)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../changes/index.html">Changes for each release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../manualpages/singleindex.html">Single Index of all PETSc Manual Pages</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changes/index.html">Changes for each release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../manualpages/singleindex.html">Single Index of all PETSc Manual Pages</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../overview/previous_release_docs.html">Documentation for previous PETSc releases</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-19"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.23/docs"> 3.23</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.22/docs"> 3.22</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.21/docs"> 3.21</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.20/docs"> 3.20</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.19/docs"> 3.19</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.18/docs"> 3.18</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.17/docs"> 3.17</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.16/docs"> 3.16</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.15/docs"> 3.15</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.14/docs"> 3.14</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.13/docs"> 3.13</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.12/docs"> 3.12</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.11/docs"> 3.11</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.10/docs"> 3.10</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.9/docs"> 3.9</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.8/docs"> 3.8</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.7/docs"> 3.7</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.6/docs"> 3.6</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.5/docs"> 3.5</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.4/docs"> 3.4</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://web.cels.anl.gov/projects/petsc/vault/petsc-3.3/docs"> 3.3</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../overview/index.html" class="nav-link">Overview</a></li>
+    
+    
+    <li class="breadcrumb-item"><i class="fa-solid fa-ellipsis"></i></li>
+    
+    
+    <li class="breadcrumb-item"><a href="dm.html" class="nav-link">DM: Interfacing Between Solvers and Models/Discretizations</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">PetscSection...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="petscsection-connecting-grids-to-data">
+<span id="ch-petscsection"></span><h1>PetscSection: Connecting Grids to Data<a class="headerlink" href="#petscsection-connecting-grids-to-data" title="Link to this heading">#</a></h1>
+<p>The strongest links between solvers and discretizations are</p>
+<ul class="simple">
+<li><p>the relationship between the layout of data over a mesh (or similar structure) and the data layout in arrays and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/Vec.html">Vec</a></span></code> used for computation,</p></li>
+<li><p>data partitioning, and</p></li>
+<li><p>ordering of data.</p></li>
+</ul>
+<p>To enable modularity, we encode the operations above in simple data
+structures that can be understood by the linear algebraic and solver components of PETSc (<code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/Vec.html">Vec</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Mat/Mat.html">Mat</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/KSP/KSP.html">KSP</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PC/PC.html">PC</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/SNES/SNES.html">SNES</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/TS/TS.html">TS</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Tao/Tao.html">Tao</a></span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscRegressor/PetscRegressor.html">PetscRegressor</a></span></code>)
+without explicit reference to the mesh (topology) or discretization (analysis).</p>
+<p>While <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> is currently only employed for <code class="docutils notranslate"><span class="pre">DMPlex</span></code>, <code class="docutils notranslate"><span class="pre">DMForest</span></code>, and <code class="docutils notranslate"><span class="pre">DMNetwork</span></code> mesh descriptions, much of its operation is general enough to be utilized for other types of discretizations.
+This section will explain the basic concepts of a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> that are generalizable to other mesh descriptions.</p>
+<section id="general-concept">
+<span id="sec-petscsection-concept"></span><h2>General concept<a class="headerlink" href="#general-concept" title="Link to this heading">#</a></h2>
+<p>Specific entries (or collections of entries) in a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/Vec.html">Vec</a></span></code> (or a simple array) can be associated with a “location” on a mesh (or other types of data structure) using the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> object.
+A <strong>point</strong> is a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span></code> that serves as an abstract “index” into arrays from iterable sets, such as k-cells in a mesh.
+Other iterable set examples can be as simple as the points of a finite difference grid, or cells of a finite volume grid, or as complex as the topological entities of an unstructured mesh (cells, faces, edges, and vertices).</p>
+<p>At it’s most basic, a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> is a mapping between the mesh points and a tuple <code class="docutils notranslate"><span class="pre">(ndof,</span> <span class="pre">offset)</span></code>, where <code class="docutils notranslate"><span class="pre">ndof</span></code> is the number of values stored at that mesh point and <code class="docutils notranslate"><span class="pre">offset</span></code> is the location in the array of that data.
+So given the tuple for a mesh point, its data can be accessed by <code class="docutils notranslate"><span class="pre">array[offset</span> <span class="pre">+</span> <span class="pre">d]</span></code>, where <code class="docutils notranslate"><span class="pre">d</span></code> in <code class="docutils notranslate"><span class="pre">[0,</span> <span class="pre">ndof)</span></code> is the dof to access.</p>
+<section id="charts-defining-mesh-points">
+<h3>Charts: Defining mesh points<a class="headerlink" href="#charts-defining-mesh-points" title="Link to this heading">#</a></h3>
+<p>The mesh points for a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> must be contiguously numbered and are defined to be in some range <span class="math">\([\mathrm{pStart}, \mathrm{pEnd})\)</span>, which is called a <strong>chart</strong>.
+The chart of a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> is set via <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetChart.html">PetscSectionSetChart</a>()</span></code>.
+Note that even though the mesh points must be contiguously numbered, the indexes into the array (defined by each <code class="docutils notranslate"><span class="pre">(ndof,</span> <span class="pre">offset)</span></code> tuple) associated with the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> need not be.
+In other words, there may be elements in the array that are not associated with any mesh points, though this is not often the case.</p>
+</section>
+<section id="defining-the-ndof-offset-tuple">
+<h3>Defining the (ndof, offset) tuple<a class="headerlink" href="#defining-the-ndof-offset-tuple" title="Link to this heading">#</a></h3>
+<p>Defining the <code class="docutils notranslate"><span class="pre">(ndof,</span> <span class="pre">offset)</span></code> tuple for each mesh point generally first starts with setting the <code class="docutils notranslate"><span class="pre">ndof</span></code> for each point, which is done using <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetDof.html">PetscSectionSetDof</a>()</span></code>.
+This associates a set of degrees of freedom (dof), (a small space <span class="math">\(\{e_k\}\ 0 &lt; k &lt; ndof\)</span>), with every point.
+If <code class="docutils notranslate"><span class="pre">ndof</span></code> is not set for a mesh point, it is assumed to be 0.</p>
+<p>The offset for each mesh point is usually set automatically by <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetUp.html">PetscSectionSetUp</a>()</span></code>.
+This will concatenate each mesh point’s dofs together in the order of the mesh points.
+This concatenation can be done in a different order by setting a permutation, which is described in <a class="reference internal" href="#sec-petscsection-permutation"><span class="std std-ref">Permutation: Changing the order of array data</span></a>.</p>
+<p>Alternatively, the offset for each mesh point can be set manually by <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetOffset.html">PetscSectionSetOffset</a>()</span></code>, though this is not commonly needed.</p>
+<p>Once the tuples are created, the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> is ready to use.</p>
+</section>
+<section id="basic-setup-example">
+<h3>Basic Setup Example<a class="headerlink" href="#basic-setup-example" title="Link to this heading">#</a></h3>
+<p>To summarize, the sequence for constructing a basic <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> is the following:</p>
+<ol class="arabic simple">
+<li><p>Specify the range of points, or chart, with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetChart.html">PetscSectionSetChart</a>()</span></code>.</p></li>
+<li><p>Specify the number of dofs per point with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetDof.html">PetscSectionSetDof</a>()</span></code>. Any values not set will be zero.</p></li>
+<li><p>Set up the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetUp.html">PetscSectionSetUp</a>()</span></code>.</p></li>
+</ol>
+</section>
+</section>
+<section id="multiple-fields">
+<h2>Multiple Fields<a class="headerlink" href="#multiple-fields" title="Link to this heading">#</a></h2>
+<p>In many discretizations, it is useful to differentiate between different kinds of dofs present on a mesh.
+For example, a dof attached to a cell point might represent pressure while dofs on vertices might represent velocity or displacement.
+A <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> can represent this additional structure with what are called <strong>fields</strong>.
+<strong>Fields</strong> are indexed contiguously from <code class="docutils notranslate"><span class="pre">[0,</span> <span class="pre">num_fields)</span></code>.
+To set the number of fields for a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code>, call <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetNumFields.html">PetscSectionSetNumFields</a>()</span></code>.</p>
+<p>Internally, each field is stored in a separate <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code>.
+In fact, all the concepts and functions presented in <a class="reference internal" href="#sec-petscsection-concept"><span class="std std-ref">General concept</span></a> were actually applied onto the <strong>default field</strong>, which is indexed as <code class="docutils notranslate"><span class="pre">0</span></code>.
+The fields inherit the same chart as the “parent” <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code>.</p>
+<section id="setting-up-multiple-fields">
+<h3>Setting Up Multiple Fields<a class="headerlink" href="#setting-up-multiple-fields" title="Link to this heading">#</a></h3>
+<p>Setup for a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> with multiple fields is nearly identical to setup for a single field.</p>
+<p>The sequence for constructing such a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> is the following:</p>
+<ol class="arabic simple">
+<li><p>Specify the range of points, or chart, with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetChart.html">PetscSectionSetChart</a>()</span></code>. All fields share the same chart.</p></li>
+<li><p>Specify the number of fields with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetNumFields.html">PetscSectionSetNumFields</a>()</span></code>.</p></li>
+<li><p>Set the number of dof for each point on each field with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetFieldDof.html">PetscSectionSetFieldDof</a>()</span></code>. Any values not set will be zero.</p></li>
+<li><p>Set the <strong>total</strong> number of dof for each point with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetDof.html">PetscSectionSetDof</a>()</span></code>. Thus value must be greater than or equal to the sum of the values set with
+<code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetFieldDof.html">PetscSectionSetFieldDof</a>()</span></code> at that point. Again, values not set will be zero.</p></li>
+<li><p>Set up the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetUp.html">PetscSectionSetUp</a>()</span></code>.</p></li>
+</ol>
+</section>
+<section id="point-major-or-field-major">
+<h3>Point Major or Field Major<a class="headerlink" href="#point-major-or-field-major" title="Link to this heading">#</a></h3>
+<p>A <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> with one field and and offsets set in <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetUp.html">PetscSectionSetUp</a>()</span></code> may be thought of as defining a two dimensional array indexed by point in the outer dimension with a variable length inner dimension indexed by the dof at that point: <span class="math">\(v[\mathrm{pStart} &lt;= point &lt; \mathrm{pEnd}][0 &lt;= dof &lt; \mathrm{ndof}]\)</span> <a class="footnote-reference brackets" href="#petscsection-footnote" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.</p>
+<p>With multiple fields, this array is now three dimensional, with the outer dimensions being both indexed by mesh points and field points.
+Thus, there is a choice on whether to index by points first, or by fields first.
+In other words, will the array be laid out in a point-major or field-major fashion.</p>
+<p>Point-major ordering corresponds to <span class="math">\(v[\mathrm{pStart} &lt;= point &lt; \mathrm{pEnd}][0 &lt;= field &lt; \mathrm{num\_fields}][0 &lt;= dof &lt; \mathrm{ndof}]\)</span>.
+All the dofs for each mesh point are stored contiguously, meaning the fields are <strong>interlaced</strong>.
+Field-major ordering corresponds to <span class="math">\(v[0 &lt;= field &lt; \mathrm{num\_fields}][\mathrm{pStart} &lt;= point &lt; \mathrm{pEnd}][0 &lt;= dof &lt; \mathrm{ndof}]\)</span>.
+The all the dofs for each field are stored contiguously, meaning the points are <strong>interlaced</strong>.</p>
+<p>Consider a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> with 2 fields and 2 points (from 0 to 2). Let the 0th field have <code class="docutils notranslate"><span class="pre">ndof=1</span></code> for each point and the 1st field have <code class="docutils notranslate"><span class="pre">ndof=2</span></code> for each point.
+Denote each array entry <span class="math">\((p_i, f_i, d_i)\)</span> for <span class="math">\(p_i\)</span> being the ith point, <span class="math">\(f_i\)</span> being the ith field, and <span class="math">\(d_i\)</span> being the ith dof.</p>
+<p>Point-major order would result in:</p>
+<div class="math">
+\[
+[(p_0, f_0, d_0), (p_0, f_1, d_0), (p_0, f_1, d_1),\\ (p_1, f_0, d_0), (p_1, f_1, d_0), (p_1, f_1, d_1)]
+\]</div>
+<p>Conversely, field-major ordering would result in:</p>
+<div class="math">
+\[
+[(p_0, f_0, d_0), (p_1, f_0, d_0),\\ (p_0, f_1, d_0), (p_0, f_1, d_1), (p_1, f_1, d_0), (p_1, f_1, d_1)]
+\]</div>
+<p>Note that dofs are always contiguous, regardless of the outer dimensional ordering.</p>
+<p>Setting the which ordering is done with <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetPointMajor.html">PetscSectionSetPointMajor</a>()</span></code>, where <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a></span></code> sets point-major and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a></span></code> sets field major.</p>
+<p><strong>NOTE:</strong> The current default is for point-major, and many operations on <code class="docutils notranslate"><span class="pre">DMPlex</span></code> will only work with this ordering. Field-major ordering is provided mainly for compatibility with external packages, such as LibMesh.</p>
+</section>
+</section>
+<section id="working-with-data">
+<h2>Working with data<a class="headerlink" href="#working-with-data" title="Link to this heading">#</a></h2>
+<p>Once a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> has been created one can use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionGetStorageSize.html">PetscSectionGetStorageSize</a>()</span></code> to determine the total number of entries that can be stored in an array or <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/Vec.html">Vec</a></span></code> accessible by the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code>.
+This is most often used when creating a new <code class="docutils notranslate"><span class="pre"><a href="../manualpages/Vec/Vec.html">Vec</a></span></code> for a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> such as:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../manualpages/PetscSection/PetscSectionGetStorageSize.html">PetscSectionGetStorageSize</a></span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">n</span><span class="p">);</span>
+<span class="n"><a href="../manualpages/Vec/VecSetSizes.html">VecSetSizes</a></span><span class="p">(</span><span class="n">localVec</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a></span><span class="p">);</span>
+<span class="n"><a href="../manualpages/Vec/VecSetFromOptions.html">VecSetFromOptions</a></span><span class="p">(</span><span class="n">localVec</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The memory locations in the associated array are found using an <strong>offset</strong> which can be obtained with:</p>
+<p>Single-field <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code>:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../manualpages/PetscSection/PetscSectionGetOffset.html">PetscSectionGetOffset</a></span><span class="p">(</span><span class="n"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">point</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="o">&amp;</span><span class="n">offset</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Multi-field <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code>:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n"><a href="../manualpages/PetscSection/PetscSectionGetFieldOffset.html">PetscSectionGetFieldOffset</a></span><span class="p">(</span><span class="n"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">point</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="n"><a href="../manualpages/Sys/PetscInt.html">PetscInt</a></span><span class="w"> </span><span class="o">&amp;</span><span class="n">offset</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The value in the array is then accessed with <code class="docutils notranslate"><span class="pre">array[offset</span> <span class="pre">+</span> <span class="pre">d]</span></code>, where <code class="docutils notranslate"><span class="pre">d</span></code> in <code class="docutils notranslate"><span class="pre">[0,</span> <span class="pre">ndof)</span></code> is the dof to access.</p>
+</section>
+<section id="global-sections-constrained-and-distributed-data">
+<h2>Global Sections: Constrained and Distributed Data<a class="headerlink" href="#global-sections-constrained-and-distributed-data" title="Link to this heading">#</a></h2>
+<p>To handle distributed data and data with constraints, we use a pair of <code class="docutils notranslate"><span class="pre">PetscSections</span></code> called the <code class="docutils notranslate"><span class="pre">localSection</span></code> and <code class="docutils notranslate"><span class="pre">globalSection</span></code>.
+Their use for each is described below.</p>
+<section id="distributed-data">
+<h3>Distributed Data<a class="headerlink" href="#distributed-data" title="Link to this heading">#</a></h3>
+<p><code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> can also be applied to distributed problems as well.
+This is done using the same local/global system described in <a class="reference internal" href="vec.html#sec-localglobal"><span class="std std-ref">Local/global vectors and communicating between vectors</span></a>.
+To do this, we introduce three new concepts; a <code class="docutils notranslate"><span class="pre">localSection</span></code>, <code class="docutils notranslate"><span class="pre">globalSection</span></code>, <code class="docutils notranslate"><span class="pre">pointSF</span></code>, and <code class="docutils notranslate"><span class="pre">sectionSF</span></code>.</p>
+<p>Assume the mesh points of the “global” mesh are partitioned amongst processes and that some mesh points are shared between multiple processes (i.e there is an overlap in the partitions).
+The shared mesh points define the ghost/halo points needed in many PDE problems.
+For each shared mesh point, appoint one process to be the owner of that mesh point.
+To describe this parallel mesh point layout, we use a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSF.html">PetscSF</a></span></code> and call it the <code class="docutils notranslate"><span class="pre">pointSF</span></code>.
+The <code class="docutils notranslate"><span class="pre">pointSF</span></code> describes which processes “own” which mesh points and which process is the owner of each shared mesh point.</p>
+<p>Next, for each process define a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> that describes the mapping between that process’s partition (including shared mesh points) and the data stored on it and call it the <code class="docutils notranslate"><span class="pre">localSection</span></code>.
+The <code class="docutils notranslate"><span class="pre">localSection</span></code> describes the layout of the local vector.
+To generate the <code class="docutils notranslate"><span class="pre">globalSection</span></code> we use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionCreateGlobalSection.html">PetscSectionCreateGlobalSection</a>()</span></code>, which takes the <code class="docutils notranslate"><span class="pre">localSection</span></code> and <code class="docutils notranslate"><span class="pre">pointSF</span></code> as inputs.
+The global section returns <span class="math">\(-(dof+1)\)</span> for the number of dofs on an unowned (ghost) point, and traditionally <span class="math">\(-(off+1)\)</span> for its offset on the owning process.
+This behavior of the offsets is controlled via an argument to <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionCreateGlobalSection.html">PetscSectionCreateGlobalSection</a>()</span></code>.
+The <code class="docutils notranslate"><span class="pre">globalSection</span></code> can be used to create global vectors, just as the local section is used to create local vectors.</p>
+<p>To perform the global-to-local and local-to-global communication, we define <code class="docutils notranslate"><span class="pre">sectionSF</span></code> to be the <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSF.html">PetscSF</a></span></code> describing the mapping between the local and global vectors.
+This is generated via <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSFSetGraphSection.html">PetscSFSetGraphSection</a>()</span></code>.
+Using <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSFBcastBegin.html">PetscSFBcastBegin</a>()</span></code> will send data from the global vector to the local vector, while <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSFReduceBegin.html">PetscSFReduceBegin</a>()</span></code> will send data from the local vector to the global vector.</p>
+<p>If using <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DM.html">DM</a></span></code>, this entire process is done automatically.
+The <code class="docutils notranslate"><span class="pre">localSection</span></code>, <code class="docutils notranslate"><span class="pre">globalSection</span></code>, <code class="docutils notranslate"><span class="pre">pointSF</span></code>, and <code class="docutils notranslate"><span class="pre">sectionSF</span></code> on a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DM.html">DM</a></span></code> can be obtained via <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGetLocalSection.html">DMGetLocalSection</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGetGlobalSection.html">DMGetGlobalSection</a>()</span></code>, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGetPointSF.html">DMGetPointSF</a>()</span></code>, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGetSectionSF.html">DMGetSectionSF</a>()</span></code>, respectively.
+Additionally, communication from global to local vectors and vice versa can be done via <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGlobalToLocal.html">DMGlobalToLocal</a>()</span></code> and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMLocalToGlobal.html">DMLocalToGlobal</a>()</span></code> as described in <a class="reference internal" href="vec.html#sec-localglobal"><span class="std std-ref">Local/global vectors and communicating between vectors</span></a>.
+Note that not all <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DM.html">DM</a></span></code> types use this system, such as <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DMDA/DMDA.html">DMDA</a></span></code> (see <a class="reference internal" href="vec.html#sec-struct"><span class="std std-ref">DMDA - Creating vectors for structured grids</span></a>).</p>
+</section>
+<section id="constrained-data">
+<h3>Constrained Data<a class="headerlink" href="#constrained-data" title="Link to this heading">#</a></h3>
+<p>In addition to describing parallel data, the <code class="docutils notranslate"><span class="pre">localSection</span></code>/<code class="docutils notranslate"><span class="pre">globalSection</span></code> pair can be used to describe <em>constrained</em> dofs
+These constraints usually represent essential (Dirichlet) boundary conditions, or algebraic constraints.
+They are dofs that have a given fixed value, so they are present in local vectors for finite element/volume assembly or finite difference stencil application purposes, but generally absent from global vectors since they are not unknowns in the algebraic solves.</p>
+<p>Constraints should be indicated in the <code class="docutils notranslate"><span class="pre">localSection</span></code>.
+Use <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetConstraintDof.html">PetscSectionSetConstraintDof</a>()</span></code> to set the number of constrained dofs for a given point, and <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetConstraintIndices.html">PetscSectionSetConstraintIndices</a>()</span></code> to indicate which dofs on the given point are constrained.
+This must be done before <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionCreateGlobalSection.html">PetscSectionCreateGlobalSection</a>()</span></code> is called to create the <code class="docutils notranslate"><span class="pre">globalSection</span></code>.</p>
+<p>Note that it is possible to have constraints set in a <code class="docutils notranslate"><span class="pre">localSection</span></code>, but have the <code class="docutils notranslate"><span class="pre">globalSection</span></code> be generated to include those constraints.
+This is useful when doing some form of post-processing of a solution where you want to access all data (see <code class="docutils notranslate"><span class="pre"><a href="../manualpages/DM/DMGetOutputDM.html">DMGetOutputDM</a>()</span></code> for example).
+See <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionCreateGlobalSection.html">PetscSectionCreateGlobalSection</a>()</span></code> for more details on this.</p>
+</section>
+</section>
+<section id="permutation-changing-the-order-of-array-data">
+<span id="sec-petscsection-permutation"></span><h2>Permutation: Changing the order of array data<a class="headerlink" href="#permutation-changing-the-order-of-array-data" title="Link to this heading">#</a></h2>
+<p>By default, when <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetUp.html">PetscSectionSetUp</a>()</span></code> is called, the data laid out in the associated array is assumed to be in the same order of the grid points.
+For example, the DoFs associated with grid point 0 appear directly before grid point 1, which appears before grid point 2, etc.</p>
+<p>It may be desired to have a different the ordering of data in the array than the order of grid points defined by a section.
+For example, one may want grid points associated with the boundary of a domain to appear before points associated with the interior of the domain.</p>
+<p>This can be accomplished by either changing the indexes of the grid points themselves, or by informing the section of the change in array ordering.
+Either method uses an <code class="docutils notranslate"><span class="pre"><a href="../manualpages/IS/IS.html">IS</a></span></code> to define the permutation.</p>
+<p>To change the indices of the grid points, call <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionPermute.html">PetscSectionPermute</a>()</span></code> to generate a new <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> with the desired grid point permutation.</p>
+<p>To just change the array layout without changing the grid point indexing, call <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetPermutation.html">PetscSectionSetPermutation</a>()</span></code>.
+This must be called before <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSectionSetUp.html">PetscSectionSetUp</a>()</span></code> and will only affect the calculation of the offsets for each grid point.</p>
+</section>
+<section id="dmplex-specific-functionality-obtaining-data-from-the-array">
+<h2>DMPlex Specific Functionality: Obtaining data from the array<a class="headerlink" href="#dmplex-specific-functionality-obtaining-data-from-the-array" title="Link to this heading">#</a></h2>
+<p>A vanilla <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> (what’s been described up till now) gives a relatively naive perspective on the underlying data; it doesn’t describe how DoFs attached to a single grid point are ordered or how different grid points relate to each other.
+A <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> can store and use this extra information in the form of <strong>closures</strong>, <strong>symmetries</strong>, and <strong>closure permutations</strong>.
+These features currently target <code class="docutils notranslate"><span class="pre">DMPlex</span></code> and other unstructured grid descriptions.
+A description of those features will be left to <a class="reference internal" href="dmplex.html#ch-unstructured"><span class="std std-ref">DMPlex: Unstructured Grids</span></a>.</p>
+<p class="rubric">Footnotes</p>
+<span class="target" id="id1"></span></section>
+</section>
+<hr class="footnotes docutils" />
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="petscsection-footnote" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>A <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> can be thought of as a generalization of <code class="docutils notranslate"><span class="pre"><a href="../manualpages/IS/PetscLayout.html">PetscLayout</a></span></code>, in the same way that a fiber bundle is a generalization
+of the normal Euclidean basis used in linear algebra. With <code class="docutils notranslate"><span class="pre"><a href="../manualpages/IS/PetscLayout.html">PetscLayout</a></span></code>, we associate a unit vector (<span class="math">\(e_i\)</span>) with every
+point in the space, and just divide up points between processes.
+Conversely, <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSection/PetscSection.html">PetscSection</a></span></code> associates multiple unit vectors with every mesh point (one for each dof) and divides the mesh points between processes using a <code class="docutils notranslate"><span class="pre"><a href="../manualpages/PetscSF/PetscSF.html">PetscSF</a></span></code> to define the distribution.</p>
+</aside>
+</aside>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="dmbase.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">DM Basics</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="dmplex.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">DMPlex: Unstructured Grids</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#general-concept">General concept</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#charts-defining-mesh-points">Charts: Defining mesh points</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#defining-the-ndof-offset-tuple">Defining the (ndof, offset) tuple</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-setup-example">Basic Setup Example</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#multiple-fields">Multiple Fields</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setting-up-multiple-fields">Setting Up Multiple Fields</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#point-major-or-field-major">Point Major or Field Major</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#working-with-data">Working with data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-sections-constrained-and-distributed-data">Global Sections: Constrained and Distributed Data</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#distributed-data">Distributed Data</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#constrained-data">Constrained Data</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#permutation-changing-the-order-of-array-data">Permutation: Changing the order of array data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dmplex-specific-functionality-obtaining-data-from-the-array">DMPlex Specific Functionality: Obtaining data from the array</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://gitlab.com/petsc/petsc/-/edit/release/doc/manual/section.md">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitLab
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/manual/section.md.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=bd9e20870c6007c4c509"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=bd9e20870c6007c4c509"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 1991-2025, UChicago Argonne, LLC and the PETSc Development Team.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.1.
+</p></div>
+      
+        <div class="footer-item"><p class="last-updated">
+  Last updated on 2025-10-29T13:28:48-0500 (v3.24.1).
+  <br/>
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

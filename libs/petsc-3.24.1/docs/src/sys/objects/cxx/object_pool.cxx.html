@@ -1,0 +1,655 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/objects/cxx/object_pool.cxx">Actual source code: object_pool.cxx</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:10+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/cpp/object_pool.hpp.html">&lt;petsc/private/cpp/object_pool.hpp&gt;</A>
+
+<a name="line3">  3: </a><font color="#A020F0">#include &lt;new&gt;       // std::nothrow</font>
+<a name="line4">  4: </a><font color="#A020F0">#include &lt;limits&gt;    // std::numeric_limits</font>
+<a name="line5">  5: </a><font color="#A020F0">#include &lt;algorithm&gt; // std::lower_bound()</font>
+<a name="line6">  6: </a><font color="#A020F0">#include &lt;cstdio&gt;    // std::printf</font>
+
+<a name="line8">  8: </a>namespace Petsc
+<a name="line9">  9: </a>{
+
+<a name="line11"> 11: </a>namespace memory
+<a name="line12"> 12: </a>{
+
+<a name="line14"> 14: </a><font color="#B22222">// ==========================================================================================</font>
+<a name="line15"> 15: </a><font color="#B22222">// PoolAllocator -- Private API -- AllocationHeader</font>
+<a name="line16"> 16: </a><font color="#B22222">//</font>
+<a name="line17"> 17: </a><font color="#B22222">// The header inserted for each allocated pointer. It stores:</font>
+<a name="line18"> 18: </a><font color="#B22222">//</font>
+<a name="line19"> 19: </a><font color="#B22222">// - size - the size (in bytes) of the allocation. This includes ONLY the size as requested by</font>
+<a name="line20"> 20: </a><font color="#B22222">//          the user. i.e. if a user requested 10 bytes but alignment, padding and header</font>
+<a name="line21"> 21: </a><font color="#B22222">//          overhead results in the actual allocation being 30 bytes, then size = 10.</font>
+<a name="line22"> 22: </a><font color="#B22222">// - align - the alignment (in bytes) of the allocated pointer.</font>
+<a name="line23"> 23: </a><font color="#B22222">// ==========================================================================================</font>
+
+<a name="line25"> 25: </a><font color="#4169E1"><a name="PoolAllocator"></a>struct PoolAllocator</font>::AllocationHeader {
+<a name="line26"> 26: </a>  constexpr AllocationHeader(size_type, align_type) noexcept;
+
+<a name="line28"> 28: </a>  <a href="../../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static constexpr align_type max_alignment() noexcept;
+<a name="line29"> 29: </a>  <a href="../../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static constexpr size_type  header_size() noexcept;
+<a name="line30"> 30: </a>  <a href="../../../../manualpages/Sys/PETSC_NODISCARD.html">PETSC_NODISCARD</a> static constexpr size_type  buffer_zone_size() noexcept;
+
+<a name="line32"> 32: </a>  size_type  size;
+<a name="line33"> 33: </a>  align_type align;
+<a name="line34"> 34: </a>};
+
+<a name="line36"> 36: </a><font color="#B22222">// ==========================================================================================</font>
+<a name="line37"> 37: </a><font color="#B22222">// PoolAllocator -- Private API -- AllocationHeader -- Public API</font>
+<a name="line38"> 38: </a><font color="#B22222">// ==========================================================================================</font>
+
+<a name="line40"> 40: </a><font color="#B22222">/*</font>
+<a name="line41"> 41: </a><font color="#B22222">  PoolAllocator::AllocationHeader::AllocationHeader</font>
+<a name="line42"> 42: </a><font color="#B22222">*/</font>
+<a name="line43"> 43: </a>constexpr PoolAllocator::AllocationHeader::AllocationHeader(size_type size, align_type align) noexcept : size{size}, align{align} { }
+
+<a name="line45"> 45: </a><font color="#B22222">/*</font>
+<a name="line46"> 46: </a><font color="#B22222">  PoolAllocator::AllocationHeader::max_alignment</font>
+
+<a name="line48"> 48: </a><font color="#B22222">  Returns the maximum supported alignment (in bytes) of the memory pool.</font>
+<a name="line49"> 49: </a><font color="#B22222">*/</font>
+<a name="line50"> 50: </a>constexpr PoolAllocator::align_type PoolAllocator::AllocationHeader::max_alignment() noexcept
+<a name="line51"> 51: </a>{
+<a name="line52"> 52: </a><font color="#A020F0">#if PETSC_CPP_VERSION &gt;= 14</font>
+<a name="line53"> 53: </a>  constexpr auto max_align = std::numeric_limits&lt;unsigned char&gt;::max() + 1;
+<a name="line54"> 54: </a>  static_assert(!(max_align &amp; (max_align - 1)), <font color="#666666">"Maximum alignment must be a power of 2"</font>);
+<a name="line55"> 55: </a>  <font color="#4169E1">return</font> static_cast&lt;align_type&gt;(max_align);
+<a name="line56"> 56: </a><font color="#A020F0">#else</font>
+<a name="line57"> 57: </a>  <font color="#4169E1">return</font> static_cast&lt;align_type&gt;(std::numeric_limits&lt;unsigned char&gt;::max() + 1);
+<a name="line58"> 58: </a><font color="#A020F0">#endif</font>
+<a name="line59"> 59: </a>}
+
+<a name="line61"> 61: </a><font color="#B22222">/*</font>
+<a name="line62"> 62: </a><font color="#B22222">  PoolAllocator::AllocationHeader::buffer_zone_size</font>
+
+<a name="line64"> 64: </a><font color="#B22222">  Notes:</font>
+<a name="line65"> 65: </a><font color="#B22222">  Returns the number of bytes between the allocated pointer and the location where the</font>
+<a name="line66"> 66: </a><font color="#B22222">  alignment diff is stored. i.e. size of the buffer zone + 1.</font>
+
+<a name="line68"> 68: </a><font color="#B22222">  If ASAN is enabled then this buffer zone is poisoned, so any overrun on part of the user is</font>
+<a name="line69"> 69: </a><font color="#B22222">  potentially caught. The larger the buffer zone, the more likely that the user lands in</font>
+<a name="line70"> 70: </a><font color="#B22222">  poisoned memory. Turned off in optimized builds.</font>
+<a name="line71"> 71: </a><font color="#B22222">*/</font>
+<a name="line72"> 72: </a>constexpr PoolAllocator::size_type PoolAllocator::AllocationHeader::buffer_zone_size() noexcept
+<a name="line73"> 73: </a>{
+<a name="line74"> 74: </a>  <font color="#4169E1">return</font> (<a href="../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_DEBUG) ? 32 : 0) + 1;
+<a name="line75"> 75: </a>}
+
+<a name="line77"> 77: </a><font color="#B22222">/*</font>
+<a name="line78"> 78: </a><font color="#B22222">  PoolAllocator::AllocationHeader::header_size</font>
+
+<a name="line80"> 80: </a><font color="#B22222">  Notes:</font>
+<a name="line81"> 81: </a><font color="#B22222">  Returns the minimum size of the allocation header in bytes. Essentially (literally) the size</font>
+<a name="line82"> 82: </a><font color="#B22222">  of the header object + size of the buffer zone. Does not include padding due to alignment</font>
+<a name="line83"> 83: </a><font color="#B22222">  offset itself though.</font>
+<a name="line84"> 84: </a><font color="#B22222">*/</font>
+<a name="line85"> 85: </a>constexpr PoolAllocator::size_type PoolAllocator::AllocationHeader::header_size() noexcept
+<a name="line86"> 86: </a>{
+<a name="line87"> 87: </a>  <font color="#4169E1">return</font> <font color="#4169E1">sizeof</font>(AllocationHeader) + buffer_zone_size();
+<a name="line88"> 88: </a>}
+
+<a name="line90"> 90: </a><font color="#B22222">/*</font>
+<a name="line91"> 91: </a><font color="#B22222">  PoolAllocator::total_size_ - Compute the maximum total size for an allocation</font>
+
+<a name="line93"> 93: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line94"> 94: </a><font color="#B22222">+ size  - the size (in bytes) requested by the user</font>
+<a name="line95"> 95: </a><font color="#B22222">- align - the alignment (in bytes) requested by the user</font>
+
+<a name="line97"> 97: </a><font color="#B22222">  Notes:</font>
+<a name="line98"> 98: </a><font color="#B22222">  Returns a size so that std::malloc(total_size_(size, align)) allocates enough memory to store</font>
+<a name="line99"> 99: </a><font color="#B22222">  the allocation header, buffer zone, alignment offset and requested size including any</font>
+<a name="line100">100: </a><font color="#B22222">  potential changes due to alignment.</font>
+<a name="line101">101: </a><font color="#B22222">*/</font>
+<a name="line102">102: </a>constexpr PoolAllocator::size_type PoolAllocator::total_size_(size_type size, align_type align) noexcept
+<a name="line103">103: </a>{
+<a name="line104">104: </a>  <font color="#B22222">// align - 1 because aligning the pointer up by align bytes just returns it to its original</font>
+<a name="line105">105: </a>  <font color="#B22222">// alignment, so we can save the byte</font>
+<a name="line106">106: </a>  <font color="#4169E1">return</font> AllocationHeader::header_size() + size + util::to_underlying(align) - 1;
+<a name="line107">107: </a>}
+
+<a name="line109">109: </a><font color="#B22222">/*</font>
+<a name="line110">110: </a><font color="#B22222">  PoolAllocator::delete_ptr_ - deletes a pointer and the corresponding header</font>
+
+<a name="line112">112: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line113">113: </a><font color="#B22222">+ in_ptr - the pointer to user-memory which to delete</font>
+
+<a name="line115">115: </a><font color="#B22222">  Notes:</font>
+<a name="line116">116: </a><font color="#B22222">  in_ptr may point to nullptr (in which case this does nothing), otherwise it must have been</font>
+<a name="line117">117: </a><font color="#B22222">  allocated by the pool.</font>
+
+<a name="line119">119: </a><font color="#B22222">  in_ptr may point to poisoned memory, this routine will remove any poisoning before</font>
+<a name="line120">120: </a><font color="#B22222">  deallocating.</font>
+
+<a name="line122">122: </a><font color="#B22222">  in_ptr is set to nullptr on return.</font>
+<a name="line123">123: </a><font color="#B22222">*/</font>
+<a name="line124">124: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::delete_ptr_(void **in_ptr) noexcept
+<a name="line125">125: </a>{
+<a name="line126">126: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line127">127: </a>  PetscAssertPointer(in_ptr, 1);
+<a name="line128">128: </a>  <font color="#4169E1">if</font> (const auto ptr = util::exchange(*in_ptr, nullptr)) {
+<a name="line129">129: </a>    AllocationHeader *header = nullptr;
+
+<a name="line131">131: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(extract_header_(ptr, &amp;header, false));
+<a name="line132">132: </a>    <font color="#B22222">// must unpoison the header itself before we can access the members</font>
+<a name="line133">133: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscUnpoisonMemoryRegion.html">PetscUnpoisonMemoryRegion</a>(header, <font color="#4169E1">sizeof</font>(*header)));
+<a name="line134">134: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscUnpoisonMemoryRegion.html">PetscUnpoisonMemoryRegion</a>(header, total_size_(header-&gt;size, header-&gt;align)));
+<a name="line135">135: </a>    <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(::delete[] reinterpret_cast&lt;unsigned char *&gt;(header));
+<a name="line136">136: </a>  }
+<a name="line137">137: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line138">138: </a>}
+
+<a name="line140">140: </a><font color="#B22222">/*</font>
+<a name="line141">141: </a><font color="#B22222">  PoolAllocator::find_align_ - Return an iterator to the memory pool for a particular alignment</font>
+
+<a name="line143">143: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line144">144: </a><font color="#B22222">. align - The alignment (in bytes) to search for</font>
+
+<a name="line146">146: </a><font color="#B22222">  Notes:</font>
+<a name="line147">147: </a><font color="#B22222">  returns pool().end() if alignment not found.</font>
+<a name="line148">148: </a><font color="#B22222">*/</font>
+<a name="line149">149: </a>PoolAllocator::pool_type::iterator PoolAllocator::find_align_(align_type align) noexcept
+<a name="line150">150: </a>{
+<a name="line151">151: </a>  <font color="#4169E1">return</font> std::lower_bound(this-&gt;pool().begin(), this-&gt;pool().end(), align, [](const pool_type::value_type &amp;pair, const align_type &amp;align) { <font color="#4169E1">return</font> pair.first &lt; align; });
+<a name="line152">152: </a>}
+
+<a name="line154">154: </a>PoolAllocator::pool_type::const_iterator PoolAllocator::find_align_(align_type align) const noexcept
+<a name="line155">155: </a>{
+<a name="line156">156: </a>  <font color="#4169E1">return</font> std::lower_bound(this-&gt;pool().begin(), this-&gt;pool().end(), align, [](const pool_type::value_type &amp;pair, const align_type &amp;align) { <font color="#4169E1">return</font> pair.first &lt; align; });
+<a name="line157">157: </a>}
+
+<a name="line159">159: </a><font color="#B22222">/*</font>
+<a name="line160">160: </a><font color="#B22222">  PoolAllocator::clear_ - Clear the memory pool</font>
+
+<a name="line162">162: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line163">163: </a><font color="#B22222">. remaining - The number of remaining allocations in the pool, nullptr if not needed</font>
+
+<a name="line165">165: </a><font color="#B22222">  Notes:</font>
+<a name="line166">166: </a><font color="#B22222">  This will clean up the pool, deallocating any memory checked back into the pool. This does</font>
+<a name="line167">167: </a><font color="#B22222">  not delete allocations that were allocated by the pool but not yet returned to it.</font>
+
+<a name="line169">169: </a><font color="#B22222">  remaining is useful in determining if any allocations were "leaked". Suppose an object</font>
+<a name="line170">170: </a><font color="#B22222">  internally manages a resource and uses the pool to allocate said resource. On destruction the</font>
+<a name="line171">171: </a><font color="#B22222">  object expects to have the pool be empty, i.e. have remaining = 0. This implies all resources</font>
+<a name="line172">172: </a><font color="#B22222">  were returned to the pool.</font>
+<a name="line173">173: </a><font color="#B22222">*/</font>
+<a name="line174">174: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::clear_(size_type *remaining) noexcept
+<a name="line175">175: </a>{
+<a name="line176">176: </a>  size_type remain = 0;
+
+<a name="line178">178: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line179">179: </a>  <font color="#4169E1">if</font> (remaining) PetscAssertPointer(remaining, 1);
+<a name="line180">180: </a>  <font color="#B22222">// clang-format off</font>
+<a name="line181">181: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(
+<a name="line182">182: </a>    this-&gt;for_each([&amp;](void *&amp;ptr)
+<a name="line183">183: </a>    {
+<a name="line184">184: </a>      <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line185">185: </a>      ++remain;
+<a name="line186">186: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(delete_ptr_(&amp;ptr));
+<a name="line187">187: </a>      <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line188">188: </a>    })
+<a name="line189">189: </a>  );
+<a name="line190">190: </a>  <font color="#B22222">// clang-format on</font>
+<a name="line191">191: </a>  <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(this-&gt;pool().clear());
+<a name="line192">192: </a>  <font color="#4169E1">if</font> (remaining) *remaining = remain;
+<a name="line193">193: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line194">194: </a>}
+
+<a name="line196">196: </a><font color="#B22222">/*</font>
+<a name="line197">197: </a><font color="#B22222">  PoolAllocator::finalize_ - Routine automatically called during <a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>()</font>
+
+<a name="line199">199: </a><font color="#B22222">  Notes:</font>
+<a name="line200">200: </a><font color="#B22222">  This will go through and reap any regions that it owns in the underlying container. If it</font>
+<a name="line201">201: </a><font color="#B22222">  owns all regions, it resets the container.</font>
+
+<a name="line203">203: </a><font color="#B22222">  There currently is no way to ensure that objects remaining in the pool aren't leaked, since</font>
+<a name="line204">204: </a><font color="#B22222">  this routine cannot actually re-register the pool for finalizations without causing an</font>
+<a name="line205">205: </a><font color="#B22222">  infinite loop...</font>
+
+<a name="line207">207: </a><font color="#B22222">  Thus it is up to the owned object to ensure that the pool is properly finalized.</font>
+<a name="line208">208: </a><font color="#B22222">*/</font>
+<a name="line209">209: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::finalize_() noexcept
+<a name="line210">210: </a>{
+<a name="line211">211: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line212">212: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(clear_());
+<a name="line213">213: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line214">214: </a>}
+
+<a name="line216">216: </a><font color="#B22222">// a quick sanity check that the alignment is valid, does nothing in optimized builds</font>
+<a name="line217">217: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::valid_alignment_(align_type in_align) noexcept
+<a name="line218">218: </a>{
+<a name="line219">219: </a>  constexpr auto max_align = util::to_underlying(AllocationHeader::max_alignment());
+<a name="line220">220: </a>  const auto     align     = util::to_underlying(in_align);
+
+<a name="line222">222: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line223">223: </a>  <a href="../../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>((align &gt; 0) &amp;&amp; (align &lt;= max_align), <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MEMC</a>, <font color="#666666">"Alignment %zu must be (0, %zu]"</font>, align, max_align);
+<a name="line224">224: </a>  <a href="../../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>(!(align &amp; (align - 1)), <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_ARG_WRONG</a>, <font color="#666666">"Alignment %zu must be a power of 2"</font>, align);
+<a name="line225">225: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line226">226: </a>}
+
+<a name="line228">228: </a><font color="#B22222">/*</font>
+<a name="line229">229: </a><font color="#B22222">  PoolAllocator::extract_header_ - Extract the header pointer from the aligned pointer</font>
+
+<a name="line231">231: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line232">232: </a><font color="#B22222">+ user_ptr     - the pointer to the aligned user memory</font>
+<a name="line233">233: </a><font color="#B22222">- check_in_ptr - whether to test the validity of aligned_ptr</font>
+
+<a name="line235">235: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line236">236: </a><font color="#B22222">. header - the pointer to the header</font>
+
+<a name="line238">238: </a><font color="#B22222">  Notes:</font>
+<a name="line239">239: </a><font color="#B22222">  Setting check_in_ptr to false disabled the PetscAssertPointer() check in the function</font>
+<a name="line240">240: </a><font color="#B22222">  preamble. This allows the method to be used even if the aligned_ptr is poisoned (for example</font>
+<a name="line241">241: </a><font color="#B22222">  when extracting the header from a pointer that is checked into the pool).</font>
+
+<a name="line243">243: </a><font color="#B22222">  aligned_ptr must have been allocated by the pool.</font>
+
+<a name="line245">245: </a><font color="#B22222">  The returned header is still poisoned, the user is responsible for unpoisoning it.</font>
+<a name="line246">246: </a><font color="#B22222">*/</font>
+<a name="line247">247: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::extract_header_(void *user_ptr, AllocationHeader **header, bool check_in_ptr) noexcept
+<a name="line248">248: </a>{
+<a name="line249">249: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line250">250: </a>  <font color="#4169E1">if</font> (check_in_ptr) PetscAssertPointer(user_ptr, 1);
+<a name="line251">251: </a>  PetscAssertPointer(header, 2);
+<a name="line252">252: </a>  {
+<a name="line253">253: </a>    <font color="#B22222">//       AllocationHeader::alignment_offset() (at least 1)</font>
+<a name="line254">254: </a>    <font color="#B22222">//                        |</font>
+<a name="line255">255: </a>    <font color="#B22222">// header                 |  user_ptr/aligned_ptr</font>
+<a name="line256">256: </a>    <font color="#B22222">// |                      |          |</font>
+<a name="line257">257: </a>    <font color="#B22222">// v                  v~~~~~~~~~~~~~~v</font>
+<a name="line258">258: </a>    <font color="#B22222">// A==============B===C==============D--------------------- ...</font>
+<a name="line259">259: </a>    <font color="#B22222">// ^~~~~~~~~~~~~~~^^~~^              ^~~~~~~~~~~~~~~~~~~~~~ ...</font>
+<a name="line260">260: </a>    <font color="#B22222">//       |             \______             user memory</font>
+<a name="line261">261: </a>    <font color="#B22222">//       |                    buffer_zone_end</font>
+<a name="line262">262: </a>    <font color="#B22222">// sizeof(AllocationHeader)</font>
+<a name="line263">263: </a>    <font color="#B22222">//</font>
+<a name="line264">264: </a>    <font color="#B22222">// ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^</font>
+<a name="line265">265: </a>    <font color="#B22222">//                poisoned</font>
+<a name="line266">266: </a>    <font color="#B22222">//</font>
+<a name="line267">267: </a>    const auto aligned_ptr     = reinterpret_cast&lt;unsigned char *&gt;(user_ptr);
+<a name="line268">268: </a>    const auto buffer_zone_end = aligned_ptr - AllocationHeader::buffer_zone_size();
+
+<a name="line270">270: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscUnpoisonMemoryRegion.html">PetscUnpoisonMemoryRegion</a>(buffer_zone_end, <font color="#4169E1">sizeof</font>(*buffer_zone_end)));
+<a name="line271">271: </a>    {
+<a name="line272">272: </a>      <font color="#B22222">// offset added to original pointer due to alignment, B -> C above (may be zero)</font>
+<a name="line273">273: </a>      const auto alignment_offset = *buffer_zone_end;
+
+<a name="line275">275: </a>      *header = reinterpret_cast&lt;AllocationHeader *&gt;(buffer_zone_end - alignment_offset - <font color="#4169E1">sizeof</font>(AllocationHeader));
+<a name="line276">276: </a>    }
+<a name="line277">277: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscPoisonMemoryRegion.html">PetscPoisonMemoryRegion</a>(buffer_zone_end, <font color="#4169E1">sizeof</font>(*buffer_zone_end)));
+<a name="line278">278: </a>  }
+<a name="line279">279: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line280">280: </a>}
+
+<a name="line282">282: </a><font color="#B22222">/*</font>
+<a name="line283">283: </a><font color="#B22222">  PoolAllocator::allocate_ptr_ - Allocate a pointer and header given requested size and</font>
+<a name="line284">284: </a><font color="#B22222">  alignment</font>
+
+<a name="line286">286: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line287">287: </a><font color="#B22222">+ size  - the size (in bytes) to allocate</font>
+<a name="line288">288: </a><font color="#B22222">- align - the size (in bytes) to align the pointer to</font>
+
+<a name="line290">290: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line291">291: </a><font color="#B22222">. ret_ptr - the resulting pointer to user-memory</font>
+
+<a name="line293">293: </a><font color="#B22222">  Notes:</font>
+<a name="line294">294: </a><font color="#B22222">  Both size and align must be &gt; 0. align must be a power of 2.</font>
+<a name="line295">295: </a><font color="#B22222">  This both allocates the user memory and the corresponding metadata region.</font>
+<a name="line296">296: </a><font color="#B22222">*/</font>
+<a name="line297">297: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::allocate_ptr_(size_type size, align_type align, void **ret_ptr) noexcept
+<a name="line298">298: </a>{
+<a name="line299">299: </a>  constexpr auto header_size = AllocationHeader::header_size();
+<a name="line300">300: </a>  const auto     total_size  = total_size_(size, align);
+<a name="line301">301: </a>  const auto     size_before = total_size - header_size;
+<a name="line302">302: </a>  auto           usable_size = size_before;
+<a name="line303">303: </a>  void          *aligned_ptr = nullptr;
+<a name="line304">304: </a>  unsigned char *base_ptr    = nullptr;
+
+<a name="line306">306: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line307">307: </a>  PetscAssertPointer(ret_ptr, 1);
+<a name="line308">308: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(valid_alignment_(align));
+<a name="line309">309: </a>  <font color="#B22222">// memory is laid out as follows:</font>
+<a name="line310">310: </a>  <font color="#B22222">//</font>
+<a name="line311">311: </a>  <font color="#B22222">//                            aligned_ptr     ret_ptr (and aligned_ptr after std::align())</font>
+<a name="line312">312: </a>  <font color="#B22222">// base_ptr     buffer_zone       |     _____/</font>
+<a name="line313">313: </a>  <font color="#B22222">// |                      |       |    /     user memory</font>
+<a name="line314">314: </a>  <font color="#B22222">// v                  v~~~~~~~~~~~x~~~v~~~~~~~~~~~~~~~~~~~~~ ...</font>
+<a name="line315">315: </a>  <font color="#B22222">// A==============B===C===========D===E--------------------- ...</font>
+<a name="line316">316: </a>  <font color="#B22222">// ^~~~~~~~~~~~~~~^^~~^</font>
+<a name="line317">317: </a>  <font color="#B22222">//        |            \_________</font>
+<a name="line318">318: </a>  <font color="#B22222">// sizeof(AllocationHeader)      |</font>
+<a name="line319">319: </a>  <font color="#B22222">//                               alignment_offset (may be 0)</font>
+<a name="line320">320: </a>  <font color="#B22222">//</font>
+<a name="line321">321: </a>  <font color="#B22222">// ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^</font>
+<a name="line322">322: </a>  <font color="#B22222">//                poisoned</font>
+<a name="line323">323: </a>  <font color="#B22222">//                                ^~~~~~~~~~~~~~~~~~~~~~~~~~ ...</font>
+<a name="line324">324: </a>  <font color="#B22222">//                                          usable_size</font>
+<a name="line325">325: </a>  <font color="#B22222">// ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...</font>
+<a name="line326">326: </a>  <font color="#B22222">//                       total_size_()</font>
+<a name="line327">327: </a>  <font color="#B22222">//</font>
+<a name="line328">328: </a>  base_ptr = ::new (std::nothrow) unsigned char[total_size];
+<a name="line329">329: </a>  <a href="../../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>(base_ptr, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MEM</a>, <font color="#666666">"operator new() failed to allocate %zu bytes"</font>, total_size);
+<a name="line330">330: </a>  <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(base_ptr = reinterpret_cast&lt;unsigned char *&gt;(util::construct_at(reinterpret_cast&lt;AllocationHeader *&gt;(base_ptr), size, align)));
+<a name="line331">331: </a>  aligned_ptr = base_ptr + header_size;
+<a name="line332">332: </a>  <font color="#B22222">// storing to ret_ptr and not aligned_ptr is deliberate! std::align() returns nullptr if it</font>
+<a name="line333">333: </a>  <font color="#B22222">// fails, so we do not want to clobber aligned_ptr</font>
+<a name="line334">334: </a>  *ret_ptr = std::align(util::to_underlying(align), size, aligned_ptr, usable_size);
+<a name="line335">335: </a>  <font color="#B22222">// note usable_size is has now shrunk by alignment_offset</font>
+<a name="line336">336: </a>  <a href="../../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>(*ret_ptr, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_LIB</a>, <font color="#666666">"std::align() failed to align pointer %p (size %zu, alignment %zu)"</font>, aligned_ptr, size, util::to_underlying(align));
+<a name="line337">337: </a>  {
+<a name="line338">338: </a>    constexpr auto max_align        = util::to_underlying(AllocationHeader::max_alignment());
+<a name="line339">339: </a>    const auto     alignment_offset = size_before - usable_size;
+
+<a name="line341">341: </a>    <a href="../../../../manualpages/Sys/PetscAssert.html">PetscAssert</a>(alignment_offset &lt;= max_align, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MEMC</a>, <font color="#666666">"Computed alignment offset %zu &gt; maximum allowed alignment %zu"</font>, alignment_offset, max_align);
+<a name="line342">342: </a>    *(reinterpret_cast&lt;unsigned char *&gt;(aligned_ptr) - AllocationHeader::buffer_zone_size()) = static_cast&lt;unsigned char&gt;(alignment_offset);
+<a name="line343">343: </a>    <font color="#4169E1">if</font> (<a href="../../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USE_DEBUG)) {
+<a name="line344">344: </a>      const auto computed_aligned_ptr = base_ptr + header_size + alignment_offset;
+
+<a name="line346">346: </a>      <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(computed_aligned_ptr == aligned_ptr, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Base pointer %p + header size %zu + alignment offset %zu = %p != aligned pointer %p"</font>, static_cast&lt;void *&gt;(base_ptr), header_size, alignment_offset, static_cast&lt;void *&gt;(computed_aligned_ptr), aligned_ptr);
+<a name="line347">347: </a>    }
+<a name="line348">348: </a>  }
+<a name="line349">349: </a>  <font color="#B22222">// Poison the entire region first, then unpoison only the user region. This ensures that</font>
+<a name="line350">350: </a>  <font color="#B22222">// any extra space on *either* ends of the array are poisoned</font>
+<a name="line351">351: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscPoisonMemoryRegion.html">PetscPoisonMemoryRegion</a>(base_ptr, total_size));
+<a name="line352">352: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscUnpoisonMemoryRegion.html">PetscUnpoisonMemoryRegion</a>(aligned_ptr, size));
+<a name="line353">353: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line354">354: </a>}
+
+<a name="line356">356: </a><font color="#B22222">// ==========================================================================================</font>
+<a name="line357">357: </a><font color="#B22222">// PoolAllocator -- Public API</font>
+<a name="line358">358: </a><font color="#B22222">// ==========================================================================================</font>
+
+<a name="line360">360: </a>PoolAllocator::~PoolAllocator() noexcept
+<a name="line361">361: </a>{
+<a name="line362">362: </a>  size_type leaked{};
+<a name="line363">363: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> init;
+
+<a name="line365">365: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line366">366: </a>  <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, clear_(&amp;leaked));
+<a name="line367">367: </a>  <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscInitialized.html">PetscInitialized</a>(&amp;init));
+<a name="line368">368: </a>  <font color="#4169E1">if</font> (init) <a href="../../../../manualpages/Sys/PetscCheckAbort.html">PetscCheckAbort</a>(leaked == 0, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MEM_LEAK</a>, <font color="#666666">"%zu objects remaining in the pool are leaked"</font>, leaked);
+<a name="line369">369: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>();
+<a name="line370">370: </a>}
+
+<a name="line372">372: </a><font color="#B22222">/*</font>
+<a name="line373">373: </a><font color="#B22222">  PoolAllocator::get_attributes - Get the size and alignment of an allocated pointer</font>
+
+<a name="line375">375: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line376">376: </a><font color="#B22222">. ptr - the pointer to query</font>
+
+<a name="line378">378: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line379">379: </a><font color="#B22222">+ size - the size (in bytes) of the allocated area, nullptr if not needed</font>
+<a name="line380">380: </a><font color="#B22222">- align - the alignment (in bytes) of the allocated, nullptr if not needed</font>
+
+<a name="line382">382: </a><font color="#B22222">  Note:</font>
+<a name="line383">383: </a><font color="#B22222">  ptr must have been allocated by the pool, and is exactly the pointer returned by either</font>
+<a name="line384">384: </a><font color="#B22222">  allocate() or try_allocate() (if successful).</font>
+<a name="line385">385: </a><font color="#B22222">*/</font>
+<a name="line386">386: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::get_attributes(const void *ptr, size_type *size, align_type *align) noexcept
+<a name="line387">387: </a>{
+<a name="line388">388: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line389">389: </a>  <font color="#B22222">// ptr may be poisoned, so cannot check it here</font>
+<a name="line390">390: </a>  <font color="#B22222">// PetscAssertPointer(out_ptr, 1);</font>
+<a name="line391">391: </a>  <font color="#4169E1">if</font> (size) PetscAssertPointer(size, 2);
+<a name="line392">392: </a>  <font color="#4169E1">if</font> (align) PetscAssertPointer(align, 3);
+<a name="line393">393: </a>  <font color="#4169E1">if</font> (<a href="../../../../manualpages/Sys/PetscLikely.html">PetscLikely</a>(size || align)) {
+<a name="line394">394: </a>    AllocationHeader *header = nullptr;
+
+<a name="line396">396: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(extract_header_(const_cast&lt;void *&gt;(ptr), &amp;header, <font color="#B22222">/* check ptr = */</font> false));
+<a name="line397">397: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscUnpoisonMemoryRegion.html">PetscUnpoisonMemoryRegion</a>(header, <font color="#4169E1">sizeof</font>(*header)));
+<a name="line398">398: </a>    <font color="#4169E1">if</font> (size) *size = header-&gt;size;
+<a name="line399">399: </a>    <font color="#4169E1">if</font> (align) *align = header-&gt;align;
+<a name="line400">400: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscPoisonMemoryRegion.html">PetscPoisonMemoryRegion</a>(header, <font color="#4169E1">sizeof</font>(*header)));
+<a name="line401">401: </a>  }
+<a name="line402">402: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line403">403: </a>}
+
+<a name="line405">405: </a><font color="#B22222">/*</font>
+<a name="line406">406: </a><font color="#B22222">  PoolAllocator::try_allocate - Attempt to allocate memory from the pool</font>
+
+<a name="line408">408: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line409">409: </a><font color="#B22222">+ size  - the size (in bytes) to attempt to allocate</font>
+<a name="line410">410: </a><font color="#B22222">- align - the alignment (in bytes) of the requested allocation</font>
+
+<a name="line412">412: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line413">413: </a><font color="#B22222">+ out_ptr - the pointer to return the allocated memory in</font>
+<a name="line414">414: </a><font color="#B22222">- success - set to true if out_ptr was successfully is allocated</font>
+
+<a name="line416">416: </a><font color="#B22222">  Notes:</font>
+<a name="line417">417: </a><font color="#B22222">  Differs from allocate() insofar that this routine does not allocate new memory if it does not</font>
+<a name="line418">418: </a><font color="#B22222">  find a suitable memory chunk in the pool.</font>
+
+<a name="line420">420: </a><font color="#B22222">  align must be a power of 2, and &gt; 0.</font>
+
+<a name="line422">422: </a><font color="#B22222">  If size is 0, out_ptr is set to nullptr and success set to false</font>
+<a name="line423">423: </a><font color="#B22222">*/</font>
+<a name="line424">424: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::try_allocate(void **out_ptr, size_type size, align_type align, bool *success) noexcept
+<a name="line425">425: </a>{
+<a name="line426">426: </a>  void *ptr{};
+<a name="line427">427: </a>  bool  found{};
+
+<a name="line429">429: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line430">430: </a>  PetscAssertPointer(out_ptr, 1);
+<a name="line431">431: </a>  PetscAssertPointer(success, 3);
+<a name="line432">432: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(valid_alignment_(align));
+<a name="line433">433: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(this-&gt;register_finalize());
+<a name="line434">434: </a>  <font color="#4169E1">if</font> (<a href="../../../../manualpages/Sys/PetscLikely.html">PetscLikely</a>(size)) {
+<a name="line435">435: </a>    const auto align_it = find_align_(align);
+
+<a name="line437">437: </a>    <font color="#4169E1">if</font> (align_it != this-&gt;pool().end() &amp;&amp; align_it-&gt;first == align) {
+<a name="line438">438: </a>      auto     &amp;&amp;size_map = align_it-&gt;second;
+<a name="line439">439: </a>      const auto size_it  = size_map.find(size);
+
+<a name="line441">441: </a>      <font color="#4169E1">if</font> (size_it != size_map.end()) {
+<a name="line442">442: </a>        auto &amp;&amp;ptr_list = size_it-&gt;second;
+
+<a name="line444">444: </a>        <font color="#4169E1">if</font> (!ptr_list.empty()) {
+<a name="line445">445: </a>          found = true;
+<a name="line446">446: </a>          ptr   = ptr_list.back();
+<a name="line447">447: </a>          <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(ptr_list.pop_back());
+<a name="line448">448: </a>          <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscUnpoisonMemoryRegion.html">PetscUnpoisonMemoryRegion</a>(ptr, size));
+<a name="line449">449: </a>        }
+<a name="line450">450: </a>      }
+<a name="line451">451: </a>    }
+<a name="line452">452: </a>  }
+<a name="line453">453: </a>  *out_ptr = ptr;
+<a name="line454">454: </a>  *success = found;
+<a name="line455">455: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line456">456: </a>}
+
+<a name="line458">458: </a><font color="#B22222">/*</font>
+<a name="line459">459: </a><font color="#B22222">  PoolAllocator::allocate - Allocate a chunk of memory from the pool</font>
+
+<a name="line461">461: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line462">462: </a><font color="#B22222">+ size  - The size (in bytes) to allocate</font>
+<a name="line463">463: </a><font color="#B22222">- align - The alignment (in bytes) to align the allocation to</font>
+
+<a name="line465">465: </a><font color="#B22222">  Output Parameters:</font>
+<a name="line466">466: </a><font color="#B22222">+ out_ptr             - A pointer containing the beginning of the allocated region</font>
+<a name="line467">467: </a><font color="#B22222">- allocated_from_pool - True if the region was allocated from the pool, false otherwise</font>
+
+<a name="line469">469: </a><font color="#B22222">  Notes:</font>
+<a name="line470">470: </a><font color="#B22222">  If size is 0, out_ptr is set to nullptr and was_allocated is set to false.</font>
+<a name="line471">471: </a><font color="#B22222">*/</font>
+<a name="line472">472: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::allocate(void **out_ptr, size_type size, align_type align, bool *allocated_from_pool) noexcept
+<a name="line473">473: </a>{
+<a name="line474">474: </a>  bool success{};
+
+<a name="line476">476: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line477">477: </a>  PetscAssertPointer(out_ptr, 1);
+<a name="line478">478: </a>  <font color="#4169E1">if</font> (allocated_from_pool) PetscAssertPointer(allocated_from_pool, 3);
+<a name="line479">479: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(try_allocate(out_ptr, size, align, &amp;success));
+<a name="line480">480: </a>  <font color="#4169E1">if</font> (!success) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(allocate_ptr_(size, align, out_ptr));
+<a name="line481">481: </a>  <font color="#4169E1">if</font> (allocated_from_pool) *allocated_from_pool = success;
+<a name="line482">482: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line483">483: </a>}
+
+<a name="line485">485: </a><font color="#B22222">/*</font>
+<a name="line486">486: </a><font color="#B22222">  PoolAllocate::deallocate - Return a pointer to the pool</font>
+
+<a name="line488">488: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line489">489: </a><font color="#B22222">. in_ptr - A pointer to the beginning of the allocated region</font>
+
+<a name="line491">491: </a><font color="#B22222">  Notes:</font>
+<a name="line492">492: </a><font color="#B22222">  On success the region pointed to by in_ptr is poisoned. Any further attempts to access</font>
+<a name="line493">493: </a><font color="#B22222">  the memory pointed to by in_ptr will result in an error.</font>
+
+<a name="line495">495: </a><font color="#B22222">  in_ptr must have been allocated by the pool, and must point to the beginning of the allocated</font>
+<a name="line496">496: </a><font color="#B22222">  region.</font>
+
+<a name="line498">498: </a><font color="#B22222">  The value in_ptr points to may be nullptr, in which case this routine does nothing.</font>
+<a name="line499">499: </a><font color="#B22222">*/</font>
+<a name="line500">500: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::deallocate(void **in_ptr, size_type size, align_type align) noexcept
+<a name="line501">501: </a>{
+<a name="line502">502: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line503">503: </a>  PetscAssertPointer(in_ptr, 1);
+<a name="line504">504: </a>  <font color="#4169E1">if</font> (auto ptr = util::exchange(*in_ptr, nullptr)) {
+<a name="line505">505: </a>    <font color="#4169E1">if</font> (locked_) {
+<a name="line506">506: </a>      <font color="#B22222">// This is necessary if an object is "reclaimed" within another <a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>()</font>
+<a name="line507">507: </a>      <font color="#B22222">// registered cleanup after this pool has returned from its finalizer. In this case,</font>
+<a name="line508">508: </a>      <font color="#B22222">// instead of pushing onto the stack we just delete the pointer directly.</font>
+<a name="line509">509: </a>      <font color="#B22222">//</font>
+<a name="line510">510: </a>      <font color="#B22222">// However this path is *only* valid if we have already finalized!</font>
+<a name="line511">511: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(delete_ptr_(&amp;ptr));
+<a name="line512">512: </a>    } <font color="#4169E1">else</font> {
+<a name="line513">513: </a>      auto it = find_align_(align);
+
+<a name="line515">515: </a>      <font color="#4169E1">if</font> (it == this-&gt;pool().end() || it-&gt;first != align) <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(it = this-&gt;pool().insert(it, {align, {}}));
+<a name="line516">516: </a>      <a href="../../../../manualpages/Sys/PetscCallCXX.html">PetscCallCXX</a>(it-&gt;second[size].emplace_back(ptr));
+<a name="line517">517: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscPoisonMemoryRegion.html">PetscPoisonMemoryRegion</a>(ptr, size));
+<a name="line518">518: </a>    }
+<a name="line519">519: </a>  }
+<a name="line520">520: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line521">521: </a>}
+
+<a name="line523">523: </a><font color="#B22222">/*</font>
+<a name="line524">524: </a><font color="#B22222">  PoolAllocator::unpoison - Unpoison a pool-allocated pointer</font>
+
+<a name="line526">526: </a><font color="#B22222">  Input Parameter:</font>
+<a name="line527">527: </a><font color="#B22222">. ptr - the pointer to poison</font>
+
+<a name="line529">529: </a><font color="#B22222">  Output Parameter:</font>
+<a name="line530">530: </a><font color="#B22222">. size - the size (in bytes) of the region pointed to by ptr</font>
+
+<a name="line532">532: </a><font color="#B22222">  Notes:</font>
+<a name="line533">533: </a><font color="#B22222">  ptr must not be nullptr.</font>
+
+<a name="line535">535: </a><font color="#B22222">  size should be passed to the corresponding repoison() to undo the effects of this</font>
+<a name="line536">536: </a><font color="#B22222">  routine.</font>
+
+<a name="line538">538: </a><font color="#B22222">  Using this routine in conjunction with unpoison() allows a user to temporarily push and pop</font>
+<a name="line539">539: </a><font color="#B22222">  the poisoning state of a given pointer. The pool does not repoison the pointer for you, so</font>
+<a name="line540">540: </a><font color="#B22222">  use at your own risk!</font>
+<a name="line541">541: </a><font color="#B22222">*/</font>
+<a name="line542">542: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::unpoison(const void *ptr, size_type *size) noexcept
+<a name="line543">543: </a>{
+<a name="line544">544: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line545">545: </a>  <font color="#B22222">// ptr may be poisoned, so cannot check it here</font>
+<a name="line546">546: </a>  <font color="#B22222">// PetscAssertPointer(ptr, 1);</font>
+<a name="line547">547: </a>  PetscAssertPointer(size, 2);
+<a name="line548">548: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(get_attributes(ptr, size, nullptr));
+<a name="line549">549: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscUnpoisonMemoryRegion.html">PetscUnpoisonMemoryRegion</a>(ptr, *size));
+<a name="line550">550: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line551">551: </a>}
+
+<a name="line553">553: </a><font color="#B22222">/*</font>
+<a name="line554">554: </a><font color="#B22222">  PoolAllocator::repoison - Poison a pointer previously unpoisoned via unpoison()</font>
+
+<a name="line556">556: </a><font color="#B22222">  Input Parameters:</font>
+<a name="line557">557: </a><font color="#B22222">+ ptr  - the pointer to the unpoisoned region</font>
+<a name="line558">558: </a><font color="#B22222">- size - the size of the region</font>
+
+<a name="line560">560: </a><font color="#B22222">  Notes:</font>
+<a name="line561">561: </a><font color="#B22222">  size must be exactly the value returned by unpoison().</font>
+
+<a name="line563">563: </a><font color="#B22222">  ptr cannot be nullptr</font>
+<a name="line564">564: </a><font color="#B22222">*/</font>
+<a name="line565">565: </a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PoolAllocator::repoison(const void *ptr, size_type size) noexcept
+<a name="line566">566: </a>{
+<a name="line567">567: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line568">568: </a>  PetscAssertPointer(ptr, 1);
+<a name="line569">569: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscPoisonMemoryRegion.html">PetscPoisonMemoryRegion</a>(ptr, size));
+<a name="line570">570: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line571">571: </a>}
+
+<a name="line573">573: </a>PoolAllocator::LockGuard PoolAllocator::lock_guard() noexcept
+<a name="line574">574: </a>{
+<a name="line575">575: </a>  <font color="#4169E1">return</font> LockGuard{this};
+<a name="line576">576: </a>}
+
+<a name="line578">578: </a><font color="#B22222">// ==========================================================================================</font>
+<a name="line579">579: </a><font color="#B22222">// PoolAllocated -- Public API</font>
+<a name="line580">580: </a><font color="#B22222">// ==========================================================================================</font>
+
+<a name="line582">582: </a>void *PoolAllocated::operator new(size_type size) noexcept
+<a name="line583">583: </a>{
+<a name="line584">584: </a>  void *ptr{};
+
+<a name="line586">586: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line587">587: </a>  <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, pool().allocate(&amp;ptr, size, static_cast&lt;align_type&gt;(alignof(std::max_align_t))));
+<a name="line588">588: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(ptr);
+<a name="line589">589: </a>}
+
+<a name="line591">591: </a>void PoolAllocated::operator delete(void *ptr) noexcept
+<a name="line592">592: </a>{
+<a name="line593">593: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line594">594: </a>  <font color="#4169E1">if</font> (<a href="../../../../manualpages/Sys/PetscLikely.html">PetscLikely</a>(ptr)) {
+<a name="line595">595: </a>    size_type       size{};
+<a name="line596">596: </a>    align_type      align{};
+<a name="line597">597: </a>    allocator_type &amp;allocated = pool();
+
+<a name="line599">599: </a>    <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, allocated.get_attributes(ptr, &amp;size, &amp;align));
+<a name="line600">600: </a>    <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, allocated.deallocate(&amp;ptr, size, align));
+<a name="line601">601: </a>  }
+<a name="line602">602: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>();
+<a name="line603">603: </a>}
+
+<a name="line605">605: </a><font color="#A020F0">#if PETSC_CPP_VERSION &gt;= 17</font>
+<a name="line606">606: </a>void *PoolAllocated::operator new(size_type size, std::align_val_t align) noexcept
+<a name="line607">607: </a>{
+<a name="line608">608: </a>  void *ptr{};
+
+<a name="line610">610: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line611">611: </a>  <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, pool().allocate(&amp;ptr, size, static_cast&lt;align_type&gt;(align)));
+<a name="line612">612: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(ptr);
+<a name="line613">613: </a>}
+
+<a name="line615">615: </a>void PoolAllocated::operator delete(void *ptr, std::align_val_t align) noexcept
+<a name="line616">616: </a>{
+<a name="line617">617: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line618">618: </a>  <font color="#4169E1">if</font> (<a href="../../../../manualpages/Sys/PetscLikely.html">PetscLikely</a>(ptr)) {
+<a name="line619">619: </a>    size_type size{};
+
+<a name="line621">621: </a>    <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, pool().get_attributes(ptr, &amp;size, nullptr));
+<a name="line622">622: </a>    <a href="../../../../manualpages/Sys/PetscCallAbort.html">PetscCallAbort</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, pool().deallocate(&amp;ptr, size, static_cast&lt;align_type&gt;(align)));
+<a name="line623">623: </a>  }
+<a name="line624">624: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturnVoid.html">PetscFunctionReturnVoid</a>();
+<a name="line625">625: </a>}
+<a name="line626">626: </a><font color="#A020F0">#endif</font>
+
+<a name="line628">628: </a><font color="#B22222">// ==========================================================================================</font>
+<a name="line629">629: </a><font color="#B22222">// PoolAllocated -- Protected API</font>
+<a name="line630">630: </a><font color="#B22222">// ==========================================================================================</font>
+
+<a name="line632">632: </a>PoolAllocated::allocator_type &amp;PoolAllocated::pool() noexcept
+<a name="line633">633: </a>{
+<a name="line634">634: </a>  <font color="#4169E1">return</font> pool_;
+<a name="line635">635: </a>}
+
+<a name="line637">637: </a>} <font color="#B22222">// namespace memory</font>
+
+<a name="line639">639: </a>} <font color="#B22222">// namespace Petsc</font>
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,90 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/ksp/pc/tests/ex4.c">Actual source code: ex4.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:57+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Demonstrates the use of fast Richardson for SOR. And tests\n\</font>
+<a name="line2">  2: </a><font color="#666666">the <a href="../../../../manualpages/Mat/MatSOR.html">MatSOR</a>() routines.\n\n"</font>;
+
+<a name="line4">  4: </a>#include <A href="../../../../include/petscpc.h.html">&lt;petscpc.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **args)</font></strong>
+<a name="line7">  7: </a>{
+<a name="line8">  8: </a>  <a href="../../../../manualpages/Mat/Mat.html">Mat</a>         mat;
+<a name="line9">  9: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>         b, u;
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/PC/PC.html">PC</a>          pc;
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>    n = 5, i, col[3];
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/Sys/PetscScalar.html">PetscScalar</a> value[3];
+
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;args, NULL, help));
+<a name="line16"> 16: </a>  <font color="#B22222">/* Create vectors */</font>
+<a name="line17"> 17: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreateSeq.html">VecCreateSeq</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, n, &amp;b));
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecCreateSeq.html">VecCreateSeq</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, n, &amp;u));
+
+<a name="line20"> 20: </a>  <font color="#B22222">/* Create and assemble matrix */</font>
+<a name="line21"> 21: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatCreateSeqDense.html">MatCreateSeqDense</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, n, n, NULL, &amp;mat));
+<a name="line22"> 22: </a>  value[0] = -1.0;
+<a name="line23"> 23: </a>  value[1] = 2.0;
+<a name="line24"> 24: </a>  value[2] = -1.0;
+<a name="line25"> 25: </a>  <font color="#4169E1">for</font> (i = 1; i &lt; n - 1; i++) {
+<a name="line26"> 26: </a>    col[0] = i - 1;
+<a name="line27"> 27: </a>    col[1] = i;
+<a name="line28"> 28: </a>    col[2] = i + 1;
+<a name="line29"> 29: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(mat, 1, &amp;i, 3, col, value, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line30"> 30: </a>  }
+<a name="line31"> 31: </a>  i      = n - 1;
+<a name="line32"> 32: </a>  col[0] = n - 2;
+<a name="line33"> 33: </a>  col[1] = n - 1;
+<a name="line34"> 34: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(mat, 1, &amp;i, 2, col, value, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line35"> 35: </a>  i        = 0;
+<a name="line36"> 36: </a>  col[0]   = 0;
+<a name="line37"> 37: </a>  col[1]   = 1;
+<a name="line38"> 38: </a>  value[0] = 2.0;
+<a name="line39"> 39: </a>  value[1] = -1.0;
+<a name="line40"> 40: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatSetValues.html">MatSetValues</a>(mat, 1, &amp;i, 2, col, value, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line41"> 41: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyBegin.html">MatAssemblyBegin</a>(mat, <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+<a name="line42"> 42: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatAssemblyEnd.html">MatAssemblyEnd</a>(mat, <a href="../../../../manualpages/Mat/MatAssemblyType.html">MAT_FINAL_ASSEMBLY</a>));
+
+<a name="line44"> 44: </a>  <font color="#B22222">/* Create <a href="../../../../manualpages/PC/PC.html">PC</a> context and set up data structures */</font>
+<a name="line45"> 45: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCCreate.html">PCCreate</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, &amp;pc));
+<a name="line46"> 46: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCSetType.html">PCSetType</a>(pc, <a href="../../../../manualpages/PC/PCSOR.html">PCSOR</a>));
+<a name="line47"> 47: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCSetFromOptions.html">PCSetFromOptions</a>(pc));
+<a name="line48"> 48: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCSetOperators.html">PCSetOperators</a>(pc, mat, mat));
+<a name="line49"> 49: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCSetUp.html">PCSetUp</a>(pc));
+
+<a name="line51"> 51: </a>  value[0] = 1.0;
+<a name="line52"> 52: </a>  <font color="#4169E1">for</font> (i = 0; i &lt; n; i++) {
+<a name="line53"> 53: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSet.html">VecSet</a>(u, 0.0));
+<a name="line54"> 54: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecSetValues.html">VecSetValues</a>(u, 1, &amp;i, value, <a href="../../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a>));
+<a name="line55"> 55: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAssemblyBegin.html">VecAssemblyBegin</a>(u));
+<a name="line56"> 56: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecAssemblyEnd.html">VecAssemblyEnd</a>(u));
+<a name="line57"> 57: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCApply.html">PCApply</a>(pc, u, b));
+<a name="line58"> 58: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecView.html">VecView</a>(b, <a href="../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>));
+<a name="line59"> 59: </a>  }
+
+<a name="line61"> 61: </a>  <font color="#B22222">/* Free data structures */</font>
+<a name="line62"> 62: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Mat/MatDestroy.html">MatDestroy</a>(&amp;mat));
+<a name="line63"> 63: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/PC/PCDestroy.html">PCDestroy</a>(&amp;pc));
+<a name="line64"> 64: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;u));
+<a name="line65"> 65: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Vec/VecDestroy.html">VecDestroy</a>(&amp;b));
+<a name="line66"> 66: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line67"> 67: </a>  <font color="#4169E1">return</font> 0;
+<a name="line68"> 68: </a>}
+
+<a name="line70"> 70: </a><font color="#B22222">/*TEST</font>
+
+<a name="line72"> 72: </a><font color="#B22222">   test:</font>
+
+<a name="line74"> 74: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,870 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/include/petsc/private/cupmatomics.hpp">Actual source code: cupmatomics.hpp</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:44+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a><font color="#A020F0">#pragma once</font>
+
+<a name="line3">  3: </a><font color="#B22222">/*====================================================================================*/</font>
+<a name="line4">  4: </a><font color="#B22222">/*                             Atomic operations on device                            */</font>
+<a name="line5">  5: </a><font color="#B22222">/*====================================================================================*/</font>
+<a name="line6">  6: </a>#include <A href="../../../include/petscdevice_cupm.h.html">&lt;petscdevice_cupm.h&gt;</A>
+<a name="line7">  7: </a>#include <A href="../../../include/petscsystypes.h.html">&lt;petscsystypes.h&gt;</A>
+
+<a name="line9">  9: </a><font color="#B22222">/* In terms of function overloading, long long int is a different type than int64_t, which <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> might be defined to.</font>
+<a name="line10"> 10: </a><font color="#B22222">   We prefer long long int over <a href="../../../manualpages/Sys/PetscInt.html">PetscInt</a> (int64_t), since CUDA atomics are built around (unsigned) long long int.</font>
+<a name="line11"> 11: </a><font color="#B22222"> */</font>
+<a name="line12"> 12: </a><font color="#4169E1">typedef long long int          llint;</font>
+<a name="line13"> 13: </a><font color="#4169E1">typedef unsigned long long int ullint;</font>
+
+<a name="line15"> 15: </a><font color="#A020F0">#if <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USING_NVCC)</font>
+<a name="line16"> 16: </a>PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN(<font color="#666666">"-Wunused-function"</font>)
+<a name="line17"> 17: </a><font color="#B22222">/*</font>
+<a name="line18"> 18: </a><font color="#B22222">  Atomic Insert (exchange) operations</font>
+
+<a name="line20"> 20: </a><font color="#B22222">  CUDA C Programming Guide V10.1 Chapter B.12.1.3:</font>
+
+<a name="line22"> 22: </a><font color="#B22222">  int atomicExch(int* address, int val);</font>
+<a name="line23"> 23: </a><font color="#B22222">  unsigned int atomicExch(unsigned int* address, unsigned int val);</font>
+<a name="line24"> 24: </a><font color="#B22222">  unsigned long long int atomicExch(unsigned long long int* address, unsigned long long int val);</font>
+<a name="line25"> 25: </a><font color="#B22222">  float atomicExch(float* address, float val);</font>
+
+<a name="line27"> 27: </a><font color="#B22222">  reads the 32-bit or 64-bit word old located at the address in global or shared</font>
+<a name="line28"> 28: </a><font color="#B22222">  memory and stores val back to memory at the same address. These two operations are</font>
+<a name="line29"> 29: </a><font color="#B22222">  performed in one atomic transaction. The function returns old.</font>
+
+<a name="line31"> 31: </a><font color="#B22222">  PETSc notes:</font>
+
+<a name="line33"> 33: </a><font color="#B22222">  It may be useful in PetscSFFetchAndOp with op = MPI_REPLACE.</font>
+
+<a name="line35"> 35: </a><font color="#B22222">  <a href="../../../manualpages/PetscSF/VecScatter.html">VecScatter</a> with multiple entries scattered to the same location using <a href="../../../manualpages/Sys/INSERT_VALUES.html">INSERT_VALUES</a> does not need</font>
+<a name="line36"> 36: </a><font color="#B22222">  atomic insertion, since it does not need the old value. A 32-bit or 64-bit store instruction should</font>
+<a name="line37"> 37: </a><font color="#B22222">  be atomic itself.</font>
+
+<a name="line39"> 39: </a><font color="#B22222">  With bs&gt;1 and a unit &gt; 64-bits, the current element-wise atomic approach can not guarantee the whole</font>
+<a name="line40"> 40: </a><font color="#B22222">  insertion is atomic. Hope no user codes rely on that.</font>
+<a name="line41"> 41: </a><font color="#B22222">*/</font>
+<a name="line42"> 42: </a><strong><font color="#4169E1"><a name="atomicExch"></a>__device__ static double atomicExch(double *address, double val)</font></strong>
+<a name="line43"> 43: </a>{
+<a name="line44"> 44: </a>  <font color="#4169E1">return</font> __longlong_as_double(atomicExch((ullint *)address, __double_as_longlong(val)));
+<a name="line45"> 45: </a>}
+
+<a name="line47"> 47: </a><strong><font color="#4169E1"><a name="atomicExch"></a>__device__ static llint atomicExch(llint *address, llint val)</font></strong>
+<a name="line48"> 48: </a>{
+<a name="line49"> 49: </a>  <font color="#4169E1">return</font> (llint)(atomicExch((ullint *)address, (ullint)val));
+<a name="line50"> 50: </a>}
+
+<a name="line52"> 52: </a>template &lt;typename Type&gt;
+<a name="line53"> 53: </a><font color="#4169E1"><a name="AtomicInsert"></a>struct AtomicInsert </font>{
+<a name="line54"> 54: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicExch(&amp;x, y); }
+<a name="line55"> 55: </a>};
+
+<a name="line57"> 57: </a><font color="#A020F0">  #if defined(PETSC_HAVE_COMPLEX)</font>
+<a name="line58"> 58: </a><font color="#A020F0">    #if defined(PETSC_USE_REAL_DOUBLE)</font>
+<a name="line59"> 59: </a><font color="#B22222">/* CUDA does not support 128-bit atomics. Users should not insert different 128-bit <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> values to the same location */</font>
+<a name="line60"> 60: </a>template &lt;&gt;
+<a name="line61"> 61: </a><font color="#4169E1"><a name="AtomicInsert"></a>struct AtomicInsert</font>&lt;<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>&gt; {
+<a name="line62"> 62: </a>  __device__ <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator()(<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;x, <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> y) const
+<a name="line63"> 63: </a>  {
+<a name="line64"> 64: </a>    <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>         old, *z = &amp;old;
+<a name="line65"> 65: </a>    double              *xp = (double *)&amp;x, *yp = (double *)&amp;y;
+<a name="line66"> 66: </a>    AtomicInsert&lt;double&gt; op;
+<a name="line67"> 67: </a>    z[0] = op(xp[0], yp[0]);
+<a name="line68"> 68: </a>    z[1] = op(xp[1], yp[1]);
+<a name="line69"> 69: </a>    <font color="#4169E1">return</font> old; <font color="#B22222">/* The returned value may not be atomic. It can be mix of two ops. Caller should discard it. */</font>
+<a name="line70"> 70: </a>  }
+<a name="line71"> 71: </a>};
+<a name="line72"> 72: </a><font color="#A020F0">    #elif defined(PETSC_USE_REAL_SINGLE)</font>
+<a name="line73"> 73: </a>template &lt;&gt;
+<a name="line74"> 74: </a><font color="#4169E1"><a name="AtomicInsert"></a>struct AtomicInsert</font>&lt;<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>&gt; {
+<a name="line75"> 75: </a>  __device__ <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator()(<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;x, <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> y) const
+<a name="line76"> 76: </a>  {
+<a name="line77"> 77: </a>    double              *xp = (double *)&amp;x, *yp = (double *)&amp;y;
+<a name="line78"> 78: </a>    AtomicInsert&lt;double&gt; op;
+<a name="line79"> 79: </a>    <font color="#4169E1">return</font> op(xp[0], yp[0]);
+<a name="line80"> 80: </a>  }
+<a name="line81"> 81: </a>};
+<a name="line82"> 82: </a><font color="#A020F0">    #endif</font>
+<a name="line83"> 83: </a><font color="#A020F0">  #endif</font>
+
+<a name="line85"> 85: </a><font color="#B22222">/*</font>
+<a name="line86"> 86: </a><font color="#B22222">  Atomic add operations</font>
+
+<a name="line88"> 88: </a><font color="#B22222">  CUDA C Programming Guide V10.1 Chapter B.12.1.1:</font>
+
+<a name="line90"> 90: </a><font color="#B22222">  int atomicAdd(int* address, int val);</font>
+<a name="line91"> 91: </a><font color="#B22222">  unsigned int atomicAdd(unsigned int* address,unsigned int val);</font>
+<a name="line92"> 92: </a><font color="#B22222">  unsigned long long int atomicAdd(unsigned long long int* address,unsigned long long int val);</font>
+<a name="line93"> 93: </a><font color="#B22222">  float atomicAdd(float* address, float val);</font>
+<a name="line94"> 94: </a><font color="#B22222">  double atomicAdd(double* address, double val);</font>
+<a name="line95"> 95: </a><font color="#B22222">  __half2 atomicAdd(__half2 *address, __half2 val);</font>
+<a name="line96"> 96: </a><font color="#B22222">  __half atomicAdd(__half *address, __half val);</font>
+
+<a name="line98"> 98: </a><font color="#B22222">  reads the 16-bit, 32-bit or 64-bit word old located at the address in global or shared memory, computes (old + val),</font>
+<a name="line99"> 99: </a><font color="#B22222">  and stores the result back to memory at the same address. These three operations are performed in one atomic transaction. The</font>
+<a name="line100">100: </a><font color="#B22222">  function returns old.</font>
+
+<a name="line102">102: </a><font color="#B22222">  The 32-bit floating-point version of atomicAdd() is only supported by devices of compute capability 2.x and higher.</font>
+<a name="line103">103: </a><font color="#B22222">  The 64-bit floating-point version of atomicAdd() is only supported by devices of compute capability 6.x and higher.</font>
+<a name="line104">104: </a><font color="#B22222">  The 32-bit __half2 floating-point version of atomicAdd() is only supported by devices of compute capability 6.x and</font>
+<a name="line105">105: </a><font color="#B22222">  higher. The atomicity of the __half2 add operation is guaranteed separately for each of the two __half elements;</font>
+<a name="line106">106: </a><font color="#B22222">  the entire __half2 is not guaranteed to be atomic as a single 32-bit access.</font>
+<a name="line107">107: </a><font color="#B22222">  The 16-bit __half floating-point version of atomicAdd() is only supported by devices of compute capability 7.x and higher.</font>
+<a name="line108">108: </a><font color="#B22222">*/</font>
+<a name="line109">109: </a><strong><font color="#4169E1"><a name="atomicAdd"></a>__device__ static llint atomicAdd(llint *address, llint val)</font></strong>
+<a name="line110">110: </a>{
+<a name="line111">111: </a>  <font color="#4169E1">return</font> (llint)atomicAdd((ullint *)address, (ullint)val);
+<a name="line112">112: </a>}
+
+<a name="line114">114: </a>template &lt;typename Type&gt;
+<a name="line115">115: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd </font>{
+<a name="line116">116: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicAdd(&amp;x, y); }
+<a name="line117">117: </a>};
+
+<a name="line119">119: </a>template &lt;&gt;
+<a name="line120">120: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd</font>&lt;double&gt; {
+<a name="line121">121: </a>  __device__ double operator()(double &amp;x, double y) const
+<a name="line122">122: </a>  {
+<a name="line123">123: </a><font color="#A020F0">  #if defined(__CUDA_ARCH__) &amp;&amp; (__CUDA_ARCH__ &gt;= 600)</font>
+<a name="line124">124: </a>    <font color="#4169E1">return</font> atomicAdd(&amp;x, y);
+<a name="line125">125: </a><font color="#A020F0">  #else</font>
+<a name="line126">126: </a>    double *address = &amp;x, val = y;
+<a name="line127">127: </a>    ullint *address_as_ull = (ullint *)address;
+<a name="line128">128: </a>    ullint  old            = *address_as_ull, assumed;
+<a name="line129">129: </a>    <font color="#4169E1">do</font> {
+<a name="line130">130: </a>      assumed = old;
+<a name="line131">131: </a>      old     = atomicCAS(address_as_ull, assumed, __double_as_longlong(val + __longlong_as_double(assumed)));
+<a name="line132">132: </a>      <font color="#B22222">/* Note: uses integer comparison to avoid hang in case of NaN (since NaN !=NaN) */</font>
+<a name="line133">133: </a>    } <font color="#4169E1">while</font> (assumed != old);
+<a name="line134">134: </a>    <font color="#4169E1">return</font> __longlong_as_double(old);
+<a name="line135">135: </a><font color="#A020F0">  #endif</font>
+<a name="line136">136: </a>  }
+<a name="line137">137: </a>};
+
+<a name="line139">139: </a>template &lt;&gt;
+<a name="line140">140: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd</font>&lt;float&gt; {
+<a name="line141">141: </a>  __device__ float operator()(float &amp;x, float y) const
+<a name="line142">142: </a>  {
+<a name="line143">143: </a><font color="#A020F0">  #if defined(__CUDA_ARCH__) &amp;&amp; (__CUDA_ARCH__ &gt;= 200)</font>
+<a name="line144">144: </a>    <font color="#4169E1">return</font> atomicAdd(&amp;x, y);
+<a name="line145">145: </a><font color="#A020F0">  #else</font>
+<a name="line146">146: </a>    float *address = &amp;x, val = y;
+<a name="line147">147: </a>    int   *address_as_int = (int *)address;
+<a name="line148">148: </a>    int    old            = *address_as_int, assumed;
+<a name="line149">149: </a>    <font color="#4169E1">do</font> {
+<a name="line150">150: </a>      assumed = old;
+<a name="line151">151: </a>      old     = atomicCAS(address_as_int, assumed, __float_as_int(val + __int_as_float(assumed)));
+<a name="line152">152: </a>      <font color="#B22222">/* Note: uses integer comparison to avoid hang in case of NaN (since NaN !=NaN) */</font>
+<a name="line153">153: </a>    } <font color="#4169E1">while</font> (assumed != old);
+<a name="line154">154: </a>    <font color="#4169E1">return</font> __int_as_float(old);
+<a name="line155">155: </a><font color="#A020F0">  #endif</font>
+<a name="line156">156: </a>  }
+<a name="line157">157: </a>};
+
+<a name="line159">159: </a><font color="#A020F0">  #if defined(PETSC_HAVE_COMPLEX)</font>
+<a name="line160">160: </a>template &lt;&gt;
+<a name="line161">161: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd</font>&lt;<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>&gt; {
+<a name="line162">162: </a>  __device__ <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator()(<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;x, <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> y) const
+<a name="line163">163: </a>  {
+<a name="line164">164: </a>    <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>         old, *z = &amp;old;
+<a name="line165">165: </a>    <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>           *xp = (<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *)&amp;x, *yp = (<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *)&amp;y;
+<a name="line166">166: </a>    AtomicAdd&lt;<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>&gt; op;
+<a name="line167">167: </a>    z[0] = op(xp[0], yp[0]);
+<a name="line168">168: </a>    z[1] = op(xp[1], yp[1]);
+<a name="line169">169: </a>    <font color="#4169E1">return</font> old; <font color="#B22222">/* The returned value may not be atomic. It can be mix of two ops. Caller should discard it. */</font>
+<a name="line170">170: </a>  }
+<a name="line171">171: </a>};
+<a name="line172">172: </a><font color="#A020F0">  #endif</font>
+
+<a name="line174">174: </a>  <font color="#B22222">/*</font>
+<a name="line175">175: </a><font color="#B22222">  Atomic Mult operations:</font>
+
+<a name="line177">177: </a><font color="#B22222">  CUDA has no atomicMult at all, so we build our own with atomicCAS</font>
+<a name="line178">178: </a><font color="#B22222"> */</font>
+<a name="line179">179: </a><font color="#A020F0">  #if defined(PETSC_USE_REAL_DOUBLE)</font>
+<a name="line180">180: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static double atomicMult(double *address, double val)</font></strong>
+<a name="line181">181: </a>{
+<a name="line182">182: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line183">183: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line184">184: </a>  <font color="#4169E1">do</font> {
+<a name="line185">185: </a>    assumed = old;
+<a name="line186">186: </a>    <font color="#B22222">/* Other threads can access and modify value of *address_as_ull after the read above and before the write below */</font>
+<a name="line187">187: </a>    old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val * __longlong_as_double(assumed)));
+<a name="line188">188: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line189">189: </a>  <font color="#4169E1">return</font> __longlong_as_double(old);
+<a name="line190">190: </a>}
+<a name="line191">191: </a><font color="#A020F0">  #elif defined(PETSC_USE_REAL_SINGLE)</font>
+<a name="line192">192: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static float atomicMult(float *address, float val)</font></strong>
+<a name="line193">193: </a>{
+<a name="line194">194: </a>  int *address_as_int = (int *)(address);
+<a name="line195">195: </a>  int  old            = *address_as_int, assumed;
+<a name="line196">196: </a>  <font color="#4169E1">do</font> {
+<a name="line197">197: </a>    assumed = old;
+<a name="line198">198: </a>    old     = atomicCAS(address_as_int, assumed, __float_as_int(val * __int_as_float(assumed)));
+<a name="line199">199: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line200">200: </a>  <font color="#4169E1">return</font> __int_as_float(old);
+<a name="line201">201: </a>}
+<a name="line202">202: </a><font color="#A020F0">  #endif</font>
+
+<a name="line204">204: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static int atomicMult(int *address, int val)</font></strong>
+<a name="line205">205: </a>{
+<a name="line206">206: </a>  int *address_as_int = (int *)(address);
+<a name="line207">207: </a>  int  old            = *address_as_int, assumed;
+<a name="line208">208: </a>  <font color="#4169E1">do</font> {
+<a name="line209">209: </a>    assumed = old;
+<a name="line210">210: </a>    old     = atomicCAS(address_as_int, assumed, val * assumed);
+<a name="line211">211: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line212">212: </a>  <font color="#4169E1">return</font> (int)old;
+<a name="line213">213: </a>}
+
+<a name="line215">215: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static llint atomicMult(llint *address, llint val)</font></strong>
+<a name="line216">216: </a>{
+<a name="line217">217: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line218">218: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line219">219: </a>  <font color="#4169E1">do</font> {
+<a name="line220">220: </a>    assumed = old;
+<a name="line221">221: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val * (llint)assumed));
+<a name="line222">222: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line223">223: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line224">224: </a>}
+
+<a name="line226">226: </a>template &lt;typename Type&gt;
+<a name="line227">227: </a><font color="#4169E1"><a name="AtomicMult"></a>struct AtomicMult </font>{
+<a name="line228">228: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicMult(&amp;x, y); }
+<a name="line229">229: </a>};
+
+<a name="line231">231: </a><font color="#B22222">/*</font>
+<a name="line232">232: </a><font color="#B22222">  Atomic Min/Max operations</font>
+
+<a name="line234">234: </a><font color="#B22222">  CUDA C Programming Guide V10.1 Chapter B.12.1.4~5:</font>
+
+<a name="line236">236: </a><font color="#B22222">  int atomicMin(int* address, int val);</font>
+<a name="line237">237: </a><font color="#B22222">  unsigned int atomicMin(unsigned int* address,unsigned int val);</font>
+<a name="line238">238: </a><font color="#B22222">  unsigned long long int atomicMin(unsigned long long int* address,unsigned long long int val);</font>
+
+<a name="line240">240: </a><font color="#B22222">  reads the 32-bit or 64-bit word old located at the address in global or shared</font>
+<a name="line241">241: </a><font color="#B22222">  memory, computes the minimum of old and val, and stores the result back to memory</font>
+<a name="line242">242: </a><font color="#B22222">  at the same address. These three operations are performed in one atomic transaction.</font>
+<a name="line243">243: </a><font color="#B22222">  The function returns old.</font>
+<a name="line244">244: </a><font color="#B22222">  The 64-bit version of atomicMin() is only supported by devices of compute capability 3.5 and higher.</font>
+
+<a name="line246">246: </a><font color="#B22222">  atomicMax() is similar.</font>
+<a name="line247">247: </a><font color="#B22222"> */</font>
+
+<a name="line249">249: </a><font color="#A020F0">  #if defined(PETSC_USE_REAL_DOUBLE)</font>
+<a name="line250">250: </a><strong><font color="#4169E1"><a name="atomicMin"></a>__device__ static double atomicMin(double *address, double val)</font></strong>
+<a name="line251">251: </a>{
+<a name="line252">252: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line253">253: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line254">254: </a>  <font color="#4169E1">do</font> {
+<a name="line255">255: </a>    assumed = old;
+<a name="line256">256: </a>    old     = atomicCAS(address_as_ull, assumed, __double_as_longlong(<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(val, __longlong_as_double(assumed))));
+<a name="line257">257: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line258">258: </a>  <font color="#4169E1">return</font> __longlong_as_double(old);
+<a name="line259">259: </a>}
+
+<a name="line261">261: </a><strong><font color="#4169E1"><a name="atomicMax"></a>__device__ static double atomicMax(double *address, double val)</font></strong>
+<a name="line262">262: </a>{
+<a name="line263">263: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line264">264: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line265">265: </a>  <font color="#4169E1">do</font> {
+<a name="line266">266: </a>    assumed = old;
+<a name="line267">267: </a>    old     = atomicCAS(address_as_ull, assumed, __double_as_longlong(<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(val, __longlong_as_double(assumed))));
+<a name="line268">268: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line269">269: </a>  <font color="#4169E1">return</font> __longlong_as_double(old);
+<a name="line270">270: </a>}
+<a name="line271">271: </a><font color="#A020F0">  #elif defined(PETSC_USE_REAL_SINGLE)</font>
+<a name="line272">272: </a><strong><font color="#4169E1"><a name="atomicMin"></a>__device__ static float atomicMin(float *address, float val)</font></strong>
+<a name="line273">273: </a>{
+<a name="line274">274: </a>  int *address_as_int = (int *)(address);
+<a name="line275">275: </a>  int  old            = *address_as_int, assumed;
+<a name="line276">276: </a>  <font color="#4169E1">do</font> {
+<a name="line277">277: </a>    assumed = old;
+<a name="line278">278: </a>    old     = atomicCAS(address_as_int, assumed, __float_as_int(<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(val, __int_as_float(assumed))));
+<a name="line279">279: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line280">280: </a>  <font color="#4169E1">return</font> __int_as_float(old);
+<a name="line281">281: </a>}
+
+<a name="line283">283: </a><strong><font color="#4169E1"><a name="atomicMax"></a>__device__ static float atomicMax(float *address, float val)</font></strong>
+<a name="line284">284: </a>{
+<a name="line285">285: </a>  int *address_as_int = (int *)(address);
+<a name="line286">286: </a>  int  old            = *address_as_int, assumed;
+<a name="line287">287: </a>  <font color="#4169E1">do</font> {
+<a name="line288">288: </a>    assumed = old;
+<a name="line289">289: </a>    old     = atomicCAS(address_as_int, assumed, __float_as_int(<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(val, __int_as_float(assumed))));
+<a name="line290">290: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line291">291: </a>  <font color="#4169E1">return</font> __int_as_float(old);
+<a name="line292">292: </a>}
+<a name="line293">293: </a><font color="#A020F0">  #endif</font>
+
+<a name="line295">295: </a>  <font color="#B22222">/*</font>
+<a name="line296">296: </a><font color="#B22222">  atomicMin/Max(long long *, long long) are not in Nvidia's documentation. But on OLCF Summit we found</font>
+<a name="line297">297: </a><font color="#B22222">  atomicMin/Max/And/Or/Xor(long long *, long long) in /sw/summit/cuda/10.1.243/include/sm_32_atomic_functions.h.</font>
+<a name="line298">298: </a><font color="#B22222">  This causes compilation errors with pgi compilers and 64-bit indices:</font>
+<a name="line299">299: </a><font color="#B22222">      error: function "atomicMin(long long *, long long)" has already been defined</font>
+
+<a name="line301">301: </a><font color="#B22222">  So we add extra conditions defined(__CUDA_ARCH__) &amp;&amp; (__CUDA_ARCH__ &lt; 320)</font>
+<a name="line302">302: </a><font color="#B22222">*/</font>
+<a name="line303">303: </a><font color="#A020F0">  #if defined(__CUDA_ARCH__) &amp;&amp; (__CUDA_ARCH__ &lt; 320)</font>
+<a name="line304">304: </a><strong><font color="#4169E1"><a name="atomicMin"></a>__device__ static llint atomicMin(llint *address, llint val)</font></strong>
+<a name="line305">305: </a>{
+<a name="line306">306: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line307">307: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line308">308: </a>  <font color="#4169E1">do</font> {
+<a name="line309">309: </a>    assumed = old;
+<a name="line310">310: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(val, (llint)assumed)));
+<a name="line311">311: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line312">312: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line313">313: </a>}
+
+<a name="line315">315: </a><strong><font color="#4169E1"><a name="atomicMax"></a>__device__ static llint atomicMax(llint *address, llint val)</font></strong>
+<a name="line316">316: </a>{
+<a name="line317">317: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line318">318: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line319">319: </a>  <font color="#4169E1">do</font> {
+<a name="line320">320: </a>    assumed = old;
+<a name="line321">321: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(val, (llint)assumed)));
+<a name="line322">322: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line323">323: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line324">324: </a>}
+<a name="line325">325: </a><font color="#A020F0">  #endif</font>
+
+<a name="line327">327: </a>template &lt;typename Type&gt;
+<a name="line328">328: </a><font color="#4169E1"><a name="AtomicMin"></a>struct AtomicMin </font>{
+<a name="line329">329: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicMin(&amp;x, y); }
+<a name="line330">330: </a>};
+<a name="line331">331: </a>template &lt;typename Type&gt;
+<a name="line332">332: </a><font color="#4169E1"><a name="AtomicMax"></a>struct AtomicMax </font>{
+<a name="line333">333: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicMax(&amp;x, y); }
+<a name="line334">334: </a>};
+
+<a name="line336">336: </a><font color="#B22222">/*</font>
+<a name="line337">337: </a><font color="#B22222">  Atomic bitwise operations</font>
+
+<a name="line339">339: </a><font color="#B22222">  CUDA C Programming Guide V10.1 Chapter B.12.2.1 ~ B.12.2.3:</font>
+
+<a name="line341">341: </a><font color="#B22222">  int atomicAnd(int* address, int val);</font>
+<a name="line342">342: </a><font color="#B22222">  unsigned int atomicAnd(unsigned int* address,unsigned int val);</font>
+<a name="line343">343: </a><font color="#B22222">  unsigned long long int atomicAnd(unsigned long long int* address,unsigned long long int val);</font>
+
+<a name="line345">345: </a><font color="#B22222">  reads the 32-bit or 64-bit word old located at the address in global or shared</font>
+<a name="line346">346: </a><font color="#B22222">  memory, computes (old &amp; val), and stores the result back to memory at the same</font>
+<a name="line347">347: </a><font color="#B22222">  address. These three operations are performed in one atomic transaction.</font>
+<a name="line348">348: </a><font color="#B22222">  The function returns old.</font>
+
+<a name="line350">350: </a><font color="#B22222">  The 64-bit version of atomicAnd() is only supported by devices of compute capability 3.5 and higher.</font>
+
+<a name="line352">352: </a><font color="#B22222">  atomicOr() and atomicXor are similar.</font>
+<a name="line353">353: </a><font color="#B22222">*/</font>
+
+<a name="line355">355: </a><font color="#A020F0">  #if defined(__CUDA_ARCH__) &amp;&amp; (__CUDA_ARCH__ &lt; 320) </font><font color="#B22222">/* Why 320? see comments at atomicMin() above */</font><font color="#A020F0"></font>
+<a name="line356">356: </a><strong><font color="#4169E1"><a name="atomicAnd"></a>__device__ static llint atomicAnd(llint *address, llint val)</font></strong>
+<a name="line357">357: </a>{
+<a name="line358">358: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line359">359: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line360">360: </a>  <font color="#4169E1">do</font> {
+<a name="line361">361: </a>    assumed = old;
+<a name="line362">362: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val &amp; (llint)assumed));
+<a name="line363">363: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line364">364: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line365">365: </a>}
+<a name="line366">366: </a><strong><font color="#4169E1"><a name="atomicOr"></a>__device__ static llint atomicOr(llint *address, llint val)</font></strong>
+<a name="line367">367: </a>{
+<a name="line368">368: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line369">369: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line370">370: </a>  <font color="#4169E1">do</font> {
+<a name="line371">371: </a>    assumed = old;
+<a name="line372">372: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val | (llint)assumed));
+<a name="line373">373: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line374">374: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line375">375: </a>}
+
+<a name="line377">377: </a><strong><font color="#4169E1"><a name="atomicXor"></a>__device__ static llint atomicXor(llint *address, llint val)</font></strong>
+<a name="line378">378: </a>{
+<a name="line379">379: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line380">380: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line381">381: </a>  <font color="#4169E1">do</font> {
+<a name="line382">382: </a>    assumed = old;
+<a name="line383">383: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val ^ (llint)assumed));
+<a name="line384">384: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line385">385: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line386">386: </a>}
+<a name="line387">387: </a><font color="#A020F0">  #endif</font>
+
+<a name="line389">389: </a>template &lt;typename Type&gt;
+<a name="line390">390: </a><font color="#4169E1"><a name="AtomicBAND"></a>struct AtomicBAND </font>{
+<a name="line391">391: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicAnd(&amp;x, y); }
+<a name="line392">392: </a>};
+<a name="line393">393: </a>template &lt;typename Type&gt;
+<a name="line394">394: </a><font color="#4169E1"><a name="AtomicBOR"></a>struct AtomicBOR </font>{
+<a name="line395">395: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicOr(&amp;x, y); }
+<a name="line396">396: </a>};
+<a name="line397">397: </a>template &lt;typename Type&gt;
+<a name="line398">398: </a><font color="#4169E1"><a name="AtomicBXOR"></a>struct AtomicBXOR </font>{
+<a name="line399">399: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicXor(&amp;x, y); }
+<a name="line400">400: </a>};
+
+<a name="line402">402: </a><font color="#B22222">/*</font>
+<a name="line403">403: </a><font color="#B22222">  Atomic logical operations:</font>
+
+<a name="line405">405: </a><font color="#B22222">  CUDA has no atomic logical operations at all. We support them on integer types.</font>
+<a name="line406">406: </a><font color="#B22222">*/</font>
+
+<a name="line408">408: </a><font color="#B22222">/* A template without definition makes any instantiation not using given specializations erroneous at compile time,</font>
+<a name="line409">409: </a><font color="#B22222">   which is what we want since we only support 32-bit and 64-bit integers.</font>
+<a name="line410">410: </a><font color="#B22222"> */</font>
+<a name="line411">411: </a>template &lt;typename Type, class Op, int size <font color="#B22222">/* sizeof(Type) */</font>&gt;
+<a name="line412">412: </a><font color="#4169E1"><a name="AtomicLogical"></a>struct AtomicLogical</font>;
+
+<a name="line414">414: </a>template &lt;typename Type, class Op&gt;
+<a name="line415">415: </a><font color="#4169E1"><a name="AtomicLogical"></a>struct AtomicLogical</font>&lt;Type, Op, 4&gt; {
+<a name="line416">416: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line417">417: </a>  {
+<a name="line418">418: </a>    int *address_as_int = (int *)(&amp;x);
+<a name="line419">419: </a>    int  old            = *address_as_int, assumed;
+<a name="line420">420: </a>    Op   op;
+<a name="line421">421: </a>    <font color="#4169E1">do</font> {
+<a name="line422">422: </a>      assumed = old;
+<a name="line423">423: </a>      old     = atomicCAS(address_as_int, assumed, (int)(op((Type)assumed, y)));
+<a name="line424">424: </a>    } <font color="#4169E1">while</font> (assumed != old);
+<a name="line425">425: </a>    <font color="#4169E1">return</font> (Type)old;
+<a name="line426">426: </a>  }
+<a name="line427">427: </a>};
+
+<a name="line429">429: </a>template &lt;typename Type, class Op&gt;
+<a name="line430">430: </a><font color="#4169E1"><a name="AtomicLogical"></a>struct AtomicLogical</font>&lt;Type, Op, 8&gt; {
+<a name="line431">431: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line432">432: </a>  {
+<a name="line433">433: </a>    ullint *address_as_ull = (ullint *)(&amp;x);
+<a name="line434">434: </a>    ullint  old            = *address_as_ull, assumed;
+<a name="line435">435: </a>    Op      op;
+<a name="line436">436: </a>    <font color="#4169E1">do</font> {
+<a name="line437">437: </a>      assumed = old;
+<a name="line438">438: </a>      old     = atomicCAS(address_as_ull, assumed, (ullint)(op((Type)assumed, y)));
+<a name="line439">439: </a>    } <font color="#4169E1">while</font> (assumed != old);
+<a name="line440">440: </a>    <font color="#4169E1">return</font> (Type)old;
+<a name="line441">441: </a>  }
+<a name="line442">442: </a>};
+
+<a name="line444">444: </a><font color="#B22222">/* Note land/lor/lxor below are different from LAND etc above. Here we pass arguments by value and return result of ops (not old value) */</font>
+<a name="line445">445: </a>template &lt;typename Type&gt;
+<a name="line446">446: </a><font color="#4169E1"><a name="land"></a>struct land </font>{
+<a name="line447">447: </a>  __device__ Type operator()(Type x, Type y) { <font color="#4169E1">return</font> x &amp;&amp; y; }
+<a name="line448">448: </a>};
+<a name="line449">449: </a>template &lt;typename Type&gt;
+<a name="line450">450: </a><font color="#4169E1"><a name="lor"></a>struct lor </font>{
+<a name="line451">451: </a>  __device__ Type operator()(Type x, Type y) { <font color="#4169E1">return</font> x || y; }
+<a name="line452">452: </a>};
+<a name="line453">453: </a>template &lt;typename Type&gt;
+<a name="line454">454: </a><font color="#4169E1"><a name="lxor"></a>struct lxor </font>{
+<a name="line455">455: </a>  __device__ Type operator()(Type x, Type y) { <font color="#4169E1">return</font> !x != !y; }
+<a name="line456">456: </a>};
+
+<a name="line458">458: </a>template &lt;typename Type&gt;
+<a name="line459">459: </a><font color="#4169E1"><a name="AtomicLAND"></a>struct AtomicLAND </font>{
+<a name="line460">460: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line461">461: </a>  {
+<a name="line462">462: </a>    AtomicLogical&lt;Type, land&lt;Type&gt;, <font color="#4169E1">sizeof</font>(Type)&gt; op;
+<a name="line463">463: </a>    <font color="#4169E1">return</font> op(x, y);
+<a name="line464">464: </a>  }
+<a name="line465">465: </a>};
+<a name="line466">466: </a>template &lt;typename Type&gt;
+<a name="line467">467: </a><font color="#4169E1"><a name="AtomicLOR"></a>struct AtomicLOR </font>{
+<a name="line468">468: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line469">469: </a>  {
+<a name="line470">470: </a>    AtomicLogical&lt;Type, lor&lt;Type&gt;, <font color="#4169E1">sizeof</font>(Type)&gt; op;
+<a name="line471">471: </a>    <font color="#4169E1">return</font> op(x, y);
+<a name="line472">472: </a>  }
+<a name="line473">473: </a>};
+<a name="line474">474: </a>template &lt;typename Type&gt;
+<a name="line475">475: </a><font color="#4169E1"><a name="AtomicLXOR"></a>struct AtomicLXOR </font>{
+<a name="line476">476: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line477">477: </a>  {
+<a name="line478">478: </a>    AtomicLogical&lt;Type, lxor&lt;Type&gt;, <font color="#4169E1">sizeof</font>(Type)&gt; op;
+<a name="line479">479: </a>    <font color="#4169E1">return</font> op(x, y);
+<a name="line480">480: </a>  }
+<a name="line481">481: </a>};
+<a name="line482">482: </a><strong><font color="#4169E1"><a name="ETSC_PRAGMA_DIAGNOSTIC_IGNORED_END"></a>PETSC_PRAGMA_DIAGNOSTIC_IGNORED_END()</font></strong>
+<a name="line483">483: </a><font color="#A020F0">#elif <a href="../../../manualpages/Sys/PetscDefined.html">PetscDefined</a>(USING_HCC)</font>
+
+<a name="line485">485: </a>  <font color="#B22222">/*</font>
+<a name="line486">486: </a><font color="#B22222">  Atomic Insert (exchange) operations</font>
+
+<a name="line488">488: </a><font color="#B22222">  See Cuda version</font>
+<a name="line489">489: </a><font color="#B22222">*/</font>
+<a name="line490">490: </a><font color="#A020F0">  #if PETSC_PKG_HIP_VERSION_LT(4, 4, 0)</font>
+<a name="line491">491: </a><strong><font color="#4169E1"><a name="atomicExch"></a>__device__ static double atomicExch(double *address, double val)</font></strong>
+<a name="line492">492: </a>{
+<a name="line493">493: </a>  <font color="#4169E1">return</font> __longlong_as_double(atomicExch((ullint *)address, __double_as_longlong(val)));
+<a name="line494">494: </a>}
+<a name="line495">495: </a><font color="#A020F0">  #endif</font>
+
+<a name="line497">497: </a><strong><font color="#4169E1"><a name="atomicExch"></a>__device__ static inline llint atomicExch(llint *address, llint val)</font></strong>
+<a name="line498">498: </a>{
+<a name="line499">499: </a>  <font color="#4169E1">return</font> (llint)(atomicExch((ullint *)address, (ullint)val));
+<a name="line500">500: </a>}
+
+<a name="line502">502: </a>template &lt;typename Type&gt;
+<a name="line503">503: </a><font color="#4169E1"><a name="AtomicInsert"></a>struct AtomicInsert </font>{
+<a name="line504">504: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicExch(&amp;x, y); }
+<a name="line505">505: </a>};
+
+<a name="line507">507: </a><font color="#A020F0">  #if defined(PETSC_HAVE_COMPLEX)</font>
+<a name="line508">508: </a><font color="#A020F0">    #if defined(PETSC_USE_REAL_DOUBLE)</font>
+<a name="line509">509: </a>template &lt;&gt;
+<a name="line510">510: </a><font color="#4169E1"><a name="AtomicInsert"></a>struct AtomicInsert</font>&lt;<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>&gt; {
+<a name="line511">511: </a>  __device__ <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator()(<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;x, <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> y) const
+<a name="line512">512: </a>  {
+<a name="line513">513: </a>    <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>         old, *z = &amp;old;
+<a name="line514">514: </a>    double              *xp = (double *)&amp;x, *yp = (double *)&amp;y;
+<a name="line515">515: </a>    AtomicInsert&lt;double&gt; op;
+<a name="line516">516: </a>    z[0] = op(xp[0], yp[0]);
+<a name="line517">517: </a>    z[1] = op(xp[1], yp[1]);
+<a name="line518">518: </a>    <font color="#4169E1">return</font> old; <font color="#B22222">/* The returned value may not be atomic. It can be mix of two ops. Caller should discard it. */</font>
+<a name="line519">519: </a>  }
+<a name="line520">520: </a>};
+<a name="line521">521: </a><font color="#A020F0">    #elif defined(PETSC_USE_REAL_SINGLE)</font>
+<a name="line522">522: </a>template &lt;&gt;
+<a name="line523">523: </a><font color="#4169E1"><a name="AtomicInsert"></a>struct AtomicInsert</font>&lt;<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>&gt; {
+<a name="line524">524: </a>  __device__ <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator()(<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;x, <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> y) const
+<a name="line525">525: </a>  {
+<a name="line526">526: </a>    double              *xp = (double *)&amp;x, *yp = (double *)&amp;y;
+<a name="line527">527: </a>    AtomicInsert&lt;double&gt; op;
+<a name="line528">528: </a>    <font color="#4169E1">return</font> op(xp[0], yp[0]);
+<a name="line529">529: </a>  }
+<a name="line530">530: </a>};
+<a name="line531">531: </a><font color="#A020F0">    #endif</font>
+<a name="line532">532: </a><font color="#A020F0">  #endif</font>
+
+<a name="line534">534: </a><font color="#B22222">/*</font>
+<a name="line535">535: </a><font color="#B22222">  Atomic add operations</font>
+
+<a name="line537">537: </a><font color="#B22222">*/</font>
+<a name="line538">538: </a><strong><font color="#4169E1"><a name="atomicAdd"></a>__device__ static inline llint atomicAdd(llint *address, llint val)</font></strong>
+<a name="line539">539: </a>{
+<a name="line540">540: </a>  <font color="#4169E1">return</font> (llint)atomicAdd((ullint *)address, (ullint)val);
+<a name="line541">541: </a>}
+
+<a name="line543">543: </a>template &lt;typename Type&gt;
+<a name="line544">544: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd </font>{
+<a name="line545">545: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicAdd(&amp;x, y); }
+<a name="line546">546: </a>};
+
+<a name="line548">548: </a>template &lt;&gt;
+<a name="line549">549: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd</font>&lt;double&gt; {
+<a name="line550">550: </a>  __device__ double operator()(double &amp;x, double y) const
+<a name="line551">551: </a>  {
+<a name="line552">552: </a>    <font color="#B22222">/* Cuda version does more checks that may be needed */</font>
+<a name="line553">553: </a>    <font color="#4169E1">return</font> atomicAdd(&amp;x, y);
+<a name="line554">554: </a>  }
+<a name="line555">555: </a>};
+
+<a name="line557">557: </a>template &lt;&gt;
+<a name="line558">558: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd</font>&lt;float&gt; {
+<a name="line559">559: </a>  __device__ float operator()(float &amp;x, float y) const
+<a name="line560">560: </a>  {
+<a name="line561">561: </a>    <font color="#B22222">/* Cuda version does more checks that may be needed */</font>
+<a name="line562">562: </a>    <font color="#4169E1">return</font> atomicAdd(&amp;x, y);
+<a name="line563">563: </a>  }
+<a name="line564">564: </a>};
+
+<a name="line566">566: </a><font color="#A020F0">  #if defined(PETSC_HAVE_COMPLEX)</font>
+<a name="line567">567: </a>template &lt;&gt;
+<a name="line568">568: </a><font color="#4169E1"><a name="AtomicAdd"></a>struct AtomicAdd</font>&lt;<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>&gt; {
+<a name="line569">569: </a>  __device__ <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> operator()(<a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> &amp;x, <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a> y) const
+<a name="line570">570: </a>  {
+<a name="line571">571: </a>    <a href="../../../manualpages/Sys/PetscComplex.html">PetscComplex</a>         old, *z = &amp;old;
+<a name="line572">572: </a>    <a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>           *xp = (<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *)&amp;x, *yp = (<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a> *)&amp;y;
+<a name="line573">573: </a>    AtomicAdd&lt;<a href="../../../manualpages/Sys/PetscReal.html">PetscReal</a>&gt; op;
+<a name="line574">574: </a>    z[0] = op(xp[0], yp[0]);
+<a name="line575">575: </a>    z[1] = op(xp[1], yp[1]);
+<a name="line576">576: </a>    <font color="#4169E1">return</font> old; <font color="#B22222">/* The returned value may not be atomic. It can be mix of two ops. Caller should discard it. */</font>
+<a name="line577">577: </a>  }
+<a name="line578">578: </a>};
+<a name="line579">579: </a><font color="#A020F0">  #endif</font>
+
+<a name="line581">581: </a>  <font color="#B22222">/*</font>
+<a name="line582">582: </a><font color="#B22222">  Atomic Mult operations:</font>
+
+<a name="line584">584: </a><font color="#B22222">  HIP has no atomicMult at all, so we build our own with atomicCAS</font>
+<a name="line585">585: </a><font color="#B22222"> */</font>
+<a name="line586">586: </a><font color="#A020F0">  #if defined(PETSC_USE_REAL_DOUBLE)</font>
+<a name="line587">587: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static inline double atomicMult(double *address, double val)</font></strong>
+<a name="line588">588: </a>{
+<a name="line589">589: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line590">590: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line591">591: </a>  <font color="#4169E1">do</font> {
+<a name="line592">592: </a>    assumed = old;
+<a name="line593">593: </a>    <font color="#B22222">/* Other threads can access and modify value of *address_as_ull after the read above and before the write below */</font>
+<a name="line594">594: </a>    old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val * __longlong_as_double(assumed)));
+<a name="line595">595: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line596">596: </a>  <font color="#4169E1">return</font> __longlong_as_double(old);
+<a name="line597">597: </a>}
+<a name="line598">598: </a><font color="#A020F0">  #elif defined(PETSC_USE_REAL_SINGLE)</font>
+<a name="line599">599: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static inline float atomicMult(float *address, float val)</font></strong>
+<a name="line600">600: </a>{
+<a name="line601">601: </a>  int *address_as_int = (int *)(address);
+<a name="line602">602: </a>  int  old            = *address_as_int, assumed;
+<a name="line603">603: </a>  <font color="#4169E1">do</font> {
+<a name="line604">604: </a>    assumed = old;
+<a name="line605">605: </a>    old     = atomicCAS(address_as_int, assumed, __float_as_int(val * __int_as_float(assumed)));
+<a name="line606">606: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line607">607: </a>  <font color="#4169E1">return</font> __int_as_float(old);
+<a name="line608">608: </a>}
+<a name="line609">609: </a><font color="#A020F0">  #endif</font>
+
+<a name="line611">611: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static inline int atomicMult(int *address, int val)</font></strong>
+<a name="line612">612: </a>{
+<a name="line613">613: </a>  int *address_as_int = (int *)(address);
+<a name="line614">614: </a>  int  old            = *address_as_int, assumed;
+<a name="line615">615: </a>  <font color="#4169E1">do</font> {
+<a name="line616">616: </a>    assumed = old;
+<a name="line617">617: </a>    old     = atomicCAS(address_as_int, assumed, val * assumed);
+<a name="line618">618: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line619">619: </a>  <font color="#4169E1">return</font> (int)old;
+<a name="line620">620: </a>}
+
+<a name="line622">622: </a><strong><font color="#4169E1"><a name="atomicMult"></a>__device__ static inline llint atomicMult(llint *address, llint val)</font></strong>
+<a name="line623">623: </a>{
+<a name="line624">624: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line625">625: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line626">626: </a>  <font color="#4169E1">do</font> {
+<a name="line627">627: </a>    assumed = old;
+<a name="line628">628: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val * (llint)assumed));
+<a name="line629">629: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line630">630: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line631">631: </a>}
+
+<a name="line633">633: </a>template &lt;typename Type&gt;
+<a name="line634">634: </a><font color="#4169E1"><a name="AtomicMult"></a>struct AtomicMult </font>{
+<a name="line635">635: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicMult(&amp;x, y); }
+<a name="line636">636: </a>};
+
+<a name="line638">638: </a>  <font color="#B22222">/*</font>
+<a name="line639">639: </a><font color="#B22222">  Atomic Min/Max operations</font>
+
+<a name="line641">641: </a><font color="#B22222">  See CUDA version for comments.</font>
+<a name="line642">642: </a><font color="#B22222"> */</font>
+<a name="line643">643: </a><font color="#A020F0">  #if PETSC_PKG_HIP_VERSION_LT(4, 4, 0)</font>
+<a name="line644">644: </a><font color="#A020F0">    #if defined(PETSC_USE_REAL_DOUBLE)</font>
+<a name="line645">645: </a><strong><font color="#4169E1"><a name="atomicMin"></a>__device__ static double atomicMin(double *address, double val)</font></strong>
+<a name="line646">646: </a>{
+<a name="line647">647: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line648">648: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line649">649: </a>  <font color="#4169E1">do</font> {
+<a name="line650">650: </a>    assumed = old;
+<a name="line651">651: </a>    old     = atomicCAS(address_as_ull, assumed, __double_as_longlong(<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(val, __longlong_as_double(assumed))));
+<a name="line652">652: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line653">653: </a>  <font color="#4169E1">return</font> __longlong_as_double(old);
+<a name="line654">654: </a>}
+
+<a name="line656">656: </a><strong><font color="#4169E1"><a name="atomicMax"></a>__device__ static double atomicMax(double *address, double val)</font></strong>
+<a name="line657">657: </a>{
+<a name="line658">658: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line659">659: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line660">660: </a>  <font color="#4169E1">do</font> {
+<a name="line661">661: </a>    assumed = old;
+<a name="line662">662: </a>    old     = atomicCAS(address_as_ull, assumed, __double_as_longlong(<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(val, __longlong_as_double(assumed))));
+<a name="line663">663: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line664">664: </a>  <font color="#4169E1">return</font> __longlong_as_double(old);
+<a name="line665">665: </a>}
+<a name="line666">666: </a><font color="#A020F0">    #elif defined(PETSC_USE_REAL_SINGLE)</font>
+<a name="line667">667: </a><strong><font color="#4169E1"><a name="atomicMin"></a>__device__ static float atomicMin(float *address, float val)</font></strong>
+<a name="line668">668: </a>{
+<a name="line669">669: </a>  int *address_as_int = (int *)(address);
+<a name="line670">670: </a>  int  old            = *address_as_int, assumed;
+<a name="line671">671: </a>  <font color="#4169E1">do</font> {
+<a name="line672">672: </a>    assumed = old;
+<a name="line673">673: </a>    old     = atomicCAS(address_as_int, assumed, __float_as_int(<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(val, __int_as_float(assumed))));
+<a name="line674">674: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line675">675: </a>  <font color="#4169E1">return</font> __int_as_float(old);
+<a name="line676">676: </a>}
+
+<a name="line678">678: </a><strong><font color="#4169E1"><a name="atomicMax"></a>__device__ static float atomicMax(float *address, float val)</font></strong>
+<a name="line679">679: </a>{
+<a name="line680">680: </a>  int *address_as_int = (int *)(address);
+<a name="line681">681: </a>  int  old            = *address_as_int, assumed;
+<a name="line682">682: </a>  <font color="#4169E1">do</font> {
+<a name="line683">683: </a>    assumed = old;
+<a name="line684">684: </a>    old     = atomicCAS(address_as_int, assumed, __float_as_int(<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(val, __int_as_float(assumed))));
+<a name="line685">685: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line686">686: </a>  <font color="#4169E1">return</font> __int_as_float(old);
+<a name="line687">687: </a>}
+<a name="line688">688: </a><font color="#A020F0">    #endif</font>
+<a name="line689">689: </a><font color="#A020F0">  #endif</font>
+
+<a name="line691">691: </a><font color="#A020F0">  #if PETSC_PKG_HIP_VERSION_LT(5, 7, 0)</font>
+<a name="line692">692: </a><strong><font color="#4169E1"><a name="atomicMin"></a>__device__ static inline llint atomicMin(llint *address, llint val)</font></strong>
+<a name="line693">693: </a>{
+<a name="line694">694: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line695">695: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line696">696: </a>  <font color="#4169E1">do</font> {
+<a name="line697">697: </a>    assumed = old;
+<a name="line698">698: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(<a href="../../../manualpages/Sys/PetscMin.html">PetscMin</a>(val, (llint)assumed)));
+<a name="line699">699: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line700">700: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line701">701: </a>}
+
+<a name="line703">703: </a><strong><font color="#4169E1"><a name="atomicMax"></a>__device__ static inline llint atomicMax(llint *address, llint val)</font></strong>
+<a name="line704">704: </a>{
+<a name="line705">705: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line706">706: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line707">707: </a>  <font color="#4169E1">do</font> {
+<a name="line708">708: </a>    assumed = old;
+<a name="line709">709: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(<a href="../../../manualpages/Sys/PetscMax.html">PetscMax</a>(val, (llint)assumed)));
+<a name="line710">710: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line711">711: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line712">712: </a>}
+<a name="line713">713: </a><font color="#A020F0">  #endif</font>
+
+<a name="line715">715: </a>template &lt;typename Type&gt;
+<a name="line716">716: </a><font color="#4169E1"><a name="AtomicMin"></a>struct AtomicMin </font>{
+<a name="line717">717: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicMin(&amp;x, y); }
+<a name="line718">718: </a>};
+<a name="line719">719: </a>template &lt;typename Type&gt;
+<a name="line720">720: </a><font color="#4169E1"><a name="AtomicMax"></a>struct AtomicMax </font>{
+<a name="line721">721: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicMax(&amp;x, y); }
+<a name="line722">722: </a>};
+
+<a name="line724">724: </a><font color="#B22222">/*</font>
+<a name="line725">725: </a><font color="#B22222">  Atomic bitwise operations</font>
+<a name="line726">726: </a><font color="#B22222">  As of ROCm 3.10, the llint atomicAnd/Or/Xor(llint*, llint) is not supported</font>
+<a name="line727">727: </a><font color="#B22222">*/</font>
+
+<a name="line729">729: </a><strong><font color="#4169E1"><a name="atomicAnd"></a>__device__ static inline llint atomicAnd(llint *address, llint val)</font></strong>
+<a name="line730">730: </a>{
+<a name="line731">731: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line732">732: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line733">733: </a>  <font color="#4169E1">do</font> {
+<a name="line734">734: </a>    assumed = old;
+<a name="line735">735: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val &amp; (llint)assumed));
+<a name="line736">736: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line737">737: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line738">738: </a>}
+<a name="line739">739: </a><strong><font color="#4169E1"><a name="atomicOr"></a>__device__ static inline llint atomicOr(llint *address, llint val)</font></strong>
+<a name="line740">740: </a>{
+<a name="line741">741: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line742">742: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line743">743: </a>  <font color="#4169E1">do</font> {
+<a name="line744">744: </a>    assumed = old;
+<a name="line745">745: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val | (llint)assumed));
+<a name="line746">746: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line747">747: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line748">748: </a>}
+
+<a name="line750">750: </a><strong><font color="#4169E1"><a name="atomicXor"></a>__device__ static inline llint atomicXor(llint *address, llint val)</font></strong>
+<a name="line751">751: </a>{
+<a name="line752">752: </a>  ullint *address_as_ull = (ullint *)(address);
+<a name="line753">753: </a>  ullint  old            = *address_as_ull, assumed;
+<a name="line754">754: </a>  <font color="#4169E1">do</font> {
+<a name="line755">755: </a>    assumed = old;
+<a name="line756">756: </a>    old     = atomicCAS(address_as_ull, assumed, (ullint)(val ^ (llint)assumed));
+<a name="line757">757: </a>  } <font color="#4169E1">while</font> (assumed != old);
+<a name="line758">758: </a>  <font color="#4169E1">return</font> (llint)old;
+<a name="line759">759: </a>}
+
+<a name="line761">761: </a>template &lt;typename Type&gt;
+<a name="line762">762: </a><font color="#4169E1"><a name="AtomicBAND"></a>struct AtomicBAND </font>{
+<a name="line763">763: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicAnd(&amp;x, y); }
+<a name="line764">764: </a>};
+<a name="line765">765: </a>template &lt;typename Type&gt;
+<a name="line766">766: </a><font color="#4169E1"><a name="AtomicBOR"></a>struct AtomicBOR </font>{
+<a name="line767">767: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicOr(&amp;x, y); }
+<a name="line768">768: </a>};
+<a name="line769">769: </a>template &lt;typename Type&gt;
+<a name="line770">770: </a><font color="#4169E1"><a name="AtomicBXOR"></a>struct AtomicBXOR </font>{
+<a name="line771">771: </a>  __device__ Type operator()(Type &amp;x, Type y) const { <font color="#4169E1">return</font> atomicXor(&amp;x, y); }
+<a name="line772">772: </a>};
+
+<a name="line774">774: </a><font color="#B22222">/*</font>
+<a name="line775">775: </a><font color="#B22222">  Atomic logical operations:</font>
+
+<a name="line777">777: </a><font color="#B22222">  CUDA has no atomic logical operations at all. We support them on integer types.</font>
+<a name="line778">778: </a><font color="#B22222">*/</font>
+
+<a name="line780">780: </a><font color="#B22222">/* A template without definition makes any instantiation not using given specializations erroneous at compile time,</font>
+<a name="line781">781: </a><font color="#B22222">   which is what we want since we only support 32-bit and 64-bit integers.</font>
+<a name="line782">782: </a><font color="#B22222"> */</font>
+<a name="line783">783: </a>template &lt;typename Type, class Op, int size <font color="#B22222">/* sizeof(Type) */</font>&gt;
+<a name="line784">784: </a><font color="#4169E1"><a name="AtomicLogical"></a>struct AtomicLogical</font>;
+
+<a name="line786">786: </a>template &lt;typename Type, class Op&gt;
+<a name="line787">787: </a><font color="#4169E1"><a name="AtomicLogical"></a>struct AtomicLogical</font>&lt;Type, Op, 4&gt; {
+<a name="line788">788: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line789">789: </a>  {
+<a name="line790">790: </a>    int *address_as_int = (int *)(&amp;x);
+<a name="line791">791: </a>    int  old            = *address_as_int, assumed;
+<a name="line792">792: </a>    Op   op;
+<a name="line793">793: </a>    <font color="#4169E1">do</font> {
+<a name="line794">794: </a>      assumed = old;
+<a name="line795">795: </a>      old     = atomicCAS(address_as_int, assumed, (int)(op((Type)assumed, y)));
+<a name="line796">796: </a>    } <font color="#4169E1">while</font> (assumed != old);
+<a name="line797">797: </a>    <font color="#4169E1">return</font> (Type)old;
+<a name="line798">798: </a>  }
+<a name="line799">799: </a>};
+
+<a name="line801">801: </a>template &lt;typename Type, class Op&gt;
+<a name="line802">802: </a><font color="#4169E1"><a name="AtomicLogical"></a>struct AtomicLogical</font>&lt;Type, Op, 8&gt; {
+<a name="line803">803: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line804">804: </a>  {
+<a name="line805">805: </a>    ullint *address_as_ull = (ullint *)(&amp;x);
+<a name="line806">806: </a>    ullint  old            = *address_as_ull, assumed;
+<a name="line807">807: </a>    Op      op;
+<a name="line808">808: </a>    <font color="#4169E1">do</font> {
+<a name="line809">809: </a>      assumed = old;
+<a name="line810">810: </a>      old     = atomicCAS(address_as_ull, assumed, (ullint)(op((Type)assumed, y)));
+<a name="line811">811: </a>    } <font color="#4169E1">while</font> (assumed != old);
+<a name="line812">812: </a>    <font color="#4169E1">return</font> (Type)old;
+<a name="line813">813: </a>  }
+<a name="line814">814: </a>};
+
+<a name="line816">816: </a><font color="#B22222">/* Note land/lor/lxor below are different from LAND etc above. Here we pass arguments by value and return result of ops (not old value) */</font>
+<a name="line817">817: </a>template &lt;typename Type&gt;
+<a name="line818">818: </a><font color="#4169E1"><a name="land"></a>struct land </font>{
+<a name="line819">819: </a>  __device__ Type operator()(Type x, Type y) { <font color="#4169E1">return</font> x &amp;&amp; y; }
+<a name="line820">820: </a>};
+<a name="line821">821: </a>template &lt;typename Type&gt;
+<a name="line822">822: </a><font color="#4169E1"><a name="lor"></a>struct lor </font>{
+<a name="line823">823: </a>  __device__ Type operator()(Type x, Type y) { <font color="#4169E1">return</font> x || y; }
+<a name="line824">824: </a>};
+<a name="line825">825: </a>template &lt;typename Type&gt;
+<a name="line826">826: </a><font color="#4169E1"><a name="lxor"></a>struct lxor </font>{
+<a name="line827">827: </a>  __device__ Type operator()(Type x, Type y) { <font color="#4169E1">return</font> !x != !y; }
+<a name="line828">828: </a>};
+
+<a name="line830">830: </a>template &lt;typename Type&gt;
+<a name="line831">831: </a><font color="#4169E1"><a name="AtomicLAND"></a>struct AtomicLAND </font>{
+<a name="line832">832: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line833">833: </a>  {
+<a name="line834">834: </a>    AtomicLogical&lt;Type, land&lt;Type&gt;, <font color="#4169E1">sizeof</font>(Type)&gt; op;
+<a name="line835">835: </a>    <font color="#4169E1">return</font> op(x, y);
+<a name="line836">836: </a>  }
+<a name="line837">837: </a>};
+<a name="line838">838: </a>template &lt;typename Type&gt;
+<a name="line839">839: </a><font color="#4169E1"><a name="AtomicLOR"></a>struct AtomicLOR </font>{
+<a name="line840">840: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line841">841: </a>  {
+<a name="line842">842: </a>    AtomicLogical&lt;Type, lor&lt;Type&gt;, <font color="#4169E1">sizeof</font>(Type)&gt; op;
+<a name="line843">843: </a>    <font color="#4169E1">return</font> op(x, y);
+<a name="line844">844: </a>  }
+<a name="line845">845: </a>};
+<a name="line846">846: </a>template &lt;typename Type&gt;
+<a name="line847">847: </a><font color="#4169E1"><a name="AtomicLXOR"></a>struct AtomicLXOR </font>{
+<a name="line848">848: </a>  __device__ Type operator()(Type &amp;x, Type y) const
+<a name="line849">849: </a>  {
+<a name="line850">850: </a>    AtomicLogical&lt;Type, lxor&lt;Type&gt;, <font color="#4169E1">sizeof</font>(Type)&gt; op;
+<a name="line851">851: </a>    <font color="#4169E1">return</font> op(x, y);
+<a name="line852">852: </a>  }
+<a name="line853">853: </a>};
+<a name="line854">854: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+

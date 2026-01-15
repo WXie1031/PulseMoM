@@ -1,0 +1,114 @@
+# voxel definition type ("shape" for 2D vector shapes)
+"mesh_type": "shape"
+
+# definition of the voxel structure
+"data_voxelize":
+    # definition of the voxel structure
+    #   - dx: voxel dimension for the x direction
+    #   - dy: voxel dimension for the y direction
+    #   - dz: voxel dimension for the z direction
+    #   - cz: coordinates of the voxel structure center for the z direction  (null for centering)
+    #   - simplify: tolerance for simplifying the shapes (null for disabling simplification)
+    #   - construct: grid size for constructing the shapes (null for default grid size)
+    #   - xy_min: array with the lower corner coordinates of the voxel structure
+    #       - vector with the x and y coordinates
+    #       - if null, the shape bounds are used
+    #   - xy_max: array with the upper corner coordinates of the voxel structure
+    #       - vector with the x and y coordinates
+    #       - if null, the shape bounds are used
+    "param":
+        "dx": 50.0e-6
+        "dy": 50.0e-6
+        "dz": 50.0e-6
+        "cz": 0.0e-6
+        "simplify": 1.0e-6
+        "construct": 1.0e-6
+        "xy_min": [-20e-3, -20e-3]
+        "xy_max": [+20e-3, +20e-3]
+
+    # definition of the layer stack (voxels in the z-direction)
+    #   - list of dicts with the definition of the layers
+    #   - required information, the list cannot be empty
+    #   - layer definition
+    #       - n_layer: number of voxels in the z-direction for the layer
+    #       - tag_layer: string with the name of the layer
+    "layer_stack":
+        - {"n_layer": 1, "tag_layer": "mag"}
+        - {"n_layer": 5, "tag_layer": "insulation_mag"}
+        - {"n_layer": 1, "tag_layer": "cond"}
+        - {"n_layer": 5, "tag_layer": "insulation_terminal"}
+        - {"n_layer": 1, "tag_layer": "terminal"}
+
+    # definition of the shapes composing the different domains
+    #   - dict with the domain name and a list of shapes to be assembled
+    #   - required information, the dict cannot be empty
+    #   - domain definition
+    #       - shape_layer: list of layers where the shape is located
+    #       - shape_operation: composition operation for assembling the shape ("add" or "sub")
+    #       - shape_type: type of the shape ("geojson", "pad" or "trace" or "polygon")
+    #       - shape_data: data containing the shape geometry
+    #           - "geojson"
+    #               - json: string with the GeoJSON object
+    #               - buffer: thickness of the buffer around the polygons
+    #           - "pad"
+    #               - coord: array with the 2D coordinates composing the shape
+    #               - diameter: diameter of the pads
+    #           - "trace"
+    #               - coord: array with the 2D coordinates composing the shape
+    #               - width: thickness of the traces
+    #           - "polygon"
+    #               - coord_shell: array with the 2D coordinates composing the shape
+    #               - coord_holes: list of arrays with the 2D coordinates of the holes
+    #               - buffer: thickness of the buffer around the polygons
+    "geometry_shape":
+        "dom_json":
+            -
+                "shape_layer": ["cond"]
+                "shape_operation": "add"
+                "shape_type": "geojson"
+                "shape_data":
+                    "buffer": 0.5e-3
+                    "data": {"type":"LineString","coordinates":[[0.0,0.0],[0.015,0.0]]}
+        "dom_cond":
+            -
+                "shape_layer": ["cond"]
+                "shape_operation": "add"
+                "shape_type": "trace"
+                "shape_data":
+                    "width": 0.5e-3
+                    "coord": [[0.0e-3, 0.0e-3], [5.0e-3, 5.0e-3]]
+        "dom_mag":
+            -
+                "shape_layer": ["mag"]
+                "shape_operation": "add"
+                "shape_type": "polygon"
+                "shape_data":
+                    "buffer": 0.0
+                    "coord_shell": [[0.0e-3, 0.0e-3], [5.0e-3, 0.0e-3], [5.0e-3, 5.0e-3], [0.0e-3, 5.0e-3]]
+                    "coord_holes":
+                        - [[1.0e-3, 1.0e-3], [2.0e-3, 1.0e-3], [2.0e-3, 2.0e-3], [1.0e-3, 2.0e-3]]
+                        - [[3.0e-3, 3.0e-3], [4.0e-3, 3.0e-3], [4.0e-3, 4.0e-3], [3.0e-3, 4.0e-3]]
+            -
+                "shape_layer": ["mag"]
+                "shape_operation": "sub"
+                "shape_type": "polygon"
+                "shape_data":
+                    "buffer": 0.0
+                    "coord_shell": [[1.0e-3, 1.0e-3], [3.0e-3, 1.0e-3], [3.0e-3, 3.0e-3], [1.0e-3, 3.0e-3]]
+                    "coord_holes": []
+        "dom_src":
+            -
+                "shape_layer": ["insulation_terminal", "terminal"]
+                "shape_operation": "add"
+                "shape_type": "pad"
+                "shape_data":
+                    "diameter": 0.7e-3
+                    "coord": [[0.0e-3, 0.0e-3]]
+        "dom_sink":
+            -
+                "shape_layer": ["insulation_terminal", "terminal"]
+                "shape_operation": "add"
+                "shape_type": "pad"
+                "shape_data":
+                    "diameter": 0.7e-3
+                    "coord": [[5.0e-3, 5.0e-3]]

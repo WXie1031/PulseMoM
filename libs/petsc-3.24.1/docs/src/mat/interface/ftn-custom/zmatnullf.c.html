@@ -1,0 +1,46 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/mat/interface/ftn-custom/zmatnullf.c">Actual source code: zmatnullf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:01+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscmat.h.html">&lt;petscmat.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petscviewer.h.html">&lt;petscviewer.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define matnullspacegetvecs_     MATNULLSPACEGETVECS</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define matnullspacerestorevecs_ MATNULLSPACERESTOREVECS</font></strong>
+<a name="line8">  8: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define matnullspacegetvecs_     matnullspacegetvecs</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define matnullspacerestorevecs_ matnullspacerestorevecs</font></strong>
+<a name="line11"> 11: </a><font color="#A020F0">#endif</font>
+
+<a name="line13"> 13: </a><strong><font color="#4169E1"><a name="matnullspacegetvecs_"></a>PETSC_EXTERN void matnullspacegetvecs_(<a href="../../../../manualpages/Mat/MatNullSpace.html">MatNullSpace</a> *sp, <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *HAS_CNST, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *vecs, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line14"> 14: </a>{
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> has_cnst;
+<a name="line16"> 16: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  n;
+<a name="line17"> 17: </a>  <a href="../../../../manualpages/Vec/Vec.html">Vec</a>      *tvecs;
+
+<a name="line19"> 19: </a>  CHKFORTRANNULLBOOL(HAS_CNST);
+<a name="line20"> 20: </a>  CHKFORTRANNULLINTEGER(N);
+<a name="line21"> 21: </a>  *ierr = <a href="../../../../manualpages/Mat/MatNullSpaceGetVecs.html">MatNullSpaceGetVecs</a>(*sp, &amp;has_cnst, &amp;n, (const <a href="../../../../manualpages/Vec/Vec.html">Vec</a> **)&amp;tvecs);
+<a name="line22"> 22: </a>  <font color="#4169E1">if</font> (HAS_CNST) *HAS_CNST = has_cnst;
+<a name="line23"> 23: </a>  <font color="#4169E1">if</font> (N) *N = n;
+<a name="line24"> 24: </a>  *ierr = F90Array1dCreate(tvecs, MPIU_FORTRANADDR, 1, n, vecs PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line25"> 25: </a>}
+
+<a name="line27"> 27: </a><strong><font color="#4169E1"><a name="matnullspacerestorevecs_"></a>PETSC_EXTERN void matnullspacerestorevecs_(<a href="../../../../manualpages/Mat/MatNullSpace.html">MatNullSpace</a> *sp, <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> *HAS_CNST, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *N, F90Array1d *vecs, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr PETSC_F90_2PTR_PROTO(ptrd))</font></strong>
+<a name="line28"> 28: </a>{
+<a name="line29"> 29: </a>  *ierr = F90Array1dDestroy(vecs, MPIU_FORTRANADDR PETSC_F90_2PTR_PARAM(ptrd));
+<a name="line30"> 30: </a>}
+</pre>
+</body>
+
+</html>
+

@@ -1,0 +1,352 @@
+cmake_minimum_required(VERSION 3.18)
+project(PulseMoM VERSION 2.0.0 LANGUAGES C CXX CUDA)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# Set build type if not specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# Options
+option(USE_CUDA "Enable CUDA GPU acceleration" ON)
+option(USE_OPENMP "Enable OpenMP parallelization" ON)
+option(USE_AVX2 "Enable AVX2 vectorization" ON)
+option(USE_MKL "Enable Intel MKL" OFF)
+option(USE_MPI "Enable MPI support" OFF)
+option(BUILD_TESTS "Build test suite" ON)
+option(BUILD_BENCHMARKS "Build benchmarks" ON)
+option(ENABLE_PROFILING "Enable performance profiling" OFF)
+
+# Enhanced optimization flags
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mtune=native -ffast-math -funroll-loops -finline-functions")
+    set(CMAKE_C_FLAGS_RELEASE "-O3 -march=native -mtune=native -ffast-math -funroll-loops -finline-functions")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -DDEBUG")
+    set(CMAKE_C_FLAGS_DEBUG "-g -O0 -Wall -Wextra -DDEBUG")
+elseif(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /arch:AVX2 /fp:fast /GL /LTCG")
+    set(CMAKE_C_FLAGS_RELEASE "/O2 /arch:AVX2 /fp:fast /GL /LTCG")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi /RTC1 /DDEBUG")
+    set(CMAKE_C_FLAGS_DEBUG "/Od /Zi /RTC1 /DDEBUG")
+endif()
+
+# Find packages
+find_package(Threads REQUIRED)
+
+# Enhanced CUDA configuration with advanced features
+if(USE_CUDA)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    
+    # Set CUDA architecture
+    if(NOT CMAKE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86 89 90)
+    endif()
+    
+    # Enhanced CUDA flags
+    set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math -lineinfo")
+    set(CMAKE_CUDA_FLAGS_DEBUG "-g -G -O0")
+    set(CMAKE_CUDA_FLAGS "-arch=${CMAKE_CUDA_ARCHITECTURES} -std=c++17")
+    
+    # Advanced CUDA features
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -dc -rdc=true")  # Device linking
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda")
+    
+    # Cooperative groups support
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_70,code=sm_70")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_80,code=sm_80")
+    
+    include_directories(${CUDAToolkit_INCLUDE_DIRS})
+    
+    # Find advanced CUDA libraries
+    find_library(CUBLAS_LIBRARY cublas HINTS ${CUDAToolkit_LIBRARY_DIR})
+    find_library(CUSOLVER_LIBRARY cusolver HINTS ${CUDAToolkit_LIBRARY_DIR})
+    find_library(CUSPARSE_LIBRARY cusparse HINTS ${CUDAToolkit_LIBRARY_DIR})
+    find_library(CUFFT_LIBRARY cufft HINTS ${CUDAToolkit_LIBRARY_DIR})
+    find_library(CURAND_LIBRARY curand HINTS ${CUDAToolkit_LIBRARY_DIR})
+    find_library(NVML_LIBRARY nvml HINTS ${CUDAToolkit_LIBRARY_DIR})
+endif()
+
+# Enhanced OpenMP configuration
+if(USE_OPENMP)
+    find_package(OpenMP REQUIRED)
+    if(OpenMP_FOUND)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        if(USE_CUDA)
+            set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=${OpenMP_CXX_FLAGS}")
+        endif()
+    endif()
+endif()
+
+# Intel MKL configuration
+if(USE_MKL)
+    find_package(MKL REQUIRED)
+    if(MKL_FOUND)
+        include_directories(${MKL_INCLUDE_DIRS})
+        set(MKL_LIBRARIES ${MKL_LIBRARIES})
+    endif()
+endif()
+
+# MPI configuration
+if(USE_MPI)
+    find_package(MPI REQUIRED)
+    if(MPI_FOUND)
+        include_directories(${MPI_INCLUDE_DIRS})
+        set(MPI_LIBRARIES ${MPI_LIBRARIES})
+    endif()
+endif()
+
+# Include directories
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/gui
+)
+
+# Enhanced source files with optimized parallelization
+set(CORE_SOURCES
+    src/core/main.c
+    src/core/mom_solver.c
+    src/core/impedance_matrix.c
+    src/core/greens_function.c
+    src/core/sommerfeld_integral.c
+    src/core/layered_medium.c
+    src/core/basis_functions.c
+    src/core/linear_algebra.c
+    src/core/preconditioner.c
+    src/core/iterative_solver.c
+    src/core/h_matrix.c
+    src/core/accelerated_marching.c
+    src/core/parallel_matrix_assembly.c
+    src/core/distributed_computation.c
+)
+
+# Enhanced GPU acceleration sources
+if(USE_CUDA)
+    set(GPU_SOURCES
+        src/core/gpu_acceleration.cu
+        src/core/gpu_memory_management.cu
+        src/core/gpu_parallelization_optimized.cu
+        src/core/multi_gpu_work_distribution.cu
+        src/core/gpu_benchmarks.cu
+        src/core/cuda_error_handling.cu
+        src/core/gpu_kernel_tuning.cu
+    )
+endif()
+
+# Utility sources
+set(UTILS_SOURCES
+    src/utils/complex_math.c
+    src/utils/matrix_operations.c
+    src/utils/vector_operations.c
+    src/utils/interpolation.c
+    src/utils/fft_operations.c
+    src/utils/memory_pool.c
+    src/utils/timer.c
+    src/utils/error_handling.c
+    src/utils/logging.c
+    src/utils/configuration.c
+)
+
+# IO sources
+set(IO_SOURCES
+    src/io/mesh_reader.c
+    src/io/result_writer.c
+    src/io/parameter_parser.c
+    src/io/geometry_exporter.c
+    src/io/solution_importer.c
+)
+
+# Create main executable
+add_executable(PulseMoM
+    ${CORE_SOURCES}
+    ${GPU_SOURCES}
+    ${UTILS_SOURCES}
+    ${IO_SOURCES}
+)
+
+# Enhanced linking with advanced libraries
+set(LINK_LIBRARIES
+    Threads::Threads
+    m
+)
+
+if(USE_CUDA)
+    set(LINK_LIBRARIES ${LINK_LIBRARIES}
+        ${CUBLAS_LIBRARY}
+        ${CUSOLVER_LIBRARY}
+        ${CUSPARSE_LIBRARY}
+        ${CUFFT_LIBRARY}
+        ${CURAND_LIBRARY}
+        ${NVML_LIBRARY}
+        CUDA::cudart
+        CUDA::cublas
+        CUDA::cusolver
+        CUDA::cusparse
+        CUDA::cufft
+        CUDA::curand
+    )
+endif()
+
+if(OpenMP_FOUND)
+    set(LINK_LIBRARIES ${LINK_LIBRARIES} OpenMP::OpenMP_C)
+endif()
+
+if(MKL_FOUND)
+    set(LINK_LIBRARIES ${LINK_LIBRARIES} ${MKL_LIBRARIES})
+endif()
+
+if(MPI_FOUND)
+    set(LINK_LIBRARIES ${LINK_LIBRARIES} ${MPI_LIBRARIES})
+endif()
+
+target_link_libraries(PulseMoM ${LINK_LIBRARIES})
+
+# Enhanced compiler definitions
+set(COMPILER_DEFINES
+    _GNU_SOURCE
+    ENABLE_PROFILING=$<BOOL:${ENABLE_PROFILING}>
+)
+
+if(USE_CUDA)
+    set(COMPILER_DEFINES ${COMPILER_DEFINES}
+        ENABLE_CUDA
+        CUDA_ARCH=${CMAKE_CUDA_ARCHITECTURES}
+        USE_COOPERATIVE_GROUPS
+        USE_WARP_PRIMITIVES
+        USE_DYNAMIC_PARALLELISM
+    )
+endif()
+
+if(USE_OPENMP)
+    set(COMPILER_DEFINES ${COMPILER_DEFINES} USE_OPENMP)
+endif()
+
+if(USE_AVX2)
+    set(COMPILER_DEFINES ${COMPILER_DEFINES} USE_AVX2)
+endif()
+
+if(USE_MKL)
+    set(COMPILER_DEFINES ${COMPILER_DEFINES} USE_MKL)
+endif()
+
+if(USE_MPI)
+    set(COMPILER_DEFINES ${COMPILER_DEFINES} USE_MPI)
+endif()
+
+target_compile_definitions(PulseMoM PRIVATE ${COMPILER_DEFINES})
+
+# Enhanced tests with performance validation
+if(BUILD_TESTS)
+    enable_testing()
+    
+    # Unit tests
+    add_executable(test_mom_core tests/test_mom_core.c)
+    target_link_libraries(test_mom_core ${LINK_LIBRARIES})
+    target_compile_definitions(test_mom_core PRIVATE ${COMPILER_DEFINES})
+    add_test(NAME test_mom_core COMMAND test_mom_core)
+    
+    # GPU tests
+    if(USE_CUDA)
+        add_executable(test_gpu_acceleration tests/test_gpu_acceleration.cu)
+        target_link_libraries(test_gpu_acceleration ${LINK_LIBRARIES})
+        target_compile_definitions(test_gpu_acceleration PRIVATE ${COMPILER_DEFINES})
+        add_test(NAME test_gpu_acceleration COMMAND test_gpu_acceleration)
+        
+        add_executable(test_parallelization tests/test_parallelization.cu)
+        target_link_libraries(test_parallelization ${LINK_LIBRARIES})
+        target_compile_definitions(test_parallelization PRIVATE ${COMPILER_DEFINES})
+        add_test(NAME test_parallelization COMMAND test_parallelization)
+    endif()
+    
+    # Integration tests
+    add_executable(test_integration tests/test_integration.c)
+    target_link_libraries(test_integration ${LINK_LIBRARIES})
+    target_compile_definitions(test_integration PRIVATE ${COMPILER_DEFINES})
+    add_test(NAME test_integration COMMAND test_integration)
+endif()
+
+# Enhanced benchmarks with detailed performance metrics
+if(BUILD_BENCHMARKS)
+    add_executable(benchmark_performance benchmarks/benchmark_performance.c)
+    target_link_libraries(benchmark_performance ${LINK_LIBRARIES})
+    target_compile_definitions(benchmark_performance PRIVATE ${COMPILER_DEFINES})
+    
+    if(USE_CUDA)
+        add_executable(benchmark_gpu benchmarks/benchmark_gpu.cu)
+        target_link_libraries(benchmark_gpu ${LINK_LIBRARIES})
+        target_compile_definitions(benchmark_gpu PRIVATE ${COMPILER_DEFINES})
+        
+        add_executable(benchmark_parallelization benchmarks/benchmark_parallelization.cu)
+        target_link_libraries(benchmark_parallelization ${LINK_LIBRARIES})
+        target_compile_definitions(benchmark_parallelization PRIVATE ${COMPILER_DEFINES})
+    endif()
+endif()
+
+# Installation rules
+install(TARGETS PulseMoM DESTINATION bin)
+install(FILES 
+    include/mom_solver.h
+    include/greens_function.h
+    include/gpu_acceleration.h
+    include/gpu_parallelization_optimized.h
+    include/multi_gpu_work_distribution.h
+    DESTINATION include
+)
+
+# Enhanced performance profiling
+if(ENABLE_PROFILING)
+    target_compile_options(PulseMoM PRIVATE -pg)
+    target_link_options(PulseMoM PRIVATE -pg)
+    
+    if(USE_CUDA)
+        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
+        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --generate-line-info")
+    endif()
+endif()
+
+# Advanced optimization for specific architectures
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    if(USE_AVX2)
+        target_compile_options(PulseMoM PRIVATE -mavx2 -mfma -mf16c)
+    endif()
+endif()
+
+# Enhanced CUDA-specific optimizations
+if(USE_CUDA)
+    # Set CUDA separable compilation
+    set_target_properties(PulseMoM PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    
+    # Enable CUDA device linking
+    set_target_properties(PulseMoM PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+    
+    # Optimize for specific GPU architectures
+    if(CMAKE_CUDA_ARCHITECTURES)
+        foreach(arch ${CMAKE_CUDA_ARCHITECTURES})
+            target_compile_options(PulseMoM PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_${arch},code=sm_${arch}>)
+        endforeach()
+    endif()
+endif()
+
+# Status messages
+message(STATUS "Build configuration:")
+message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  CUDA Support: ${USE_CUDA}")
+message(STATUS "  CUDA Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+message(STATUS "  OpenMP Support: ${USE_OPENMP}")
+message(STATUS "  AVX2 Support: ${USE_AVX2}")
+message(STATUS "  Intel MKL: ${USE_MKL}")
+message(STATUS "  MPI Support: ${USE_MPI}")
+message(STATUS "  Build Tests: ${BUILD_TESTS}")
+message(STATUS "  Build Benchmarks: ${BUILD_BENCHMARKS}")
+message(STATUS "  Enable Profiling: ${ENABLE_PROFILING}")

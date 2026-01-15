@@ -1,0 +1,112 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/tests/options/ex55.c">Actual source code: ex55.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:12+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>static char help[] = <font color="#666666">"Tests options database monitoring and precedence.\n\n"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+<a name="line4">  4: </a>#include <A href="../../../../include/petscviewer.h.html">&lt;petscviewer.h&gt;</A>
+
+<a name="line6">  6: </a><strong><font color="#4169E1"><a name="PetscOptionsMonitorCustom"></a><a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscOptionsMonitorCustom(const char name[], const char value[], PetscOptionSource source, void *ctx)</font></strong>
+<a name="line7">  7: </a>{
+<a name="line8">  8: </a>  <a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer = (<a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>)ctx;
+
+<a name="line10"> 10: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line11"> 11: </a>  <font color="#4169E1">if</font> (!value) {
+<a name="line12"> 12: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"* Removing option: %s\n"</font>, name));
+<a name="line13"> 13: </a>  } <font color="#4169E1">else</font> <font color="#4169E1">if</font> (!value[0]) {
+<a name="line14"> 14: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"* Setting option: %s (no value)\n"</font>, name));
+<a name="line15"> 15: </a>  } <font color="#4169E1">else</font> {
+<a name="line16"> 16: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"* Setting option: %s = %s\n"</font>, name, value));
+<a name="line17"> 17: </a>  }
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line19"> 19: </a>}
+
+<a name="line21"> 21: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line22"> 22: </a>{
+<a name="line23"> 23: </a>  <a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>       viewer = NULL;
+<a name="line24"> 24: </a>  <a href="../../../../manualpages/Viewer/PetscViewerFormat.html">PetscViewerFormat</a> format;
+
+<a name="line26"> 26: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBeginUser.html">PetscFunctionBeginUser</a>;
+<a name="line27"> 27: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, <font color="#666666">"ex55options"</font>, help));
+<a name="line28"> 28: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsInsertString.html">PetscOptionsInsertString</a>(NULL, <font color="#666666">"-option1 1 -option2 -option3 value3"</font>));
+<a name="line29"> 29: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscOptionsCreateViewer.html">PetscOptionsCreateViewer</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_WORLD.html">PETSC_COMM_WORLD</a>, NULL, NULL, <font color="#666666">"-options_monitor_viewer"</font>, &amp;viewer, &amp;format, NULL));
+<a name="line30"> 30: </a>  <font color="#4169E1">if</font> (viewer) {
+<a name="line31"> 31: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerPushFormat.html">PetscViewerPushFormat</a>(viewer, format));
+<a name="line32"> 32: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsMonitorSet.html">PetscOptionsMonitorSet</a>(PetscOptionsMonitorCustom, viewer, NULL));
+<a name="line33"> 33: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerPopFormat.html">PetscViewerPopFormat</a>(viewer));
+<a name="line34"> 34: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerDestroy.html">PetscViewerDestroy</a>(&amp;viewer));
+<a name="line35"> 35: </a>  }
+<a name="line36"> 36: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsInsertString.html">PetscOptionsInsertString</a>(NULL, <font color="#666666">"-option4 value4 -option5"</font>));
+<a name="line37"> 37: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscOptionsClearValue.html">PetscOptionsClearValue</a>(NULL, <font color="#666666">"-option5"</font>));
+<a name="line38"> 38: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line39"> 39: </a>  <font color="#4169E1">return</font> 0;
+<a name="line40"> 40: </a>}
+
+<a name="line42"> 42: </a><font color="#B22222">/*TEST</font>
+
+<a name="line44"> 44: </a><font color="#B22222">   testset:</font>
+<a name="line45"> 45: </a><font color="#B22222">      localrunfiles: ex55options .petscrc petscrc</font>
+<a name="line46"> 46: </a><font color="#B22222">      args: -options_left 0 -options_view -options_monitor_viewer ascii</font>
+<a name="line47"> 47: </a><font color="#B22222">      args: -skip_petscrc {{0 1}separate output} -options_monitor_cancel {{0 1}separate output}</font>
+<a name="line48"> 48: </a><font color="#B22222">      test:</font>
+<a name="line49"> 49: </a><font color="#B22222">        suffix: 1</font>
+<a name="line50"> 50: </a><font color="#B22222">      test:</font>
+<a name="line51"> 51: </a><font color="#B22222">        suffix: 2</font>
+<a name="line52"> 52: </a><font color="#B22222">        args: -options_monitor</font>
+<a name="line53"> 53: </a><font color="#B22222">      test:</font>
+<a name="line54"> 54: </a><font color="#B22222">        suffix: 3</font>
+<a name="line55"> 55: </a><font color="#B22222">        args: -options_monitor -option_cmd_1 option_cmd_1_val -option_cmd_2</font>
+<a name="line56"> 56: </a><font color="#B22222">   test:</font>
+<a name="line57"> 57: </a><font color="#B22222">      # test effect of -skip_petscrc in ex55options file</font>
+<a name="line58"> 58: </a><font color="#B22222">      suffix: 4</font>
+<a name="line59"> 59: </a><font color="#B22222">      localrunfiles: ex55options .petscrc petscrc</font>
+<a name="line60"> 60: </a><font color="#B22222">      args: -options_left 0 -options_view -options_monitor</font>
+<a name="line61"> 61: </a><font color="#B22222">   testset:</font>
+<a name="line62"> 62: </a><font color="#B22222">      # test -help / -help intro / -version from command line</font>
+<a name="line63"> 63: </a><font color="#B22222">      localrunfiles: ex55options .petscrc petscrc</font>
+<a name="line64"> 64: </a><font color="#B22222">      filter: grep -E -e "(version|help|^See)"</font>
+<a name="line65"> 65: </a><font color="#B22222">      args: -options_left -options_view -options_monitor</font>
+<a name="line66"> 66: </a><font color="#B22222">      test:</font>
+<a name="line67"> 67: </a><font color="#B22222">        suffix: 5a</font>
+<a name="line68"> 68: </a><font color="#B22222">        args: -help</font>
+<a name="line69"> 69: </a><font color="#B22222">      test:</font>
+<a name="line70"> 70: </a><font color="#B22222">        suffix: 5b</font>
+<a name="line71"> 71: </a><font color="#B22222">        args: -help intro</font>
+<a name="line72"> 72: </a><font color="#B22222">      test:</font>
+<a name="line73"> 73: </a><font color="#B22222">        suffix: 5c</font>
+<a name="line74"> 74: </a><font color="#B22222">        args: -version</font>
+<a name="line75"> 75: </a><font color="#B22222">   testset:</font>
+<a name="line76"> 76: </a><font color="#B22222">      # test -help / -help intro / -version from file</font>
+<a name="line77"> 77: </a><font color="#B22222">      localrunfiles: ex55options rc_help rc_help_intro rc_version</font>
+<a name="line78"> 78: </a><font color="#B22222">      filter: grep -E -e "(version|help|^See)"</font>
+<a name="line79"> 79: </a><font color="#B22222">      args: -skip_petscrc</font>
+<a name="line80"> 80: </a><font color="#B22222">      args: -options_left -options_view -options_monitor</font>
+<a name="line81"> 81: </a><font color="#B22222">      test:</font>
+<a name="line82"> 82: </a><font color="#B22222">        suffix: 6a</font>
+<a name="line83"> 83: </a><font color="#B22222">        args: -options_file rc_help</font>
+<a name="line84"> 84: </a><font color="#B22222">      test:</font>
+<a name="line85"> 85: </a><font color="#B22222">        suffix: 6b</font>
+<a name="line86"> 86: </a><font color="#B22222">        args: -options_file rc_help_intro</font>
+<a name="line87"> 87: </a><font color="#B22222">      test:</font>
+<a name="line88"> 88: </a><font color="#B22222">        suffix: 6c</font>
+<a name="line89"> 89: </a><font color="#B22222">        args: -options_file rc_version</font>
+
+<a name="line91"> 91: </a><font color="#B22222">   test:</font>
+<a name="line92"> 92: </a><font color="#B22222">     localrunfiles: ex55options .petscrc petscrc</font>
+<a name="line93"> 93: </a><font color="#B22222">     suffix: 7</font>
+<a name="line94"> 94: </a><font color="#B22222">     args: -options_monitor -options_left 0</font>
+
+<a name="line96"> 96: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

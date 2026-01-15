@@ -1,0 +1,168 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/dm/dt/tests/ex16.c">Actual source code: ex16.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:33:46+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>const char help[] = <font color="#666666">"Test <a href="../../../../manualpages/FE/PETSCFEVECTOR.html">PETSCFEVECTOR</a>"</font>;
+
+<a name="line3">  3: </a>#include <A href="../../../../include/petscfe.h.html">&lt;petscfe.h&gt;</A>
+
+<a name="line5">  5: </a><strong><font color="#4169E1"><a name="PetscFEVectorTest"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> PetscFEVectorTest(<a href="../../../../manualpages/FE/PetscFE.html">PetscFE</a> orig_fe, <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n_copies, <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> interleave_basis, <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a> interleave_components)</font></strong>
+<a name="line6">  6: </a>{
+<a name="line7">  7: </a>  <a href="../../../../manualpages/FE/PetscFE.html">PetscFE</a>          vec_fe, dup_fe;
+<a name="line8">  8: </a>  <a href="../../../../manualpages/DT/PetscQuadrature.html">PetscQuadrature</a>  quad;
+<a name="line9">  9: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         num_points;
+<a name="line10"> 10: </a>  const <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *points;
+<a name="line11"> 11: </a>  <a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a>      viewer = <a href="../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_.html">PETSC_VIEWER_STDOUT_</a>(<a href="../../../../manualpages/Sys/PetscObjectComm.html">PetscObjectComm</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)orig_fe));
+<a name="line12"> 12: </a>  <a href="../../../../manualpages/DT/PetscTabulation.html">PetscTabulation</a>  orig_T, vec_T, dup_T;
+<a name="line13"> 13: </a>  <a href="../../../../manualpages/SPACE/PetscSpace.html">PetscSpace</a>       space;
+<a name="line14"> 14: </a>  <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         Nb, vNb, vNb_s, vNb_d, Nc, vNc, cdim;
+<a name="line15"> 15: </a>  <a href="../../../../manualpages/DUALSPACE/PetscDualSpace.html">PetscDualSpace</a>   dual_space, dup_dual_space;
+<a name="line16"> 16: </a>  <a href="../../../../manualpages/Sys/PetscBool.html">PetscBool</a>        ib_s, ic_s, ib_d, ic_d;
+
+<a name="line18"> 18: </a>  <a href="../../../../manualpages/Sys/PetscFunctionBegin.html">PetscFunctionBegin</a>;
+<a name="line19"> 19: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetQuadrature.html">PetscFEGetQuadrature</a>(orig_fe, &amp;quad));
+<a name="line20"> 20: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DT/PetscQuadratureGetData.html">PetscQuadratureGetData</a>(quad, NULL, NULL, &amp;num_points, &amp;points, NULL));
+<a name="line21"> 21: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFECreateVector.html">PetscFECreateVector</a>(orig_fe, n_copies, interleave_basis, interleave_components, &amp;vec_fe));
+<a name="line22"> 22: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetBasisSpace.html">PetscFEGetBasisSpace</a>(vec_fe, &amp;space));
+<a name="line23"> 23: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetDualSpace.html">PetscFEGetDualSpace</a>(vec_fe, &amp;dual_space));
+<a name="line24"> 24: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)vec_fe, <font color="#666666">"vector fe"</font>));
+<a name="line25"> 25: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)space, <font color="#666666">"vector basis space"</font>));
+<a name="line26"> 26: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)dual_space, <font color="#666666">"vector dual space"</font>));
+<a name="line27"> 27: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEView.html">PetscFEView</a>(vec_fe, viewer));
+<a name="line28"> 28: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFECreateTabulation.html">PetscFECreateTabulation</a>(orig_fe, 1, num_points, points, 1, &amp;orig_T));
+<a name="line29"> 29: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFECreateTabulation.html">PetscFECreateTabulation</a>(vec_fe, 1, num_points, points, 1, &amp;vec_T));
+<a name="line30"> 30: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetDimension.html">PetscFEGetDimension</a>(orig_fe, &amp;Nb));
+<a name="line31"> 31: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetDimension.html">PetscFEGetDimension</a>(vec_fe, &amp;vNb));
+<a name="line32"> 32: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetNumComponents.html">PetscFEGetNumComponents</a>(orig_fe, &amp;Nc));
+<a name="line33"> 33: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetNumComponents.html">PetscFEGetNumComponents</a>(vec_fe, &amp;vNc));
+<a name="line34"> 34: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEGetSpatialDimension.html">PetscFEGetSpatialDimension</a>(orig_fe, &amp;cdim));
+<a name="line35"> 35: </a>  {
+<a name="line36"> 36: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> *pre_image;
+<a name="line37"> 37: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  c_stride = interleave_components ? n_copies : 1;
+<a name="line38"> 38: </a>    <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>  c_incr   = interleave_components ? 1 : Nc;
+
+<a name="line40"> 40: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscMalloc1.html">PetscMalloc1</a>(vNb, &amp;pre_image));
+<a name="line41"> 41: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> e = 0; e &lt; vNb; e++) pre_image[e] = -1;
+<a name="line42"> 42: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> copy = 0, coffset = 0; copy &lt; n_copies; copy++, coffset += c_incr) {
+<a name="line43"> 43: </a>      <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> b = 0; b &lt; Nb; b++) {
+<a name="line44"> 44: </a>        <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> e = 0; e &lt; vNb; e++) {
+<a name="line45"> 45: </a>          <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> err = 0.0;
+
+<a name="line47"> 47: </a>          <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> k = 0; k &lt;= orig_T-&gt;K; k++) {
+<a name="line48"> 48: </a>            const <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *s_Tk   = orig_T-&gt;T[k];
+<a name="line49"> 49: </a>            const <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *v_Tk   = vec_T-&gt;T[k];
+<a name="line50"> 50: </a>            <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         dblock = PetscPowInt(cdim, k);
+
+<a name="line52"> 52: </a>            <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> p = 0; p &lt; num_points; p++) {
+<a name="line53"> 53: </a>              const <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *s_Tp = &amp;s_Tk[(p * Nb + b) * Nc * dblock];
+<a name="line54"> 54: </a>              const <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *v_Tp = &amp;v_Tk[(p * vNb + e) * vNc * dblock];
+<a name="line55"> 55: </a>              <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> c = 0; c &lt; Nc; c++) {
+<a name="line56"> 56: </a>                <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a>         vc   = coffset + c * c_stride;
+<a name="line57"> 57: </a>                const <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *s_Tc = &amp;s_Tp[c * dblock];
+<a name="line58"> 58: </a>                const <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> *v_Tc = &amp;v_Tp[vc * dblock];
+<a name="line59"> 59: </a>                <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> d = 0; d &lt; PetscPowInt(cdim, k); d++) err = <a href="../../../../manualpages/Sys/PetscMax.html">PetscMax</a>(err, <a href="../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(s_Tc[d] - v_Tc[d]));
+<a name="line60"> 60: </a>              }
+<a name="line61"> 61: </a>            }
+<a name="line62"> 62: </a>          }
+<a name="line63"> 63: </a>          <font color="#4169E1">if</font> (err &lt; <a href="../../../../manualpages/Sys/PETSC_SMALL.html">PETSC_SMALL</a>) {
+<a name="line64"> 64: </a>            <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(pre_image[e] == -1, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Original basis %"</font> PetscInt_FMT <font color="#666666">" and %"</font> PetscInt_FMT <font color="#666666">" both match to vector basis %"</font> PetscInt_FMT, pre_image[e], b, e);
+<a name="line65"> 65: </a>            pre_image[e] = b;
+<a name="line66"> 66: </a>          }
+<a name="line67"> 67: </a>        }
+<a name="line68"> 68: </a>      }
+<a name="line69"> 69: </a>    }
+<a name="line70"> 70: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> e = 0; e &lt; vNb; e++) <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(pre_image[e] &gt;= 0, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"No original basis matched to %"</font> PetscInt_FMT, e);
+<a name="line71"> 71: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"Vector basis to original basis:"</font>));
+<a name="line72"> 72: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> e = 0; e &lt; vNb; e++) {
+<a name="line73"> 73: </a>      <font color="#4169E1">if</font> (!(e % 16)) <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"\n"</font>));
+<a name="line74"> 74: </a>      <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">" %3"</font> PetscInt_FMT, pre_image[e]));
+<a name="line75"> 75: </a>    }
+<a name="line76"> 76: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPrintf.html">PetscViewerASCIIPrintf</a>(viewer, <font color="#666666">"\n"</font>));
+<a name="line77"> 77: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFree.html">PetscFree</a>(pre_image));
+<a name="line78"> 78: </a>  }
+<a name="line79"> 79: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SPACE/PetscSpaceSumGetInterleave.html">PetscSpaceSumGetInterleave</a>(space, &amp;ib_s, &amp;ic_s));
+<a name="line80"> 80: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DUALSPACE/PetscDualSpaceSumGetInterleave.html">PetscDualSpaceSumGetInterleave</a>(dual_space, &amp;ib_d, &amp;ic_d));
+<a name="line81"> 81: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ib_s == interleave_basis, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Interleave basis of space does not match"</font>);
+<a name="line82"> 82: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ic_s == interleave_components, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Interleave components of space does not match"</font>);
+<a name="line83"> 83: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ib_d == interleave_basis, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Interleave basis of dual space does not match"</font>);
+<a name="line84"> 84: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(ic_d == interleave_components, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Interleave components of dual space does not match"</font>);
+<a name="line85"> 85: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/SPACE/PetscSpaceGetDimension.html">PetscSpaceGetDimension</a>(space, &amp;vNb_s));
+<a name="line86"> 86: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DUALSPACE/PetscDualSpaceGetDimension.html">PetscDualSpaceGetDimension</a>(dual_space, &amp;vNb_d));
+<a name="line87"> 87: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(vNb_s == vNb, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Dimension of space does not match"</font>);
+<a name="line88"> 88: </a>  <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(vNb_s == vNb, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Dimension of dual space does not match"</font>);
+<a name="line89"> 89: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectReference.html">PetscObjectReference</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)space));
+<a name="line90"> 90: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DUALSPACE/PetscDualSpaceDuplicate.html">PetscDualSpaceDuplicate</a>(dual_space, &amp;dup_dual_space)); <font color="#B22222">// not necessary just testing interface</font>
+<a name="line91"> 91: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/DUALSPACE/PetscDualSpaceSetUp.html">PetscDualSpaceSetUp</a>(dup_dual_space));
+<a name="line92"> 92: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFECreateFromSpaces.html">PetscFECreateFromSpaces</a>(space, dup_dual_space, NULL, NULL, &amp;dup_fe));
+<a name="line93"> 93: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFECreateTabulation.html">PetscFECreateTabulation</a>(dup_fe, 1, num_points, points, 1, &amp;dup_T));
+<a name="line94"> 94: </a>  {
+<a name="line95"> 95: </a>    <a href="../../../../manualpages/Sys/PetscReal.html">PetscReal</a> err = 0.0;
+
+<a name="line97"> 97: </a>    <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> k = 0; k &lt;= vec_T-&gt;K; k++) {
+<a name="line98"> 98: </a>      <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> dblock = PetscPowInt(cdim, k);
+<a name="line99"> 99: </a>      <a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> size   = num_points * vNb * vNc * dblock;
+<a name="line100">100: </a>      <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> i = 0; i &lt; size; i++) err = <a href="../../../../manualpages/Sys/PetscMax.html">PetscMax</a>(err, <a href="../../../../manualpages/Sys/PetscAbsReal.html">PetscAbsReal</a>(vec_T-&gt;T[k][i] - dup_T-&gt;T[k][i]));
+<a name="line101">101: </a>    }
+<a name="line102">102: </a>    <a href="../../../../manualpages/Sys/PetscCheck.html">PetscCheck</a>(err &lt; <a href="../../../../manualpages/Sys/PETSC_SMALL.html">PETSC_SMALL</a>, <a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_PLIB</a>, <font color="#666666">"Error between direct tabulation and indirect tabulation: %g"</font>, (double)err);
+<a name="line103">103: </a>  }
+<a name="line104">104: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscTabulationDestroy.html">PetscTabulationDestroy</a>(&amp;dup_T));
+<a name="line105">105: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscTabulationDestroy.html">PetscTabulationDestroy</a>(&amp;vec_T));
+<a name="line106">106: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscTabulationDestroy.html">PetscTabulationDestroy</a>(&amp;orig_T));
+<a name="line107">107: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEDestroy.html">PetscFEDestroy</a>(&amp;dup_fe));
+<a name="line108">108: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEDestroy.html">PetscFEDestroy</a>(&amp;vec_fe));
+<a name="line109">109: </a>  <a href="../../../../manualpages/Sys/PetscFunctionReturn.html">PetscFunctionReturn</a>(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>);
+<a name="line110">110: </a>}
+
+<a name="line112">112: </a><strong><font color="#4169E1"><a name="main"></a>int main(int argc, char **argv)</font></strong>
+<a name="line113">113: </a>{
+<a name="line114">114: </a>  <a href="../../../../manualpages/FE/PetscFE.html">PetscFE</a>     scalar, vector;
+<a name="line115">115: </a>  <a href="../../../../manualpages/Viewer/PetscViewer.html">PetscViewer</a> viewer;
+
+<a name="line117">117: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscInitialize.html">PetscInitialize</a>(&amp;argc, &amp;argv, NULL, help));
+<a name="line118">118: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFECreateLagrange.html">PetscFECreateLagrange</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, 3, 1, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, 3, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;scalar));
+<a name="line119">119: </a>  viewer = <a href="../../../../manualpages/Viewer/PETSC_VIEWER_STDOUT_SELF.html">PETSC_VIEWER_STDOUT_SELF</a>;
+<a name="line120">120: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)scalar, <font color="#666666">"base FE (scalar)"</font>));
+<a name="line121">121: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEView.html">PetscFEView</a>(scalar, viewer));
+<a name="line122">122: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPushTab.html">PetscViewerASCIIPushTab</a>(viewer));
+<a name="line123">123: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n_copies = 1; n_copies &lt;= 3; n_copies++) {
+<a name="line124">124: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(scalar, n_copies, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line125">125: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(scalar, n_copies, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line126">126: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(scalar, n_copies, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line127">127: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(scalar, n_copies, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line128">128: </a>  }
+<a name="line129">129: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPopTab.html">PetscViewerASCIIPopTab</a>(viewer));
+<a name="line130">130: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEDestroy.html">PetscFEDestroy</a>(&amp;scalar));
+<a name="line131">131: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFECreateLagrange.html">PetscFECreateLagrange</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, 3, 3, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, 3, <a href="../../../../manualpages/Sys/PETSC_DETERMINE.html">PETSC_DETERMINE</a>, &amp;vector));
+<a name="line132">132: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscObjectSetName.html">PetscObjectSetName</a>((<a href="../../../../manualpages/Sys/PetscObject.html">PetscObject</a>)vector, <font color="#666666">"base FE (vector)"</font>));
+<a name="line133">133: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEView.html">PetscFEView</a>(vector, viewer));
+<a name="line134">134: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPushTab.html">PetscViewerASCIIPushTab</a>(viewer));
+<a name="line135">135: </a>  <font color="#4169E1">for</font> (<a href="../../../../manualpages/Sys/PetscInt.html">PetscInt</a> n_copies = 1; n_copies &lt;= 3; n_copies++) {
+<a name="line136">136: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(vector, n_copies, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line137">137: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(vector, n_copies, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line138">138: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(vector, n_copies, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, <a href="../../../../manualpages/Sys/PETSC_FALSE.html">PETSC_FALSE</a>));
+<a name="line139">139: </a>    <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(PetscFEVectorTest(vector, n_copies, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>, <a href="../../../../manualpages/Sys/PETSC_TRUE.html">PETSC_TRUE</a>));
+<a name="line140">140: </a>  }
+<a name="line141">141: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Viewer/PetscViewerASCIIPopTab.html">PetscViewerASCIIPopTab</a>(viewer));
+<a name="line142">142: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/FE/PetscFEDestroy.html">PetscFEDestroy</a>(&amp;vector));
+<a name="line143">143: </a>  <a href="../../../../manualpages/Sys/PetscCall.html">PetscCall</a>(<a href="../../../../manualpages/Sys/PetscFinalize.html">PetscFinalize</a>());
+<a name="line144">144: </a>  <font color="#4169E1">return</font> 0;
+<a name="line145">145: </a>}
+
+<a name="line147">147: </a><font color="#B22222">/*TEST</font>
+
+<a name="line149">149: </a><font color="#B22222">  test:</font>
+<a name="line150">150: </a><font color="#B22222">    suffix: 0</font>
+
+<a name="line152">152: </a><font color="#B22222">TEST*/</font>
+</pre>
+</body>
+
+</html>
+

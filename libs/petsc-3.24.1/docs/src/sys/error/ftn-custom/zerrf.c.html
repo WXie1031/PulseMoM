@@ -1,0 +1,144 @@
+<center><a href="https://gitlab.com/petsc/petsc/-/blob/b522cb8c110832b61be366220eb7433134308289/src/sys/error/ftn-custom/zerrf.c">Actual source code: zerrf.c</a></center><br>
+
+<html>
+<head>
+<title></title>
+<meta name="generator" content="c2html 0.9.6">
+<meta name="date" content="2025-10-29T18:34:09+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width=80>
+<a name="line1">  1: </a>#include <A href="../../../../include/petsc/private/ftnimpl.h.html">&lt;petsc/private/ftnimpl.h&gt;</A>
+<a name="line2">  2: </a>#include <A href="../../../../include/petscsys.h.html">&lt;petscsys.h&gt;</A>
+<a name="line3">  3: </a>#include <A href="../../../../include/petscviewer.h.html">&lt;petscviewer.h&gt;</A>
+
+<a name="line5">  5: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_CAPS)</font>
+<a name="line6">  6: </a><strong><font color="#228B22">  #define petscpusherrorhandler_           PETSCPUSHERRORHANDLER</font></strong>
+<a name="line7">  7: </a><strong><font color="#228B22">  #define petsctracebackerrorhandler_      PETSCTRACEBACKERRORHANDLER</font></strong>
+<a name="line8">  8: </a><strong><font color="#228B22">  #define petscaborterrorhandler_          PETSCABORTERRORHANDLER</font></strong>
+<a name="line9">  9: </a><strong><font color="#228B22">  #define petscignoreerrorhandler_         PETSCIGNOREERRORHANDLER</font></strong>
+<a name="line10"> 10: </a><strong><font color="#228B22">  #define petscemacsclienterrorhandler_    PETSCEMACSCLIENTERRORHANDLER</font></strong>
+<a name="line11"> 11: </a><strong><font color="#228B22">  #define petscattachdebuggererrorhandler_ PETSCATTACHDEBUGGERERRORHANDLER</font></strong>
+<a name="line12"> 12: </a><strong><font color="#228B22">  #define petscerror_                      PETSCERROR</font></strong>
+<a name="line13"> 13: </a><strong><font color="#228B22">  #define petscerrorf_                     PETSCERRORF</font></strong>
+<a name="line14"> 14: </a><strong><font color="#228B22">  #define petscerrormpi_                   PETSCERRORMPI</font></strong>
+<a name="line15"> 15: </a><font color="#A020F0">#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)</font>
+<a name="line16"> 16: </a><strong><font color="#228B22">  #define petscpusherrorhandler_           petscpusherrorhandler</font></strong>
+<a name="line17"> 17: </a><strong><font color="#228B22">  #define petsctracebackerrorhandler_      petsctracebackerrorhandler</font></strong>
+<a name="line18"> 18: </a><strong><font color="#228B22">  #define petscaborterrorhandler_          petscaborterrorhandler</font></strong>
+<a name="line19"> 19: </a><strong><font color="#228B22">  #define petscignoreerrorhandler_         petscignoreerrorhandler</font></strong>
+<a name="line20"> 20: </a><strong><font color="#228B22">  #define petscemacsclienterrorhandler_    petscemacsclienterrorhandler</font></strong>
+<a name="line21"> 21: </a><strong><font color="#228B22">  #define petscattachdebuggererrorhandler_ petscattachdebuggererrorhandler</font></strong>
+<a name="line22"> 22: </a><strong><font color="#228B22">  #define petscerror_                      petscerror</font></strong>
+<a name="line23"> 23: </a><strong><font color="#228B22">  #define petscerrorf_                     petscerrorf</font></strong>
+<a name="line24"> 24: </a><strong><font color="#228B22">  #define petscerrormpi_                   petscerrormpi</font></strong>
+<a name="line25"> 25: </a><font color="#A020F0">#endif</font>
+
+<a name="line27"> 27: </a><strong><font color="#4169E1">static void (*f2)(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *comm, int *, const char *, const char *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *, const char *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *, PETSC_FORTRAN_CHARLEN_T len1, PETSC_FORTRAN_CHARLEN_T len2, PETSC_FORTRAN_CHARLEN_T len3)</font></strong>;
+
+<a name="line29"> 29: </a><font color="#B22222">/* These are not extern C because they are passed into non-extern C user level functions */</font>
+<a name="line30"> 30: </a><strong><font color="#4169E1"><a name="ourerrorhandler"></a>static <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ourerrorhandler(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> comm, int line, const char *fun, const char *file, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> n, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> p, const char *mess, void *ctx)</font></strong>
+<a name="line31"> 31: </a>{
+<a name="line32"> 32: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr = <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line33"> 33: </a>  size_t         len1, len2, len3;
+
+<a name="line35"> 35: </a>  ierr = <a href="../../../../manualpages/Sys/PetscStrlen.html">PetscStrlen</a>(fun, &amp;len1);
+<a name="line36"> 36: </a>  ierr = <a href="../../../../manualpages/Sys/PetscStrlen.html">PetscStrlen</a>(file, &amp;len2);
+<a name="line37"> 37: </a>  ierr = <a href="../../../../manualpages/Sys/PetscStrlen.html">PetscStrlen</a>(mess, &amp;len3);
+
+<a name="line39"> 39: </a>  ierr = <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>;
+<a name="line40"> 40: </a>  (*f2)(&amp;comm, &amp;line, fun, file, &amp;n, &amp;p, mess, ctx, &amp;ierr, (PETSC_FORTRAN_CHARLEN_T)len1, (PETSC_FORTRAN_CHARLEN_T)len2, (PETSC_FORTRAN_CHARLEN_T)len3);
+<a name="line41"> 41: </a>  <font color="#4169E1">return</font> ierr;
+<a name="line42"> 42: </a>}
+
+<a name="line44"> 44: </a><font color="#B22222">/*</font>
+<a name="line45"> 45: </a><font color="#B22222">        These are not usually called from Fortran but allow Fortran users</font>
+<a name="line46"> 46: </a><font color="#B22222">   to transparently set these monitors from .F code</font>
+<a name="line47"> 47: </a><font color="#B22222">*/</font>
+<a name="line48"> 48: </a><strong><font color="#4169E1"><a name="petsctracebackerrorhandler_"></a>PETSC_EXTERN void petsctracebackerrorhandler_(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *comm, int *line, const char *fun, const char *file, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *n, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *p, const char *mess, void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line49"> 49: </a>{
+<a name="line50"> 50: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscTraceBackErrorHandler.html">PetscTraceBackErrorHandler</a>(*comm, *line, fun, file, *n, *p, mess, ctx);
+<a name="line51"> 51: </a>}
+
+<a name="line53"> 53: </a><strong><font color="#4169E1"><a name="petscaborterrorhandler_"></a>PETSC_EXTERN void petscaborterrorhandler_(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *comm, int *line, const char *fun, const char *file, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *n, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *p, const char *mess, void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line54"> 54: </a>{
+<a name="line55"> 55: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscAbortErrorHandler.html">PetscAbortErrorHandler</a>(*comm, *line, fun, file, *n, *p, mess, ctx);
+<a name="line56"> 56: </a>}
+
+<a name="line58"> 58: </a><strong><font color="#4169E1"><a name="petscattachdebuggererrorhandler_"></a>PETSC_EXTERN void petscattachdebuggererrorhandler_(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *comm, int *line, const char *fun, const char *file, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *n, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *p, const char *mess, void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line59"> 59: </a>{
+<a name="line60"> 60: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscAttachDebuggerErrorHandler.html">PetscAttachDebuggerErrorHandler</a>(*comm, *line, fun, file, *n, *p, mess, ctx);
+<a name="line61"> 61: </a>}
+
+<a name="line63"> 63: </a><strong><font color="#4169E1"><a name="petscemacsclienterrorhandler_"></a>PETSC_EXTERN void petscemacsclienterrorhandler_(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *comm, int *line, const char *fun, const char *file, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *n, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *p, const char *mess, void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line64"> 64: </a>{
+<a name="line65"> 65: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscEmacsClientErrorHandler.html">PetscEmacsClientErrorHandler</a>(*comm, *line, fun, file, *n, *p, mess, ctx);
+<a name="line66"> 66: </a>}
+
+<a name="line68"> 68: </a><strong><font color="#4169E1"><a name="petscignoreerrorhandler_"></a>PETSC_EXTERN void petscignoreerrorhandler_(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *comm, int *line, const char *fun, const char *file, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *n, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *p, const char *mess, void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line69"> 69: </a>{
+<a name="line70"> 70: </a>  *ierr = <a href="../../../../manualpages/Sys/PetscIgnoreErrorHandler.html">PetscIgnoreErrorHandler</a>(*comm, *line, fun, file, *n, *p, mess, ctx);
+<a name="line71"> 71: </a>}
+
+<a name="line73"> 73: </a><strong><font color="#4169E1"><a name="petscpusherrorhandler_"></a>PETSC_EXTERN void petscpusherrorhandler_(void (*handler)(<a href="../../../../manualpages/Sys/MPI_Comm.html">MPI_Comm</a> *, int *, const char *, const char *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *, const char *, void *, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *, PETSC_FORTRAN_CHARLEN_T len1, PETSC_FORTRAN_CHARLEN_T len2, PETSC_FORTRAN_CHARLEN_T len3), void *ctx, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *ierr)</font></strong>
+<a name="line74"> 74: </a>{
+<a name="line75"> 75: </a>  <font color="#4169E1">if</font> ((<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)handler == (<a href="../../../../manualpages/Sys/PetscFortranCallbackFn.html">PetscFortranCallbackFn</a> *)petsctracebackerrorhandler_) *ierr = <a href="../../../../manualpages/Sys/PetscPushErrorHandler.html">PetscPushErrorHandler</a>(<a href="../../../../manualpages/Sys/PetscTraceBackErrorHandler.html">PetscTraceBackErrorHandler</a>, NULL);
+<a name="line76"> 76: </a>  <font color="#4169E1">else</font> {
+<a name="line77"> 77: </a>    f2    = handler;
+<a name="line78"> 78: </a>    *ierr = <a href="../../../../manualpages/Sys/PetscPushErrorHandler.html">PetscPushErrorHandler</a>(ourerrorhandler, ctx);
+<a name="line79"> 79: </a>  }
+<a name="line80"> 80: </a>}
+
+<a name="line82"> 82: </a><strong><font color="#4169E1"><a name="petscerror_"></a>PETSC_EXTERN void petscerror_(MPI_Fint *comm, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *number, <a href="../../../../manualpages/Sys/PetscErrorType.html">PetscErrorType</a> *p, char *message, PETSC_FORTRAN_CHARLEN_T len)</font></strong>
+<a name="line83"> 83: </a>{
+<a name="line84"> 84: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> nierr, *ierr = &amp;nierr;
+<a name="line85"> 85: </a>  char          *t1;
+<a name="line86"> 86: </a>  FIXCHAR(message, len, t1);
+<a name="line87"> 87: </a>  nierr = <a href="../../../../manualpages/Sys/PetscError.html">PetscError</a>(MPI_Comm_f2c(*(comm)), 0, NULL, NULL, *number, *p, <font color="#666666">"%s"</font>, t1);
+<a name="line88"> 88: </a>  FREECHAR(message, t1);
+<a name="line89"> 89: </a>}
+
+<a name="line91"> 91: </a><font color="#A020F0">#if defined(PETSC_HAVE_FORTRAN_FREE_LINE_LENGTH_NONE)</font>
+<a name="line92"> 92: </a><strong><font color="#4169E1"><a name="petscerrorf_"></a>PETSC_EXTERN void petscerrorf_(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *err, int *line, char *file, PETSC_FORTRAN_CHARLEN_T len)</font></strong>
+<a name="line93"> 93: </a>{
+<a name="line94"> 94: </a>  char          *tfile;
+<a name="line95"> 95: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr[] = {<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>}; <font color="#B22222">/* needed by FIXCHAR */</font>
+
+<a name="line97"> 97: </a>  FIXCHAR(file, len, tfile);
+<a name="line98"> 98: </a>  *err = <a href="../../../../manualpages/Sys/PetscError.html">PetscError</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, *line, NULL, tfile, *err, <a href="../../../../manualpages/Sys/PetscErrorType.html">PETSC_ERROR_REPEAT</a>, NULL);
+<a name="line99"> 99: </a>  FREECHAR(file, tfile);
+<a name="line100">100: </a>}
+
+<a name="line102">102: </a><strong><font color="#4169E1"><a name="petscerrormpi_"></a>PETSC_EXTERN void petscerrormpi_(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *err, int *line, char *file, PETSC_FORTRAN_CHARLEN_T len)</font></strong>
+<a name="line103">103: </a>{
+<a name="line104">104: </a>  char           errorstring[2 * MPI_MAX_ERROR_STRING];
+<a name="line105">105: </a>  char          *tfile;
+<a name="line106">106: </a>  <a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> ierr[] = {<a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_SUCCESS</a>}; <font color="#B22222">/* needed by FIXCHAR */</font>
+
+<a name="line108">108: </a>  FIXCHAR(file, len, tfile);
+<a name="line109">109: </a>  <a href="../../../../manualpages/Sys/PetscMPIErrorString.html">PetscMPIErrorString</a>(*err, 2 * MPI_MAX_ERROR_STRING, errorstring);
+<a name="line110">110: </a>  *err = <a href="../../../../manualpages/Sys/PetscError.html">PetscError</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, *line, NULL, file, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MPI</a>, <a href="../../../../manualpages/Sys/PetscErrorType.html">PETSC_ERROR_INITIAL</a>, <font color="#666666">"MPI error %d %s"</font>, *err, errorstring);
+<a name="line111">111: </a>  FREECHAR(file, tfile);
+<a name="line112">112: </a>  *err = <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MPI</a>;
+<a name="line113">113: </a>}
+<a name="line114">114: </a><font color="#A020F0">#else</font>
+<a name="line115">115: </a><strong><font color="#4169E1"><a name="petscerrorf_"></a>PETSC_EXTERN void petscerrorf_(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *err)</font></strong>
+<a name="line116">116: </a>{
+<a name="line117">117: </a>  *err = <a href="../../../../manualpages/Sys/PetscError.html">PetscError</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, 0, NULL, NULL, *err, <a href="../../../../manualpages/Sys/PetscErrorType.html">PETSC_ERROR_REPEAT</a>, NULL);
+<a name="line118">118: </a>}
+
+<a name="line120">120: </a><strong><font color="#4169E1"><a name="petscerrormpi_"></a>PETSC_EXTERN void petscerrormpi_(<a href="../../../../manualpages/Sys/PetscErrorCode.html">PetscErrorCode</a> *err)</font></strong>
+<a name="line121">121: </a>{
+<a name="line122">122: </a>  char errorstring[2 * MPI_MAX_ERROR_STRING];
+
+<a name="line124">124: </a>  <a href="../../../../manualpages/Sys/PetscMPIErrorString.html">PetscMPIErrorString</a>(*err, 2 * MPI_MAX_ERROR_STRING, errorstring);
+<a name="line125">125: </a>  *err = <a href="../../../../manualpages/Sys/PetscError.html">PetscError</a>(<a href="../../../../manualpages/Sys/PETSC_COMM_SELF.html">PETSC_COMM_SELF</a>, 0, NULL, NULL, <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MPI</a>, <a href="../../../../manualpages/Sys/PetscErrorType.html">PETSC_ERROR_INITIAL</a>, <font color="#666666">"MPI error %d %s"</font>, *err, errorstring);
+<a name="line126">126: </a>  *err = <a href="../../../../manualpages/Sys/PetscErrorCode.html">PETSC_ERR_MPI</a>;
+<a name="line127">127: </a>}
+<a name="line128">128: </a><font color="#A020F0">#endif</font>
+</pre>
+</body>
+
+</html>
+
