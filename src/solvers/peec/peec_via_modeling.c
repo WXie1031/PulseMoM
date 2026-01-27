@@ -9,11 +9,11 @@
 
 #include "peec_via_modeling.h"
 #include "peec_solver.h"
-#include "../../core/core_geometry.h"
-#include "../../core/core_mesh.h"
-#include "../../core/core_common.h"
-#include "../../core/integration_utils.h"
-#include "../../core/electromagnetic_kernels.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../common/core_common.h"
+#include "../../operators/integration/integration_utils.h"
+#include "../../operators/kernels/electromagnetic_kernels.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -574,7 +574,7 @@ complex_t peec_compute_via_greens_function_wgf(
 }
 
 int peec_convert_via_node_to_peec_via(const void* via_node, peec_via_t* peec_via) {
-    // TODO: Convert via_node_t from peec_manhattan_mesh.c to peec_via_t
+    // TODO: Convert via_node_t from discretization/mesh/manhattan_mesh_peec.c to peec_via_t
     return 0;
 }
 

@@ -10,9 +10,9 @@
 
 #include "mom_hmatrix.h"
 #include "mom_aca.h"
-#include "../core/electromagnetic_kernels.h"
-#include "../core/integration_utils.h"
-#include "../core/core_common.h"  // For ONE_HALF constant
+#include "../../operators/kernels/electromagnetic_kernels.h"
+#include "../../operators/integration/integration_utils.h"
+#include "../../common/core_common.h"  // For ONE_HALF constant
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D}</ProjectGuid>
+    <RootNamespace>PulseIE_Core</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- vcpkg路径配置 - 如果vcpkg已安装，优先使用vcpkg的库 -->
+    <VCPKG_ROOT Condition="'$(VCPKG_ROOT)' == ''">D:\Project\vcpkg-master</VCPKG_ROOT>
+    <VCPKG_INSTALLED_DIR Condition="'$(VCPKG_INSTALLED_DIR)' == ''">$(VCPKG_ROOT)\installed\x64-windows</VCPKG_INSTALLED_DIR>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\obj\$(ProjectName)\</IntDir>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;ENABLE_OPENBLAS;ENABLE_HDF5;ENABLE_SUPERLU;ENABLE_GSL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)core;$(ProjectDir)core\geometry;$(ProjectDir)core\math;$(ProjectDir)core\algorithms;$(ProjectDir)solvers;$(ProjectDir)solvers\hybrid;$(ProjectDir)mesh;$(ProjectDir)modeling;$(ProjectDir)workflows;$(ProjectDir)io;$(ProjectDir)materials;$(ProjectDir)utils;$(ProjectDir)physics;$(ProjectDir)discretization;$(ProjectDir)operators;$(ProjectDir)backend;$(ProjectDir)orchestration;$(ProjectDir)common;$(VCPKG_INSTALLED_DIR)\include;$(SolutionDir)libs\gmsh-4.15.0-Windows64-sdk\include;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\include;C:\Program Files\HDF_Group\HDF5\1.14.6\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libopenblas.lib;hdf5.lib;hdf5_hl.lib;superlu.lib;gsl.lib;gslcblas.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VCPKG_INSTALLED_DIR)\lib;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\lib;C:\Program Files\HDF_Group\HDF5\1.14.6\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;ENABLE_OPENBLAS;ENABLE_HDF5;ENABLE_SUPERLU;ENABLE_GSL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)core;$(ProjectDir)core\geometry;$(ProjectDir)core\math;$(ProjectDir)core\algorithms;$(ProjectDir)solvers;$(ProjectDir)solvers\hybrid;$(ProjectDir)mesh;$(ProjectDir)modeling;$(ProjectDir)workflows;$(ProjectDir)io;$(ProjectDir)materials;$(ProjectDir)utils;$(ProjectDir)physics;$(ProjectDir)discretization;$(ProjectDir)operators;$(ProjectDir)backend;$(ProjectDir)orchestration;$(ProjectDir)common;$(VCPKG_INSTALLED_DIR)\include;$(SolutionDir)libs\gmsh-4.15.0-Windows64-sdk\include;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\include;C:\Program Files\HDF_Group\HDF5\1.14.6\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libopenblas.lib;hdf5.lib;hdf5_hl.lib;superlu.lib;gsl.lib;gslcblas.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VCPKG_INSTALLED_DIR)\lib;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\lib;C:\Program Files\HDF_Group\HDF5\1.14.6\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;ENABLE_OPENBLAS;ENABLE_HDF5;ENABLE_SUPERLU;ENABLE_GSL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)core;$(ProjectDir)core\geometry;$(ProjectDir)core\math;$(ProjectDir)core\algorithms;$(ProjectDir)solvers;$(ProjectDir)solvers\hybrid;$(ProjectDir)mesh;$(ProjectDir)modeling;$(ProjectDir)workflows;$(ProjectDir)io;$(ProjectDir)materials;$(ProjectDir)utils;$(ProjectDir)physics;$(ProjectDir)discretization;$(ProjectDir)operators;$(ProjectDir)backend;$(ProjectDir)orchestration;$(ProjectDir)common;$(VCPKG_INSTALLED_DIR)\include;$(SolutionDir)libs\gmsh-4.15.0-Windows64-sdk\include;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\include;C:\Program Files\HDF_Group\HDF5\1.14.6\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <ProgramDataBaseFileName>$(IntDir)%(Filename).pdb</ProgramDataBaseFileName>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libopenblas.lib;hdf5.lib;hdf5_hl.lib;superlu.lib;gsl.lib;gslcblas.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VCPKG_INSTALLED_DIR)\lib;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\lib;C:\Program Files\HDF_Group\HDF5\1.14.6\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;ENABLE_OPENBLAS;ENABLE_HDF5;ENABLE_SUPERLU;ENABLE_GSL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)core;$(ProjectDir)core\geometry;$(ProjectDir)core\math;$(ProjectDir)core\algorithms;$(ProjectDir)solvers;$(ProjectDir)solvers\hybrid;$(ProjectDir)mesh;$(ProjectDir)modeling;$(ProjectDir)workflows;$(ProjectDir)io;$(ProjectDir)materials;$(ProjectDir)utils;$(ProjectDir)physics;$(ProjectDir)discretization;$(ProjectDir)operators;$(ProjectDir)backend;$(ProjectDir)orchestration;$(ProjectDir)common;$(VCPKG_INSTALLED_DIR)\include;$(SolutionDir)libs\gmsh-4.15.0-Windows64-sdk\include;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\include;C:\Program Files\HDF_Group\HDF5\1.14.6\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libopenblas.lib;hdf5.lib;hdf5_hl.lib;superlu.lib;gsl.lib;gslcblas.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VCPKG_INSTALLED_DIR)\lib;$(SolutionDir)libs\OpenBLAS-0.3.30-x64\lib;C:\Program Files\HDF_Group\HDF5\1.14.6\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="discretization\geometry\core_geometry.h" />
+    <ClInclude Include="operators\kernels\core_kernels.h" />
+    <ClInclude Include="discretization\mesh\core_mesh.h" />
+    <ClInclude Include="backend\solvers\core_solver.h" />
+    <ClInclude Include="operators\kernels\electromagnetic_kernels.h" />
+    <ClInclude Include="operators\integration\integral_nearly_singular.h" />
+    <ClInclude Include="operators\integration\integral_logarithmic_singular.h" />
+    <ClInclude Include="operators\integration\integration_utils_optimized.h" />
+    <ClInclude Include="operators\kernels\kernel_cfie.h" />
+    <ClInclude Include="operators\kernels\kernel_mfie.h" />
+    <ClInclude Include="operators\kernels\kernel_cavity_waveguide.h" />
+    <ClInclude Include="operators\integration\periodic_ewald.h" />
+    <!-- core\higher_order_basis.h removed - use discretization\basis\higher_order_basis.h instead -->
+    <ClInclude Include="operators\kernels\windowed_greens_function.h" />
+    <ClInclude Include="operators\greens\layered_greens_function.h" />
+    <ClInclude Include="solvers\peec\peec_via_modeling.h" />
+    <!-- mesh\mesh_engine.h removed - use discretization\mesh\mesh_engine.h instead -->
+    <ClInclude Include="solvers\mom\mom_solver.h" />
+    <ClInclude Include="solvers\mom\mom_layered_medium.h" />
+    <ClInclude Include="solvers\mom\mom_aca.h" />
+    <ClInclude Include="solvers\mom\mom_hmatrix.h" />
+    <ClInclude Include="solvers\mom\mom_mlfmm.h" />
+    <ClInclude Include="solvers\mom\mom_matvec.h" />
+    <ClInclude Include="solvers\peec\peec_solver.h" />
+    <ClInclude Include="solvers\peec\peec_layered_medium.h" />
+    <ClInclude Include="solvers\peec\peec_plane_wave.h" />
+    <ClInclude Include="solvers\mtl\mtl_parameter_import.h" />
+    <!-- L5 Orchestration Layer - Time Domain and Wideband Analysis -->
+    <ClInclude Include="orchestration\mom_orchestration\mom_time_domain.h" />
+    <ClInclude Include="orchestration\mom_orchestration\mom_algorithm_selector.h" />
+    <ClInclude Include="orchestration\peec_orchestration\peec_time_domain.h" />
+    <ClInclude Include="orchestration\peec_orchestration\peec_algorithm_selector.h" />
+    <ClInclude Include="orchestration\mtl_orchestration\mtl_wideband.h" />
+    <ClInclude Include="orchestration\mtl_orchestration\mtl_time_domain.h" />
+    <ClInclude Include="orchestration\circuit_coupling\circuit_coupling_orchestration.h" />
+    <!-- L3 Operator Approximation Models -->
+    <ClInclude Include="operators\operator_approximation\aca_operator_model.h" />
+    <ClInclude Include="operators\operator_approximation\hmatrix_operator_model.h" />
+    <ClInclude Include="operators\coupling\quasistatic_coupling.h" />
+    <ClInclude Include="physics\excitation\excitation_plane_wave.h" />
+    <ClInclude Include="io\file_formats\export_hdf5.h" />
+    <ClInclude Include="io\file_formats\export_vtk.h" />
+    <ClInclude Include="io\file_formats\export_formats.h" />
+    <ClInclude Include="io\postprocessing\field_postprocessing.h" />
+    <ClInclude Include="common\errors_core.h" />
+    <!-- core\memory_pool.h removed - use backend\memory\memory_pool.h instead -->
+    <ClInclude Include="io\file_formats\touchstone_io.h" />
+    <ClInclude Include="discretization\geometry\port_support_extended.h" />
+    <ClInclude Include="discretization\geometry\pcb_ic_structures.h" />
+    <ClInclude Include="modeling\pcb\pcb_electromagnetic_modeling.h" />
+    <ClInclude Include="orchestration\workflow\pcb\pcb_simulation_workflow.h" />
+    <ClInclude Include="io\pcb_file_io.h" />
+    <!-- Refactored Architecture Headers -->
+    <!-- L1 Physics Layer -->
+    <ClInclude Include="physics\mom\mom_physics.h" />
+    <ClInclude Include="physics\peec\peec_physics.h" />
+    <ClInclude Include="physics\mtl\mtl_physics.h" />
+    <ClInclude Include="physics\hybrid\hybrid_physics_boundary.h" />
+    <!-- L2 Discretization Layer -->
+    <ClInclude Include="discretization\geometry\geometry_engine.h" />
+    <ClInclude Include="discretization\mesh\mesh_engine.h" />
+    <ClInclude Include="discretization\basis\rwg_basis.h" />
+    <ClInclude Include="discretization\basis\higher_order_basis.h" />
+    <ClInclude Include="discretization\basis\rooftop_basis.h" />
+    <!-- L3 Operators Layer -->
+    <ClInclude Include="operators\kernels\greens_function.h" />
+    <ClInclude Include="operators\kernels\mom_kernel.h" />
+    <ClInclude Include="operators\kernels\peec_kernel.h" />
+    <ClInclude Include="operators\integration\integration_utils.h" />
+    <ClInclude Include="operators\integration\singular_integration.h" />
+    <ClInclude Include="operators\matvec\matvec_operator.h" />
+    <ClInclude Include="operators\assembler\matrix_assembler.h" />
+    <ClInclude Include="operators\coupling\coupling_operator.h" />
+    <!-- L4 Backend Layer -->
+    <ClInclude Include="backend\memory\memory_pool.h" />
+    <ClInclude Include="backend\math\blas_interface.h" />
+    <ClInclude Include="backend\solvers\solver_interface.h" />
+    <ClInclude Include="backend\solvers\direct_solver.h" />
+    <ClInclude Include="backend\solvers\iterative_solver.h" />
+    <ClInclude Include="backend\algorithms\fast\aca.h" />
+    <ClInclude Include="backend\algorithms\fast\hmatrix.h" />
+    <ClInclude Include="backend\gpu\gpu_linear_algebra.h" />
+    <ClInclude Include="backend\gpu\gpu_kernels.h" />
+    <!-- L5 Orchestration Layer -->
+    <ClInclude Include="orchestration\execution\execution_order.h" />
+    <ClInclude Include="orchestration\execution\data_flow.h" />
+    <ClInclude Include="orchestration\hybrid_solver\coupling_manager.h" />
+    <ClInclude Include="orchestration\hybrid_solver\hybrid_solver.h" />
+    <ClInclude Include="orchestration\workflow\workflow_engine.h" />
+    <!-- L6 IO Layer -->
+    <ClInclude Include="io\file_formats\file_io.h" />
+    <ClInclude Include="io\api\c_api.h" />
+    <ClInclude Include="io\cli\cli_main.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="discretization\geometry\core_geometry.c" />
+    <ClCompile Include="operators\kernels\core_kernels.c" />
+    <!-- core\core_mesh_unified.c removed - functionality merged into discretization\mesh\mesh_engine.c -->
+    <ClCompile Include="backend\solvers\core_solver.c" />
+    <ClCompile Include="operators\kernels\electromagnetic_kernels.c" />
+    <!-- core\integration_utils.c removed - use operators\integration\integration_utils.c instead -->
+    <ClCompile Include="operators\integration\integral_nearly_singular.c" />
+    <ClCompile Include="operators\integration\integral_logarithmic_singular.c" />
+    <ClCompile Include="operators\integration\integration_utils_optimized.c" />
+    <ClCompile Include="operators\kernels\kernel_cfie.c" />
+    <ClCompile Include="operators\kernels\kernel_mfie.c" />
+    <ClCompile Include="operators\kernels\kernel_cavity_waveguide.c" />
+    <ClCompile Include="operators\integration\periodic_ewald.c" />
+    <!-- core\higher_order_basis.c removed - use discretization\basis\higher_order_basis.c instead -->
+    <ClCompile Include="operators\kernels\windowed_greens_function.c" />
+    <ClCompile Include="operators\greens\layered_greens_function_unified.c" />
+    <ClCompile Include="solvers\peec\peec_via_modeling.c" />
+    <!-- mesh\mesh_engine.c removed - use discretization\mesh\mesh_engine.c instead -->
+    <ClCompile Include="discretization\mesh\mesh_algorithms.c" />
+    <ClCompile Include="discretization\mesh\mesh_subsystem.c" />
+    <ClCompile Include="discretization\mesh\manhattan_mesh_peec.c" />
+    <ClCompile Include="discretization\mesh\triangular_mesh_peec.c" />
+    <ClCompile Include="discretization\mesh\triangular_mesh_solver.c" />
+    <!-- gmsh_surface_mesh.cpp temporarily disabled due to Gmsh API compatibility issues -->
+    <!-- <ClCompile Include="mesh\gmsh_surface_mesh.cpp">
+      <CompileAs>Default</CompileAs>
+    </ClCompile> -->
+    <ClCompile Include="solvers\mom\mom_solver_unified.c" />
+    <ClCompile Include="solvers\mom\mom_solver_min.c" />
+    <ClCompile Include="solvers\mom\mom_layered_medium.c" />
+    <ClCompile Include="solvers\mom\mom_aca.c" />
+    <ClCompile Include="solvers\mom\mom_hmatrix.c" />
+    <ClCompile Include="solvers\mom\mom_mlfmm.c" />
+    <ClCompile Include="solvers\mom\mom_matvec.c" />
+    <!-- tri_mesh.c removed - triangular mesh generation belongs to L2 discretization layer, use discretization/mesh/triangular_mesh_solver.c instead -->
+    <!-- peec_manhattan_mesh.c moved - Manhattan mesh generation belongs to L2 discretization layer, use discretization/mesh/manhattan_mesh_peec.c instead -->
+    <ClCompile Include="solvers\peec\peec_solver_unified.c" />
+    <ClCompile Include="solvers\peec\peec_solver_min.c" />
+    <ClCompile Include="solvers\peec\peec_layered_medium.c" />
+    <ClCompile Include="solvers\peec\peec_plane_wave.c" />
+    <ClCompile Include="solvers\peec\peec_non_manhattan_geometry.c" />
+    <!-- peec_triangular_mesh.c moved - triangular mesh generation belongs to L2 discretization layer, use discretization/mesh/triangular_mesh_peec.c instead -->
+    <ClCompile Include="solvers\peec\peec_geometry_support.c" />
+    <ClCompile Include="solvers\mtl\mtl_parameter_import.c" />
+    <!-- L5 Orchestration Layer - Time Domain and Wideband Analysis -->
+    <ClCompile Include="orchestration\mom_orchestration\mom_time_domain.c" />
+    <ClCompile Include="orchestration\mom_orchestration\mom_algorithm_selector.c" />
+    <ClCompile Include="orchestration\peec_orchestration\peec_time_domain.c" />
+    <ClCompile Include="orchestration\peec_orchestration\peec_algorithm_selector.c" />
+    <ClCompile Include="orchestration\mtl_orchestration\mtl_wideband.c" />
+    <ClCompile Include="orchestration\mtl_orchestration\mtl_time_domain.c" />
+    <ClCompile Include="orchestration\circuit_coupling\circuit_coupling_orchestration.c" />
+    <ClCompile Include="operators\coupling\quasistatic_coupling.c" />
+    <ClCompile Include="physics\excitation\excitation_plane_wave.c" />
+    <ClCompile Include="io\file_formats\export_hdf5.c" />
+    <ClCompile Include="io\file_formats\export_vtk.c" />
+    <ClCompile Include="io\file_formats\export_formats.c" />
+    <ClCompile Include="io\results\result_bundle.c" />
+    <ClCompile Include="io\postprocessing\field_postprocessing.c" />
+    <ClCompile Include="common\errors_core.c" />
+    <!-- core\memory_pool.c removed - use backend\memory\memory_pool.c instead -->
+    <ClCompile Include="io\file_formats\touchstone_io.c" />
+    <ClCompile Include="discretization\geometry\port_support_extended.c" />
+    <ClCompile Include="discretization\geometry\pcb_ic_structures.c" />
+    <ClCompile Include="modeling\pcb\pcb_electromagnetic_modeling.c" />
+    <ClCompile Include="orchestration\workflow\pcb\pcb_simulation_workflow.c" />
+    <ClCompile Include="orchestration\hybrid_solver\mtl_coupling\mtl_hybrid_coupling.c" />
+    <ClCompile Include="io\pcb_file_io.c" />
+    <!-- Refactored Architecture Files -->
+    <!-- L1 Physics Layer -->
+    <ClCompile Include="physics\mom\mom_physics.c" />
+    <ClCompile Include="physics\peec\peec_physics.c" />
+    <ClCompile Include="physics\mtl\mtl_physics.c" />
+    <ClCompile Include="physics\hybrid\hybrid_physics_boundary.c" />
+    <!-- L2 Discretization Layer -->
+    <ClCompile Include="discretization\geometry\geometry_engine.c" />
+    <ClCompile Include="discretization\mesh\mesh_engine.c" />
+    <ClCompile Include="discretization\basis\rwg_basis.c" />
+    <ClCompile Include="discretization\basis\higher_order_basis.c" />
+    <ClCompile Include="discretization\basis\rooftop_basis.c" />
+    <!-- L3 Operators Layer -->
+    <ClCompile Include="operators\kernels\greens_function.c" />
+    <ClCompile Include="operators\kernels\mom_kernel.c" />
+    <ClCompile Include="operators\kernels\peec_kernel.c" />
+    <ClCompile Include="operators\integration\integration_utils.c" />
+    <ClCompile Include="operators\integration\singular_integration.c" />
+    <ClCompile Include="operators\matvec\matvec_operator.c" />
+    <ClCompile Include="operators\assembler\matrix_assembler.c" />
+    <ClCompile Include="operators\coupling\coupling_operator.c" />
+    <!-- L4 Backend Layer -->
+    <ClCompile Include="backend\memory\memory_pool.c" />
+    <ClCompile Include="backend\math\blas_interface.c" />
+    <ClCompile Include="backend\solvers\solver_interface.c" />
+    <ClCompile Include="backend\solvers\direct_solver.c" />
+    <ClCompile Include="backend\solvers\iterative_solver.c" />
+    <ClCompile Include="backend\algorithms\fast\aca.c" />
+    <ClCompile Include="backend\algorithms\fast\hmatrix.c" />
+    <ClCompile Include="backend\gpu\gpu_linear_algebra.c" />
+    <!-- L5 Orchestration Layer -->
+    <ClCompile Include="orchestration\execution\execution_order.c" />
+    <ClCompile Include="orchestration\execution\data_flow.c" />
+    <ClCompile Include="orchestration\hybrid_solver\coupling_manager.c" />
+    <ClCompile Include="orchestration\hybrid_solver\hybrid_solver.c" />
+    <ClCompile Include="orchestration\workflow\workflow_engine.c" />
+    <!-- L6 IO Layer -->
+    <ClCompile Include="io\file_formats\file_io.c" />
+    <ClCompile Include="io\api\c_api.c" />
+    <ClCompile Include="io\cli\cli_main.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

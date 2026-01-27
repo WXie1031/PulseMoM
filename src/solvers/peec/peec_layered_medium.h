@@ -12,7 +12,7 @@
 #ifndef PEEC_LAYERED_MEDIUM_H
 #define PEEC_LAYERED_MEDIUM_H
 
-#include "../../core/layered_greens_function.h"
+#include "../../operators/greens/layered_greens_function.h"
 #include "peec_solver.h"
 #include <stdbool.h>
 

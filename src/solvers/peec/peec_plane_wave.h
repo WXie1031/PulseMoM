@@ -10,7 +10,7 @@
 #define PEEC_PLANE_WAVE_H
 
 #include "peec_solver.h"
-#include "../../core/excitation_plane_wave.h"
+#include "../../physics/excitation/excitation_plane_wave.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus

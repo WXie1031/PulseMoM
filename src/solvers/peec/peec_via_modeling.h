@@ -20,10 +20,10 @@
 #ifndef PEEC_VIA_MODELING_H
 #define PEEC_VIA_MODELING_H
 
-#include "../../core/core_common.h"
-#include "../../core/core_geometry.h"
-#include "../../core/core_mesh.h"  // For mesh_t type (must be included before using mesh_t)
-#include "../../core/layered_greens_function.h"
+#include "../../common/core_common.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"  // For mesh_t type (must be included before using mesh_t)
+#include "../../operators/greens/layered_greens_function.h"
 #include <stdbool.h>
 
 // Forward declaration if needed (mesh_t is defined in core_mesh.h)
@@ -362,7 +362,7 @@ via_material_t peec_get_default_via_material(void);
  * @return 0 on success
  */
 int peec_convert_via_node_to_peec_via(
-    const void* via_node,  // via_node_t from peec_manhattan_mesh.c
+    const void* via_node,  // via_node_t from discretization/mesh/manhattan_mesh_peec.c
     peec_via_t* peec_via
 );
 

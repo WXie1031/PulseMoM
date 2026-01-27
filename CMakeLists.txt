@@ -66,43 +66,123 @@ endif()
 find_package(OpenMP REQUIRED)
 find_package(Threads REQUIRED)
 
-# Set library paths for local installations
-set(CMAKE_PREFIX_PATH 
-    ${CMAKE_SOURCE_DIR}/libs/gmsh-4.15.0-Windows64-sdk
-    ${CMAKE_SOURCE_DIR}/libs/occt-vc14-64
-    ${CMAKE_SOURCE_DIR}/libs/boost_1_89_0
-    ${CMAKE_SOURCE_DIR}/libs/OpenBLAS-0.3.30-x64
-    ${CMAKE_SOURCE_DIR}/libs/petsc-3.24.1
-    ${CMAKE_PREFIX_PATH}
-)
+# ============================================================================
+# vcpkg库集成（优先使用vcpkg，fallback到本地安装）
+# ============================================================================
 
-# CGAL integration
-find_package(CGAL CONFIG QUIET)
-if(CGAL_FOUND)
-    message(STATUS "CGAL found: ${CGAL_VERSION}")
-    add_definitions(-DUSE_CGAL)
+# OpenBLAS - 优先使用vcpkg
+find_package(OpenBLAS QUIET)
+if(OpenBLAS_FOUND)
+    message(STATUS "OpenBLAS found via vcpkg: ${OpenBLAS_VERSION}")
+    add_definitions(-DUSE_OPENBLAS -DENABLE_OPENBLAS)
+    set(USE_OPENBLAS TRUE)
 else()
-    message(STATUS "CGAL not found, using fallback implementations")
-endif()
-
-# Gmsh integration - use C API for Windows compatibility
-set(GMSH_ROOT ${CMAKE_SOURCE_DIR}/libs/gmsh-4.15.0-Windows64-sdk)
-if(EXISTS ${GMSH_ROOT}/include/gmshc.h)
-    set(GMSH_INCLUDE_DIR ${GMSH_ROOT}/include)
-    set(GMSH_LIBRARY ${GMSH_ROOT}/lib/gmsh.dll.lib)
-    if(EXISTS ${GMSH_LIBRARY})
-        message(STATUS "Gmsh C API found")
-        add_definitions(-DUSE_GMSH)
+    # Fallback to local installation
+    set(OpenBLAS_DIR ${CMAKE_SOURCE_DIR}/libs/OpenBLAS-0.3.30-x64)
+    if(EXISTS ${OpenBLAS_DIR}/lib/cmake/openblas/OpenBLASConfig.cmake)
+        find_package(OpenBLAS QUIET PATHS ${OpenBLAS_DIR})
+        if(OpenBLAS_FOUND)
+            message(STATUS "OpenBLAS found in local libs")
+            add_definitions(-DUSE_OPENBLAS -DENABLE_OPENBLAS)
+            set(USE_OPENBLAS TRUE)
+        endif()
     endif()
 endif()
 
-# OpenCascade integration
-set(OpenCascade_DIR ${CMAKE_SOURCE_DIR}/libs/occt-vc14-64)
-if(EXISTS ${OpenCascade_DIR}/inc/STEPControl_Reader.hxx)
-    message(STATUS "OpenCascade found in local libs")
-    set(OpenCascade_INCLUDE_DIR ${OpenCascade_DIR}/inc)
-    file(GLOB OpenCascade_LIBRARIES ${OpenCascade_DIR}/win64/vc14/lib/*.lib)
+# HDF5 - 优先使用vcpkg
+find_package(HDF5 QUIET COMPONENTS C HL)
+if(HDF5_FOUND)
+    message(STATUS "HDF5 found via vcpkg: ${HDF5_VERSION}")
+    add_definitions(-DUSE_HDF5 -DENABLE_HDF5)
+    set(USE_HDF5 TRUE)
+else()
+    # Fallback to system installation
+    find_package(HDF5 QUIET)
+    if(HDF5_FOUND)
+        message(STATUS "HDF5 found in system")
+        add_definitions(-DUSE_HDF5 -DENABLE_HDF5)
+        set(USE_HDF5 TRUE)
+    endif()
+endif()
+
+# SuperLU - 优先使用vcpkg
+find_package(SuperLU QUIET)
+if(SuperLU_FOUND)
+    message(STATUS "SuperLU found via vcpkg")
+    add_definitions(-DUSE_SUPERLU -DENABLE_SUPERLU)
+    set(USE_SUPERLU TRUE)
+else()
+    message(STATUS "SuperLU not found, using dense matrix conversion")
+endif()
+
+# GSL - 优先使用vcpkg
+find_package(GSL QUIET)
+if(GSL_FOUND)
+    message(STATUS "GSL found via vcpkg: ${GSL_VERSION}")
+    add_definitions(-DUSE_GSL -DENABLE_GSL)
+    set(USE_GSL TRUE)
+else()
+    message(STATUS "GSL not found, using custom integration methods")
+endif()
+
+# CGAL - 优先使用vcpkg
+find_package(CGAL CONFIG QUIET)
+if(CGAL_FOUND)
+    message(STATUS "CGAL found via vcpkg: ${CGAL_VERSION}")
+    add_definitions(-DUSE_CGAL)
+    set(USE_CGAL TRUE)
+else()
+    # Fallback to local installation
+    set(CMAKE_PREFIX_PATH 
+        ${CMAKE_SOURCE_DIR}/libs/CGAL-6.1
+        ${CMAKE_PREFIX_PATH}
+    )
+    find_package(CGAL CONFIG QUIET)
+    if(CGAL_FOUND)
+        message(STATUS "CGAL found in local libs")
+        add_definitions(-DUSE_CGAL)
+        set(USE_CGAL TRUE)
+    else()
+        message(STATUS "CGAL not found, using fallback implementations")
+    endif()
+endif()
+
+# Gmsh - 优先使用vcpkg
+find_package(Gmsh QUIET)
+if(Gmsh_FOUND)
+    message(STATUS "Gmsh found via vcpkg: ${Gmsh_VERSION}")
+    add_definitions(-DUSE_GMSH)
+    set(USE_GMSH TRUE)
+else()
+    # Fallback to local installation
+    set(GMSH_ROOT ${CMAKE_SOURCE_DIR}/libs/gmsh-4.15.0-Windows64-sdk)
+    if(EXISTS ${GMSH_ROOT}/include/gmshc.h)
+        set(GMSH_INCLUDE_DIR ${GMSH_ROOT}/include)
+        set(GMSH_LIBRARY ${GMSH_ROOT}/lib/gmsh.dll.lib)
+        if(EXISTS ${GMSH_LIBRARY})
+            message(STATUS "Gmsh C API found in local libs")
+            add_definitions(-DUSE_GMSH)
+            set(USE_GMSH TRUE)
+        endif()
+    endif()
+endif()
+
+# OpenCascade - 优先使用vcpkg
+find_package(OpenCascade QUIET)
+if(OpenCascade_FOUND)
+    message(STATUS "OpenCascade found via vcpkg")
     add_definitions(-DUSE_OPENCASCADE)
+    set(USE_OPENCASCADE TRUE)
+else()
+    # Fallback to local installation
+    set(OpenCascade_DIR ${CMAKE_SOURCE_DIR}/libs/occt-vc14-64)
+    if(EXISTS ${OpenCascade_DIR}/inc/STEPControl_Reader.hxx)
+        message(STATUS "OpenCascade found in local libs")
+        set(OpenCascade_INCLUDE_DIR ${OpenCascade_DIR}/inc)
+        file(GLOB OpenCascade_LIBRARIES ${OpenCascade_DIR}/win64/vc14/lib/*.lib)
+        add_definitions(-DUSE_OPENCASCADE)
+        set(USE_OPENCASCADE TRUE)
+    endif()
 endif()
 
 # Clipper2 integration
@@ -121,22 +201,29 @@ if(EXISTS ${Triangle_ROOT}/triangle.h)
     message(STATUS "Triangle found")
 endif()
 
-# Boost integration
-set(BOOST_ROOT ${CMAKE_SOURCE_DIR}/libs/boost_1_89_0)
+# Boost integration - 优先使用vcpkg
 find_package(Boost CONFIG QUIET)
 if(Boost_FOUND)
-    message(STATUS "Boost found: ${Boost_VERSION}")
+    message(STATUS "Boost found via vcpkg: ${Boost_VERSION}")
     add_definitions(-DUSE_BOOST)
+    set(USE_BOOST TRUE)
+else()
+    # Fallback to local installation
+    set(BOOST_ROOT ${CMAKE_SOURCE_DIR}/libs/boost_1_89_0)
+    find_package(Boost CONFIG QUIET)
+    if(Boost_FOUND)
+        message(STATUS "Boost found in local libs: ${Boost_VERSION}")
+        add_definitions(-DUSE_BOOST)
+        set(USE_BOOST TRUE)
+    endif()
 endif()
 
-# OpenBLAS integration
-set(OpenBLAS_DIR ${CMAKE_SOURCE_DIR}/libs/OpenBLAS-0.3.30-x64)
-if(EXISTS ${OpenBLAS_DIR}/lib/cmake/openblas/OpenBLASConfig.cmake)
-    find_package(OpenBLAS QUIET)
-    if(OpenBLAS_FOUND)
-        message(STATUS "OpenBLAS found")
-        add_definitions(-DUSE_OPENBLAS)
-    endif()
+# Eigen (可选) - 优先使用vcpkg
+find_package(Eigen3 QUIET)
+if(Eigen3_FOUND)
+    message(STATUS "Eigen3 found via vcpkg: ${Eigen3_VERSION}")
+    add_definitions(-DUSE_EIGEN)
+    set(USE_EIGEN TRUE)
 endif()
 
 # PETSc integration (source build required)
@@ -405,34 +492,61 @@ add_library(peec_solver STATIC ${PEEC_SOURCES})
 target_link_libraries(peec_solver PUBLIC mesh_generation_library)
 
 # --- Apps ---
-add_executable(mom_cli apps/mom_cli.c)
-if(MSVC)
-  set(CORE_BASE_SOURCES
-      src/core/core_geometry_min.c
-  )
-else()
-  set(CORE_BASE_SOURCES
-      src/core/core_geometry_min.c
-      src/core/core_mesh_unified.c
-      src/core/layered_greens_function_unified.c
-  )
-endif()
-add_library(core_base_library STATIC ${CORE_BASE_SOURCES})
-target_link_libraries(core_base_library PUBLIC OpenMP::OpenMP_C Threads::Threads)
-target_link_libraries(mom_cli PRIVATE core_base_library)
-if(TARGET electromagnetic_kernels)
-  target_link_libraries(mom_cli PRIVATE electromagnetic_kernels)
-endif()
-target_compile_definitions(mom_cli PRIVATE MOM_CLI_STUB_ONLY=1)
-# Optional minimal core library is not required for stub-only CLI
+# Standalone executables for MoM and PEEC solvers
+# These can be built separately or together
 
-if(MSVC)
-  add_executable(peec_cli apps/peec_cli_msvc_stub.c)
-  target_link_libraries(peec_cli peec_solver mesh_generation_library)
-else()
-  add_executable(peec_cli apps/peec_cli.c)
-  target_link_libraries(peec_cli peec_solver mesh_generation_library)
+# Option to build standalone executables
+option(BUILD_STANDALONE_EXECUTABLES "Build standalone MoM and PEEC executables" ON)
+option(BUILD_MOM_EXE "Build MoM solver executable" ${BUILD_STANDALONE_EXECUTABLES})
+option(BUILD_PEEC_EXE "Build PEEC solver executable" ${BUILD_STANDALONE_EXECUTABLES})
+
+# MoM Solver Executable
+if(BUILD_MOM_EXE)
+    add_executable(mom_solver_exe
+        src/apps/mom_cli/main_mom.c
+    )
+    target_link_libraries(mom_solver_exe
+        PRIVATE
+        mom_solver
+        electromagnetic_kernel_library
+        geometry_processing_library
+        mesh_generation_library
+        core_base_library
+    )
+    if(OpenBLAS_FOUND)
+        target_link_libraries(mom_solver_exe PRIVATE ${OpenBLAS_LIBRARIES})
+    endif()
+    if(HDF5_FOUND)
+        target_link_libraries(mom_solver_exe PRIVATE ${HDF5_LIBRARIES})
+    endif()
+    target_link_libraries(mom_solver_exe PRIVATE OpenMP::OpenMP_C Threads::Threads)
 endif()
+
+# PEEC Solver Executable
+if(BUILD_PEEC_EXE)
+    add_executable(peec_solver_exe
+        src/apps/peec_cli/main_peec.c
+    )
+    target_link_libraries(peec_solver_exe
+        PRIVATE
+        peec_solver
+        electromagnetic_kernel_library
+        mesh_generation_library
+        geometry_processing_library
+        core_base_library
+    )
+    if(OpenBLAS_FOUND)
+        target_link_libraries(peec_solver_exe PRIVATE ${OpenBLAS_LIBRARIES})
+    endif()
+    if(HDF5_FOUND)
+        target_link_libraries(peec_solver_exe PRIVATE ${HDF5_LIBRARIES})
+    endif()
+    target_link_libraries(peec_solver_exe PRIVATE OpenMP::OpenMP_C Threads::Threads)
+endif()
+
+# NOTE: Legacy CLI applications in apps/ folder have been deprecated.
+# Use src/io/cli/cli_main.c (new architecture) or Python interface instead.
+# Python interface: python_interface/mom_peec_ctypes.py
 
 # Library integration test executable
 if(MSVC)
@@ -474,9 +588,11 @@ endif()
 # target_link_libraries(mtl_arbitrary_routing_example electromagnetic_kernel_library)
 
 # Installation
-set(APP_TARGETS mom_cli peec_cli)
-install(TARGETS ${APP_TARGETS}
-    RUNTIME DESTINATION bin
+# NOTE: Legacy CLI targets (mom_cli, peec_cli) have been removed.
+# Use src/io/cli/cli_main.c or Python interface instead.
+# set(APP_TARGETS mom_cli peec_cli)
+# install(TARGETS ${APP_TARGETS}
+#     RUNTIME DESTINATION bin
 )
 
 set(LIB_TARGETS electromagnetic_kernel_library 

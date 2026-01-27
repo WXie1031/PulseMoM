@@ -11,7 +11,7 @@
 #ifndef MOM_MATVEC_H
 #define MOM_MATVEC_H
 
-#include "../core/core_common.h"
+#include "../../common/core_common.h"
 #include "mom_aca.h"
 #include "mom_hmatrix.h"
 #include "mom_mlfmm.h"

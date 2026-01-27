@@ -1,6 +1,6 @@
-#include "../../core/layered_greens_function.h"
+#include "../../operators/greens/layered_greens_function.h"
 #include "peec_solver.h"
-#include "../../core/core_mesh.h"
+#include "../../discretization/mesh/core_mesh.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

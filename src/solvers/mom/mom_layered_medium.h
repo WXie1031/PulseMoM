@@ -12,8 +12,8 @@
 #ifndef MOM_LAYERED_MEDIUM_H
 #define MOM_LAYERED_MEDIUM_H
 
-#include "../../core/layered_greens_function.h"
-#include "../../core/core_mesh.h"
+#include "../../operators/greens/layered_greens_function.h"
+#include "../../discretization/mesh/core_mesh.h"
 #include "mom_solver.h"
 #include <stdbool.h>
 

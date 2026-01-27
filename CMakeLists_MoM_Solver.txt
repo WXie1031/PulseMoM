@@ -1,0 +1,53 @@
+# CMakeLists.txt for MoM Solver Standalone Solution
+# This generates a Visual Studio solution with only MoM solver and its dependencies
+#
+# Usage:
+#   mkdir build_mom
+#   cd build_mom
+#   cmake -G "Visual Studio 17 2022" -A x64 -f ../CMakeLists_MoM_Solver.txt ..
+
+cmake_minimum_required(VERSION 3.16)
+project(MoM_Solver VERSION 1.0.0 LANGUAGES C CXX)
+
+# Set source directory (parent directory)
+set(CMAKE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(CMAKE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
+
+# Include main CMakeLists.txt configuration
+# This will set up all the libraries, but we'll only build what we need
+include(${CMAKE_SOURCE_DIR}/CMakeLists.txt)
+
+# Mark PEEC-related targets as excluded
+if(TARGET peec_solver)
+    set_target_properties(peec_solver PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
+
+# Create MoM executable (if not already created in main CMakeLists)
+if(NOT TARGET mom_solver_exe)
+    add_executable(mom_solver_exe
+        ${CMAKE_SOURCE_DIR}/src/apps/mom_cli/main_mom.c
+    )
+
+    target_link_libraries(mom_solver_exe
+        PRIVATE
+        mom_solver
+        electromagnetic_kernel_library
+        geometry_processing_library
+        mesh_generation_library
+        core_base_library
+    )
+
+    # External dependencies
+    if(OpenBLAS_FOUND)
+        target_link_libraries(mom_solver_exe PRIVATE ${OpenBLAS_LIBRARIES})
+    endif()
+
+    if(HDF5_FOUND)
+        target_link_libraries(mom_solver_exe PRIVATE ${HDF5_LIBRARIES})
+    endif()
+
+    target_link_libraries(mom_solver_exe PRIVATE OpenMP::OpenMP_C Threads::Threads)
+endif()
+
+# Set as startup project
+set_property(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} PROPERTY VS_STARTUP_PROJECT mom_solver_exe)

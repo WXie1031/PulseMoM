@@ -1,0 +1,328 @@
+# CMakeLists.txt - Refactored Architecture
+# 
+# This file reflects the new six-layer architecture:
+# L1: Physics Definition
+# L2: Discretization
+# L3: Operators
+# L4: Numerical Backend
+# L5: Execution Orchestration
+# L6: IO/Workflow/API
+
+cmake_minimum_required(VERSION 3.16)
+project(PEEC_MoM_Unified_Framework VERSION 1.0.0 LANGUAGES C CXX CUDA)
+
+# ============================================================================
+# Build Configuration
+# ============================================================================
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(MSVC)
+  add_compile_options(/utf-8)
+  add_compile_options(/W4)
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+else()
+  add_compile_options(-Wall -Wextra -Wno-unused-parameter)
+endif()
+
+# ============================================================================
+# Common Module (Shared by all layers)
+# ============================================================================
+
+set(COMMON_SOURCES
+    src/common/types.h
+    src/common/constants.h
+    src/common/errors.h
+    src/common/layer_interfaces.h
+    src/common/compatibility_adapter.h
+)
+
+# ============================================================================
+# L1: Physics Definition Layer
+# ============================================================================
+
+set(L1_PHYSICS_SOURCES
+    src/L1_physics/mom/mom_physics.h
+    src/L1_physics/mom/mom_physics.c
+    src/L1_physics/peec/peec_physics.h
+    src/L1_physics/peec/peec_physics.c
+    src/L1_physics/mtl/mtl_physics.h
+    src/L1_physics/mtl/mtl_physics.c
+    src/L1_physics/hybrid/hybrid_physics_boundary.h
+    src/L1_physics/hybrid/hybrid_physics_boundary.c
+)
+
+add_library(L1_physics STATIC ${L1_PHYSICS_SOURCES})
+target_include_directories(L1_physics PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/L1_physics
+)
+
+# ============================================================================
+# L2: Discretization Layer
+# ============================================================================
+
+set(L2_DISCRETIZATION_SOURCES
+    src/L2_discretization/geometry/geometry_engine.h
+    src/L2_discretization/geometry/geometry_engine.c
+    src/L2_discretization/mesh/mesh_engine.h
+    src/L2_discretization/basis/rwg_basis.h
+    src/L2_discretization/basis/rwg_basis.c
+    src/L2_discretization/basis/higher_order_basis.h
+    src/L2_discretization/basis/rooftop_basis.h
+)
+
+add_library(L2_discretization STATIC ${L2_DISCRETIZATION_SOURCES})
+target_include_directories(L2_discretization PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/L2_discretization
+)
+target_link_libraries(L2_discretization PUBLIC L1_physics)
+
+# ============================================================================
+# L3: Operators Layer
+# ============================================================================
+
+set(L3_OPERATORS_SOURCES
+    src/L3_operators/kernels/greens_function.h
+    src/L3_operators/kernels/greens_function.c
+    src/L3_operators/kernels/mom_kernel.h
+    src/L3_operators/kernels/peec_kernel.h
+    src/L3_operators/integration/integration_utils.h
+    src/L3_operators/integration/integration_utils.c
+    src/L3_operators/integration/singular_integration.h
+    src/L3_operators/assembler/matrix_assembler.h
+    src/L3_operators/matvec/matvec_operator.h
+    src/L3_operators/coupling/coupling_operator.h
+)
+
+add_library(L3_operators STATIC ${L3_OPERATORS_SOURCES})
+target_include_directories(L3_operators PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/L1_physics
+    ${CMAKE_SOURCE_DIR}/src/L2_discretization
+    ${CMAKE_SOURCE_DIR}/src/L3_operators
+)
+target_link_libraries(L3_operators PUBLIC L1_physics L2_discretization)
+
+# ============================================================================
+# L4: Numerical Backend Layer
+# ============================================================================
+
+set(L4_BACKEND_SOURCES
+    src/L4_backend/solvers/solver_interface.h
+    src/L4_backend/solvers/direct_solver.h
+    src/L4_backend/solvers/iterative_solver.h
+    src/L4_backend/fast_algorithms/hmatrix.h
+    src/L4_backend/fast_algorithms/aca.h
+    src/L4_backend/gpu/gpu_linear_algebra.h
+    src/L4_backend/gpu/gpu_kernels.h
+    src/L4_backend/memory/memory_pool.h
+    src/L4_backend/math/blas_interface.h
+)
+
+# GPU sources (if CUDA is available)
+if(CUDA_FOUND)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 14)
+    list(APPEND L4_BACKEND_SOURCES
+        src/L4_backend/gpu/gpu_kernels.cu
+    )
+    add_definitions(-DUSE_CUDA)
+endif()
+
+add_library(L4_backend STATIC ${L4_BACKEND_SOURCES})
+target_include_directories(L4_backend PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/L3_operators
+    ${CMAKE_SOURCE_DIR}/src/L4_backend
+)
+target_link_libraries(L4_backend PUBLIC L3_operators)
+
+# Link GPU libraries if available
+if(CUDA_FOUND)
+    target_link_libraries(L4_backend PUBLIC CUDA::cudart CUDA::cublas)
+endif()
+
+# ============================================================================
+# L5: Execution Orchestration Layer
+# ============================================================================
+
+set(L5_ORCHESTRATION_SOURCES
+    src/L5_orchestration/hybrid_solver/hybrid_solver.h
+    src/L5_orchestration/hybrid_solver/coupling_manager.h
+    src/L5_orchestration/execution/execution_order.h
+    src/L5_orchestration/execution/data_flow.h
+    src/L5_orchestration/workflow/workflow_engine.h
+)
+
+add_library(L5_orchestration STATIC ${L5_ORCHESTRATION_SOURCES})
+target_include_directories(L5_orchestration PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/L1_physics
+    ${CMAKE_SOURCE_DIR}/src/L3_operators
+    ${CMAKE_SOURCE_DIR}/src/L4_backend
+    ${CMAKE_SOURCE_DIR}/src/L5_orchestration
+)
+target_link_libraries(L5_orchestration PUBLIC 
+    L1_physics 
+    L3_operators 
+    L4_backend
+)
+
+# ============================================================================
+# L6: IO/Workflow/API Layer
+# ============================================================================
+
+set(L6_IO_SOURCES
+    src/L6_io/file_formats/file_io.h
+    src/L6_io/api/c_api.h
+    src/L6_io/cli/cli_main.h
+)
+
+add_library(L6_io STATIC ${L6_IO_SOURCES})
+target_include_directories(L6_io PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/L5_orchestration
+    ${CMAKE_SOURCE_DIR}/src/L6_io
+)
+target_link_libraries(L6_io PUBLIC L5_orchestration)
+
+# ============================================================================
+# Main Executable
+# ============================================================================
+
+# Legacy main (for backward compatibility during migration)
+set(LEGACY_SOURCES
+    src/main.c
+    src/apps/mom_cli.c
+    src/apps/peec_cli.c
+    src/apps/hybrid_cli.c
+)
+
+# New architecture main
+set(NEW_MAIN_SOURCES
+    src/L6_io/cli/cli_main.c
+)
+
+# Build both during migration
+add_executable(pulsemom_legacy ${LEGACY_SOURCES})
+target_link_libraries(pulsemom_legacy 
+    L1_physics 
+    L2_discretization 
+    L3_operators 
+    L4_backend 
+    L5_orchestration 
+    L6_io
+)
+
+add_executable(pulsemom ${NEW_MAIN_SOURCES})
+target_link_libraries(pulsemom 
+    L1_physics 
+    L2_discretization 
+    L3_operators 
+    L4_backend 
+    L5_orchestration 
+    L6_io
+)
+
+# ============================================================================
+# Include Directories (for legacy code during migration)
+# ============================================================================
+
+include_directories(
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/L1_physics
+    ${CMAKE_SOURCE_DIR}/src/L2_discretization
+    ${CMAKE_SOURCE_DIR}/src/L3_operators
+    ${CMAKE_SOURCE_DIR}/src/L4_backend
+    ${CMAKE_SOURCE_DIR}/src/L5_orchestration
+    ${CMAKE_SOURCE_DIR}/src/L6_io
+    # Legacy paths (for backward compatibility)
+    ${CMAKE_SOURCE_DIR}/src/core
+    ${CMAKE_SOURCE_DIR}/src/solvers
+)
+
+# ============================================================================
+# Third-party Libraries
+# ============================================================================
+
+# Find OpenMP
+find_package(OpenMP REQUIRED)
+target_link_libraries(L4_backend PUBLIC OpenMP::OpenMP_C)
+
+# Find Threads
+find_package(Threads REQUIRED)
+target_link_libraries(L4_backend PUBLIC Threads::Threads)
+
+# Optional: CUDA (already handled above)
+# Optional: OpenCL
+find_package(OpenCL QUIET)
+if(OpenCL_FOUND)
+    add_definitions(-DUSE_OPENCL)
+    target_link_libraries(L4_backend PUBLIC OpenCL::OpenCL)
+endif()
+
+# Optional: BLAS/LAPACK
+find_package(BLAS QUIET)
+if(BLAS_FOUND)
+    target_link_libraries(L4_backend PUBLIC ${BLAS_LIBRARIES})
+endif()
+
+find_package(LAPACK QUIET)
+if(LAPACK_FOUND)
+    target_link_libraries(L4_backend PUBLIC ${LAPACK_LIBRARIES})
+endif()
+
+# ============================================================================
+# Installation
+# ============================================================================
+
+install(TARGETS 
+    L1_physics 
+    L2_discretization 
+    L3_operators 
+    L4_backend 
+    L5_orchestration 
+    L6_io
+    pulsemom
+    DESTINATION lib
+)
+
+install(DIRECTORY src/common/ 
+    DESTINATION include/common
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/L1_physics/ 
+    DESTINATION include/L1_physics
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/L2_discretization/ 
+    DESTINATION include/L2_discretization
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/L3_operators/ 
+    DESTINATION include/L3_operators
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/L4_backend/ 
+    DESTINATION include/L4_backend
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/L5_orchestration/ 
+    DESTINATION include/L5_orchestration
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/L6_io/ 
+    DESTINATION include/L6_io
+    FILES_MATCHING PATTERN "*.h"
+)

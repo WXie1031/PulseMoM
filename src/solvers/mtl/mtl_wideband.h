@@ -9,7 +9,8 @@
 #ifndef MTL_WIDEBAND_H
 #define MTL_WIDEBAND_H
 
-#include "../../core/mtl_solver.h"
+#include "../../physics/mtl/mtl_physics.h"  // Use standard L1 physics definitions
+#include "mtl_solver_module.h"  // For solver-specific types
 #include <stdbool.h>
 
 #ifdef __cplusplus

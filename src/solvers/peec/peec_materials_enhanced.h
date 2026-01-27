@@ -8,7 +8,7 @@
 #define PEEC_MATERIALS_ENHANCED_H
 
 #include "peec_satellite.h"
-#include "../core/core_geometry.h"
+#include "../../discretization/geometry/core_geometry.h"
 #include <complex.h>
 
 #ifdef __cplusplus

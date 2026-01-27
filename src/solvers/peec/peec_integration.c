@@ -9,10 +9,10 @@
  *****************************************************************************************/
 
 #include "peec_solver.h"
-#include "../core/core_geometry.h"
-#include "../core/core_mesh.h"
-#include "../core/core_common.h"
-#include "../core/electromagnetic_kernels.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../common/core_common.h"
+#include "../../operators/kernels/electromagnetic_kernels.h"
 #include "peec_geometry_support.h"
 #include <math.h>
 #include <stdlib.h>

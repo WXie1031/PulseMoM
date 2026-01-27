@@ -6,9 +6,9 @@
 
 #include "peec_satellite.h"
 #include "peec_solver.h"
-#include "../../core/core_geometry.h"
-#include "../../core/core_mesh.h"
-#include "../../core/core_kernels.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../operators/kernels/core_kernels.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -777,7 +777,7 @@ int peec_satellite_integrate_with_base_solver(peec_satellite_solver_t* satellite
     
     /* Update base configuration */
     base_config.frequency = satellite_solver->config.frequency;
-    base_config.formulation = PEEC_FORMULATION_FULL_WAVE;
+    base_config.formulation = PEEC_FORMULATION_FULL_WAVE;  // Use peec_formulation_t from physics layer
     base_config.include_retardation = true;
     base_config.retardation_tolerance = 1e-6;
     

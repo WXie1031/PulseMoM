@@ -11,8 +11,8 @@
 #ifndef MOM_ACA_H
 #define MOM_ACA_H
 
-#include "../core/core_common.h"
-#include "../core/core_mesh.h"
+#include "../../common/core_common.h"
+#include "../../discretization/mesh/core_mesh.h"
 
 // Compiler optimization hints
 #if defined(__GNUC__) || defined(__clang__)

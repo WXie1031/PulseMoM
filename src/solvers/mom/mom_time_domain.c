@@ -6,7 +6,7 @@
 
 #include "mom_time_domain.h"
 #include "mom_solver.h"
-#include "../../core/core_common.h"
+#include "../../common/core_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

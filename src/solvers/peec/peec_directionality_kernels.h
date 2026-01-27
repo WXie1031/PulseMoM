@@ -10,8 +10,8 @@
 #define PEEC_DIRECTIONALITY_KERNELS_H
 
 #include "peec_solver.h"
-#include "../core/core_geometry.h"
-#include "../core/core_common.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../common/core_common.h"
 
 #ifdef __cplusplus
 extern "C" {

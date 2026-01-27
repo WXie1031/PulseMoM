@@ -11,7 +11,8 @@
 #ifndef PEEC_SOLVER_MODULE_H
 #define PEEC_SOLVER_MODULE_H
 
-#include "../core/electromagnetic_kernel_library.h"
+#include "../../operators/kernels/electromagnetic_kernel_library.h"
+#include "../../physics/peec/peec_physics.h"  // L1 layer: physical definitions
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,12 +29,9 @@ typedef enum {
     PEEC_ELEMENT_PORT           // Circuit port
 } PeecElementType;
 
-typedef enum {
-    PEEC_FORMULATION_CLASSICAL, // Classical PEEC
-    PEEC_FORMULATION_MODIFIED,  // Modified PEEC with delay
-    PEEC_FORMULATION_FULL_WAVE, // Full-wave PEEC
-    PEEC_FORMULATION_QUASI_STATIC // Quasi-static approximation
-} PeecFormulationType;
+// Note: PEEC formulation types are defined in physics/peec/peec_physics.h
+// Use peec_formulation_t enum from physics layer instead of PeecFormulationType
+typedef peec_formulation_t PeecFormulationType;  // Alias for backward compatibility
 
 typedef enum {
     PEEC_CIRCUIT_SOLVER_MNA,    // Modified Nodal Analysis
@@ -52,7 +50,7 @@ typedef enum {
 typedef struct {
     // Element settings
     PeecElementType element_type;
-    PeecFormulationType formulation;
+    peec_formulation_t formulation;  // Use physics layer type
     bool include_retardation;
     bool include_radiation;
     bool include_losses;

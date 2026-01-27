@@ -9,48 +9,21 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../core/core_common.h"
-#include "../../core/core_geometry.h"
-#include "../../core/core_mesh.h"
-#include "../../core/core_kernels.h"
-#include "../../core/core_assembler.h"
-#include "../../core/core_solver.h"
+#include "../../common/core_common.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../operators/kernels/core_kernels.h"
+#include "../../operators/assembler/core_assembler.h"
+#include "../../backend/solvers/core_solver.h"
+#include "../../operators/greens/layered_greens_function.h"  // For CDOUBLE definition
+#include "../../physics/mtl/mtl_physics.h"  // L1 layer: physical definitions (cable types, materials)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// MTL cable types
-typedef enum {
-    MTL_CABLE_COAXIAL,          // Coaxial cable
-    MTL_CABLE_TWISTED_PAIR,     // Twisted pair
-    MTL_CABLE_RIBBON,           // Ribbon cable
-    MTL_CABLE_HARNESS,          // Cable harness (KBL format)
-    MTL_CABLE_MULTICORE,        // Multicore cable
-    MTL_CABEL_SHIELDED_PAIR,    // Shielded twisted pair
-    MTL_CABLE_CUSTOM            // User-defined geometry
-} mtl_cable_type_t;
-
-// MTL conductor materials
-typedef enum {
-    MTL_MATERIAL_COPPER,        // Copper
-    MTL_MATERIAL_ALUMINUM,      // Aluminum
-    MTL_MATERIAL_SILVER,        // Silver
-    MTL_MATERIAL_GOLD,          // Gold
-    MTL_MATERIAL_STEEL,         // Steel
-    MTL_MATERIAL_TIN,           // Tin-plated
-    MTL_MATERIAL_CUSTOM         // User-defined properties
-} mtl_conductor_material_t;
-
-// MTL dielectric materials
-typedef enum {
-    MTL_DIELECTRIC_PVC,         // Polyvinyl chloride
-    MTL_DIELECTRIC_PE,          // Polyethylene
-    MTL_DIELECTRIC_PTFE,        // Teflon
-    MTL_DIELECTRIC_RUBBER,      // Rubber
-    MTL_DIELECTRIC_XLPE,        // Cross-linked polyethylene
-    MTL_DIELECTRIC_CUSTOM       // User-defined properties
-} mtl_dielectric_material_t;
+// MTL cable types, materials - use definitions from mtl_physics.h
+// mtl_cable_type_t, mtl_conductor_material_t, mtl_dielectric_material_t are defined in mtl_physics.h
 
 // MTL analysis types
 typedef enum {
@@ -165,9 +138,9 @@ typedef struct {
     double* frequencies;      // Frequency vector (Hz)
     
     // Network parameters
-    double complex** s_matrix;  // S-parameters [num_ports x num_ports x num_freq]
-    double complex** z_matrix;  // Z-parameters [num_ports x num_ports x num_freq]
-    double complex** y_matrix;  // Y-parameters [num_ports x num_ports x num_freq]
+    CDOUBLE** s_matrix;  // S-parameters [num_ports x num_ports x num_freq]
+    CDOUBLE** z_matrix;  // Z-parameters [num_ports x num_ports x num_freq]
+    CDOUBLE** y_matrix;  // Y-parameters [num_ports x num_ports x num_freq]
     
     // Distributed parameters
     double* r_per_unit;       // Resistance per unit length (Ω/m)
@@ -176,12 +149,12 @@ typedef struct {
     double* g_per_unit;       // Conductance per unit length (S/m)
     
     // Current and voltage distributions
-    double complex** currents;  // Current distribution [num_conductors x num_freq]
-    double complex** voltages;  // Voltage distribution [num_conductors x num_freq]
+    CDOUBLE** currents;  // Current distribution [num_conductors x num_freq]
+    CDOUBLE** voltages;  // Voltage distribution [num_conductors x num_freq]
     
     // Field quantities
-    double complex** e_field;   // Electric field [num_points x num_freq]
-    double complex** h_field;   // Magnetic field [num_points x num_freq]
+    CDOUBLE** e_field;   // Electric field [num_points x num_freq]
+    CDOUBLE** h_field;   // Magnetic field [num_points x num_freq]
     
     // Special effects
     double* skin_depth;       // Skin depth vs frequency (m)

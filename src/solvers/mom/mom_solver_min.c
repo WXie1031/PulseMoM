@@ -1,8 +1,8 @@
-#include "../../core/core_geometry.h"
+#include "../../discretization/geometry/core_geometry.h"
 #include "mom_solver.h"
-#include "../../core/core_mesh.h"
-#include "../../core/core_assembler.h"
-#include "../../core/port_support_extended.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../operators/assembler/core_assembler.h"
+#include "../../discretization/geometry/port_support_extended.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

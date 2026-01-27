@@ -4,9 +4,9 @@
 
 #include "peec_plane_wave.h"
 #include "peec_solver.h"
-#include "../../core/excitation_plane_wave.h"
-#include "../../core/core_mesh.h"
-#include "../../core/core_common.h"
+#include "../../physics/excitation/excitation_plane_wave.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../common/core_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

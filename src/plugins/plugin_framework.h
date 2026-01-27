@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../core/electromagnetic_kernel_library.h"
+#include "../operators/kernels/electromagnetic_kernel_library.h"
 
 #ifdef __cplusplus
 extern "C" {

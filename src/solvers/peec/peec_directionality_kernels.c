@@ -8,9 +8,9 @@
  */
 
 #include "peec_solver.h"
-#include "../core/core_geometry.h"
-#include "../core/core_common.h"
-#include "../core/core_kernels.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../common/core_common.h"
+#include "../../operators/kernels/core_kernels.h"
 #include <math.h>
 #include <string.h>
 

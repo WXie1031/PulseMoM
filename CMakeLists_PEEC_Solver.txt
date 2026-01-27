@@ -1,0 +1,53 @@
+# CMakeLists.txt for PEEC Solver Standalone Solution
+# This generates a Visual Studio solution with only PEEC solver and its dependencies
+#
+# Usage:
+#   mkdir build_peec
+#   cd build_peec
+#   cmake -G "Visual Studio 17 2022" -A x64 -f ../CMakeLists_PEEC_Solver.txt ..
+
+cmake_minimum_required(VERSION 3.16)
+project(PEEC_Solver VERSION 1.0.0 LANGUAGES C CXX)
+
+# Set source directory (parent directory)
+set(CMAKE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(CMAKE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
+
+# Include main CMakeLists.txt configuration
+# This will set up all the libraries, but we'll only build what we need
+include(${CMAKE_SOURCE_DIR}/CMakeLists.txt)
+
+# Mark MoM-related targets as excluded
+if(TARGET mom_solver)
+    set_target_properties(mom_solver PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
+
+# Create PEEC executable (if not already created in main CMakeLists)
+if(NOT TARGET peec_solver_exe)
+    add_executable(peec_solver_exe
+        ${CMAKE_SOURCE_DIR}/src/apps/peec_cli/main_peec.c
+    )
+
+    target_link_libraries(peec_solver_exe
+        PRIVATE
+        peec_solver
+        electromagnetic_kernel_library
+        mesh_generation_library
+        geometry_processing_library
+        core_base_library
+    )
+
+    # External dependencies
+    if(OpenBLAS_FOUND)
+        target_link_libraries(peec_solver_exe PRIVATE ${OpenBLAS_LIBRARIES})
+    endif()
+
+    if(HDF5_FOUND)
+        target_link_libraries(peec_solver_exe PRIVATE ${HDF5_LIBRARIES})
+    endif()
+
+    target_link_libraries(peec_solver_exe PRIVATE OpenMP::OpenMP_C Threads::Threads)
+endif()
+
+# Set as startup project
+set_property(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} PROPERTY VS_STARTUP_PROJECT peec_solver_exe)

@@ -11,8 +11,8 @@
 #ifndef MOM_HMATRIX_H
 #define MOM_HMATRIX_H
 
-#include "../core/core_common.h"
-#include "../core/core_mesh.h"
+#include "../../common/core_common.h"
+#include "../../discretization/mesh/core_mesh.h"
 #include <stdbool.h>
 
 // Compiler optimization hints

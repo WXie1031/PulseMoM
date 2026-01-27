@@ -10,9 +10,9 @@
  *****************************************************************************************/
 
 #include "peec_solver.h"
-#include "../core/core_geometry.h"
-#include "../core/core_mesh.h"
-#include "../core/core_common.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../common/core_common.h"
 #include "peec_non_manhattan_geometry.h"
 #include "peec_integration.h"
 #include <math.h>

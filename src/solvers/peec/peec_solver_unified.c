@@ -42,15 +42,15 @@
  *****************************************************************************************/
 
 // Include layered_greens_function.h first to get full type definitions
-#include "../../core/layered_greens_function.h"
+#include "../../operators/greens/layered_greens_function.h"
 #include "peec_solver.h"
-#include "../../core/core_geometry.h"
-#include "../../core/core_mesh.h"
-#include "../../core/core_kernels.h"
-#include "../../core/core_assembler.h"
-#include "../../core/core_solver.h"
-#include "../../core/core_wideband.h"
-#include "../../core/core_common.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"
+#include "../../operators/kernels/core_kernels.h"
+#include "../../operators/assembler/core_assembler.h"
+#include "../../backend/solvers/core_solver.h"
+#include "../../orchestration/wideband/core_wideband.h"
+#include "../../common/core_common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -628,17 +628,17 @@ static void export_spice_netlist_unified(peec_unified_state_t *state, const char
     for (int i = 0; i < state->circuit.num_elements; i++) {
         peec_unified_element_t *elem = &state->circuit.elements[i];
         
-        switch (elem->element_type) {
-            case PEEC_ELEM_RESISTANCE:
+        switch ((int)elem->element_type) {
+            case (int)PEEC_ELEM_RESISTANCE:
                 fprintf(fp, "R%d N%d N%d %.6e\n", elem->element_id, elem->node1, elem->node2, elem->value);
                 break;
-            case PEEC_ELEM_INDUCTANCE:
+            case (int)PEEC_ELEM_INDUCTANCE:
                 fprintf(fp, "L%d N%d N%d %.6e\n", elem->element_id, elem->node1, elem->node2, elem->value);
                 break;
-            case PEEC_ELEM_CAPACITANCE:
+            case (int)PEEC_ELEM_CAPACITANCE:
                 fprintf(fp, "C%d N%d N%d %.6e\n", elem->element_id, elem->node1, elem->node2, elem->value);
                 break;
-            case PEEC_ELEM_CONDUCTANCE:
+            case (int)PEEC_ELEM_CONDUCTANCE:
                 fprintf(fp, "G%d N%d N%d %.6e\n", elem->element_id, elem->node1, elem->node2, elem->value);
                 break;
         }
@@ -693,8 +693,8 @@ int peec_solve_unified(mesh_t *mesh, double frequency, peec_unified_config_t *co
     for (int i = 0; i < state.circuit.num_elements; i++) {
         peec_unified_element_t *elem = &state.circuit.elements[i];
         elem->element_id = i;
-        elem->element_type = (i % 3 == 0) ? PEEC_ELEM_RESISTANCE : 
-                           (i % 3 == 1) ? PEEC_ELEM_INDUCTANCE : PEEC_ELEM_CAPACITANCE;
+        elem->element_type = (peec_element_type_t)((i % 3 == 0) ? PEEC_ELEM_RESISTANCE : 
+                           (i % 3 == 1) ? PEEC_ELEM_INDUCTANCE : PEEC_ELEM_CAPACITANCE);
         elem->node1 = i % state.circuit.num_nodes;
         elem->node2 = (i + 1) % state.circuit.num_nodes;
         elem->value = 1e-3 * (i + 1);  // Simplified values
@@ -748,14 +748,14 @@ int peec_solve_unified(mesh_t *mesh, double frequency, peec_unified_config_t *co
         peec_unified_element_t *elem = &state.circuit.elements[i];
         double omega = 2.0 * M_PI * frequency;
         
-        switch (elem->element_type) {
-            case PEEC_ELEM_RESISTANCE:
+        switch ((int)elem->element_type) {
+            case (int)PEEC_ELEM_RESISTANCE:
                 elem->impedance = PEEC_COMPLEX_MAKE(elem->value, 0.0);
                 break;
-            case PEEC_ELEM_INDUCTANCE:
+            case (int)PEEC_ELEM_INDUCTANCE:
                 elem->impedance = PEEC_COMPLEX_MAKE(0.0, omega * elem->value);
                 break;
-            case PEEC_ELEM_CAPACITANCE:
+            case (int)PEEC_ELEM_CAPACITANCE:
                 if (elem->value > 0) {
                     double denom = omega * elem->value;
                     elem->impedance = PEEC_COMPLEX_MAKE(0.0, -1.0 / denom);
@@ -763,7 +763,7 @@ int peec_solve_unified(mesh_t *mesh, double frequency, peec_unified_config_t *co
                     elem->impedance = PEEC_COMPLEX_MAKE(1e12, 0.0);  // Very large impedance
                 }
                 break;
-            case PEEC_ELEM_CONDUCTANCE:
+            case (int)PEEC_ELEM_CONDUCTANCE:
                 {
                     double denom = elem->value + 1e-12;
                     elem->impedance = PEEC_COMPLEX_MAKE(1.0 / denom, 0.0);

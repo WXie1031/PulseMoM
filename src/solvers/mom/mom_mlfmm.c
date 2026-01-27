@@ -13,7 +13,7 @@
  *****************************************************************************************/
 
 #include "mom_mlfmm.h"
-#include "../core/electromagnetic_kernels.h"
+#include "../../operators/kernels/electromagnetic_kernels.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

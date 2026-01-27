@@ -15,8 +15,8 @@
 #include "../../utils/logger.h"
 #include "../../utils/memory_manager.h"
 #include "../../utils/error_handler.h"
-#include "../../core/core_kernels.h"
-#include "../../core/core_solver.h"
+#include "../../operators/kernels/core_kernels.h"
+#include "../../backend/solvers/core_solver.h"
 
 // Physical constants
 #define MU_0 (4.0 * M_PI * 1e-7)        // Permeability of free space

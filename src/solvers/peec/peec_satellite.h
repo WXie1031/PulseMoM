@@ -8,8 +8,8 @@
 #define PEEC_SATELLITE_H
 
 #include "peec_solver.h"
-#include "../core/core_geometry.h"
-#include "../core/core_mesh.h"
+#include "../../discretization/geometry/core_geometry.h"
+#include "../../discretization/mesh/core_mesh.h"
 #include <complex.h>
 
 #ifdef __cplusplus

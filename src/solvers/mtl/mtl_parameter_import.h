@@ -9,7 +9,8 @@
 #ifndef MTL_PARAMETER_IMPORT_H
 #define MTL_PARAMETER_IMPORT_H
 
-#include "../../core/mtl_solver.h"
+#include "../../physics/mtl/mtl_physics.h"  // Use standard L1 physics definitions
+#include "mtl_solver_module.h"  // For solver-specific types
 #include <stdbool.h>
 
 #ifdef __cplusplus

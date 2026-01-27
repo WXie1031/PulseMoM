@@ -1,4 +1,4 @@
-﻿/*****************************************************************************************
+/*****************************************************************************************
  * PulseEM - ACA (Adaptive Cross Approximation) Acceleration for MoM
  * 
  * Copyright (C) 2025 Hong Cai Chen 
@@ -9,11 +9,11 @@
  *****************************************************************************************/
 
 #include "mom_aca.h"
-#include "../core/electromagnetic_kernels.h"
-#include "../core/integration_utils.h"
-#include "../core/core_kernels.h"
-#include "../core/core_assembler.h"
-#include "../core/core_geometry.h"
+#include "../../operators/kernels/electromagnetic_kernels.h"
+#include "../../operators/integration/integration_utils.h"
+#include "../../operators/kernels/core_kernels.h"
+#include "../../operators/assembler/core_assembler.h"
+#include "../../discretization/geometry/core_geometry.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

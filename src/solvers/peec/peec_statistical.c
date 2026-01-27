@@ -16,8 +16,8 @@
 #include <math.h>
 #include <complex.h>
 #include <time.h>
-#include "../core/core_solver.h"
-#include "../core/core_wideband.h"
+#include "../../backend/solvers/core_solver.h"
+#include "../../orchestration/wideband/core_wideband.h"
 #include "peec_solver.h"
 #include "mom_solver.h"
 

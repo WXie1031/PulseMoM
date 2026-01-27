@@ -5,8 +5,8 @@
 #ifndef PEEC_GEOMETRY_SUPPORT_H
 #define PEEC_GEOMETRY_SUPPORT_H
 
-#include "../core/core_common.h"
-#include "../core/core_mesh.h"
+#include "../../common/core_common.h"
+#include "../../discretization/mesh/core_mesh.h"
 
 #ifdef __cplusplus
 extern "C" {

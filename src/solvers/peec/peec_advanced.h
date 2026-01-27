@@ -1,4 +1,4 @@
-/******************************************************************************
+﻿/******************************************************************************
  * Advanced PEEC Solver Header
  * Commercial-grade features for EMCOS Studio and ANSYS Q3D compatibility
  ******************************************************************************/
@@ -7,9 +7,109 @@
 #define PEEC_ADVANCED_H
 
 #include "peec_solver.h"
-#include "../core/core_kernels.h"
-#include "../core/core_wideband.h"
+#include "../../operators/kernels/core_kernels.h"
+#include "../../operators/kernels/electromagnetic_kernels.h"  // For layered_media_t
+#include "../../orchestration/wideband/core_wideband.h"
 #include <complex.h>
+
+/******************************************************************************
+ * Forward Declarations and Enumerations
+ ******************************************************************************/
+
+/**
+ * Parametric parameter types
+ */
+typedef enum {
+    PARAM_FREQUENCY,                      // Frequency sweep
+    PARAM_GEOMETRY,                      // Geometry parameter
+    PARAM_MATERIAL,                      // Material property
+    PARAM_TEMPERATURE,                   // Temperature sweep
+    PARAM_VOLTAGE,                       // Voltage sweep
+    PARAM_CURRENT,                       // Current sweep
+    PARAM_LAYER_THICKNESS,               // Layer thickness
+    PARAM_CONDUCTOR_WIDTH,                // Conductor width
+    PARAM_CONDUCTOR_THICKNESS,           // Conductor thickness
+    PARAM_DIELECTRIC_CONSTANT,            // Dielectric constant
+    PARAM_LOSS_TANGENT,                   // Loss tangent
+    PARAM_CONDUCTIVITY                    // Electrical conductivity
+} parametric_parameter_type_t;
+
+/**
+ * Optimization methods
+ */
+typedef enum {
+    OPT_METHOD_GRADIENT_DESCENT,         // Gradient descent
+    OPT_METHOD_NEWTON_RAPHSON,           // Newton-Raphson
+    OPT_METHOD_GENETIC_ALGORITHM,        // Genetic algorithm
+    OPT_METHOD_PARTICLE_SWARM,           // Particle swarm optimization
+    OPT_METHOD_SIMULATED_ANNEALING,      // Simulated annealing
+    OPT_METHOD_BRENT,                    // Brent's method (1D)
+    OPT_METHOD_GOLDEN_SECTION            // Golden section search (1D)
+} optimization_method_t;
+
+/**
+ * Export format types
+ */
+typedef enum {
+    EXPORT_VTK,                          // VTK format
+    EXPORT_CSV,                          // CSV format
+    EXPORT_HDF5,                         // HDF5 format
+    EXPORT_MATLAB,                       // MATLAB .mat format
+    EXPORT_PYTHON,                        // Python pickle format
+    EXPORT_JSON                          // JSON format
+} export_format_t;
+
+/**
+ * SPICE format types (commercial tool compatibility)
+ */
+typedef enum {
+    SPICE_HSPICE,                        // Synopsys HSPICE
+    SPICE_SPECTRE,                       // Cadence Spectre
+    SPICE_LTSPICE,                       // LTspice
+    SPICE_PSPICE,                        // PSpice
+    SPICE_NGSPICE,                       // Ngspice (open source)
+    SPICE_XYCE                           // Xyce (Sandia)
+} spice_format_t;
+
+/**
+ * Thermal configuration for multi-physics coupling
+ */
+typedef struct {
+    double ambient_temperature;          // Ambient temperature (C)
+    double thermal_conductivity;         // Thermal conductivity (W/mK)
+    double specific_heat;                // Specific heat (J/kgK)
+    double density;                      // Material density (kg/m³)
+    double thermal_resistance;           // Thermal resistance (K/W)
+    int enable_convection;               // Enable convection cooling
+    int enable_radiation;                // Enable radiation cooling
+    double convection_coefficient;       // Convection coefficient (W/m²K)
+    double emissivity;                   // Surface emissivity (0-1)
+} thermal_config_t;
+
+/**
+ * Mechanical configuration for force calculations
+ */
+typedef struct {
+    double external_magnetic_field;     // External B-field (T)
+    double youngs_modulus;               // Young's modulus (Pa)
+    double poisson_ratio;                // Poisson's ratio
+    double density;                      // Material density (kg/m³)
+    int enable_lorentz_forces;           // Enable Lorentz force calculation
+    int enable_magnetostriction;         // Enable magnetostriction
+} mechanical_config_t;
+
+/**
+ * Parametric analysis configuration
+ */
+typedef struct {
+    parametric_parameter_type_t parameter_type; // Parameter to vary
+    double start_value;                  // Starting value
+    double end_value;                    // Ending value
+    int num_steps;                       // Number of steps
+    int enable_optimization;             // Enable automatic optimization
+    optimization_method_t optimization_method; // Optimization algorithm
+    double optimization_tolerance;        // Optimization tolerance
+} parametric_config_t;
 
 /******************************************************************************
  * Advanced Configuration Structures
@@ -73,46 +173,6 @@ typedef struct {
 } peec_advanced_config_t;
 
 /**
- * Thermal configuration for multi-physics coupling
- */
-typedef struct {
-    double ambient_temperature;          // Ambient temperature (C)
-    double thermal_conductivity;         // Thermal conductivity (W/mK)
-    double specific_heat;                // Specific heat (J/kgK)
-    double density;                      // Material density (kg/m³)
-    double thermal_resistance;           // Thermal resistance (K/W)
-    int enable_convection;               // Enable convection cooling
-    int enable_radiation;                // Enable radiation cooling
-    double convection_coefficient;       // Convection coefficient (W/m²K)
-    double emissivity;                   // Surface emissivity (0-1)
-} thermal_config_t;
-
-/**
- * Mechanical configuration for force calculations
- */
-typedef struct {
-    double external_magnetic_field;     // External B-field (T)
-    double youngs_modulus;               // Young's modulus (Pa)
-    double poisson_ratio;                // Poisson's ratio
-    double density;                      // Material density (kg/m³)
-    int enable_lorentz_forces;           // Enable Lorentz force calculation
-    int enable_magnetostriction;         // Enable magnetostriction
-} mechanical_config_t;
-
-/**
- * Parametric analysis configuration
- */
-typedef struct {
-    parametric_parameter_type_t parameter_type; // Parameter to vary
-    double start_value;                  // Starting value
-    double end_value;                    // Ending value
-    int num_steps;                       // Number of steps
-    int enable_optimization;             // Enable automatic optimization
-    optimization_method_t optimization_method; // Optimization algorithm
-    double optimization_tolerance;        // Optimization tolerance
-} parametric_config_t;
-
-/**
  * SPICE export configuration
  */
 typedef struct {
@@ -143,53 +203,8 @@ typedef struct {
  * Enumerations for Advanced Features
  ******************************************************************************/
 
-/**
- * SPICE format types (commercial tool compatibility)
- */
-typedef enum {
-    SPICE_HSPICE,                        // Synopsys HSPICE
-    SPICE_SPECTRE,                       // Cadence Spectre
-    SPICE_LTSPICE,                       // LTspice
-    SPICE_PSPICE,                        // PSpice
-    SPICE_NGSPICE,                       // Ngspice (open source)
-    SPICE_XYCE                           // Xyce (Sandia)
-} spice_format_t;
-
-/**
- * Parametric parameter types
- */
-typedef enum {
-    PARAMETRIC_WIDTH,                    // Conductor width
-    PARAMETRIC_HEIGHT,                   // Conductor thickness
-    PARAMETRIC_SPACING,                  // Conductor spacing
-    PARAMETRIC_LENGTH,                   // Conductor length
-    PARAMETRIC_SUBSTRATE_THICKNESS,      // Substrate thickness
-    PARAMETRIC_PERMITTIVITY,              // Dielectric constant
-    PARAMETRIC_CONDUCTIVITY,             // Metal conductivity
-    PARAMETRIC_FREQUENCY                 // Operating frequency
-} parametric_parameter_type_t;
-
-/**
- * Optimization methods
- */
-typedef enum {
-    OPTIMIZATION_GRADIENT,              // Gradient-based optimization
-    OPTIMIZATION_GENETIC,               // Genetic algorithm
-    OPTIMIZATION_PARTICLE_SWARM,        // Particle swarm optimization
-    OPTIMIZATION_SIMULATED_ANNEALING,     // Simulated annealing
-    OPTIMIZATION_GRID_SEARCH             // Exhaustive grid search
-} optimization_method_t;
-
-/**
- * Export formats for field data
- */
-typedef enum {
-    EXPORT_VTK,                          // VTK format (ParaView)
-    EXPORT_CSV,                          // CSV format (Excel)
-    EXPORT_HDF5,                         // HDF5 format (scientific)
-    EXPORT_MATLAB,                       // MATLAB format
-    EXPORT_PYTHON                        // Python NumPy format
-} export_format_t;
+// Note: parametric_parameter_type_t, optimization_method_t, export_format_t,
+// and spice_format_t are already defined above in the Forward Declarations section
 
 /******************************************************************************
  * Commercial Benchmark Structures

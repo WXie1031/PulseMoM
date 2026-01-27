@@ -9,8 +9,9 @@
 #ifndef MOM_SOLVER_H
 #define MOM_SOLVER_H
 
-#include "../core/core_common.h"
-#include "../core/layered_greens_function.h"  // Include to get LayeredMedium, FrequencyDomain, GreensFunctionParams
+#include "../../common/core_common.h"
+#include "../../physics/mom/mom_physics.h"  // L1 layer: physical definitions
+#include "../../operators/greens/layered_greens_function.h"  // Include to get LayeredMedium, FrequencyDomain, GreensFunctionParams
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +34,7 @@ typedef double complex mom_scalar_complex_t;
 // MoM configuration
 typedef struct mom_config {
     int basis_type;              // RWG basis function type
-    int formulation;             // EFIE, MFIE, CFIE
+    mom_formulation_t formulation; // EFIE, MFIE, CFIE (from physics layer)
     double frequency;            // Analysis frequency (Hz)
     int mesh_density;            // Elements per wavelength
     double edge_length;          // Target edge length (m)
@@ -64,15 +65,8 @@ typedef struct mom_config {
 #define MOM_BASIS_RWG 1
 #define MOM_BASIS_ROOFTOP 2
 
-// Formulation types
-#define MOM_FORMULATION_EFIE 1
-#define MOM_FORMULATION_MFIE 2
-#define MOM_FORMULATION_CFIE 3
-
-// Excitation types
-#define MOM_EXCITATION_PLANE_WAVE 1
-#define MOM_EXCITATION_VOLTAGE_SOURCE 2
-#define MOM_EXCITATION_CURRENT_SOURCE 3
+// Formulation types - use mom_formulation_t from mom_physics.h
+// Excitation types - use mom_excitation_type_t from mom_physics.h
 
 // Excitation structure
 typedef struct mom_excitation {

@@ -5,7 +5,7 @@
 #ifndef PEEC_INTEGRATION_H
 #define PEEC_INTEGRATION_H
 
-#include "../core/core_common.h"
+#include "../../common/core_common.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -9,7 +9,8 @@
 #ifndef PEEC_SOLVER_H
 #define PEEC_SOLVER_H
 
-#include "../core/core_common.h"
+#include "../../common/core_common.h"
+#include "../../physics/peec/peec_physics.h"  // L1 layer: physical definitions
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,7 +24,7 @@ typedef struct peec_result peec_result_t;
 // Include layered_greens_function.h for type definitions
 // Use include guard to prevent multiple inclusions
 #ifndef LAYERED_GREENS_FUNCTION_H
-#include "../core/layered_greens_function.h"
+#include "../../operators/greens/layered_greens_function.h"
 #endif
 
 #if defined(_MSC_VER)
@@ -35,7 +36,7 @@ typedef double complex peec_scalar_complex_t;
 
 // PEEC configuration
 typedef struct peec_config {
-    int formulation;             // PEEC formulation type
+    peec_formulation_t formulation; // PEEC formulation type (from physics layer)
     double frequency;            // Analysis frequency (Hz)
     bool extract_resistance;     // Extract resistance
     bool extract_inductance;     // Extract inductance
@@ -55,10 +56,7 @@ typedef struct peec_config {
     double cg_drop_tolerance;      // Drop threshold in CG mat-vec for sparsity
 } peec_config_t;
 
-// Formulation types
-#define PEEC_FORMULATION_CLASSICAL 1
-#define PEEC_FORMULATION_MODIFIED 2
-#define PEEC_FORMULATION_FULL_WAVE 3
+// Formulation types - use peec_formulation_t from peec_physics.h
 
 // Result structure
 typedef struct peec_result {
