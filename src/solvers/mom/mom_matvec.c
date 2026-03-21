@@ -1,4 +1,4 @@
-﻿/*****************************************************************************************
+/*****************************************************************************************
  * PulseEM - Optimized Matrix-Vector Product for MoM
  * 
  * Copyright (C) 2025 Hong Cai Chen 
@@ -9,6 +9,7 @@
  *****************************************************************************************/
 
 #include "mom_matvec.h"
+#include "../../common/core_common.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +28,36 @@
 #define MOM_COMPLEX_ADD(a, b) ((a) + (b))
 #endif
 
+void mom_csr_complex_free(mom_csr_complex_t* csr) {
+    if (!csr) return;
+    free(csr->row_ptr);
+    free(csr->col_ind);
+    free(csr->values);
+    free(csr);
+}
+
+void mom_csr_complex_matvec(
+    const mom_csr_complex_t* RESTRICT_PTR csr,
+    const complex_t* RESTRICT_PTR x,
+    complex_t* RESTRICT_PTR y,
+    int num_threads) {
+    if (!csr || !csr->row_ptr || !csr->col_ind || !csr->values || !x || !y || csr->n <= 0) return;
+    const int n = csr->n;
+    int i;
+    #pragma omp parallel for if(num_threads > 1) schedule(static)
+    for (i = 0; i < n; i++) {
+        complex_t sum = complex_zero();
+        for (int p = csr->row_ptr[i]; p < csr->row_ptr[i + 1]; p++) {
+            const int j = csr->col_ind[p];
+            if (j >= 0 && j < n) {
+                complex_t prod = MOM_COMPLEX_MUL(csr->values[p], x[j]);
+                sum = MOM_COMPLEX_ADD(sum, prod);
+            }
+        }
+        y[i] = sum;
+    }
+}
+
 // Optimized matrix-vector product for compressed matrices
 void mom_matrix_vector_product(
     const complex_t* RESTRICT_PTR Z,
@@ -35,6 +66,7 @@ void mom_matrix_vector_product(
     const hmatrix_block_t* RESTRICT_PTR hmatrix_blocks,
     int num_hmatrix_blocks,
     const mlfmm_tree_t* RESTRICT_PTR mlfmm_tree,
+    const mom_csr_complex_t* RESTRICT_PTR csr_z,
     const complex_t* RESTRICT_PTR x,
     complex_t* RESTRICT_PTR y,
     int n,
@@ -97,10 +129,10 @@ void mom_matrix_vector_product(
             break;
             
         case MOM_ALGO_MLFMM:
-            // MLFMM matrix-vector product
-            // Near-field: direct computation from stored matrix
-            // Far-field: computed via multipole expansions
-            if (mlfmm_tree && Z) {
+            // MLFMM: prefer sparse CSR near-field (O(nnz)) over dense Z (O(n^2))
+            if (csr_z && csr_z->row_ptr && csr_z->col_ind && csr_z->values && csr_z->n == n) {
+                mom_csr_complex_matvec(csr_z, x, y, num_threads);
+            } else if (mlfmm_tree && Z) {
                 // For now, use near-field only (stored in Z)
                 // Full MLFMM would compute far-field via multipole expansions
                 #pragma omp parallel for if(num_threads > 1) \
@@ -112,6 +144,19 @@ void mom_matrix_vector_product(
                     for (int j = 0; j < n; j++) {
                         // Only near-field interactions are stored
                         // Far-field would be computed via MLFMM
+                        complex_t prod = MOM_COMPLEX_MUL(row_i[j], x[j]);
+                        sum = MOM_COMPLEX_ADD(sum, prod);
+                    }
+                    y[i] = sum;
+                }
+            } else if (Z) {
+                #pragma omp parallel for if(num_threads > 1) \
+                                         shared(Z, x, y, n) \
+                                         schedule(static)
+                for (i = 0; i < n; i++) {
+                    complex_t sum = complex_zero();
+                    const complex_t* RESTRICT_PTR row_i = &Z[i * n];
+                    for (int j = 0; j < n; j++) {
                         complex_t prod = MOM_COMPLEX_MUL(row_i[j], x[j]);
                         sum = MOM_COMPLEX_ADD(sum, prod);
                     }

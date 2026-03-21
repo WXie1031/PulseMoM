@@ -34,10 +34,14 @@ typedef struct {
 typedef struct {
     double* current_real;          // Current real part (3 components per element)
     double* current_imag;          // Current imaginary part (3 components per element)
-    double* current_magnitude;     // Current magnitude
+    double* current_magnitude;     // Current magnitude (per element)
     double* current_phase;        // Current phase (degrees)
     int num_elements;             // Number of mesh elements
     double frequency;             // Frequency (Hz)
+    /* Optional: vertex-wise magnitude for smooth VTK display (单元间连续插值).
+     * When set, export_vtk_current writes POINT_DATA so ParaView interpolates within cells. */
+    double* current_magnitude_vertices;  /* length num_vertices, or NULL to use cell data only */
+    int num_vertices;                    /* must match mesh->num_vertices when current_magnitude_vertices != NULL */
 } postprocessing_current_distribution_t;
 
 /******************************************************************************

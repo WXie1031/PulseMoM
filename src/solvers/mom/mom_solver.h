@@ -123,6 +123,7 @@ int mom_solver_configure(mom_solver_t* solver, const mom_config_t* config);
 
 // Geometry and mesh
 int mom_solver_import_cad(mom_solver_t* solver, const char* filename, const char* format);
+int mom_solver_import_msh(mom_solver_t* solver, const char* filename);  // Direct .msh mesh import
 int mom_solver_set_geometry(mom_solver_t* solver, void* geometry);  // Generic geometry pointer
 int mom_solver_set_mesh(mom_solver_t* solver, void* mesh);  // Generic mesh pointer
 
@@ -154,6 +155,23 @@ const mom_result_t* mom_solver_get_results(const mom_solver_t* solver);
 // Utility functions
 int mom_solver_get_num_unknowns(const mom_solver_t* solver);
 double mom_solver_get_memory_usage(const mom_solver_t* solver);
+
+/* Export surface current (per element) with geometry information for visualization.
+ * CSV columns:
+ *   element_index, cx, cy, cz, Re_J, Im_J, magnitude_J
+ */
+int mom_solver_export_surface_current(const mom_solver_t* solver, const char* csv_path);
+
+/* Export surface mesh for 3D plot: vertices + triangle faces with current magnitude.
+ * File format: first line "num_vertices num_triangles", then num_vertices lines "x y z",
+ * then num_triangles lines "i j k mag" (0-based vertex indices). Used by plot_trisurf.
+ */
+int mom_solver_export_surface_mesh_for_plot(const mom_solver_t* solver, const char* txt_path);
+
+/* Export surface current to VTK (continuous triangle mesh + CELL_DATA) for ParaView.
+ * conductor_material_id: -1 = all conductor; >=0 = zero current on elements with material_id != this.
+ */
+int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char* vtk_path, int conductor_material_id);
 
 // Layered medium integration
 int mom_solver_set_layered_medium(mom_solver_t* solver,

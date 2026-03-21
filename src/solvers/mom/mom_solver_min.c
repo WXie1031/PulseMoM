@@ -3,6 +3,13 @@
 #include "../../discretization/mesh/core_mesh.h"
 #include "../../operators/assembler/core_assembler.h"
 #include "../../discretization/geometry/port_support_extended.h"
+#include "../../discretization/geometry/opencascade_cad_import.h"
+#include "../../discretization/mesh/cad_mesh_generation.h"
+#include "../../discretization/mesh/gmsh_mesh_import.h"
+#include "../../io/advanced_file_formats.h"
+#include "../../io/file_formats/export_vtk.h"
+#include "../../io/postprocessing/field_postprocessing.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -123,7 +130,16 @@ int mom_solver_set_geometry(mom_solver_t* solver, void* geometry) {
 int mom_solver_set_mesh(mom_solver_t* solver, void* mesh) {
     if (!solver || !mesh) return -1;
     solver->mesh = (mesh_t*)mesh;
-    solver->num_unknowns = solver->mesh->num_elements;
+    /* mom_solve_unified 中的阻抗装配按三角形索引 (i,j) 填充 Z，因此未知维数必须与
+     * num_elements 一致。若用 num_edges 而网格三角形数更少，则 Z 仅填充左上角小块，
+     * 其余行全零，CSR/迭代会失败（nnz << N）。完整 RWG 边–边装配接入前，统一用单元数。 */
+    if (solver->mesh->num_elements > 0) {
+        solver->num_unknowns = solver->mesh->num_elements;
+    } else if (solver->mesh->num_edges > 0) {
+        solver->num_unknowns = solver->mesh->num_edges;
+    } else {
+        solver->num_unknowns = 0;
+    }
     if (solver->num_unknowns <= 0) {
         solver->num_unknowns = 0;
         return -1;
@@ -330,7 +346,8 @@ static int mom_solver_map_ports_to_rhs(mom_solver_t* solver) {
         
             // Find edges within port region and compute RWG basis projection using Gaussian quadrature
             int edges_found = 0;
-            for (int e = 0; e < solver->mesh->num_edges && e < (int)n; e++) {
+            const int rhs_is_element = (solver->num_unknowns == solver->mesh->num_elements);
+            for (int e = 0; e < solver->mesh->num_edges; e++) {
                 const mesh_edge_t* edge = &solver->mesh->edges[e];
                 if (edge->length < 1e-15) continue;
                 
@@ -462,8 +479,21 @@ static int mom_solver_map_ports_to_rhs(mom_solver_t* solver) {
                     contrib.re = port_exc.re * I_n.re - port_exc.im * I_n.im;
                     contrib.im = port_exc.re * I_n.im + port_exc.im * I_n.re;
                     
-                    // Map to RHS (assuming edge index maps to basis function index)
-                    if (e < (int)n) {
+                    if (rhs_is_element) {
+                        /* 三角形未知：将边端口激励均分到相邻两三角形 RHS（启发式） */
+                        int hit = 0;
+                        if (tri_plus >= 0 && tri_plus < solver->mesh->num_elements) {
+                            solver->excitation_vector[tri_plus].re += 0.5 * contrib.re;
+                            solver->excitation_vector[tri_plus].im += 0.5 * contrib.im;
+                            hit = 1;
+                        }
+                        if (tri_minus >= 0 && tri_minus < solver->mesh->num_elements) {
+                            solver->excitation_vector[tri_minus].re += 0.5 * contrib.re;
+                            solver->excitation_vector[tri_minus].im += 0.5 * contrib.im;
+                            hit = 1;
+                        }
+                        if (hit) edges_found++;
+                    } else if (e < (int)n) {
                         solver->excitation_vector[e].re += contrib.re;
                         solver->excitation_vector[e].im += contrib.im;
                         edges_found++;
@@ -667,23 +697,24 @@ int mom_solver_compute_near_field(mom_solver_t* solver, const point3d_t* points,
     solver->result.near_field.h_field = (mom_scalar_complex_t*)calloc((size_t)num_points * 3, sizeof(mom_scalar_complex_t));
     if (!solver->result.near_field.e_field || !solver->result.near_field.h_field) return -1;
 
-    // Simple plane-wave incident approximation using solver excitation
     double freq = (solver->config.frequency > 0.0) ? solver->config.frequency :
                   ((solver->excitation.frequency > 0.0) ? solver->excitation.frequency : 1e9);
     double k = 2.0 * M_PI * freq / C0;
     point3d_t kvec = solver->excitation.k_vector;
     double amp = (solver->excitation.amplitude != 0.0) ? solver->excitation.amplitude : 1.0;
+    const double inv_4pi = 1.0 / (4.0 * M_PI);
+    const double min_R = 1e-10;
+
+    /* Incident plane wave */
     for (int i = 0; i < num_points; i++) {
         double phase = kvec.x * points[i].x + kvec.y * points[i].y + kvec.z * points[i].z;
         double c = cos(phase), s = sin(phase);
-        // E along polarization vector
         solver->result.near_field.e_field[i*3 + 0].re = amp * solver->excitation.polarization.x * c;
         solver->result.near_field.e_field[i*3 + 0].im = amp * solver->excitation.polarization.x * s;
         solver->result.near_field.e_field[i*3 + 1].re = amp * solver->excitation.polarization.y * c;
         solver->result.near_field.e_field[i*3 + 1].im = amp * solver->excitation.polarization.y * s;
         solver->result.near_field.e_field[i*3 + 2].re = amp * solver->excitation.polarization.z * c;
         solver->result.near_field.e_field[i*3 + 2].im = amp * solver->excitation.polarization.z * s;
-        // H = (1/ETA0) * k̂ × E
         double nx = kvec.x, ny = kvec.y, nz = kvec.z;
         double exr = solver->result.near_field.e_field[i*3 + 0].re;
         double eyr = solver->result.near_field.e_field[i*3 + 1].re;
@@ -691,6 +722,56 @@ int mom_solver_compute_near_field(mom_solver_t* solver, const point3d_t* points,
         solver->result.near_field.h_field[i*3 + 0].re = (ny * ezr - nz * eyr) / ETA0;
         solver->result.near_field.h_field[i*3 + 1].re = (nz * exr - nx * ezr) / ETA0;
         solver->result.near_field.h_field[i*3 + 2].re = (nx * eyr - ny * exr) / ETA0;
+    }
+
+    /* Scattered E from surface currents (point-source approximation per triangle) so |E| varies in space */
+    if (solver->mesh && solver->mesh->vertices && solver->mesh->elements) {
+        const mesh_t* m = solver->mesh;
+        int n_elems = (m->num_elements < solver->num_unknowns) ? m->num_elements : solver->num_unknowns;
+        double coeff = k * ETA0 * inv_4pi;
+        for (int i = 0; i < num_points; i++) {
+            double px = points[i].x, py = points[i].y, pz = points[i].z;
+            double scat_re = 0.0, scat_im = 0.0;
+            for (int j = 0; j < n_elems; j++) {
+                const mesh_element_t* e = &m->elements[j];
+                if (e->type != MESH_ELEMENT_TRIANGLE || e->num_vertices < 3) continue;
+                double cx = e->centroid.x, cy = e->centroid.y, cz = e->centroid.z;
+                double dx = px - cx, dy = py - cy, dz = pz - cz;
+                double R = sqrt(dx*dx + dy*dy + dz*dz);
+                if (R < min_R) continue;
+                double J_re = solver->result.current_coefficients[j].re;
+                double J_im = solver->result.current_coefficients[j].im;
+                double area = (e->area > 0.0) ? e->area : 0.0;
+                if (area <= 0.0) continue;
+                double kr = k * R;
+                double exp_re = cos(kr), exp_im = -sin(kr);
+                double fac = coeff * area / R;
+                /* -j * (fac * exp(-j*k*R) * J) along polarization: scat = -j * fac * (exp_re + j*exp_im)*(J_re + j*J_im) */
+                double re_part = fac * (exp_re * J_re - exp_im * J_im);
+                double im_part = fac * (exp_im * J_re + exp_re * J_im);
+                scat_re += im_part;   /* (-j * contrib).re = contrib_im */
+                scat_im -= re_part;   /* (-j * contrib).im = -contrib_re */
+            }
+            double pol_x = solver->excitation.polarization.x;
+            double pol_y = solver->excitation.polarization.y;
+            double pol_z = solver->excitation.polarization.z;
+            solver->result.near_field.e_field[i*3 + 0].re += scat_re * pol_x;
+            solver->result.near_field.e_field[i*3 + 0].im += scat_im * pol_x;
+            solver->result.near_field.e_field[i*3 + 1].re += scat_re * pol_y;
+            solver->result.near_field.e_field[i*3 + 1].im += scat_im * pol_y;
+            solver->result.near_field.e_field[i*3 + 2].re += scat_re * pol_z;
+            solver->result.near_field.e_field[i*3 + 2].im += scat_im * pol_z;
+        }
+        /* H = (1/ETA0)*k̂×E from total E (incident + scattered) */
+        for (int i = 0; i < num_points; i++) {
+            double exr = solver->result.near_field.e_field[i*3 + 0].re;
+            double eyr = solver->result.near_field.e_field[i*3 + 1].re;
+            double ezr = solver->result.near_field.e_field[i*3 + 2].re;
+            double nx = kvec.x, ny = kvec.y, nz = kvec.z;
+            solver->result.near_field.h_field[i*3 + 0].re = (ny * ezr - nz * eyr) / ETA0;
+            solver->result.near_field.h_field[i*3 + 1].re = (nz * exr - nx * ezr) / ETA0;
+            solver->result.near_field.h_field[i*3 + 2].re = (nx * eyr - ny * exr) / ETA0;
+        }
     }
     return 0;
 }
@@ -749,6 +830,439 @@ double mom_solver_get_memory_usage(const mom_solver_t* solver) {
     return (double)bytes;
 }
 
+int mom_solver_export_surface_current(const mom_solver_t* solver, const char* csv_path) {
+    if (!solver || !csv_path) return -1;
+    if (!solver->mesh || !solver->result.current_coefficients) return -1;
+    FILE* f = fopen(csv_path, "w");
+    if (!f) return -1;
+
+    fprintf(f, "element_index,cx,cy,cz,Re_J,Im_J,magnitude_J\n");
+    const int n = solver->num_unknowns;
+    const int num_elem = solver->mesh->num_elements;
+    const int count = (n < num_elem) ? n : num_elem;
+    for (int i = 0; i < count; ++i) {
+        const mesh_element_t* elem = &solver->mesh->elements[i];
+        if (!elem) continue;
+        geom_point_t c = elem->centroid;
+        complex_t J = solver->result.current_coefficients[i];
+        double re = J.re;
+        double im = J.im;
+        double mag = sqrt(re * re + im * im);
+        fprintf(f, "%d,%.12e,%.12e,%.12e,%.12e,%.12e,%.12e\n",
+                i, c.x, c.y, c.z, re, im, mag);
+    }
+
+    fclose(f);
+    return 0;
+}
+
+int mom_solver_export_surface_mesh_for_plot(const mom_solver_t* solver, const char* txt_path) {
+    if (!solver || !txt_path || !solver->mesh || !solver->result.current_coefficients) return -1;
+    const mesh_t* m = solver->mesh;
+    if (!m->vertices || !m->elements) return -1;
+
+    int num_tri = 0;
+    for (int i = 0; i < m->num_elements; i++) {
+        const mesh_element_t* e = &m->elements[i];
+        if (e->type == MESH_ELEMENT_TRIANGLE && e->num_vertices >= 3 && e->vertices) num_tri++;
+    }
+    if (num_tri == 0) return -1;
+
+    FILE* f = fopen(txt_path, "w");
+    if (!f) return -1;
+
+    fprintf(f, "%d %d\n", m->num_vertices, num_tri);
+    for (int i = 0; i < m->num_vertices; i++) {
+        const geom_point_t* p = &m->vertices[i].position;
+        fprintf(f, "%.12e %.12e %.12e\n", p->x, p->y, p->z);
+    }
+
+    const int n = solver->num_unknowns;
+    for (int i = 0; i < m->num_elements && i < n; i++) {
+        const mesh_element_t* e = &m->elements[i];
+        if (e->type != MESH_ELEMENT_TRIANGLE || e->num_vertices < 3 || !e->vertices) continue;
+        double re = solver->result.current_coefficients[i].re;
+        double im = solver->result.current_coefficients[i].im;
+        double mag = sqrt(re * re + im * im);
+        int a = e->vertices[0], b = e->vertices[1], c = e->vertices[2];
+        if (a < 0) a = 0; if (a >= m->num_vertices) a = m->num_vertices - 1;
+        if (b < 0) b = 0; if (b >= m->num_vertices) b = m->num_vertices - 1;
+        if (c < 0) c = 0; if (c >= m->num_vertices) c = m->num_vertices - 1;
+        fprintf(f, "%d %d %d %.12e\n", a, b, c, mag);
+    }
+
+    fclose(f);
+    return 0;
+}
+
+int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char* vtk_path, int conductor_material_id) {
+    if (!solver || !vtk_path || !solver->mesh || !solver->result.current_coefficients) return -1;
+    const mesh_t* m = solver->mesh;
+    if (m->num_elements <= 0 || !m->elements || m->num_vertices <= 0) return -1;
+
+    /* 单元未知（与 mom_solve_unified 三角形装配一致）：系数按三角形给 |J| 可视化 */
+    if (solver->num_unknowns == m->num_elements) {
+        postprocessing_current_distribution_t cur_dist = {0};
+        cur_dist.num_elements = m->num_elements;
+        cur_dist.frequency = (solver->config.frequency > 0.0) ? solver->config.frequency : solver->excitation.frequency;
+        cur_dist.current_magnitude = (double*)malloc((size_t)m->num_elements * sizeof(double));
+        if (!cur_dist.current_magnitude) return -1;
+        for (int i = 0; i < m->num_elements; i++) {
+            mom_scalar_complex_t Ie = solver->result.current_coefficients[i];
+            double mag = hypot(Ie.re, Ie.im);
+            if (conductor_material_id >= 0 && m->elements[i].material_id != conductor_material_id) {
+                mag = 0.0;
+            }
+            cur_dist.current_magnitude[i] = mag;
+        }
+        {
+            double* v_sum = (double*)calloc((size_t)m->num_vertices, sizeof(double));
+            int* v_count = (int*)calloc((size_t)m->num_vertices, sizeof(int));
+            if (v_sum && v_count) {
+                for (int i = 0; i < m->num_elements; i++) {
+                    const mesh_element_t* e = &m->elements[i];
+                    if (!e->vertices || e->num_vertices < 3) continue;
+                    double mag = cur_dist.current_magnitude[i];
+                    for (int k = 0; k < e->num_vertices && k < 3; k++) {
+                        int v = e->vertices[k];
+                        if (v >= 0 && v < m->num_vertices) {
+                            v_sum[v] += mag;
+                            v_count[v]++;
+                        }
+                    }
+                }
+                cur_dist.current_magnitude_vertices = (double*)malloc((size_t)m->num_vertices * sizeof(double));
+                if (cur_dist.current_magnitude_vertices) {
+                    cur_dist.num_vertices = m->num_vertices;
+                    for (int v = 0; v < m->num_vertices; v++) {
+                        cur_dist.current_magnitude_vertices[v] =
+                            (v_count[v] > 0) ? (v_sum[v] / (double)v_count[v]) : 0.0;
+                    }
+                    const int smooth_iters = 2;
+                    double* v_new = (double*)malloc((size_t)m->num_vertices * sizeof(double));
+                    if (v_new) {
+                        for (int it = 0; it < smooth_iters; it++) {
+                            memset(v_sum, 0, (size_t)m->num_vertices * sizeof(double));
+                            memset(v_count, 0, (size_t)m->num_vertices * sizeof(int));
+                            for (int i = 0; i < m->num_elements; i++) {
+                                const mesh_element_t* e = &m->elements[i];
+                                if (!e->vertices || e->num_vertices < 3) continue;
+                                int nv = e->num_vertices;
+                                if (nv > 3) nv = 3;
+                                for (int a = 0; a < nv; a++) {
+                                    int va = e->vertices[a];
+                                    if (va < 0 || va >= m->num_vertices) continue;
+                                    for (int b = 0; b < nv; b++) {
+                                        int vb = e->vertices[b];
+                                        if (vb < 0 || vb >= m->num_vertices) continue;
+                                        v_sum[va] += cur_dist.current_magnitude_vertices[vb];
+                                        v_count[va]++;
+                                    }
+                                }
+                            }
+                            for (int v = 0; v < m->num_vertices; v++) {
+                                if (v_count[v] > 0) {
+                                    v_new[v] = v_sum[v] / (double)v_count[v];
+                                } else {
+                                    v_new[v] = cur_dist.current_magnitude_vertices[v];
+                                }
+                            }
+                            memcpy(cur_dist.current_magnitude_vertices, v_new,
+                                   (size_t)m->num_vertices * sizeof(double));
+                        }
+                        free(v_new);
+                    }
+                }
+            }
+            free(v_sum);
+            free(v_count);
+        }
+        export_vtk_options_t vtk_opts = export_vtk_get_default_options();
+        int ret = export_vtk_current(&cur_dist, m, vtk_path, &vtk_opts);
+        free(cur_dist.current_magnitude);
+        free(cur_dist.current_magnitude_vertices);
+        return ret;
+    }
+
+    if (m->num_edges <= 0 || !m->edges) return -1;
+
+    /* 使用 RWG 边基的电流系数，在三角形质心和顶点上显式评估 J(r)。 */
+
+    /* 1) 构建 RWG 映射：每条边的 plus/minus 三角形，以及边长 */
+    int* edge_plus = (int*)calloc(m->num_edges, sizeof(int));
+    int* edge_minus = (int*)calloc(m->num_edges, sizeof(int));
+    double* edge_length = (double*)calloc(m->num_edges, sizeof(double));
+    if (!edge_plus || !edge_minus || !edge_length) {
+        free(edge_plus); free(edge_minus); free(edge_length);
+        return -1;
+    }
+    if (build_rwg_mapping_local(m, edge_plus, edge_minus, edge_length) != 0) {
+        free(edge_plus); free(edge_minus); free(edge_length);
+        return -1;
+    }
+
+    postprocessing_current_distribution_t cur_dist = {0};
+    cur_dist.num_elements = m->num_elements;
+    cur_dist.frequency = (solver->config.frequency > 0.0) ? solver->config.frequency : solver->excitation.frequency;
+    cur_dist.current_magnitude = (double*)malloc((size_t)m->num_elements * sizeof(double));
+    cur_dist.current_real = NULL;
+    cur_dist.current_imag = NULL;
+    cur_dist.current_phase = NULL;
+    cur_dist.current_magnitude_vertices = NULL;
+    cur_dist.num_vertices = 0;
+    if (!cur_dist.current_magnitude) {
+        free(edge_plus); free(edge_minus); free(edge_length);
+        return -1;
+    }
+
+    /* 2) 在每个三角形质心上用 RWG 展开评估 J(r)
+     * 这里直接分别累加实部和虚部，避免在不同编译器下 complex_t/mom_scalar_complex_t 的差异。 */
+    double* Jc_re = (double*)calloc((size_t)m->num_elements, sizeof(double));
+    double* Jc_im = (double*)calloc((size_t)m->num_elements, sizeof(double));
+    if (!Jc_re || !Jc_im) {
+        free(Jc_re); free(Jc_im);
+        free(cur_dist.current_magnitude);
+        free(edge_plus); free(edge_minus); free(edge_length);
+        return -1;
+    }
+
+    /* 方便访问的指针 */
+    const mesh_element_t* elements = m->elements;
+    const mesh_vertex_t* vertices = m->vertices;
+
+    /* 系数个数 = num_unknowns = 边基数量（已在 set_mesh/unified 中切换） */
+    const int n_edges = solver->num_unknowns;
+
+    for (int e = 0; e < n_edges && e < m->num_edges; e++) {
+        /* 边电流系数 I_e（避免与 <complex.h> 中的 I 宏冲突，这里不用变量名 I） */
+        mom_scalar_complex_t Ie = solver->result.current_coefficients[e];
+#if defined(_MSC_VER)
+        double I_re = Ie.re;
+        double I_im = Ie.im;
+#else
+        double I_re = creal(Ie);
+        double I_im = cimag(Ie);
+#endif
+
+        /* 该边在 plus、minus 两个三角形上的贡献 */
+        int t_plus = edge_plus[e];
+        int t_minus = edge_minus[e];
+        double len = edge_length[e] > 0.0 ? edge_length[e] : 0.0;
+
+        /* plus 三角形贡献 */
+        if (t_plus >= 0 && t_plus < m->num_elements && len > 0.0) {
+            const mesh_element_t* tri = &elements[t_plus];
+            if (tri->type == MESH_ELEMENT_TRIANGLE && tri->num_vertices >= 3 && tri->vertices) {
+                /* 三角顶点坐标 */
+                int v0 = tri->vertices[0];
+                int v1 = tri->vertices[1];
+                int v2 = tri->vertices[2];
+                const geom_point_t* p0 = &vertices[v0].position;
+                const geom_point_t* p1 = &vertices[v1].position;
+                const geom_point_t* p2 = &vertices[v2].position;
+
+                /* 三角面积（若 mesh 已给出 area，直接用；否则用叉积估算） */
+                double A = tri->area;
+                if (A <= 0.0) {
+                    double ax = p1->x - p0->x;
+                    double ay = p1->y - p0->y;
+                    double az = p1->z - p0->z;
+                    double bx = p2->x - p0->x;
+                    double by = p2->y - p0->y;
+                    double bz = p2->z - p0->z;
+                    double cx = ay * bz - az * by;
+                    double cy = az * bx - ax * bz;
+                    double cz = ax * by - ay * bx;
+                    A = 0.5 * sqrt(cx*cx + cy*cy + cz*cz);
+                }
+                if (A > 0.0) {
+                    /* 边端点 */
+                    const mesh_edge_t* edge = &m->edges[e];
+                    int ev0 = edge->vertex1_id;
+                    int ev1 = edge->vertex2_id;
+
+                    /* plus 三角中与该边相对的自由顶点 free_v */
+                    int free_v = -1;
+                    if (v0 != ev0 && v0 != ev1) free_v = v0;
+                    else if (v1 != ev0 && v1 != ev1) free_v = v1;
+                    else free_v = v2;
+
+                    const geom_point_t* pf = &vertices[free_v].position;
+
+                    /* 质心 r_c */
+                    geom_point_t c = tri->centroid;
+                    if (c.x == 0.0 && c.y == 0.0 && c.z == 0.0) {
+                        c.x = (p0->x + p1->x + p2->x) / 3.0;
+                        c.y = (p0->y + p1->y + p2->y) / 3.0;
+                        c.z = (p0->z + p1->z + p2->z) / 3.0;
+                    }
+
+                    /* RWG 定义：f_e(r) = (l_e / (2A+)) * (r - r_free) on plus 三角 */
+                    double rx = c.x - pf->x;
+                    double ry = c.y - pf->y;
+                    double rz = c.z - pf->z;
+                    double scale = len / (2.0 * A);
+
+                    double Jx = scale * rx;
+                    double Jy = scale * ry;
+                    double Jz = scale * rz;
+
+                    /* Jc[t_plus] += I * f_e(c)，此处仅沿某一分量近似，主要用于幅值可视化 */
+                    Jc_re[t_plus] += I_re * Jx - I_im * 0.0;
+                    Jc_im[t_plus] += I_re * 0.0 + I_im * Jx;
+                }
+            }
+        }
+
+        /* minus 三角形贡献（符号相反） */
+        if (t_minus >= 0 && t_minus < m->num_elements && len > 0.0) {
+            const mesh_element_t* tri = &elements[t_minus];
+            if (tri->type == MESH_ELEMENT_TRIANGLE && tri->num_vertices >= 3 && tri->vertices) {
+                int v0 = tri->vertices[0];
+                int v1 = tri->vertices[1];
+                int v2 = tri->vertices[2];
+                const geom_point_t* p0 = &vertices[v0].position;
+                const geom_point_t* p1 = &vertices[v1].position;
+                const geom_point_t* p2 = &vertices[v2].position;
+
+                double A = tri->area;
+                if (A <= 0.0) {
+                    double ax = p1->x - p0->x;
+                    double ay = p1->y - p0->y;
+                    double az = p1->z - p0->z;
+                    double bx = p2->x - p0->x;
+                    double by = p2->y - p0->y;
+                    double bz = p2->z - p0->z;
+                    double cx = ay * bz - az * by;
+                    double cy = az * bx - ax * bz;
+                    double cz = ax * by - ay * bx;
+                    A = 0.5 * sqrt(cx*cx + cy*cy + cz*cz);
+                }
+                if (A > 0.0) {
+                    const mesh_edge_t* edge = &m->edges[e];
+                    int ev0 = edge->vertex1_id;
+                    int ev1 = edge->vertex2_id;
+
+                    int free_v = -1;
+                    if (v0 != ev0 && v0 != ev1) free_v = v0;
+                    else if (v1 != ev0 && v1 != ev1) free_v = v1;
+                    else free_v = v2;
+
+                    const geom_point_t* pf = &vertices[free_v].position;
+
+                    geom_point_t c = tri->centroid;
+                    if (c.x == 0.0 && c.y == 0.0 && c.z == 0.0) {
+                        c.x = (p0->x + p1->x + p2->x) / 3.0;
+                        c.y = (p0->y + p1->y + p2->y) / 3.0;
+                        c.z = (p0->z + p1->z + p2->z) / 3.0;
+                    }
+
+                    /* RWG 定义：f_e(r) = -(l_e / (2A-)) * (r - r_free) on minus 三角 */
+                    double rx = c.x - pf->x;
+                    double ry = c.y - pf->y;
+                    double rz = c.z - pf->z;
+                    double scale = -len / (2.0 * A);
+
+                    double Jx = scale * rx;
+                    double Jy = scale * ry;
+                    double Jz = scale * rz;
+
+                    Jc_re[t_minus] += I_re * Jx - I_im * 0.0;
+                    Jc_im[t_minus] += I_re * 0.0 + I_im * Jx;
+                }
+            }
+        }
+    }
+
+    /* 3) 由 Jc（质心上的向量）得到每个单元的 |J| 并按需要屏蔽非导体区域 */
+    for (int i = 0; i < m->num_elements; i++) {
+        double mag = hypot(Jc_re[i], Jc_im[i]);
+        if (conductor_material_id >= 0 && m->elements[i].material_id != conductor_material_id) {
+            mag = 0.0;
+        }
+        cur_dist.current_magnitude[i] = mag;
+    }
+
+    /* 4) 从单元 |J| 构造顶点场并做轻微平滑，作为 POINT_DATA 用于平滑显示 */
+    {
+        double* v_sum = (double*)calloc((size_t)m->num_vertices, sizeof(double));
+        int* v_count = (int*)calloc((size_t)m->num_vertices, sizeof(int));
+        if (v_sum && v_count) {
+            /* 4.1 从单元常数场构造顶点场（顶点值 = 共享该顶点单元上 |J| 的平均） */
+            for (int i = 0; i < m->num_elements; i++) {
+                const mesh_element_t* e = &m->elements[i];
+                if (!e->vertices || e->num_vertices < 3) continue;
+                double mag = cur_dist.current_magnitude[i];
+                for (int k = 0; k < e->num_vertices && k < 3; k++) {
+                    int v = e->vertices[k];
+                    if (v >= 0 && v < m->num_vertices) {
+                        v_sum[v] += mag;
+                        v_count[v]++;
+                    }
+                }
+            }
+            cur_dist.current_magnitude_vertices = (double*)malloc((size_t)m->num_vertices * sizeof(double));
+            if (cur_dist.current_magnitude_vertices) {
+                cur_dist.num_vertices = m->num_vertices;
+                for (int v = 0; v < m->num_vertices; v++) {
+                    cur_dist.current_magnitude_vertices[v] =
+                        (v_count[v] > 0) ? (v_sum[v] / (double)v_count[v]) : 0.0;
+                }
+
+                /* 4.2 在顶点场上做少量拉普拉斯平滑（仅用于可视化，不改变求解结果） */
+                const int smooth_iters = 2;
+                double* v_new = (double*)malloc((size_t)m->num_vertices * sizeof(double));
+                if (v_new) {
+                    for (int it = 0; it < smooth_iters; it++) {
+                        memset(v_sum, 0, (size_t)m->num_vertices * sizeof(double));
+                        memset(v_count, 0, (size_t)m->num_vertices * sizeof(int));
+
+                        for (int i = 0; i < m->num_elements; i++) {
+                            const mesh_element_t* e = &m->elements[i];
+                            if (!e->vertices || e->num_vertices < 3) continue;
+                            int nv = e->num_vertices;
+                            if (nv > 3) nv = 3;
+                            for (int a = 0; a < nv; a++) {
+                                int va = e->vertices[a];
+                                if (va < 0 || va >= m->num_vertices) continue;
+                                for (int b = 0; b < nv; b++) {
+                                    int vb = e->vertices[b];
+                                    if (vb < 0 || vb >= m->num_vertices) continue;
+                                    v_sum[va] += cur_dist.current_magnitude_vertices[vb];
+                                    v_count[va]++;
+                                }
+                            }
+                        }
+
+                        for (int v = 0; v < m->num_vertices; v++) {
+                            if (v_count[v] > 0) {
+                                v_new[v] = v_sum[v] / (double)v_count[v];
+                            } else {
+                                v_new[v] = cur_dist.current_magnitude_vertices[v];
+                            }
+                        }
+                        memcpy(cur_dist.current_magnitude_vertices, v_new,
+                               (size_t)m->num_vertices * sizeof(double));
+                    }
+                    free(v_new);
+                }
+            }
+        }
+        free(v_sum);
+        free(v_count);
+    }
+
+    export_vtk_options_t vtk_opts = export_vtk_get_default_options();
+    int ret = export_vtk_current(&cur_dist, m, vtk_path, &vtk_opts);
+
+    free(Jc_re);
+    free(Jc_im);
+    free(edge_plus); free(edge_minus); free(edge_length);
+    free(cur_dist.current_magnitude);
+    free(cur_dist.current_magnitude_vertices);
+    return ret;
+}
+
 int mom_solver_set_layered_medium(mom_solver_t* solver,
                                   const LayeredMedium* medium,
                                   const FrequencyDomain* freq,
@@ -757,9 +1271,269 @@ int mom_solver_set_layered_medium(mom_solver_t* solver,
     return 0;
 }
 
+int mom_solver_import_msh(mom_solver_t* solver, const char* filename) {
+    mesh_t* mesh = NULL;
+    if (!solver || !filename) return -1;
+    if (gmsh_import_msh(filename, &mesh) != 0 || !mesh) return -1;
+    if (mom_solver_set_mesh(solver, mesh) != 0) {
+        mesh_destroy(mesh);
+        return -1;
+    }
+    return 0;
+}
+
 int mom_solver_import_cad(mom_solver_t* solver, const char* filename, const char* format) {
-    if (!solver || !filename || !format) return -1;
-    // Route to geometry import helper (minimal placeholder)
-    (void)filename; (void)format;
+    if (!solver || !filename || !format) {
+        return -1;
+    }
+
+    /* ------------------------------------------------------------------
+     * 1) Use OpenCascade to validate CAD file and get basic geometry info
+     * ------------------------------------------------------------------ */
+    opencascade_import_params_t occt_params;
+    memset(&occt_params, 0, sizeof(occt_params));
+    occt_params.heal_geometry = 1;
+    occt_params.healing_precision = 1e-6;
+    occt_params.max_tolerance = 1e-4;
+
+    opencascade_geometry_t occt_geom;
+    memset(&occt_geom, 0, sizeof(occt_geom));
+
+    if (!opencascade_import_cad(filename, &occt_params, &occt_geom)) {
+        fprintf(stderr, "[MoM] OpenCascade CAD import failed for file: %s\n", filename);
+        return -1;
+    }
+
+    /* ------------------------------------------------------------------
+     * 2) Touch CAD mesh generation pipeline (for future refinement)
+     *    Currently used only for parameter setup and logging.
+     * ------------------------------------------------------------------ */
+    MeshGenerationConfig mesh_cfg;
+    memset(&mesh_cfg, 0, sizeof(mesh_cfg));
+    CadMeshGenerationSolver* cad_solver = cad_mesh_generation_create(&mesh_cfg);
+    if (cad_solver) {
+        /* FORMAT_UNKNOWN is sufficient here because OpenCascade detects the
+         * actual STEP/IGES/STL format internally. */
+        cad_mesh_generation_import_cad_file(cad_solver, filename, FORMAT_UNKNOWN);
+        cad_mesh_generation_destroy(cad_solver);
+    }
+
+    /* ------------------------------------------------------------------
+     * 3) Try Gmsh for real surface triangulation; fallback to minimal 2-tri stub
+     * ------------------------------------------------------------------ */
+    mesh_t* mesh = NULL;
+    {
+        double freq = (solver->config.frequency > 0.0) ? solver->config.frequency : 1e9;
+        int density = (solver->config.mesh_density > 0) ? solver->config.mesh_density : 10;
+        double wavelength = (3e8 / freq);  /* metres */
+        double characteristic_length = wavelength / (double)density;
+
+        if (gmsh_import_surface_mesh(filename, characteristic_length, &mesh) == 0 && mesh != NULL) {
+            if (mom_solver_set_mesh(solver, mesh) != 0) {
+                mesh_destroy(mesh);
+                return -1;
+            }
+            fprintf(stderr, "[MoM] Using Gmsh surface mesh: %d vertices, %d triangles\n",
+                    mesh->num_vertices, mesh->num_elements);
+            return 0;
+        }
+        fprintf(stderr, "[MoM] Gmsh mesh failed or unavailable; using minimal 2-triangle mesh (3D surface current will show only 2 elements).\n");
+    }
+
+    /* ------------------------------------------------------------------
+     * 4) Build minimal MoM-compatible surface mesh (two triangles) from bbox
+     * ------------------------------------------------------------------ */
+    mesh = mesh_create("mom_cad_mesh", MESH_TYPE_TRIANGULAR);
+    if (!mesh) {
+        return -1;
+    }
+
+    /* Derive a simple patch from the CAD bounding box.
+     * If the bounding box is degenerate, fall back to a unit square. */
+    double xmin = occt_geom.bounding_box[0];
+    double ymin = occt_geom.bounding_box[1];
+    double zmin = occt_geom.bounding_box[2];
+    double xmax = occt_geom.bounding_box[3];
+    double ymax = occt_geom.bounding_box[4];
+    double zmax = occt_geom.bounding_box[5];
+
+    if (xmax <= xmin) { xmax = xmin + 1.0; }
+    if (ymax <= ymin) { ymax = ymin + 1.0; }
+    if (zmax <= zmin) { zmax = zmin + 1.0; }
+
+    /* Place a rectangular patch on the minimum-Z plane. */
+    geom_point_t vpos[4];
+    vpos[0].x = xmin; vpos[0].y = ymin; vpos[0].z = zmin;
+    vpos[1].x = xmax; vpos[1].y = ymin; vpos[1].z = zmin;
+    vpos[2].x = xmax; vpos[2].y = ymax; vpos[2].z = zmin;
+    vpos[3].x = xmin; vpos[3].y = ymax; vpos[3].z = zmin;
+
+    mesh->num_vertices = 4;
+    mesh->vertices = (mesh_vertex_t*)calloc((size_t)mesh->num_vertices, sizeof(mesh_vertex_t));
+    if (!mesh->vertices) {
+        mesh_destroy(mesh);
+        return -1;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        mesh->vertices[i].id = i;
+        mesh->vertices[i].position = vpos[i];
+        mesh->vertices[i].is_boundary = true;
+        mesh->vertices[i].is_interface = false;
+        mesh->vertices[i].adjacent_elements = NULL;
+        mesh->vertices[i].num_adjacent_elements = 0;
+    }
+
+    /* Define edges for a rectangle with one diagonal shared by two triangles.
+     *
+     *  v3 -------- v2
+     *  |        /  |
+     *  |      /    |
+     *  |    /      |
+     *  v0 -------- v1
+     *
+     * Tri0: (v0, v1, v2)
+     * Tri1: (v0, v2, v3)
+     */
+    mesh->num_edges = 5;
+    mesh->edges = (mesh_edge_t*)calloc((size_t)mesh->num_edges, sizeof(mesh_edge_t));
+    if (!mesh->edges) {
+        mesh_destroy(mesh);
+        return -1;
+    }
+
+    int edge_vertices[5][2] = {
+        {0, 1}, /* e0 */
+        {1, 2}, /* e1 */
+        {2, 3}, /* e2 */
+        {3, 0}, /* e3 */
+        {0, 2}  /* e4 - diagonal */
+    };
+
+    for (int e = 0; e < 5; e++) {
+        mesh_edge_t* edge = &mesh->edges[e];
+        edge->id = e;
+        edge->vertex1_id = edge_vertices[e][0];
+        edge->vertex2_id = edge_vertices[e][1];
+        edge->is_boundary = (e != 4); /* diagonal is interior edge */
+        edge->is_interface = false;
+
+        geom_point_t* a = &mesh->vertices[edge->vertex1_id].position;
+        geom_point_t* b = &mesh->vertices[edge->vertex2_id].position;
+        edge->midpoint.x = 0.5 * (a->x + b->x);
+        edge->midpoint.y = 0.5 * (a->y + b->y);
+        edge->midpoint.z = 0.5 * (a->z + b->z);
+
+        double dx = b->x - a->x;
+        double dy = b->y - a->y;
+        double dz = b->z - a->z;
+        edge->length = sqrt(dx*dx + dy*dy + dz*dz);
+        if (edge->length > 0.0) {
+            edge->tangent.x = dx / edge->length;
+            edge->tangent.y = dy / edge->length;
+            edge->tangent.z = dz / edge->length;
+        }
+    }
+
+    /* Two triangular surface elements covering the rectangle. */
+    mesh->num_elements = 2;
+    mesh->elements = (mesh_element_t*)calloc((size_t)mesh->num_elements, sizeof(mesh_element_t));
+    if (!mesh->elements) {
+        mesh_destroy(mesh);
+        return -1;
+    }
+
+    /* Helper to fill a triangle element. */
+    int tri_vertices[2][3] = {
+        {0, 1, 2}, /* Tri0 */
+        {0, 2, 3}  /* Tri1 */
+    };
+    int tri_edges[2][3] = {
+        {0, 1, 4}, /* edges (0-1), (1-2), (0-2) */
+        {4, 2, 3}  /* edges (0-2), (2-3), (3-0) */
+    };
+
+    for (int t = 0; t < 2; t++) {
+        mesh_element_t* elem = &mesh->elements[t];
+        elem->id = t;
+        elem->type = MESH_ELEMENT_TRIANGLE;
+        elem->num_vertices = 3;
+        elem->num_edges = 3;
+
+        elem->vertices = (int*)calloc(3, sizeof(int));
+        elem->edges = (int*)calloc(3, sizeof(int));
+        if (!elem->vertices || !elem->edges) {
+            mesh_destroy(mesh);
+            return -1;
+        }
+
+        for (int k = 0; k < 3; k++) {
+            elem->vertices[k] = tri_vertices[t][k];
+            elem->edges[k] = tri_edges[t][k];
+        }
+
+        /* Compute basic geometric properties: centroid, normal, area. */
+        geom_point_t* p0 = &mesh->vertices[elem->vertices[0]].position;
+        geom_point_t* p1 = &mesh->vertices[elem->vertices[1]].position;
+        geom_point_t* p2 = &mesh->vertices[elem->vertices[2]].position;
+
+        double ux = p1->x - p0->x;
+        double uy = p1->y - p0->y;
+        double uz = p1->z - p0->z;
+        double vx = p2->x - p0->x;
+        double vy = p2->y - p0->y;
+        double vz = p2->z - p0->z;
+
+        /* Cross product u x v */
+        double nx = uy * vz - uz * vy;
+        double ny = uz * vx - ux * vz;
+        double nz = ux * vy - uy * vx;
+        double nlen = sqrt(nx*nx + ny*ny + nz*nz);
+
+        elem->area = 0.5 * nlen;
+        if (nlen > 0.0) {
+            elem->normal.x = nx / nlen;
+            elem->normal.y = ny / nlen;
+            elem->normal.z = nz / nlen;
+        } else {
+            elem->normal.x = elem->normal.y = elem->normal.z = 0.0;
+        }
+
+        elem->centroid.x = (p0->x + p1->x + p2->x) / 3.0;
+        elem->centroid.y = (p0->y + p1->y + p2->y) / 3.0;
+        elem->centroid.z = (p0->z + p1->z + p2->z) / 3.0;
+
+        elem->material_id = 0;
+        elem->region_id = 0;
+        elem->domain_id = 0;
+        elem->quality_factor = 1.0;
+        elem->characteristic_length = sqrt(elem->area);
+    }
+
+    /* Basic mesh statistics */
+    mesh->type = MESH_TYPE_TRIANGULAR;
+    mesh->algorithm = MESH_ALGORITHM_DELAUNAY;
+    mesh->quality.min_angle = 30.0;
+    mesh->quality.max_angle = 120.0;
+    mesh->quality.aspect_ratio = 1.0;
+    mesh->quality.skewness = 0.0;
+    mesh->quality.orthogonality = 1.0;
+    mesh->min_element_size = fmin(mesh->elements[0].characteristic_length,
+                                  mesh->elements[1].characteristic_length);
+    mesh->max_element_size = fmax(mesh->elements[0].characteristic_length,
+                                  mesh->elements[1].characteristic_length);
+    mesh->average_element_size = 0.5 * (mesh->min_element_size + mesh->max_element_size);
+
+    mesh->min_bound = vpos[0];
+    mesh->max_bound.x = xmax;
+    mesh->max_bound.y = ymax;
+    mesh->max_bound.z = zmin;
+
+    /* Attach mesh to solver */
+    if (mom_solver_set_mesh(solver, mesh) != 0) {
+        mesh_destroy(mesh);
+        return -1;
+    }
+
     return 0;
 }

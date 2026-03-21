@@ -172,8 +172,8 @@ CadMeshGenerationSolver* cad_mesh_generation_create(MeshGenerationConfig* config
     if (config) {
         solver->config = *config;
     } else {
-        solver->config.type = MESH_TYPE_TETRAHEDRAL;
-        solver->config.algorithm = MESH_ALGORITHM_DELAUNAY;
+        solver->config.type = CAD_MESH_TYPE_TETRAHEDRAL;
+        solver->config.algorithm = CAD_MESH_ALGORITHM_DELAUNAY;
         solver->config.polynomial_order = 1;
         solver->config.use_high_order_elements = 0;
         solver->config.use_curved_elements = 0;
@@ -375,10 +375,12 @@ static int mesh_generation_generate_nodes_delaunay(CadMeshGenerationSolver* solv
     
     solver->num_nodes = 0;
     
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing)
     #endif
-    for (int i = 0; i < solver->num_entities; i++) {
+    for (i = 0; i < solver->num_entities; i++) {
         CadEntity* entity = &solver->entities[i];
         
         switch (entity->type) {
@@ -442,6 +444,7 @@ static int mesh_generation_generate_nodes_delaunay(CadMeshGenerationSolver* solv
                 break;
         }
     }
+    }
     
     if (global_options.verbose_logging) {
         printf("[CAD_MESH] Generated %d nodes using Delaunay algorithm\n", solver->num_nodes);
@@ -463,13 +466,16 @@ static int mesh_generation_generate_elements_tetrahedral(CadMeshGenerationSolver
     
     solver->num_elements = 0;
     
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing)
     #endif
-    for (int i = 0; i < solver->num_nodes - 3; i++) {
-        for (int j = i + 1; j < solver->num_nodes - 2; j++) {
-            for (int k = j + 1; k < solver->num_nodes - 1; k++) {
-                for (int l = k + 1; l < solver->num_nodes; l++) {
+    for (i = 0; i < solver->num_nodes - 3; i++) {
+        int j, k, l;
+        for (j = i + 1; j < solver->num_nodes - 2; j++) {
+            for (k = j + 1; k < solver->num_nodes - 1; k++) {
+                for (l = k + 1; l < solver->num_nodes; l++) {
                     MeshNode* n1 = &solver->nodes[i];
                     MeshNode* n2 = &solver->nodes[j];
                     MeshNode* n3 = &solver->nodes[k];
@@ -495,7 +501,7 @@ static int mesh_generation_generate_elements_tetrahedral(CadMeshGenerationSolver
                                 elem->node_ids[3] = l;
                                 elem->num_nodes = 4;
                                 elem->element_id = solver->num_elements;
-                                elem->element_type = MESH_TYPE_TETRAHEDRAL;
+                                elem->element_type = CAD_MESH_TYPE_TETRAHEDRAL;
                                 elem->material_id = n1->material_id;
                                 elem->physical_group = n1->physical_group;
                                 elem->volume = volume;
@@ -512,6 +518,7 @@ static int mesh_generation_generate_elements_tetrahedral(CadMeshGenerationSolver
                 }
             }
         }
+    }
     }
     
     if (global_options.verbose_logging) {
@@ -534,7 +541,7 @@ int cad_mesh_generation_generate_nodes(CadMeshGenerationSolver* solver) {
     }
     
     switch (solver->config.algorithm) {
-        case MESH_ALGORITHM_DELAUNAY:
+        case CAD_MESH_ALGORITHM_DELAUNAY:
             status = mesh_generation_generate_nodes_delaunay(solver);
             break;
             
@@ -567,7 +574,7 @@ int cad_mesh_generation_generate_elements(CadMeshGenerationSolver* solver) {
     }
     
     switch (solver->config.type) {
-        case MESH_TYPE_TETRAHEDRAL:
+        case CAD_MESH_TYPE_TETRAHEDRAL:
             status = mesh_generation_generate_elements_tetrahedral(solver);
             break;
             
@@ -594,10 +601,12 @@ int cad_mesh_generation_connect_mesh(CadMeshGenerationSolver* solver) {
     
     double start_time = mesh_generation_get_time();
     
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing)
     #endif
-    for (int i = 0; i < solver->num_nodes; i++) {
+    for (i = 0; i < solver->num_nodes; i++) {
         solver->nodes[i].num_connected_elements = 0;
         solver->nodes[i].connected_elements = (int*)mesh_generation_malloc(solver->num_elements * sizeof(int));
         
@@ -612,6 +621,7 @@ int cad_mesh_generation_connect_mesh(CadMeshGenerationSolver* solver) {
                 }
             }
         }
+    }
     }
     
     solver->computation_time += mesh_generation_get_time() - start_time;
@@ -637,13 +647,15 @@ int cad_mesh_generation_compute_quality_metrics(CadMeshGenerationSolver* solver)
     int num_good_elements = 0;
     int num_excellent_elements = 0;
     
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing) reduction(+:total_quality,num_poor_elements,num_good_elements,num_excellent_elements)
     #endif
-    for (int i = 0; i < solver->num_elements; i++) {
+    for (i = 0; i < solver->num_elements; i++) {
         MeshElement* elem = &solver->elements[i];
         
-        if (elem->element_type == MESH_TYPE_TETRAHEDRAL && elem->num_nodes == 4) {
+        if (elem->element_type == CAD_MESH_TYPE_TETRAHEDRAL && elem->num_nodes == 4) {
             MeshNode* n1 = &solver->nodes[elem->node_ids[0]];
             MeshNode* n2 = &solver->nodes[elem->node_ids[1]];
             MeshNode* n3 = &solver->nodes[elem->node_ids[2]];
@@ -694,6 +706,7 @@ int cad_mesh_generation_compute_quality_metrics(CadMeshGenerationSolver* solver)
             }
         }
     }
+    }
     
     solver->quality_metrics.aspect_ratio = total_quality / solver->num_elements;
     solver->quality_metrics.overall_quality = total_quality / solver->num_elements;
@@ -729,10 +742,12 @@ int cad_mesh_generation_improve_mesh_quality(CadMeshGenerationSolver* solver) {
     for (int iter = 0; iter < MAX_SMOOTHING_ITERATIONS; iter++) {
         int iter_improved = 0;
         
+        {
+        int i;
         #ifdef _OPENMP
         #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing) reduction(+:iter_improved)
         #endif
-        for (int i = 0; i < solver->num_elements; i++) {
+        for (i = 0; i < solver->num_elements; i++) {
             MeshElement* elem = &solver->elements[i];
             
             if (elem->quality_metric < solver->parameters.quality_threshold) {
@@ -761,6 +776,7 @@ int cad_mesh_generation_improve_mesh_quality(CadMeshGenerationSolver* solver) {
                 
                 iter_improved++;
             }
+        }
         }
         
         improved_count += iter_improved;
@@ -791,10 +807,12 @@ int cad_mesh_generation_adaptive_refinement(CadMeshGenerationSolver* solver, dou
     for (int level = 0; level < solver->parameters.adaptive_refinement_levels; level++) {
         int level_refined = 0;
         
+        {
+        int i;
         #ifdef _OPENMP
         #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing) reduction(+:level_refined)
         #endif
-        for (int i = 0; i < solver->num_elements; i++) {
+        for (i = 0; i < solver->num_elements; i++) {
             MeshElement* elem = &solver->elements[i];
             
             if (elem->quality_metric < error_threshold) {
@@ -809,6 +827,7 @@ int cad_mesh_generation_adaptive_refinement(CadMeshGenerationSolver* solver, dou
                     level_refined++;
                 }
             }
+        }
         }
         
         refined_count += level_refined;
@@ -875,11 +894,13 @@ int cad_mesh_generation_validate_mesh(CadMeshGenerationSolver* solver) {
     int validation_errors = 0;
     
     // Check for duplicate nodes
+    {
+    int i, j;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing) reduction(+:validation_errors)
     #endif
-    for (int i = 0; i < solver->num_nodes - 1; i++) {
-        for (int j = i + 1; j < solver->num_nodes; j++) {
+    for (i = 0; i < solver->num_nodes - 1; i++) {
+        for (j = i + 1; j < solver->num_nodes; j++) {
             double dist = mesh_generation_compute_distance(
                 solver->nodes[i].x, solver->nodes[i].y, solver->nodes[i].z,
                 solver->nodes[j].x, solver->nodes[j].y, solver->nodes[j].z);
@@ -892,12 +913,15 @@ int cad_mesh_generation_validate_mesh(CadMeshGenerationSolver* solver) {
             }
         }
     }
+    }
     
     // Check for invalid elements
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing) reduction(+:validation_errors)
     #endif
-    for (int i = 0; i < solver->num_elements; i++) {
+    for (i = 0; i < solver->num_elements; i++) {
         MeshElement* elem = &solver->elements[i];
         
         if (elem->quality_metric < 0.01) {
@@ -916,6 +940,7 @@ int cad_mesh_generation_validate_mesh(CadMeshGenerationSolver* solver) {
                 }
             }
         }
+    }
     }
     
     solver->computation_time += mesh_generation_get_time() - start_time;
@@ -1174,10 +1199,12 @@ int cad_mesh_generation_apply_boundary_conditions(CadMeshGenerationSolver* solve
     
     double start_time = mesh_generation_get_time();
     
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing)
     #endif
-    for (int i = 0; i < solver->num_nodes; i++) {
+    for (i = 0; i < solver->num_nodes; i++) {
         MeshNode* node = &solver->nodes[i];
         
         // Simple boundary detection based on coordinates
@@ -1197,6 +1224,7 @@ int cad_mesh_generation_apply_boundary_conditions(CadMeshGenerationSolver* solve
             }
         }
     }
+    }
     
     solver->computation_time += mesh_generation_get_time() - start_time;
     
@@ -1215,10 +1243,12 @@ int cad_mesh_generation_apply_material_properties(CadMeshGenerationSolver* solve
     
     double start_time = mesh_generation_get_time();
     
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing)
     #endif
-    for (int i = 0; i < solver->num_elements; i++) {
+    for (i = 0; i < solver->num_elements; i++) {
         MeshElement* elem = &solver->elements[i];
         
         if (elem->material_id >= 0 && elem->material_id < solver->num_materials) {
@@ -1226,9 +1256,10 @@ int cad_mesh_generation_apply_material_properties(CadMeshGenerationSolver* solve
             
             // Apply material properties to element
             // This would be used for electromagnetic property assignment
-            elem->area *= mat->permittivity.real;
-            elem->volume *= mat->permeability.real;
+            elem->area *= mat->permittivity.re;
+            elem->volume *= mat->permeability.re;
         }
+    }
     }
     
     solver->computation_time += mesh_generation_get_time() - start_time;
@@ -1248,10 +1279,12 @@ int cad_mesh_generation_apply_mesh_constraints(CadMeshGenerationSolver* solver) 
     
     double start_time = mesh_generation_get_time();
     
+    {
+    int i;
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(solver->parameters.num_threads) if(solver->parameters.use_parallel_meshing)
     #endif
-    for (int i = 0; i < solver->num_nodes; i++) {
+    for (i = 0; i < solver->num_nodes; i++) {
         MeshNode* node = &solver->nodes[i];
         
         // Apply minimum/maximum element size constraints
@@ -1269,6 +1302,7 @@ int cad_mesh_generation_apply_mesh_constraints(CadMeshGenerationSolver* solver) 
                 node->mesh_size *= 0.5;
             }
         }
+    }
     }
     
     solver->computation_time += mesh_generation_get_time() - start_time;
@@ -1438,7 +1472,7 @@ int cad_mesh_generation_identify_regions(CadMeshGenerationSolver* solver) {
         
         if (global_options.verbose_logging) {
             printf("[CAD_MESH] Region %d: Material '%s' (εr=%.3f, μr=%.3f)\n",
-                   i, mat->material_name, mat->permittivity.real, mat->permeability.real);
+                   i, mat->material_name, mat->permittivity.re, mat->permeability.re);
         }
     }
     
@@ -1600,8 +1634,8 @@ int cad_mesh_generation_check_boundary_integrity(CadMeshGenerationSolver* solver
     return cad_mesh_generation_extract_boundaries(solver);
 }
 
-int cad_mesh_generation_export_to_electromagnetic_solver(CadMeshGenerationSolver* solver, MomSolver* mom_solver) {
-    if (!solver || !mom_solver || !solver->mesh_generation_completed) {
+int cad_mesh_generation_export_to_electromagnetic_solver(CadMeshGenerationSolver* solver, mom_solver_t* mom_solver_ptr) {
+    if (!solver || !mom_solver_ptr || !solver->mesh_generation_completed) {
         return MESH_GENERATION_ERROR;
     }
     
@@ -1820,10 +1854,10 @@ void cad_mesh_generation_benchmark(CadMeshGenerationSolver* solver) {
     test_materials[0].epsilon_r = 1.0;
     test_materials[0].mu_r = 1.0;
     test_materials[0].conductivity = 0.0;
-    test_materials[0].permittivity.real = 1.0;
-    test_materials[0].permittivity.imag = 0.0;
-    test_materials[0].permeability.real = 1.0;
-    test_materials[0].permeability.imag = 0.0;
+    test_materials[0].permittivity.re = 1.0;
+    test_materials[0].permittivity.im = 0.0;
+    test_materials[0].permeability.re = 1.0;
+    test_materials[0].permeability.im = 0.0;
     
     // Setup solver
     cad_mesh_generation_setup_entities(solver, test_entities, 3);

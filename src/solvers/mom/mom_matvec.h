@@ -39,8 +39,26 @@ typedef enum {
     MOM_ALGO_SVD = 5              // SVD-based compression
 } mom_algorithm_t;
 
+/** CSR (compressed sparse row) storage for complex near-field MoM blocks (MLFMM path). */
+typedef struct mom_csr_complex {
+    int n;
+    int nnz;
+    int* row_ptr;    /**< length n+1 */
+    int* col_ind;    /**< length nnz */
+    complex_t* values; /**< length nnz */
+} mom_csr_complex_t;
+
+void mom_csr_complex_free(mom_csr_complex_t* csr);
+
+/** y = csr * x */
+void mom_csr_complex_matvec(
+    const mom_csr_complex_t* RESTRICT_PTR csr,
+    const complex_t* RESTRICT_PTR x,
+    complex_t* RESTRICT_PTR y,
+    int num_threads);
+
 // Optimized matrix-vector product for compressed matrices
-// Supports dense, ACA, H-matrix, and MLFMM formats
+// Supports dense, ACA, H-matrix, MLFMM, and optional CSR for MLFMM near-field
 void mom_matrix_vector_product(
     const complex_t* RESTRICT_PTR Z,      // Dense matrix (if algorithm is BASIC)
     const aca_block_t* RESTRICT_PTR aca_blocks,  // ACA blocks (if algorithm is ACA)
@@ -48,6 +66,7 @@ void mom_matrix_vector_product(
     const hmatrix_block_t* RESTRICT_PTR hmatrix_blocks,  // H-matrix blocks (if algorithm is HMATRIX)
     int num_hmatrix_blocks,
     const mlfmm_tree_t* RESTRICT_PTR mlfmm_tree,  // MLFMM tree (if algorithm is MLFMM)
+    const mom_csr_complex_t* RESTRICT_PTR csr_z, /**< MLFMM: near-field in CSR; NULL = use dense Z */
     const complex_t* RESTRICT_PTR x,
     complex_t* RESTRICT_PTR y,
     int n,

@@ -145,10 +145,56 @@ int export_vtk_current(
                 mesh->vertices[i].position.z);
     }
     
-    // Write current data
-    fprintf(fp, "CELL_DATA %d\n", current_dist->num_elements);
-    if (opts.include_scalars) {
+    /* CELLS and CELL_TYPES so ParaView displays a continuous surface (triangles)
+     * with per-cell scalar; interpolation is done by VTK for smooth shading. */
+    if (mesh->num_elements <= 0 || !mesh->elements) {
+        fclose(fp);
+        return -1;
+    }
+    int total_size = 0;
+    for (int i = 0; i < mesh->num_elements; i++) {
+        if (mesh->elements[i].vertices && mesh->elements[i].num_vertices >= 3)
+            total_size += mesh->elements[i].num_vertices + 1;
+    }
+    fprintf(fp, "CELLS %d %d\n", mesh->num_elements, total_size);
+    for (int i = 0; i < mesh->num_elements; i++) {
+        const mesh_element_t* e = &mesh->elements[i];
+        if (!e->vertices || e->num_vertices < 3) {
+            fprintf(fp, "1 0\n");  /* fallback: point at vertex 0 */
+            continue;
+        }
+        fprintf(fp, "%d", e->num_vertices);
+        for (int j = 0; j < e->num_vertices; j++)
+            fprintf(fp, " %d", e->vertices[j]);
+        fprintf(fp, "\n");
+    }
+    fprintf(fp, "CELL_TYPES %d\n", mesh->num_elements);
+    for (int i = 0; i < mesh->num_elements; i++) {
+        int vtk_type = VTK_TRIANGLE;
+        if (mesh->elements[i].type == MESH_ELEMENT_QUADRILATERAL && mesh->elements[i].num_vertices >= 4)
+            vtk_type = VTK_QUAD;
+        else if (mesh->elements[i].num_vertices >= 3)
+            vtk_type = VTK_TRIANGLE;
+        else
+            vtk_type = VTK_VERTEX;
+        fprintf(fp, "%d\n", vtk_type);
+    }
+    
+    /* Prefer POINT_DATA when available: vertex-wise magnitude → ParaView interpolates within cells → 单元间连续平滑 */
+    if (opts.include_scalars && current_dist->current_magnitude_vertices != NULL &&
+        current_dist->num_vertices == mesh->num_vertices) {
+        fprintf(fp, "POINT_DATA %d\n", mesh->num_vertices);
         fprintf(fp, "SCALARS current_magnitude float 1\n");
+        fprintf(fp, "LOOKUP_TABLE default\n");
+        for (int i = 0; i < mesh->num_vertices; i++) {
+            fprintf(fp, "%.6e\n", current_dist->current_magnitude_vertices[i]);
+        }
+    }
+    /* CELL_DATA: per-element magnitude (optional; written when no vertex data or for compatibility) */
+    fprintf(fp, "CELL_DATA %d\n", current_dist->num_elements);
+    if (opts.include_scalars && current_dist->current_magnitude != NULL) {
+        fprintf(fp, "SCALARS %s float 1\n",
+                current_dist->current_magnitude_vertices != NULL ? "current_magnitude_cell" : "current_magnitude");
         fprintf(fp, "LOOKUP_TABLE default\n");
         for (int i = 0; i < current_dist->num_elements; i++) {
             fprintf(fp, "%.6e\n", current_dist->current_magnitude[i]);

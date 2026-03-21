@@ -1,4 +1,4 @@
-﻿/*****************************************************************************************
+/*****************************************************************************************
  * PulseEM - Unified Method of Moments (MoM) Solver Implementation
  * 
  * Copyright (C) 2025 Hong Cai Chen 
@@ -386,6 +386,7 @@ typedef struct {
     
     // Matrix storage
     void *impedance_matrix;                 // Impedance matrix (format depends on algorithm)
+    mom_csr_complex_t *csr_impedance_matrix; /**< MLFMM: sparse near-field; impedance_matrix NULL when set */
     void *preconditioner_matrix;          // Preconditioner matrix
     
     // Solution vectors
@@ -465,6 +466,33 @@ static complex_t mfie_kernel_wrapper_for_nearly_singular(const geom_point_t* r,
     // Use MFIE Neumann boundary term kernel
     return kernel_mfie_neumann_term(r, r_prime, mfie_data->n_prime, k);
 }
+
+/**
+ * Infer meters per one mesh coordinate unit so wavelength-based distance cutoffs match centroid spacing.
+ * Gmsh/CAD imports often use millimetres; C0/frequency is in metres. Comparing r_mesh (mm) to 0.1*λ (m)
+ * without scaling yields nnz ≈ N (only diagonal) and breaks CSR / iterative MoM.
+ */
+static double mom_infer_mesh_meters_per_coord_unit(const mesh_t* mesh, double frequency_hz) {
+    if (!mesh || !mesh->vertices || mesh->num_vertices <= 0) return 1.0;
+    double mx = 0.0;
+    for (int i = 0; i < mesh->num_vertices; i++) {
+        const geom_point_t* p = &mesh->vertices[i].position;
+        double ax = fabs(p->x);
+        double ay = fabs(p->y);
+        double az = fabs(p->z);
+        if (ax > mx) mx = ax;
+        if (ay > mx) mx = ay;
+        if (az > mx) mx = az;
+    }
+    const double freq = (frequency_hz > 1.0) ? frequency_hz : DEFAULT_FREQUENCY_HZ;
+    const double lambda_m = C0 / freq;
+    /* Model extent ≫ λ in metre-equivalent usually means coordinates are not in metres */
+    if (mx > 100.0 * lambda_m && mx > 20.0) return 1e-3;
+    /* Typical mm CAD: thousands of raw units */
+    if (mx > 2500.0) return 1e-3;
+    return 1.0;
+}
+
 static complex_t integrate_rwg_far_field(const mesh_t* mesh, int edge_idx, int tri_idx, int is_plus,
                                         const double* r_hat, double k0);
 static int assemble_impedance_matrix_basic(mom_unified_state_t *state);
@@ -513,15 +541,20 @@ static double compute_rcs_unified(mom_unified_state_t *state, double theta_inc, 
  * - H-matrix has O(N log N) complexity with hierarchical compression
  ********************************************************************************/
 static mom_algorithm_t select_algorithm(const mom_problem_characteristics_t *problem) {
-    if (problem->num_unknowns < 1000) {
-        return MOM_ALGO_BASIC;  // Direct solver for small problems
-    } else if (problem->num_unknowns < 50000) {
-        return MOM_ALGO_ACA;    // ACA for medium problems
-    } else if (problem->electrical_size > 10.0) {
-        return MOM_ALGO_MLFMM;  // MLFMM for large electrical problems
-    } else {
-        return MOM_ALGO_HMATRIX; // H-matrix for general large problems
+    const int n = problem->num_unknowns;
+    /* Small N: dense direct (low overhead, exact factorization). */
+    if (n < 600) {
+        return MOM_ALGO_BASIC;
     }
+    /* Medium/large N: MLFMM assembly stores only near-field in CSR → O(nnz) vs O(n^2) memory.
+     * (Far-field in this codebase is still approximate in matvec; same model as prior dense-zeros MLFMM.) */
+    if (n < 200000) {
+        return MOM_ALGO_MLFMM;
+    }
+    if (problem->electrical_size > 10.0) {
+        return MOM_ALGO_MLFMM;
+    }
+    return MOM_ALGO_HMATRIX;
 }
 
 /********************************************************************************
@@ -1701,28 +1734,17 @@ static int assemble_impedance_matrix_mlfmm(mom_unified_state_t *state) {
         return assemble_impedance_matrix_basic(state);
     }
     
-    // Store tree in state for later use in matrix-vector products
-    // Note: This would require adding a field to mom_unified_state_t
-    // For now, we'll allocate a minimal matrix structure
-    
-    // Allocate placeholder matrix (MLFMM doesn't store full matrix)
-    complex_t *Z = (complex_t*)calloc(n * n, sizeof(complex_t));
-    if (!Z) {
-        mlfmm_free_tree(tree);
-        return -1;
-    }
-    
-    state->impedance_matrix = Z;
-    
-    // For MLFMM, we only compute near-field interactions directly
-    // Far-field interactions are handled via multipole expansions during solve
+    state->impedance_matrix = NULL;
+    state->csr_impedance_matrix = NULL;
+
     const double lambda = C0 / freq;
-    const double near_threshold = (state->config.near_field_threshold > 0.0) 
-                                 ? state->config.near_field_threshold 
+    const double near_threshold = (state->config.near_field_threshold > 0.0)
+                                 ? state->config.near_field_threshold
                                  : DEFAULT_NEAR_FIELD_THRESHOLD;
-    const double near_threshold_lambda = near_threshold * lambda;
-    
-    // Build RWG mapping
+    const double meters_per_coord = mom_infer_mesh_meters_per_coord_unit(state->mesh, freq);
+    /* Distance cut in the same units as geom_point_distance between triangle centroids */
+    const double near_threshold_lambda = (near_threshold * lambda) / meters_per_coord;
+
     int* edge_plus = (int*)calloc(state->mesh->num_edges, sizeof(int));
     int* edge_minus = (int*)calloc(state->mesh->num_edges, sizeof(int));
     double* edge_length = (double*)calloc(state->mesh->num_edges, sizeof(double));
@@ -1732,129 +1754,219 @@ static int assemble_impedance_matrix_mlfmm(mom_unified_state_t *state) {
         return -1;
     }
     build_rwg_mapping(state->mesh, edge_plus, edge_minus, edge_length);
-    
+
     int max_elems = (n < state->mesh->num_elements) ? n : state->mesh->num_elements;
     const kernel_formulation_t form = KERNEL_FORMULATION_EFIELD;
-    
-    // Compute only near-field interactions
-    int i;
-    #pragma omp parallel for if(state->config.num_threads > 1) \
-                             shared(Z, elements, vertices, max_elems, freq, form, \
-                                    state, edge_plus, edge_minus, edge_length, \
-                                    near_threshold_lambda, n) \
-                             schedule(dynamic, 10)
-    for (i = 0; i < max_elems; i++) {
-        const mesh_element_t* RESTRICT_PTR elem_i = &elements[i];
-        complex_t* RESTRICT_PTR row_i = &Z[i * n];
-        
-        if (elem_i->type != MESH_ELEMENT_TRIANGLE) {
-            for (int j = 0; j < max_elems; j++) {
-                row_i[j] = complex_zero();
-            }
-            continue;
-        }
-        
-        for (int j = 0; j < max_elems; j++) {
-            const mesh_element_t* RESTRICT_PTR elem_j = &elements[j];
-            complex_t Z_ij = complex_zero();
-            
-            if (elem_j->type != MESH_ELEMENT_TRIANGLE || 
-                elem_j->num_vertices < 3) {
-                row_i[j] = Z_ij;
+
+    /* Pass 1: count near interactions per row (O(n^2) work, O(n) index memory) */
+    int* row_nnz = (int*)calloc((size_t)n, sizeof(int));
+    if (!row_nnz) {
+        free(edge_plus); free(edge_minus); free(edge_length);
+        mlfmm_free_tree(tree);
+        return -1;
+    }
+    {
+        int i;
+        #pragma omp parallel for if(state->config.num_threads > 1) \
+                                 shared(row_nnz, elements, vertices, max_elems, near_threshold_lambda, n) \
+                                 schedule(static)
+        for (i = 0; i < max_elems; i++) {
+            const mesh_element_t* RESTRICT_PTR elem_i = &elements[i];
+            if (elem_i->type != MESH_ELEMENT_TRIANGLE || elem_i->num_vertices < 3) {
                 continue;
             }
-            
-            // Compute centroids
             const int v0_i = elem_i->vertices[0];
             const int v1_i = elem_i->vertices[1];
             const int v2_i = elem_i->vertices[2];
-            const int v0_j = elem_j->vertices[0];
-            const int v1_j = elem_j->vertices[1];
-            const int v2_j = elem_j->vertices[2];
-            
-            // ONE_THIRD is now a file-level constant to avoid repeated definition
-            const double cx_i = (vertices[v0_i].position.x + vertices[v1_i].position.x + 
+            const double cx_i = (vertices[v0_i].position.x + vertices[v1_i].position.x +
                                 vertices[v2_i].position.x) * ONE_THIRD;
-            const double cy_i = (vertices[v0_i].position.y + vertices[v1_i].position.y + 
+            const double cy_i = (vertices[v0_i].position.y + vertices[v1_i].position.y +
                                 vertices[v2_i].position.y) * ONE_THIRD;
-            const double cz_i = (vertices[v0_i].position.z + vertices[v1_i].position.z + 
+            const double cz_i = (vertices[v0_i].position.z + vertices[v1_i].position.z +
                                 vertices[v2_i].position.z) * ONE_THIRD;
-            const double cx_j = (vertices[v0_j].position.x + vertices[v1_j].position.x + 
-                                vertices[v2_j].position.x) * ONE_THIRD;
-            const double cy_j = (vertices[v0_j].position.y + vertices[v1_j].position.y + 
-                                vertices[v2_j].position.y) * ONE_THIRD;
-            const double cz_j = (vertices[v0_j].position.z + vertices[v1_j].position.z + 
-                                vertices[v2_j].position.z) * ONE_THIRD;
-            
-            // Use helper function for distance calculation
-            geom_point_t c_i_pt = {cx_i, cy_i, cz_i};
-            geom_point_t c_j_pt = {cx_j, cy_j, cz_j};
-            double r = geom_point_distance(&c_i_pt, &c_j_pt) + NUMERICAL_EPSILON;
-            
-            // Only compute near-field interactions
-            if (r < near_threshold_lambda || i == j) {
-                geom_triangle_t tri_i, tri_j;
-                tri_i.vertices[0] = vertices[v0_i].position;
-                tri_i.vertices[1] = vertices[v1_i].position;
-                tri_i.vertices[2] = vertices[v2_i].position;
-                tri_i.area = elem_i->area;
-                tri_i.normal = elem_i->normal;
-                
-                tri_j.vertices[0] = vertices[v0_j].position;
-                tri_j.vertices[1] = vertices[v1_j].position;
-                tri_j.vertices[2] = vertices[v2_j].position;
-                tri_j.area = elem_j->area;
-                tri_j.normal = elem_j->normal;
-                
-                if (state->config.enable_duffy_transform && r < near_threshold_lambda) {
-                    Z_ij = integrate_triangle_duffy(&tri_i, &tri_j, freq, near_threshold);
-                    #ifdef MOM_ENABLE_STATISTICS
-                    #pragma omp atomic
-                    state->config.duffy_transform_count++;
-                    #endif
-                } else {
-                    // Use default order (4) for this code path
-                    Z_ij = integrate_triangle_triangle(&tri_i, &tri_j, freq, form, 4);
+            int cnt = 0;
+            for (int j = 0; j < max_elems; j++) {
+                const mesh_element_t* RESTRICT_PTR elem_j = &elements[j];
+                if (elem_j->type != MESH_ELEMENT_TRIANGLE || elem_j->num_vertices < 3) {
+                    continue;
                 }
-                
-                // Self-term
-                if (i == j) {
-                    if (state->config.use_analytic_self_term) {
-                        double edge_len = 0.0;
-                        if (edge_length && i < state->mesh->num_edges) {
-                            edge_len = edge_length[i];
-                        }
-                        if (edge_len <= 0.0) {
-                            edge_len = geom_triangle_compute_average_edge_length(&tri_i);
-                        }
-                        Z_ij = compute_analytic_self_term(&tri_i, freq, edge_len, 
-                                                          state->config.self_term_regularization);
-                        #ifdef MOM_ENABLE_STATISTICS
-                        #pragma omp atomic
-                        state->config.analytic_self_term_count++;
-                        #endif
-                    } else {
-                        const double reg = (state->config.self_term_regularization > 0.0)
-                                         ? state->config.self_term_regularization
-                                         : DEFAULT_REGULARIZATION;
-                        Z_ij.im += reg;
-                    }
+                const int v0_j = elem_j->vertices[0];
+                const int v1_j = elem_j->vertices[1];
+                const int v2_j = elem_j->vertices[2];
+                const double cx_j = (vertices[v0_j].position.x + vertices[v1_j].position.x +
+                                    vertices[v2_j].position.x) * ONE_THIRD;
+                const double cy_j = (vertices[v0_j].position.y + vertices[v1_j].position.y +
+                                    vertices[v2_j].position.y) * ONE_THIRD;
+                const double cz_j = (vertices[v0_j].position.z + vertices[v1_j].position.z +
+                                    vertices[v2_j].position.z) * ONE_THIRD;
+                geom_point_t c_i_pt = {cx_i, cy_i, cz_i};
+                geom_point_t c_j_pt = {cx_j, cy_j, cz_j};
+                double r = geom_point_distance(&c_i_pt, &c_j_pt) + NUMERICAL_EPSILON;
+                if (r < near_threshold_lambda || i == j) {
+                    cnt++;
                 }
             }
-            // Far-field: will be computed via MLFMM during matrix-vector product
-            
-            row_i[j] = Z_ij;
+            row_nnz[i] = cnt;
         }
     }
-    
+
+    int* row_ptr = (int*)malloc((size_t)(n + 1) * sizeof(int));
+    if (!row_ptr) {
+        free(row_nnz);
+        free(edge_plus); free(edge_minus); free(edge_length);
+        mlfmm_free_tree(tree);
+        return -1;
+    }
+    row_ptr[0] = 0;
+    for (int ii = 0; ii < n; ii++) {
+        row_ptr[ii + 1] = row_ptr[ii] + row_nnz[ii];
+    }
+    free(row_nnz);
+    const int nnz = row_ptr[n];
+
+    int* col_ind = NULL;
+    complex_t* values = NULL;
+    if (nnz > 0) {
+        col_ind = (int*)malloc((size_t)nnz * sizeof(int));
+        values = (complex_t*)calloc((size_t)nnz, sizeof(complex_t));
+        if (!col_ind || !values) {
+            free(col_ind);
+            free(values);
+            free(row_ptr);
+            free(edge_plus); free(edge_minus); free(edge_length);
+            mlfmm_free_tree(tree);
+            return -1;
+        }
+    }
+
+    int* write_pos = (int*)malloc((size_t)n * sizeof(int));
+    if (!write_pos) {
+        free(col_ind); free(values); free(row_ptr);
+        free(edge_plus); free(edge_minus); free(edge_length);
+        mlfmm_free_tree(tree);
+        return -1;
+    }
+    memcpy(write_pos, row_ptr, (size_t)n * sizeof(int));
+
+    /* Pass 2: fill CSR (same near rule as before; far pairs omitted → sparse storage) */
+    {
+        int i;
+        #pragma omp parallel for if(state->config.num_threads > 1) \
+                                 shared(write_pos, col_ind, values, elements, vertices, max_elems, freq, form, \
+                                        state, edge_length, near_threshold_lambda, n, row_ptr) \
+                                 schedule(static)
+        for (i = 0; i < max_elems; i++) {
+            const mesh_element_t* RESTRICT_PTR elem_i = &elements[i];
+            if (elem_i->type != MESH_ELEMENT_TRIANGLE || elem_i->num_vertices < 3) {
+                continue;
+            }
+            const int v0_i = elem_i->vertices[0];
+            const int v1_i = elem_i->vertices[1];
+            const int v2_i = elem_i->vertices[2];
+            const double cx_i = (vertices[v0_i].position.x + vertices[v1_i].position.x +
+                                vertices[v2_i].position.x) * ONE_THIRD;
+            const double cy_i = (vertices[v0_i].position.y + vertices[v1_i].position.y +
+                                vertices[v2_i].position.y) * ONE_THIRD;
+            const double cz_i = (vertices[v0_i].position.z + vertices[v1_i].position.z +
+                                vertices[v2_i].position.z) * ONE_THIRD;
+            int pos = write_pos[i];
+            for (int j = 0; j < max_elems; j++) {
+                const mesh_element_t* RESTRICT_PTR elem_j = &elements[j];
+                complex_t Z_ij = complex_zero();
+                if (elem_j->type != MESH_ELEMENT_TRIANGLE || elem_j->num_vertices < 3) {
+                    continue;
+                }
+                const int v0_j = elem_j->vertices[0];
+                const int v1_j = elem_j->vertices[1];
+                const int v2_j = elem_j->vertices[2];
+                const double cx_j = (vertices[v0_j].position.x + vertices[v1_j].position.x +
+                                    vertices[v2_j].position.x) * ONE_THIRD;
+                const double cy_j = (vertices[v0_j].position.y + vertices[v1_j].position.y +
+                                    vertices[v2_j].position.y) * ONE_THIRD;
+                const double cz_j = (vertices[v0_j].position.z + vertices[v1_j].position.z +
+                                    vertices[v2_j].position.z) * ONE_THIRD;
+                geom_point_t c_i_pt = {cx_i, cy_i, cz_i};
+                geom_point_t c_j_pt = {cx_j, cy_j, cz_j};
+                double r = geom_point_distance(&c_i_pt, &c_j_pt) + NUMERICAL_EPSILON;
+                if (r < near_threshold_lambda || i == j) {
+                    geom_triangle_t tri_i, tri_j;
+                    tri_i.vertices[0] = vertices[v0_i].position;
+                    tri_i.vertices[1] = vertices[v1_i].position;
+                    tri_i.vertices[2] = vertices[v2_i].position;
+                    tri_i.area = elem_i->area;
+                    tri_i.normal = elem_i->normal;
+                    tri_j.vertices[0] = vertices[v0_j].position;
+                    tri_j.vertices[1] = vertices[v1_j].position;
+                    tri_j.vertices[2] = vertices[v2_j].position;
+                    tri_j.area = elem_j->area;
+                    tri_j.normal = elem_j->normal;
+                    if (state->config.enable_duffy_transform && r < near_threshold_lambda) {
+                        Z_ij = integrate_triangle_duffy(&tri_i, &tri_j, freq, near_threshold);
+                        #ifdef MOM_ENABLE_STATISTICS
+                        #pragma omp atomic
+                        state->config.duffy_transform_count++;
+                        #endif
+                    } else {
+                        Z_ij = integrate_triangle_triangle(&tri_i, &tri_j, freq, form, 4);
+                    }
+                    if (i == j) {
+                        if (state->config.use_analytic_self_term) {
+                            double edge_len = 0.0;
+                            if (edge_length && i < state->mesh->num_edges) {
+                                edge_len = edge_length[i];
+                            }
+                            if (edge_len <= 0.0) {
+                                edge_len = geom_triangle_compute_average_edge_length(&tri_i);
+                            }
+                            Z_ij = compute_analytic_self_term(&tri_i, freq, edge_len,
+                                                              state->config.self_term_regularization);
+                            #ifdef MOM_ENABLE_STATISTICS
+                            #pragma omp atomic
+                            state->config.analytic_self_term_count++;
+                            #endif
+                        } else {
+                            const double reg = (state->config.self_term_regularization > 0.0)
+                                             ? state->config.self_term_regularization
+                                             : DEFAULT_REGULARIZATION;
+                            Z_ij.im += reg;
+                        }
+                    }
+                    col_ind[pos] = j;
+                    values[pos] = Z_ij;
+                    pos++;
+                }
+            }
+            write_pos[i] = pos;
+        }
+    }
+    free(write_pos);
+
     free(edge_plus);
     free(edge_minus);
     free(edge_length);
-    
-    // Cleanup tree (in full implementation, would store in state)
+
+    mom_csr_complex_t* csr = (mom_csr_complex_t*)calloc(1, sizeof(mom_csr_complex_t));
+    if (!csr) {
+        free(col_ind); free(values); free(row_ptr);
+        mlfmm_free_tree(tree);
+        return -1;
+    }
+    csr->n = n;
+    csr->nnz = nnz;
+    csr->row_ptr = row_ptr;
+    csr->col_ind = col_ind;
+    csr->values = values;
+    state->csr_impedance_matrix = csr;
+
     mlfmm_free_tree(tree);
-    
-    printf("MoM MLFMM: Near-field matrix assembled (n=%d), far-field via multipole expansion\n", n);
+
+    printf("MoM MLFMM: Near-field in CSR (n=%d, nnz=%d), coord unit ~ %.3g m/unit, cutoff in mesh units=%.4g\n",
+           n, nnz, meters_per_coord, near_threshold_lambda);
+    if (nnz < 3 * n && n > 50) {
+        fprintf(stderr,
+            "MoM warning: CSR nnz is very small vs N (near-field pairs almost diagonal only). "
+            "Check mesh units (mm vs m) or increase near_field_threshold in config.\n");
+    }
     return 0;
 }
 
@@ -2081,8 +2193,9 @@ static int assemble_impedance_matrix_hmatrix(mom_unified_state_t *state) {
  *   0 on success, error code on failure
  * 
  * Memory Usage:
- * - Requires N×N complex matrix storage for LU factors
- * - Additional N complex numbers for intermediate vectors
+ * - Basic path: in-place LU on Z (no second full N×N copy); workspace O(N) for pivot + y.
+ * - LAPACK path (if enabled): column-major copy A plus Z until solve completes; on success Z is
+ *   freed early so outer cleanup does not double-free.
  * 
  * Performance:
  * - O(N³) computational complexity for LU decomposition
@@ -2178,6 +2291,12 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
             free(ipiv);
             free(A);
             free(b);
+            /* Release assembled Z now; mom_solve_unified would free impedance_matrix later.
+             * Peak memory during LAPACK was Z+A; dropping Z reduces footprint before return. */
+            if (state->impedance_matrix) {
+                free(state->impedance_matrix);
+                state->impedance_matrix = NULL;
+            }
             return 0;
         } else {
             // LAPACK failed, fall through to basic implementation
@@ -2189,22 +2308,16 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
 #endif
     
     // Basic implementation for small matrices or when LAPACK is not available
-    // LU decomposition with partial pivoting for complex matrices
-    
-    // Allocate workspace for LU factors and pivot indices
-    complex_t *LU = (complex_t*)calloc(n * n, sizeof(complex_t));
+    // LU decomposition with partial pivoting in-place on Z (same numerical result, half peak RAM vs copy)
+    complex_t *LU = Z;
     int *pivot = (int*)calloc(n, sizeof(int));
     complex_t *y = (complex_t*)calloc(n, sizeof(complex_t));
     
-    if (!LU || !pivot || !y) {
-        if (LU) free(LU);
+    if (!pivot || !y) {
         if (pivot) free(pivot);
         if (y) free(y);
         return -1;
     }
-    
-    // Copy Z to LU for decomposition (optimized: use memcpy)
-    memcpy(LU, Z, n * n * sizeof(complex_t));
     
     // Initialize pivot array (optimized: use loop with better cache behavior)
     for (int i = 0; i < n; i++) {
@@ -2249,7 +2362,6 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
         double pivot_mag_sq = LU[k * n + k].re * LU[k * n + k].re + 
                              LU[k * n + k].im * LU[k * n + k].im;
         if (pivot_mag_sq < MATRIX_PIVOT_EPSILON_SQ) {
-            free(LU);
             free(pivot);
             free(y);
             return -1;  // Singular matrix
@@ -2322,8 +2434,7 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
         *x_i = complex_div(*x_i, row_i[i]);
     }
     
-    // Cleanup
-    free(LU);
+    // Cleanup (LU aliases Z; freed by caller as impedance_matrix)
     free(pivot);
     free(y);
     
@@ -2345,7 +2456,7 @@ static void mom_matrix_vector_product_wrapper(
     
     // Call the unified matrix-vector product function
     // Note: In full implementation, would pass ACA/H-matrix/MLFMM structures
-    mom_matrix_vector_product(Z, NULL, 0, NULL, 0, NULL, x, y, n, algorithm, 
+    mom_matrix_vector_product(Z, NULL, 0, NULL, 0, NULL, state->csr_impedance_matrix, x, y, n, algorithm,
                               state->config.num_threads);
 }
 
@@ -2758,14 +2869,22 @@ int mom_solve_unified(mesh_t *mesh, double frequency, complex_t *excitation,
         }
     }
     
-    // Estimate number of basis functions (simplified, optimized: cache)
-    state.num_basis_functions = mesh->num_elements;
+    /* 与 assemble_impedance_matrix_* 一致：三角形–三角形（脉冲/分片常数基）装配使用单元索引 */
+    if (mesh && mesh->num_elements > 0) {
+        state.num_basis_functions = mesh->num_elements;
+    } else if (mesh && mesh->num_edges > 0) {
+        state.num_basis_functions = mesh->num_edges;
+    } else {
+        state.num_basis_functions = 0;
+    }
     
     // Compute problem characteristics
     compute_problem_characteristics(&state);
     
-    // Select algorithm if not specified
-    if (state.config.algorithm == MOM_ALGO_BASIC && config && config->algorithm == MOM_ALGO_BASIC) {
+    /* Auto-select algorithm when caller uses defaults (CLI passes NULL config → was stuck on BASIC). */
+    if (!config) {
+        state.config.algorithm = select_algorithm(&state.problem);
+    } else if (state.config.algorithm == MOM_ALGO_BASIC && config->algorithm == MOM_ALGO_BASIC) {
         state.config.algorithm = select_algorithm(&state.problem);
     }
     
@@ -2814,6 +2933,24 @@ int mom_solve_unified(mesh_t *mesh, double frequency, complex_t *excitation,
         status = solve_linear_system_basic(&state);
     } else {
         status = solve_linear_system_iterative(&state);
+        /* CSR 仅存近场且 matvec 不含多极远场时，迭代往往不收敛；mm/m 单位误判也会使 nnz≈N。 */
+        if (status != 0 && state.num_basis_functions > 0 && state.num_basis_functions <= 200000) {
+            fprintf(stderr,
+                "MoM: iterative solve failed; retrying with dense BASIC assembly + direct solve (uses more RAM).\n");
+            if (state.csr_impedance_matrix) {
+                mom_csr_complex_free(state.csr_impedance_matrix);
+                state.csr_impedance_matrix = NULL;
+            }
+            if (state.impedance_matrix) {
+                free(state.impedance_matrix);
+                state.impedance_matrix = NULL;
+            }
+            state.config.algorithm = MOM_ALGO_BASIC;
+            status = assemble_impedance_matrix_basic(&state);
+            if (status == 0) {
+                status = solve_linear_system_basic(&state);
+            }
+        }
     }
     
     if (status == 0) {
@@ -2821,6 +2958,10 @@ int mom_solve_unified(mesh_t *mesh, double frequency, complex_t *excitation,
     }
     
     // Cleanup
+    if (state.csr_impedance_matrix) {
+        mom_csr_complex_free(state.csr_impedance_matrix);
+        state.csr_impedance_matrix = NULL;
+    }
     if (state.impedance_matrix) {
         free(state.impedance_matrix);
     }

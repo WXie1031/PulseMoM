@@ -258,12 +258,24 @@ endif()
 
 # Include directories
 include_directories(
-    ${CMAKE_SOURCE_DIR}/src/core
+    ${CMAKE_SOURCE_DIR}/src/discretization/geometry
+    ${CMAKE_SOURCE_DIR}/src/discretization/mesh
+    ${CMAKE_SOURCE_DIR}/src/operators/integration
+    ${CMAKE_SOURCE_DIR}/src/operators/kernels
+    ${CMAKE_SOURCE_DIR}/src/operators/greens
+    ${CMAKE_SOURCE_DIR}/src/operators/assembler
+    ${CMAKE_SOURCE_DIR}/src/operators/coupling
+    ${CMAKE_SOURCE_DIR}/src/backend/solvers
+    ${CMAKE_SOURCE_DIR}/src/backend/gpu
+    ${CMAKE_SOURCE_DIR}/src/io/file_formats
+    ${CMAKE_SOURCE_DIR}/src/io/api
+    ${CMAKE_SOURCE_DIR}/src/io/cli
+    ${CMAKE_SOURCE_DIR}/src/orchestration/execution
+    ${CMAKE_SOURCE_DIR}/src/orchestration/hybrid_solver
+    ${CMAKE_SOURCE_DIR}/src/orchestration/workflow
     ${CMAKE_SOURCE_DIR}/src/solvers/mom
     ${CMAKE_SOURCE_DIR}/src/solvers/peec
     ${CMAKE_SOURCE_DIR}/src/utils
-    ${CMAKE_SOURCE_DIR}/third_party
-    ${CMAKE_SOURCE_DIR}/src/mesh
 )
 
 # Add library-specific include directories
@@ -311,93 +323,96 @@ endif()
 # Source files for core library
 if(MSVC)
     set(CORE_SOURCES
-        src/core/core_geometry.c
-        src/core/integration_utils.c
-        src/core/electromagnetic_kernels.c
-        src/core/layered_greens_function_unified.c
-        src/core/core_mesh_pipeline.c
-        src/core/kernel_mfie.c
-        src/core/kernel_cfie.c
-        src/core/integral_nearly_singular.c
+        src/discretization/geometry/core_geometry.c
+        src/operators/integration/integration_utils.c
+        src/operators/kernels/electromagnetic_kernels.c
+        src/operators/greens/layered_greens_function_unified.c
+        src/discretization/mesh/mesh_pipeline.c
+        src/operators/kernels/kernel_mfie.c
+        src/operators/kernels/kernel_cfie.c
+        src/operators/integration/integral_nearly_singular.c
     )
 else()
     set(CORE_SOURCES
-        src/core/core_geometry.c
-        src/core/core_mesh_unified.c
-        src/core/core_kernels.c
-        src/core/core_assembler.c
-        src/core/core_solver.c
-        src/core/gpu_acceleration.c
-        src/core/spice_export.c
-        src/core/integration_utils.c
-        src/core/electromagnetic_kernels.c
-        src/core/layered_greens_function_unified.c
-        src/core/core_mesh_pipeline.c
-        src/core/kernel_mfie.c
-        src/core/kernel_cfie.c
-        src/core/integral_nearly_singular.c
+        src/discretization/geometry/core_geometry.c
+        src/discretization/mesh/core_mesh_unified.c
+        src/operators/kernels/core_kernels.c
+        src/operators/assembler/core_assembler.c
+        src/backend/solvers/core_solver.c
+        src/backend/gpu/gpu_acceleration.c
+        src/io/file_formats/spice_export.c
+        src/operators/integration/integration_utils.c
+        src/operators/kernels/electromagnetic_kernels.c
+        src/operators/greens/layered_greens_function_unified.c
+        src/discretization/mesh/mesh_pipeline.c
+        src/operators/kernels/kernel_mfie.c
+        src/operators/kernels/kernel_cfie.c
+        src/operators/integration/integral_nearly_singular.c
     )
 endif()
 
 # Source files for mesh generation with library integrations
 if (MSVC)
   set(MESH_SOURCES
-      src/mesh/mesh_engine.c
-      src/mesh/mesh_subsystem.c
+      src/discretization/mesh/mesh_engine.c
+      src/discretization/mesh/mesh_subsystem.c
   )
 else()
   set(MESH_SOURCES
-      src/mesh/mesh_engine.c
-      src/mesh/mesh_algorithms.c
-      src/mesh/mesh_subsystem.c
+      src/discretization/mesh/mesh_engine.c
+      src/discretization/mesh/mesh_algorithms.c
+      src/discretization/mesh/mesh_subsystem.c
   )
 endif()
 
 # Add CGAL mesh implementation if available
 if(CGAL_FOUND AND NOT MSVC)
-    list(APPEND MESH_SOURCES src/mesh/cgal_surface_mesh.cpp)
+    list(APPEND MESH_SOURCES src/discretization/mesh/cgal_surface_mesh.cpp)
 endif()
 
 # Source files for CAD import with library integrations
 set(CAD_SOURCES
-    src/cad/cad_mesh_generation.c
+    src/discretization/geometry/cad_mesh_generation.c
 )
 
 # Add OpenCascade CAD import if available
 if(DEFINED USE_OPENCASCADE)
-    list(APPEND CAD_SOURCES src/mesh/opencascade_cad_import.cpp)
-endif()
+    list(APPEND CAD_SOURCES src/discretization/geometry/opencascade_cad_import.cpp)
+endif() 
 
 # Add Gmsh surface mesh generation if available
 if(DEFINED USE_GMSH)
+    #TODO: Add Gmsh surface mesh generation
     list(APPEND CAD_SOURCES src/cad/cad_gmsh_surface.cpp)
 endif()
 
 # Source files for 2D geometry processing
 set(GEOMETRY_SOURCES
-    src/geometry/pcb_ic_structures.c
+    src/discretization/geometry/pcb_ic_structures.c
 )
 
 # Add Clipper2 2D operations if available
 if(DEFINED USE_CLIPPER2)
-    list(APPEND GEOMETRY_SOURCES src/geometry/clipper2_adapter.cpp)
+    list(APPEND GEOMETRY_SOURCES src/discretization/geometry/clipper2_adapter.cpp)
 endif()
 
 # Add Boost.Geometry operations if available
 if(DEFINED USE_BOOST)
+    #TODO: Add Boost.Geometry operations
     list(APPEND GEOMETRY_SOURCES src/geometry/boost_geometry_adapter.cpp)
 endif()
 
 # Source files for MoM solver
 set(MOM_SOURCES
     src/solvers/mom/mom_solver_unified.c
-    src/solvers/mom/tri_mesh.c
+    src/solvers/mom/mom_matvec.c
+    src/discretization/mesh/tri_mesh.c
 )
 
 # Source files for PEEC solver
 set(PEEC_SOURCES
     src/solvers/peec/peec_solver_unified.c
-    src/solvers/peec/manhattan_mesh.c
+    src/discretization/mesh/manhattan_mesh.c
 )
 
 # Create core library (excluded from ALL to avoid building experimental modules by default)
@@ -473,7 +488,8 @@ endif()
 # Create MoM solver library (unified version, MSVC-compatible)
 set(MOM_SOURCES 
     src/solvers/mom/mom_solver_unified.c
-    src/solvers/mom/tri_mesh.c
+    src/solvers/mom/mom_matvec.c
+    src/discretization/mesh/tri_mesh.c
 )
 add_library(mom_solver STATIC ${MOM_SOURCES})
 target_link_libraries(mom_solver PUBLIC geometry_processing_library electromagnetic_kernel_library)
@@ -481,9 +497,11 @@ target_link_libraries(mom_solver PUBLIC geometry_processing_library electromagne
 # Create PEEC solver library (unified version with comprehensive geometry support, MSVC-compatible)
 set(PEEC_SOURCES 
     src/solvers/peec/peec_solver_unified.c
-    src/solvers/peec/manhattan_mesh.c
+    src/discretization/mesh/manhattan_mesh.c
+    #TODO: Add Manhattan mesh generation，peec_manhattan_mesh.c
     src/solvers/peec/peec_manhattan_mesh.c
     src/solvers/peec/peec_non_manhattan_geometry.c
+    #TODO: Add Triangular mesh generation
     src/solvers/peec/peec_triangular_mesh.c
     src/solvers/peec/peec_geometry_support.c
     src/solvers/peec/peec_directionality_kernels.c
@@ -593,7 +611,6 @@ endif()
 # set(APP_TARGETS mom_cli peec_cli)
 # install(TARGETS ${APP_TARGETS}
 #     RUNTIME DESTINATION bin
-)
 
 set(LIB_TARGETS electromagnetic_kernel_library 
     mesh_generation_library geometry_processing_library)
@@ -611,7 +628,7 @@ install(TARGETS ${LIB_TARGETS}
     LIBRARY DESTINATION lib
 )
 
-install(DIRECTORY src/core src/solvers src/mesh src/cad src/geometry
+install(DIRECTORY src/solvers src/discretization/mesh src/discretization/geometry
     DESTINATION include
     FILES_MATCHING PATTERN "*.h"
 )
