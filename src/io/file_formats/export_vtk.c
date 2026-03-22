@@ -200,7 +200,25 @@ int export_vtk_current(
             fprintf(fp, "%.6e\n", current_dist->current_magnitude[i]);
         }
     }
-    
+    /* 表面电流复矢量 J 的实部/虚部（单元质心重构，与 mom_solver RWG 后处理一致）；ParaView 用 Glyph 显示矢量 */
+    if (current_dist->current_real != NULL && current_dist->current_imag != NULL &&
+        current_dist->num_elements > 0) {
+        fprintf(fp, "VECTORS J_real float\n");
+        for (int i = 0; i < current_dist->num_elements; i++) {
+            fprintf(fp, "%.6e %.6e %.6e\n",
+                    current_dist->current_real[i * 3 + 0],
+                    current_dist->current_real[i * 3 + 1],
+                    current_dist->current_real[i * 3 + 2]);
+        }
+        fprintf(fp, "VECTORS J_imag float\n");
+        for (int i = 0; i < current_dist->num_elements; i++) {
+            fprintf(fp, "%.6e %.6e %.6e\n",
+                    current_dist->current_imag[i * 3 + 0],
+                    current_dist->current_imag[i * 3 + 1],
+                    current_dist->current_imag[i * 3 + 2]);
+        }
+    }
+
     fclose(fp);
     return 0;
 }

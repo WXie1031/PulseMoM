@@ -1188,26 +1188,21 @@ int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char
     cur_dist.num_elements = m->num_elements;
     cur_dist.frequency = (solver->config.frequency > 0.0) ? solver->config.frequency : solver->excitation.frequency;
     cur_dist.current_magnitude = (double*)malloc((size_t)m->num_elements * sizeof(double));
-    cur_dist.current_real = NULL;
-    cur_dist.current_imag = NULL;
+    cur_dist.current_real = (double*)calloc((size_t)m->num_elements * 3u, sizeof(double));
+    cur_dist.current_imag = (double*)calloc((size_t)m->num_elements * 3u, sizeof(double));
     cur_dist.current_phase = NULL;
     cur_dist.current_magnitude_vertices = NULL;
     cur_dist.num_vertices = 0;
-    if (!cur_dist.current_magnitude) {
+    if (!cur_dist.current_magnitude || !cur_dist.current_real || !cur_dist.current_imag) {
+        free(cur_dist.current_magnitude);
+        free(cur_dist.current_real);
+        free(cur_dist.current_imag);
         free(edge_plus); free(edge_minus); free(edge_length);
         return -1;
     }
 
-    /* 2) 在每个三角形质心上用 RWG 展开评估 J(r)
-     * 这里直接分别累加实部和虚部，避免在不同编译器下 complex_t/mom_scalar_complex_t 的差异。 */
-    double* Jc_re = (double*)calloc((size_t)m->num_elements, sizeof(double));
-    double* Jc_im = (double*)calloc((size_t)m->num_elements, sizeof(double));
-    if (!Jc_re || !Jc_im) {
-        free(Jc_re); free(Jc_im);
-        free(cur_dist.current_magnitude);
-        free(edge_plus); free(edge_minus); free(edge_length);
-        return -1;
-    }
+    /* 2) 在每个三角形质心上用 RWG 展开评估 J(r)=Σ_e I_e f_e(r)。
+     * 对复系数 I_e：J 的笛卡尔分量亦为复数；分别存 Re/Im，再取 |J|=sqrt(Σ_k |J_k|^2)。 */
 
     /* 方便访问的指针 */
     const mesh_element_t* elements = m->elements;
@@ -1290,9 +1285,14 @@ int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char
                     double Jy = scale * ry;
                     double Jz = scale * rz;
 
-                    /* Jc[t_plus] += I * f_e(c)，此处仅沿某一分量近似，主要用于幅值可视化 */
-                    Jc_re[t_plus] += I_re * Jx - I_im * 0.0;
-                    Jc_im[t_plus] += I_re * 0.0 + I_im * Jx;
+                    /* (I_re+j I_im) * (Jx,Jy,Jz)，f_e 在质心取值为实矢量 */
+                    const int b = t_plus * 3;
+                    cur_dist.current_real[b + 0] += I_re * Jx;
+                    cur_dist.current_imag[b + 0] += I_im * Jx;
+                    cur_dist.current_real[b + 1] += I_re * Jy;
+                    cur_dist.current_imag[b + 1] += I_im * Jy;
+                    cur_dist.current_real[b + 2] += I_re * Jz;
+                    cur_dist.current_imag[b + 2] += I_im * Jz;
                 }
             }
         }
@@ -1350,18 +1350,34 @@ int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char
                     double Jy = scale * ry;
                     double Jz = scale * rz;
 
-                    Jc_re[t_minus] += I_re * Jx - I_im * 0.0;
-                    Jc_im[t_minus] += I_re * 0.0 + I_im * Jx;
+                    const int b = t_minus * 3;
+                    cur_dist.current_real[b + 0] += I_re * Jx;
+                    cur_dist.current_imag[b + 0] += I_im * Jx;
+                    cur_dist.current_real[b + 1] += I_re * Jy;
+                    cur_dist.current_imag[b + 1] += I_im * Jy;
+                    cur_dist.current_real[b + 2] += I_re * Jz;
+                    cur_dist.current_imag[b + 2] += I_im * Jz;
                 }
             }
         }
     }
 
-    /* 3) 由 Jc（质心上的向量）得到每个单元的 |J| 并按需要屏蔽非导体区域 */
+    /* 3) |J| = sqrt( Σ_k (Re(J_k)^2 + Im(J_k)^2) )；按需要屏蔽非导体区域 */
     for (int i = 0; i < m->num_elements; i++) {
-        double mag = hypot(Jc_re[i], Jc_im[i]);
+        const int b = i * 3;
+        double s2 = 0.0;
+        for (int k = 0; k < 3; k++) {
+            double jr = cur_dist.current_real[b + k];
+            double ji = cur_dist.current_imag[b + k];
+            s2 += jr * jr + ji * ji;
+        }
+        double mag = sqrt(s2);
         if (conductor_material_id >= 0 && m->elements[i].material_id != conductor_material_id) {
             mag = 0.0;
+            for (int k = 0; k < 3; k++) {
+                cur_dist.current_real[b + k] = 0.0;
+                cur_dist.current_imag[b + k] = 0.0;
+            }
         }
         cur_dist.current_magnitude[i] = mag;
     }
@@ -1438,10 +1454,10 @@ int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char
     export_vtk_options_t vtk_opts = export_vtk_get_default_options();
     int ret = export_vtk_current(&cur_dist, m, vtk_path, &vtk_opts);
 
-    free(Jc_re);
-    free(Jc_im);
     free(edge_plus); free(edge_minus); free(edge_length);
     free(cur_dist.current_magnitude);
+    free(cur_dist.current_real);
+    free(cur_dist.current_imag);
     free(cur_dist.current_magnitude_vertices);
     return ret;
 }
