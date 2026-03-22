@@ -488,6 +488,7 @@ endif()
 # Create MoM solver library (unified version, MSVC-compatible)
 set(MOM_SOURCES 
     src/solvers/mom/mom_solver_unified.c
+    src/solvers/mom/mom_solver_min.c
     src/solvers/mom/mom_matvec.c
     src/discretization/mesh/tri_mesh.c
 )

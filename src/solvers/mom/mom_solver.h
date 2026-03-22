@@ -149,6 +149,12 @@ int mom_solver_compute_near_field(mom_solver_t* solver, const point3d_t* points,
 int mom_solver_compute_far_field(mom_solver_t* solver, double theta_min, double theta_max, int n_theta,
                                  double phi_min, double phi_max, int n_phi);
 
+/**
+ * Monostatic RCS (m²) for plane-wave excitation: observation along -k̂ (same as incident propagation axis).
+ * Uses RWG far-field post-processing; requires successful solve. Returns 0 on failure.
+ */
+double mom_solver_monostatic_rcs_m2(mom_solver_t* solver);
+
 // Results
 const mom_result_t* mom_solver_get_results(const mom_solver_t* solver);
 

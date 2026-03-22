@@ -600,6 +600,8 @@ static double mom_infer_mesh_meters_per_coord_unit(const mesh_t* mesh, double fr
 
 static complex_t integrate_rwg_far_field(const mesh_t* mesh, int edge_idx, int tri_idx, int is_plus,
                                         const double* r_hat, double k0);
+static void integrate_rwg_far_field_vector(const mesh_t* mesh, int edge_idx, int tri_idx, int is_plus,
+                                          const double* r_hat, double k0, complex_t out[3]);
 static int assemble_impedance_matrix_basic(mom_unified_state_t *state);
 static int solve_linear_system_lu_simple(mom_unified_state_t *state);
 static int solve_linear_system_core_solver(mom_unified_state_t *state);
@@ -613,7 +615,7 @@ static int solve_linear_system_core_solver(mom_unified_state_t *state);
 static void compute_radiation_pattern_unified(mom_unified_state_t *state, double theta_min, double theta_max, 
                                             double phi_min, double phi_max, int n_theta, int n_phi);
 static double compute_rcs_unified(mom_unified_state_t *state, double theta_inc, double phi_inc,
-                                 double theta_scat, double phi_scat);
+                                 double theta_scat, double phi_scat, const double pol_hat[3]);
 
 /********************************************************************************
  * Algorithm Selection for Method of Moments Solver
@@ -3003,13 +3005,29 @@ static void compute_radiation_pattern_unified(mom_unified_state_t *state, double
  * - Often expressed in dBsm: 10 log₁₀(σ/1m²)
  ********************************************************************************/
 static double compute_rcs_unified(mom_unified_state_t *state, double theta_inc, double phi_inc,
-                                 double theta_scat, double phi_scat) {
+                                 double theta_scat, double phi_scat, const double pol_hat_in[3]) {
     // RCS calculation based on strict RWG basis integration
     // RCS = 4π * lim(R→∞) R² |E_scat|² / |E_inc|²
     // where E_scat is computed using strict RWG basis integration
     
     if (!state || !state->current_coefficients || !state->mesh) {
         return 0.0;
+    }
+
+    const double default_pol[3] = {1.0, 0.0, 0.0};
+    const double* pol_hat = pol_hat_in ? pol_hat_in : default_pol;
+    double px = pol_hat[0], py = pol_hat[1], pz = pol_hat[2];
+    {
+        double pn = sqrt(px * px + py * py + pz * pz);
+        if (pn < 1e-20) {
+            px = 1.0;
+            py = 0.0;
+            pz = 0.0;
+        } else {
+            px /= pn;
+            py /= pn;
+            pz /= pn;
+        }
     }
     
     // Convert angles to radians
@@ -3048,61 +3066,82 @@ static double compute_rcs_unified(mom_unified_state_t *state, double theta_inc, 
     }
     build_rwg_mapping(state->mesh, edge_plus, edge_minus, edge_length);
     
-    // Compute scattered field using strict RWG basis integration
-    // E_scat = j*k*eta0/(4π) * Σ_n I_n * J_n
-    // where I_n = ∫_T f_n(r') * exp(-j*k*r_hat·r') dS'
-    complex_t E_scat = complex_zero();
-    
-    // Iterate over edges (RWG basis functions)
-    int num_basis = (state->mesh->num_edges < state->num_basis_functions) ? 
+    /* Vector radiation: N = Σ_n I_n ∫ f_n exp(j k r̂·r') dS'  (3-vector, complex components)
+     * Far field (standard): E ∝ j k η0/(4π) * r̂ × (r̂ × N).  The legacy scalar ∫ f·r̂ was wrong.
+     * Monostatic co-pol RCS (|E_inc|=1): σ = 4π |p̂·E|² with p̂ = receive polarization (here = transmit). */
+    complex_t Nx = complex_zero();
+    complex_t Ny = complex_zero();
+    complex_t Nz = complex_zero();
+
+    int num_basis = (state->mesh->num_edges < state->num_basis_functions) ?
                     state->mesh->num_edges : state->num_basis_functions;
-    
+
     for (int e = 0; e < num_basis; e++) {
         if (edge_length[e] < AREA_EPSILON) continue;
-        
-        complex_t J_n = (e < state->num_basis_functions) ? 
+
+        complex_t J_n = (e < state->num_basis_functions) ?
                         state->current_coefficients[e] : complex_zero();
         if (fabs(J_n.re) < AREA_EPSILON && fabs(J_n.im) < AREA_EPSILON) continue;
-        
-        // Integrate over plus triangle (note: phase is -j*k*r_hat·r' for scattering)
-        complex_t I_plus = complex_zero();
+
+        complex_t Ip[3], Im[3], It[3];
+        Ip[0] = Ip[1] = Ip[2] = complex_zero();
+        Im[0] = Im[1] = Im[2] = complex_zero();
         if (edge_plus[e] >= 0) {
-            // Use negative k0 for scattering direction (exp(-j*k*r_hat·r'))
-            I_plus = integrate_rwg_far_field(state->mesh, e, edge_plus[e], 1, r_hat, -k0);
+            integrate_rwg_far_field_vector(state->mesh, e, edge_plus[e], 1, r_hat, -k0, Ip);
         }
-        
-        // Integrate over minus triangle
-        complex_t I_minus = complex_zero();
         if (edge_minus[e] >= 0) {
-            I_minus = integrate_rwg_far_field(state->mesh, e, edge_minus[e], 0, r_hat, -k0);
+            integrate_rwg_far_field_vector(state->mesh, e, edge_minus[e], 0, r_hat, -k0, Im);
         }
-        
-        // Total integral: I_n = I_plus + I_minus
-        complex_t I_n;
-        I_n.re = I_plus.re + I_minus.re;
-        I_n.im = I_plus.im + I_minus.im;
-        
-        // Contribution: J_n * I_n
-        complex_t contrib;
-        contrib.re = J_n.re * I_n.re - J_n.im * I_n.im;
-        contrib.im = J_n.re * I_n.im + J_n.im * I_n.re;
-        
-        E_scat.re += contrib.re;
-        E_scat.im += contrib.im;
+        for (int c = 0; c < 3; c++) {
+            It[c].re = Ip[c].re + Im[c].re;
+            It[c].im = Ip[c].im + Im[c].im;
+        }
+        /* N += J_n * It (vector) */
+        {
+            double jr = J_n.re, ji = J_n.im;
+            Nx.re += jr * It[0].re - ji * It[0].im;
+            Nx.im += jr * It[0].im + ji * It[0].re;
+            Ny.re += jr * It[1].re - ji * It[1].im;
+            Ny.im += jr * It[1].im + ji * It[1].re;
+            Nz.re += jr * It[2].re - ji * It[2].im;
+            Nz.im += jr * It[2].im + ji * It[2].re;
+        }
     }
-    
-    // Scale by Green's function factor: j*k*eta0/(4π)
+
+    /* T = r̂ × N */
+    const double sx = r_hat[0], sy = r_hat[1], sz = r_hat[2];
+    complex_t Tx, Ty, Tz;
+    Tx.re = sy * Nz.re - sz * Ny.re;
+    Tx.im = sy * Nz.im - sz * Ny.im;
+    Ty.re = sz * Nx.re - sx * Nz.re;
+    Ty.im = sz * Nx.im - sx * Nz.im;
+    Tz.re = sx * Ny.re - sy * Nx.re;
+    Tz.im = sx * Ny.im - sy * Nx.im;
+
+    /* V = r̂ × T = r̂ × (r̂ × N) */
+    complex_t Vx, Vy, Vz;
+    Vx.re = sy * Tz.re - sz * Ty.re;
+    Vx.im = sy * Tz.im - sz * Ty.im;
+    Vy.re = sz * Tx.re - sx * Tz.re;
+    Vy.im = sz * Tx.im - sx * Tz.im;
+    Vz.re = sx * Ty.re - sy * Tx.re;
+    Vz.im = sx * Ty.im - sy * Tx.im;
+
     const double factor = k0 * eta0 / (4.0 * M_PI);
-    // j * E_scat: multiply by j (rotate by 90 degrees in complex plane)
-    complex_t E_scat_scaled;
-    E_scat_scaled.re = -factor * E_scat.im;  // j * complex
-    E_scat_scaled.im = factor * E_scat.re;
-    
-    // Compute RCS: σ = 4π * |E_scat|² / |E_inc|² * r²
-    // For unit incident field (|E_inc| = 1): σ = 4π * r² * |E_scat|²
-    // In far field limit (r → ∞), we normalize by r², so: σ = 4π * |E_scat|²
-    double E_scat_mag_sq = E_scat_scaled.re * E_scat_scaled.re + 
-                          E_scat_scaled.im * E_scat_scaled.im;
+    /* E = j * factor * V */
+    complex_t Ex, Ey, Ez;
+    Ex.re = -factor * Vx.im;
+    Ex.im = factor * Vx.re;
+    Ey.re = -factor * Vy.im;
+    Ey.im = factor * Vy.re;
+    Ez.re = -factor * Vz.im;
+    Ez.im = factor * Vz.re;
+
+    complex_t E_pol;
+    E_pol.re = px * Ex.re + py * Ey.re + pz * Ez.re;
+    E_pol.im = px * Ex.im + py * Ey.im + pz * Ez.im;
+
+    double E_scat_mag_sq = E_pol.re * E_pol.re + E_pol.im * E_pol.im;
     double rcs = 4.0 * M_PI * E_scat_mag_sq;
     
     free(edge_plus);
@@ -3454,6 +3493,109 @@ static complex_t integrate_rwg_far_field(
     return result;
 }
 
+/* Same quadrature as integrate_rwg_far_field, but returns ∫ f_n exp(j k0 r̂·r') dS' as a 3-vector. */
+static void integrate_rwg_far_field_vector(
+    const mesh_t* mesh,
+    int edge_idx,
+    int tri_idx,
+    int is_plus,
+    const double* r_hat,
+    double k0,
+    complex_t out[3]) {
+    out[0] = complex_zero();
+    out[1] = complex_zero();
+    out[2] = complex_zero();
+    if (!mesh || !r_hat || tri_idx < 0 || tri_idx >= mesh->num_elements) {
+        return;
+    }
+
+    const mesh_element_t* tri_elem = &mesh->elements[tri_idx];
+    if (tri_elem->type != MESH_ELEMENT_TRIANGLE || tri_elem->num_vertices < 3) {
+        return;
+    }
+
+    const mesh_edge_t* edge = &mesh->edges[edge_idx];
+    double edge_len = edge->length > 0.0 ? edge->length : 0.0;
+
+    geom_triangle_t tri;
+    if (tri_elem->num_vertices >= 3) {
+        tri.vertices[0] = mesh->vertices[tri_elem->vertices[0]].position;
+        tri.vertices[1] = mesh->vertices[tri_elem->vertices[1]].position;
+        tri.vertices[2] = mesh->vertices[tri_elem->vertices[2]].position;
+        tri.area = tri_elem->area;
+        tri.normal = tri_elem->normal;
+    }
+    double tri_area = geom_triangle_get_area(&tri);
+
+    if (tri_area < AREA_EPSILON || edge_len < AREA_EPSILON) {
+        return;
+    }
+    if (tri_elem->num_vertices < 3 || !mesh->vertices) {
+        return;
+    }
+
+    const geom_point_t* v0 = &mesh->vertices[tri_elem->vertices[0]].position;
+    const geom_point_t* v1 = &mesh->vertices[tri_elem->vertices[1]].position;
+    const geom_point_t* v2 = &mesh->vertices[tri_elem->vertices[2]].position;
+
+    int opp_vertex_idx = -1;
+    for (int v = 0; v < tri_elem->num_vertices; v++) {
+        int vidx = tri_elem->vertices[v];
+        if (vidx != edge->vertex1_id && vidx != edge->vertex2_id) {
+            opp_vertex_idx = vidx;
+            break;
+        }
+    }
+
+    if (opp_vertex_idx < 0 || opp_vertex_idx >= mesh->num_vertices) {
+        return;
+    }
+
+    const geom_point_t* r_opp = &mesh->vertices[opp_vertex_idx].position;
+    double coeff = edge_len / (2.0 * tri_area);
+
+    double gauss_xi[7] = {1.0/3.0, 0.797426985353087, 0.101286507323456, 0.101286507323456,
+                          0.059715871789770, 0.470142064105115, 0.470142064105115};
+    double gauss_eta[7] = {1.0/3.0, 0.101286507323456, 0.797426985353087, 0.101286507323456,
+                           0.470142064105115, 0.059715871789770, 0.470142064105115};
+    double gauss_weights[7] = {0.225, 0.125939180544827, 0.125939180544827, 0.125939180544827,
+                              0.132394152788506, 0.132394152788506, 0.132394152788506};
+
+    for (int gp = 0; gp < 7; gp++) {
+        double xi = gauss_xi[gp];
+        double eta = gauss_eta[gp];
+        double zeta = 1.0 - xi - eta;
+        double weight = gauss_weights[gp];
+
+        geom_point_t r_point;
+        r_point.x = xi * v0->x + eta * v1->x + zeta * v2->x;
+        r_point.y = xi * v0->y + eta * v1->y + zeta * v2->y;
+        r_point.z = xi * v0->z + eta * v1->z + zeta * v2->z;
+
+        double basis_vec[3];
+        if (is_plus) {
+            basis_vec[0] = coeff * (r_point.x - r_opp->x);
+            basis_vec[1] = coeff * (r_point.y - r_opp->y);
+            basis_vec[2] = coeff * (r_point.z - r_opp->z);
+        } else {
+            basis_vec[0] = coeff * (r_opp->x - r_point.x);
+            basis_vec[1] = coeff * (r_opp->y - r_point.y);
+            basis_vec[2] = coeff * (r_opp->z - r_point.z);
+        }
+
+        double phase_arg = k0 * (r_hat[0] * r_point.x + r_hat[1] * r_point.y + r_hat[2] * r_point.z);
+        complex_t phase = {cos(phase_arg), sin(phase_arg)};
+
+        for (int d = 0; d < 3; d++) {
+            complex_t contrib;
+            contrib.re = weight * tri_area * basis_vec[d] * phase.re;
+            contrib.im = weight * tri_area * basis_vec[d] * phase.im;
+            out[d].re += contrib.re;
+            out[d].im += contrib.im;
+        }
+    }
+}
+
 void mom_compute_radiation_pattern_unified(mesh_t *mesh, complex_t *currents, double frequency,
                                          double theta_min, double theta_max, double phi_min, double phi_max,
                                          int n_theta, int n_phi, complex_t *far_field) {
@@ -3564,19 +3706,22 @@ void mom_compute_radiation_pattern_unified(mesh_t *mesh, complex_t *currents, do
 
 // RCS computation interface  
 double mom_compute_rcs_unified(mesh_t *mesh, complex_t *currents, double frequency,
-                              double theta_inc, double phi_inc, double theta_scat, double phi_scat) {
-    
-    printf("Computing unified RCS...\n");
-    
+                              double theta_inc, double phi_inc, double theta_scat, double phi_scat,
+                              const double pol_hat[3]) {
     // Create temporary state for RCS computation
     mom_unified_state_t temp_state;
     memset(&temp_state, 0, sizeof(temp_state));
     temp_state.mesh = mesh;
     temp_state.problem.frequency = frequency;
     temp_state.current_coefficients = (mom_complex_t*)currents;
-    temp_state.num_basis_functions = mesh ? mesh->num_elements : 0;
-    
-    return compute_rcs_unified(&temp_state, theta_inc, phi_inc, theta_scat, phi_scat);
+    /* RWG 边未知 vs 脉冲三角未知（与 mom_solve_unified 一致） */
+    if (mesh && mesh->num_edges > 0) {
+        temp_state.num_basis_functions = mesh->num_edges;
+    } else {
+        temp_state.num_basis_functions = mesh ? mesh->num_elements : 0;
+    }
+
+    return compute_rcs_unified(&temp_state, theta_inc, phi_inc, theta_scat, phi_scat, pol_hat);
 }
 
 /********************************************************************************

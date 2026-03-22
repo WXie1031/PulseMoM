@@ -22,6 +22,11 @@ void mom_compute_radiation_pattern_unified(mesh_t *mesh, complex_t *currents, do
                                         double theta_min, double theta_max, double phi_min, double phi_max,
                                         int n_theta, int n_phi, complex_t *far_field);
 
+extern double mom_compute_rcs_unified(mesh_t *mesh, complex_t *currents, double frequency,
+                                      double theta_inc, double phi_inc,
+                                      double theta_scat, double phi_scat,
+                                      const double pol_hat[3]);
+
 typedef struct mom_solver {
     mom_config_t config;
     geom_geometry_t* geometry;
@@ -788,6 +793,80 @@ int mom_solver_solve(mom_solver_t* solver) {
     solver->result.converged = true;
     solver->result.solve_time = 0.0;
     return 0;
+}
+
+double mom_solver_monostatic_rcs_m2(mom_solver_t* solver) {
+    if (!solver || !solver->mesh || !solver->result.current_coefficients) {
+        return 0.0;
+    }
+    if (solver->num_unknowns <= 0) {
+        return 0.0;
+    }
+    if (solver->excitation.type != MOM_EXCITATION_PLANE_WAVE) {
+        return 0.0;
+    }
+
+    double kx = solver->excitation.k_vector.x;
+    double ky = solver->excitation.k_vector.y;
+    double kz = solver->excitation.k_vector.z;
+    double kn = sqrt(kx * kx + ky * ky + kz * kz);
+    if (kn < 1e-30) {
+        kx = 0.0;
+        ky = 0.0;
+        kz = 1.0;
+    } else {
+        kx /= kn;
+        ky /= kn;
+        kz /= kn;
+    }
+    /* Propagation +k_hat (same as RHS exp(-j k0 k_hat·r)). Backscatter: observe along -k_hat. */
+    double sx = -kx;
+    double sy = -ky;
+    double sz = -kz;
+    if (sz > 1.0) {
+        sz = 1.0;
+    } else if (sz < -1.0) {
+        sz = -1.0;
+    }
+    double theta_scat = acos(sz) * (180.0 / M_PI);
+    double phi_scat = atan2(sy, sx) * (180.0 / M_PI);
+
+    double kzc = kz;
+    if (kzc > 1.0) {
+        kzc = 1.0;
+    } else if (kzc < -1.0) {
+        kzc = -1.0;
+    }
+    double theta_inc = acos(kzc) * (180.0 / M_PI);
+    double phi_inc = atan2(ky, kx) * (180.0 / M_PI);
+
+    double freq = (solver->config.frequency > 0.0) ? solver->config.frequency
+                  : ((solver->excitation.frequency > 0.0) ? solver->excitation.frequency : 1e9);
+
+    double px = solver->excitation.polarization.x;
+    double py = solver->excitation.polarization.y;
+    double pz = solver->excitation.polarization.z;
+    double pnorm = sqrt(px * px + py * py + pz * pz);
+    if (pnorm < 1e-20) {
+        px = 1.0;
+        py = 0.0;
+        pz = 0.0;
+    } else {
+        px /= pnorm;
+        py /= pnorm;
+        pz /= pnorm;
+    }
+    double pol_hat[3] = {px, py, pz};
+
+    return mom_compute_rcs_unified(
+        solver->mesh,
+        (complex_t *)solver->result.current_coefficients,
+        freq,
+        theta_inc,
+        phi_inc,
+        theta_scat,
+        phi_scat,
+        pol_hat);
 }
 
 int mom_solver_enable_preconditioner(mom_solver_t* solver, bool enable) {

@@ -24,6 +24,7 @@ typedef struct mom_cli_file_config {
     int max_iterations;
     int mesh_density;
     int conductor_material_id;  /* -1: all conductor; >=0: only elements with this material_id (e.g. body=0, wheels=other) */
+    char plane_wave_preset[32]; /* car45 (default) | mie_z (+z propagation, E along +x, for PEC sphere / Mie) */
 } mom_cli_file_config_t;
 
 /* Build an output results file path in the same directory as the geometry file.
@@ -100,6 +101,7 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
     cfg->max_iterations = 1000;
     cfg->mesh_density = 10;
     cfg->conductor_material_id = -1;  /* -1: treat all as conductor */
+    strcpy(cfg->plane_wave_preset, "car45");
     
     char line[1024];
     while (fgets(line, sizeof(line), f)) {
@@ -124,6 +126,8 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
             sscanf(line, "mesh_density=%d", &cfg->mesh_density);
         } else if (strstr(line, "conductor_material_id")) {
             sscanf(line, "conductor_material_id=%d", &cfg->conductor_material_id);
+        } else if (strstr(line, "plane_wave_preset")) {
+            sscanf(line, "plane_wave_preset=%31s", cfg->plane_wave_preset);
         }
     }
     
@@ -220,7 +224,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    /* 设置 45° 入射平面波激励：k 向量在 x-z 平面，与 +z 法向成 45°，极化沿 y 方向 */
+    /* 平面波激励：默认 45° 车体案例；plane_wave_preset=mie_z 用于 PEC 球与 Mie 单站对比 (+z 传播, E//x) */
     {
         mom_excitation_t exc = {0};
         const double inv_sqrt2 = 0.7071067811865475; /* 1/sqrt(2) */
@@ -228,14 +232,24 @@ int main(int argc, char* argv[]) {
         exc.frequency = solver_config.frequency;
         exc.amplitude = 1.0;
         exc.phase     = 0.0;
-        /* 传播方向：从上方斜向车体，假定车体法向为 +z，这里取朝 -z 方向 */
-        exc.k_vector.x =  inv_sqrt2;
-        exc.k_vector.y =  0.0;
-        exc.k_vector.z = -inv_sqrt2;
-        /* 极化方向：E 沿 y 轴 */
-        exc.polarization.x = 0.0;
-        exc.polarization.y = 1.0;
-        exc.polarization.z = 0.0;
+        if (file_config.plane_wave_preset[0] != '\0' &&
+            strcmp(file_config.plane_wave_preset, "mie_z") == 0) {
+            exc.k_vector.x = 0.0;
+            exc.k_vector.y = 0.0;
+            exc.k_vector.z = 1.0;
+            exc.polarization.x = 1.0;
+            exc.polarization.y = 0.0;
+            exc.polarization.z = 0.0;
+        } else {
+            /* 传播方向：从上方斜向车体，假定车体法向为 +z，这里取朝 -z 分量 */
+            exc.k_vector.x =  inv_sqrt2;
+            exc.k_vector.y =  0.0;
+            exc.k_vector.z = -inv_sqrt2;
+            /* 极化方向：E 沿 y 轴 */
+            exc.polarization.x = 0.0;
+            exc.polarization.y = 1.0;
+            exc.polarization.z = 0.0;
+        }
         mom_solver_add_excitation(solver, &exc);
     }
     
@@ -295,6 +309,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    /* 单站 RCS（后向，与平面波传播方向相反）；与 |E_inc|=1 的 RCS 定义一致 */
+    const double monostatic_rcs_m2 = mom_solver_monostatic_rcs_m2(solver);
+
     /* 近场采样：在 z=NF_Z0 平面上建立 NF_NX × NF_NY 网格，用于 3D 场强分布演示 */
     {
         const int num_near = NF_NX * NF_NY;
@@ -330,6 +347,11 @@ int main(int argc, char* argv[]) {
         printf("Iterations: %d\n", results->iterations);
         printf("Converged: %s\n", results->converged ? "Yes" : "No");
     }
+    printf("Monostatic RCS: %.6e m^2", monostatic_rcs_m2);
+    if (monostatic_rcs_m2 > 0.0) {
+        printf(" (%.3f dBsm)", 10.0 * log10(monostatic_rcs_m2));
+    }
+    printf("\n");
     printf("\n");
 
     /* Write a simple text results file next to the geometry file */
@@ -357,6 +379,10 @@ int main(int argc, char* argv[]) {
             if (results->iterations > 0) {
                 fprintf(rf, "Iterations: %d\n", results->iterations);
                 fprintf(rf, "Converged: %s\n", results->converged ? "Yes" : "No");
+            }
+            fprintf(rf, "MONOSTATIC_RCS_M2=%.12e\n", monostatic_rcs_m2);
+            if (monostatic_rcs_m2 > 0.0) {
+                fprintf(rf, "MONOSTATIC_RCS_DBSM=%.6f\n", 10.0 * log10(monostatic_rcs_m2));
             }
             fprintf(rf, "\n");
 
