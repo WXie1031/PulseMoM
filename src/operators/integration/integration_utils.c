@@ -88,32 +88,29 @@ void gauss_quadrature_1d(int n, double* points, double* weights) {
 }
 
 /********************************************************************************
- * Gaussian Quadrature for Triangular Domains
- * Returns points and weights in barycentric coordinates (u, v, w) where w = 1 - u - v
- * Supports orders: 1 (centroid), 4, 7, and 8 points
+ * Gaussian Quadrature for Triangular Domains — Dunavant (1985) style rules
+ * (u,v) = (λ1, λ2), w = 1-u-v; weights sum to 1 for ∫_T f dS ≈ A Σ w_i f(r_i).
+ * order 8 = degree-6 rule with 12 nodes (Burkhardt dunavant_subrule_06).
  ********************************************************************************/
 void gauss_quadrature_triangle(int order, double points[][2], double* weights) {
     if (!points || !weights || order < 1) return;
     
     switch (order) {
         case 1: {
-            // 1-point: Centroid rule (lowest order)
             points[0][0] = 1.0/3.0;
             points[0][1] = 1.0/3.0;
             weights[0] = 1.0;
             break;
         }
         case 4: {
-            // 4-point Gauss quadrature for triangles
             points[0][0] = 1.0/3.0;
-            points[0][1] = 1.0/3.0;  // Centroid
+            points[0][1] = 1.0/3.0;
             points[1][0] = 0.6;
-            points[1][1] = 0.2;      // Edge region
+            points[1][1] = 0.2;
             points[2][0] = 0.2;
-            points[2][1] = 0.6;      // Edge region
+            points[2][1] = 0.6;
             points[3][0] = 0.2;
-            points[3][1] = 0.2;      // Corner region
-            
+            points[3][1] = 0.2;
             weights[0] = 0.25;
             weights[1] = 0.25;
             weights[2] = 0.25;
@@ -121,62 +118,59 @@ void gauss_quadrature_triangle(int order, double points[][2], double* weights) {
             break;
         }
         case 7: {
-            // 7-point Gauss quadrature (higher accuracy)
+            const double a = 0.059715871789770;
+            const double b = 0.470142064105115;
+            const double c = 0.797426985353087;
+            const double d = 0.101286507323456;
             points[0][0] = 1.0/3.0;
-            points[0][1] = 1.0/3.0;  // Centroid
-            points[1][0] = 0.797426985353087;
-            points[1][1] = 0.101286507323456;  // Corner
-            points[2][0] = 0.101286507323456;
-            points[2][1] = 0.797426985353087;  // Corner
-            points[3][0] = 0.101286507323456;
-            points[3][1] = 0.101286507323456;  // Corner
-            points[4][0] = 0.470142064105115;
-            points[4][1] = 0.059715871789770;  // Edge
-            points[5][0] = 0.059715871789770;
-            points[5][1] = 0.470142064105115;  // Edge
-            points[6][0] = 1.0/3.0;
-            points[6][1] = 1.0/3.0;  // Centroid (duplicate for symmetry)
-            
+            points[0][1] = 1.0/3.0;
             weights[0] = 0.225;
-            weights[1] = 0.125939180544827;
-            weights[2] = 0.125939180544827;
-            weights[3] = 0.125939180544827;
-            weights[4] = 0.132394152788506;
-            weights[5] = 0.132394152788506;
-            weights[6] = 0.225;
+            points[1][0] = b;
+            points[1][1] = b;
+            weights[1] = 0.132394152788506;
+            points[2][0] = a;
+            points[2][1] = b;
+            weights[2] = 0.132394152788506;
+            points[3][0] = b;
+            points[3][1] = a;
+            weights[3] = 0.132394152788506;
+            points[4][0] = d;
+            points[4][1] = d;
+            weights[4] = 0.125939180544827;
+            points[5][0] = d;
+            points[5][1] = c;
+            weights[5] = 0.125939180544827;
+            points[6][0] = c;
+            points[6][1] = d;
+            weights[6] = 0.125939180544827;
             break;
         }
         case 8: {
-            // 8-point Gauss quadrature (highest accuracy for near-singular)
-            points[0][0] = 0.333333333333333;
-            points[0][1] = 0.333333333333333;  // Centroid
-            points[1][0] = 0.797426985353087;
-            points[1][1] = 0.101286507323456;  // Corner
-            points[2][0] = 0.101286507323456;
-            points[2][1] = 0.797426985353087;  // Corner
-            points[3][0] = 0.101286507323456;
-            points[3][1] = 0.101286507323456;  // Corner
-            points[4][0] = 0.470142064105115;
-            points[4][1] = 0.059715871789770;  // Edge
-            points[5][0] = 0.059715871789770;
-            points[5][1] = 0.470142064105115;  // Edge
-            points[6][0] = 0.059715871789770;
-            points[6][1] = 0.470142064105115;  // Edge (different from point 5)
-            points[7][0] = 0.333333333333333;
-            points[7][1] = 0.333333333333333;  // Centroid (duplicate)
-            
-            weights[0] = 0.225000000000000;
-            weights[1] = 0.125939180544827;
-            weights[2] = 0.125939180544827;
-            weights[3] = 0.125939180544827;
-            weights[4] = 0.132394152788506;
-            weights[5] = 0.132394152788506;
-            weights[6] = 0.132394152788506;
-            weights[7] = 0.225000000000000;
+            const double a1 = 0.501426509658179;
+            const double b1 = 0.249286745170910;
+            const double a2 = 0.873821971016996;
+            const double b2 = 0.063089014491502;
+            const double p00 = 0.053145049844817;
+            const double p01 = 0.310352451033784;
+            const double p02 = 0.636502499121399;
+            const double w1 = 0.116786275726379;
+            const double w2 = 0.050844906370207;
+            const double w3 = 0.082851075618374;
+            points[0][0] = b1;  points[0][1] = b1;  weights[0] = w1;
+            points[1][0] = a1;  points[1][1] = b1;  weights[1] = w1;
+            points[2][0] = b1;  points[2][1] = a1;  weights[2] = w1;
+            points[3][0] = b2;  points[3][1] = b2;  weights[3] = w2;
+            points[4][0] = a2;  points[4][1] = b2;  weights[4] = w2;
+            points[5][0] = b2;  points[5][1] = a2;  weights[5] = w2;
+            points[6][0] = p01;  points[6][1] = p02;  weights[6] = w3;
+            points[7][0] = p02;  points[7][1] = p01;  weights[7] = w3;
+            points[8][0] = p00;  points[8][1] = p02;  weights[8] = w3;
+            points[9][0] = p02;  points[9][1] = p00;  weights[9] = w3;
+            points[10][0] = p00;  points[10][1] = p01;  weights[10] = w3;
+            points[11][0] = p01;  points[11][1] = p00;  weights[11] = w3;
             break;
         }
         default: {
-            // Default to 4-point for unknown orders
             if (order >= 4) {
                 gauss_quadrature_triangle(4, points, weights);
             } else {
@@ -184,6 +178,18 @@ void gauss_quadrature_triangle(int order, double points[][2], double* weights) {
             }
             break;
         }
+    }
+}
+
+int gauss_quadrature_triangle_num_points(int order) {
+    switch (order) {
+        case 1: return 1;
+        case 4: return 4;
+        case 7: return 7;
+        case 8: return 12;
+        default:
+            if (order >= 4) return 4;
+            return 1;
     }
 }
 

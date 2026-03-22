@@ -36,12 +36,17 @@ void vector3d_cross_array(const double* v1, const double* v2, double* result);
 void get_triangle_centroid(const triangle_element_t* tri, double* centroid);
 void get_opposite_vertex(const triangle_element_t* tri, int edge_idx, double* vertex);
 
+// Maximum nodes for gauss_quadrature_triangle (order==8 → Dunavant degree 6, 12 nodes)
+#define GAUSS_TRIANGLE_MAX_POINTS 12
+
 // Gaussian quadrature for triangular domains (barycentric coordinates)
-// Returns points in barycentric coordinates (u, v) where w = 1 - u - v
-// order: 1, 4, 7, or 8 (number of quadrature points)
-// points: output array of size [order][2] for (u, v) coordinates
-// weights: output array of size [order] for quadrature weights
+// (u,v) = (λ1, λ2), w = 1-u-v. Weights sum to 1: ∫_T f dS ≈ area(T) Σ w_i f(r_i).
+// order: 1, 4, 7, or 8 (8 requests 12-node Dunavant rule — see gauss_quadrature_triangle_num_points)
+// points/weights: length at least GAUSS_TRIANGLE_MAX_POINTS
 void gauss_quadrature_triangle(int order, double points[][2], double* weights);
+
+/** Node count for order (1, 4, 7, or 12 when order==8). */
+int gauss_quadrature_triangle_num_points(int order);
 
 // Gaussian quadrature for quadrilateral domains (parametric coordinates)
 // Returns points in parametric coordinates (u, v) in [-1, 1]^2

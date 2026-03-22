@@ -26,8 +26,8 @@ typedef struct {
     double triangle_weights_4[4];
     double triangle_points_7[7][2];
     double triangle_weights_7[7];
-    double triangle_points_8[8][2];
-    double triangle_weights_8[8];
+    double triangle_points_8[12][2];
+    double triangle_weights_8[12];
     int initialized;
 } gauss_lookup_table_t;
 
@@ -145,7 +145,7 @@ int integration_get_cached_triangle_quadrature(int order, double points[][2], do
             return 1;
             
         case 8:
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < 12; i++) {
                 points[i][0] = g_lookup_table.triangle_points_8[i][0];
                 points[i][1] = g_lookup_table.triangle_points_8[i][1];
                 weights[i] = g_lookup_table.triangle_weights_8[i];

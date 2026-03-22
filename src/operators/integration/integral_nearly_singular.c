@@ -99,14 +99,14 @@ complex_t integral_nearly_singular_triangle(const geom_triangle_t* tri,
     
     // Use high-order Gauss quadrature (8-point for near-singular accuracy)
     // Try to use cached lookup table first for performance
-    double gauss_points[NEAR_SINGULAR_GAUSS_ORDER][2];
-    double gauss_weights[NEAR_SINGULAR_GAUSS_ORDER];
+    double gauss_points[GAUSS_TRIANGLE_MAX_POINTS][2];
+    double gauss_weights[GAUSS_TRIANGLE_MAX_POINTS];
     if (!integration_get_cached_triangle_quadrature(NEAR_SINGULAR_GAUSS_ORDER, gauss_points, gauss_weights)) {
         // Fallback to regular function if not cached
         gauss_quadrature_triangle(NEAR_SINGULAR_GAUSS_ORDER, gauss_points, gauss_weights);
     }
-    
-    for (int i = 0; i < NEAR_SINGULAR_GAUSS_ORDER; i++) {
+    int nq = gauss_quadrature_triangle_num_points(NEAR_SINGULAR_GAUSS_ORDER);
+    for (int i = 0; i < nq; i++) {
         double u = gauss_points[i][0];
         double v = gauss_points[i][1];
         double w = 1.0 - u - v;

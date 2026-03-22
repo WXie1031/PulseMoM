@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file kernel_mfie.c
  * @brief Magnetic Field Integral Equation (MFIE) kernel implementation
  * @details Implements MFIE kernels for closed conductors and cavity problems
@@ -407,16 +407,16 @@ complex_t kernel_mfie_duffy_transform(const geom_triangle_t* tri_i,
     // For MFIE, we need the normal vector at the source point
     geom_point_t n_j = tri_j->normal;
     
-    // Use higher-order Gauss quadrature for MFIE (1/R³ singularity is stronger)
-    // 8-point quadrature for better accuracy with stronger singularity
-    double gauss_points[8][2];
-    double gauss_weights[8];
+    // Higher-order triangle rule (order code 8 = Dunavant deg. 6, 12 nodes)
+    double gauss_points[GAUSS_TRIANGLE_MAX_POINTS][2];
+    double gauss_weights[GAUSS_TRIANGLE_MAX_POINTS];
     
     // Try to use cached lookup table first for performance
     if (!integration_get_cached_triangle_quadrature(8, gauss_points, gauss_weights)) {
         // Fallback to regular function if not cached
         gauss_quadrature_triangle(8, gauss_points, gauss_weights);
     }
+    int nq = gauss_quadrature_triangle_num_points(8);
     
     complex_t integral = complex_zero();
     
@@ -427,7 +427,7 @@ complex_t kernel_mfie_duffy_transform(const geom_triangle_t* tri_i,
     
     // For triangle-triangle integration, we need to integrate over both triangles
     // Outer loop: triangle i (observation)
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < nq; i++) {
         double u_i = gauss_points[i][0];
         double v_i = gauss_points[i][1];
         double w_i = 1.0 - u_i - v_i;
@@ -454,7 +454,7 @@ complex_t kernel_mfie_duffy_transform(const geom_triangle_t* tri_i,
         geom_triangle_interpolate_point(tri_i, u_i, v_i, w_i, &pt_i);
         
         // Inner loop: triangle j (source) with Duffy transform
-        for (int j = 0; j < 8; j++) {
+        for (int j = 0; j < nq; j++) {
             // Map Gauss points to [0,1] for Duffy transform
             // Original Gauss points are in barycentric coordinates
             double u_j = gauss_points[j][0];

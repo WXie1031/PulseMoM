@@ -1,4 +1,4 @@
-﻿/********************************************************************************
+/********************************************************************************
  * Logarithmic Singularity Integration Implementation
  *
  * Copyright (C) 2025 PulseEM Technologies
@@ -89,8 +89,8 @@ complex_t integral_logarithmic_singular_triangle(const geom_triangle_t* tri,
     // For logarithmic singularities, we use product integration:
     // ∫ log(r) * f(r) dA ≈ Σ w_i * log(r_i) * f(r_i)
     
-    double gauss_points[GAUSS_ORDER_LOG][2];
-    double gauss_weights[GAUSS_ORDER_LOG];
+    double gauss_points[GAUSS_TRIANGLE_MAX_POINTS][2];
+    double gauss_weights[GAUSS_TRIANGLE_MAX_POINTS];
     
     // Try to use cached lookup table first for performance
     if (!integration_get_cached_triangle_quadrature(GAUSS_ORDER_LOG, gauss_points, gauss_weights)) {
@@ -99,8 +99,8 @@ complex_t integral_logarithmic_singular_triangle(const geom_triangle_t* tri,
     }
     
     complex_t integral = complex_zero();
-    
-    for (int i = 0; i < GAUSS_ORDER_LOG; i++) {
+    int nq = gauss_quadrature_triangle_num_points(GAUSS_ORDER_LOG);
+    for (int i = 0; i < nq; i++) {
         double xi = gauss_points[i][0];
         double eta = gauss_points[i][1];
         double zeta = 1.0 - xi - eta;

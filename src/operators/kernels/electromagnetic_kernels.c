@@ -1082,6 +1082,263 @@ complex_t integrate_rwg_rwg_efie(
     return result;
 }
 
+/*---------------------------------------------------------------------------
+ * RWG EFIE Galerkin: singularity splitting + recursive subdivision for near
+ * pairs (same patch / shared edge / shared vertex / electrically close).
+ * G(r)=exp(ikr)/(4πr) = (exp(ikr)-1)/(4πr) + 1/(4πr); first term is smooth.
+ * Recursive 4× subdivision of integration domains approximates Duffy-style
+ * concentration of samples near r→0 (exact polar/Duffy inner integral TBD).
+ *---------------------------------------------------------------------------*/
+static void rwg_tri_fill_from_vertices(const double v0[3], const double v1[3], const double v2[3], triangle_element_t* out) {
+    int k;
+    for (k = 0; k < 3; k++) {
+        out->vertices[0][k] = v0[k];
+        out->vertices[1][k] = v1[k];
+        out->vertices[2][k] = v2[k];
+    }
+    double e1[3] = { v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2] };
+    double e2[3] = { v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2] };
+    double nx = e1[1] * e2[2] - e1[2] * e2[1];
+    double ny = e1[2] * e2[0] - e1[0] * e2[2];
+    double nz = e1[0] * e2[1] - e1[1] * e2[0];
+    double nlen = sqrt(nx * nx + ny * ny + nz * nz);
+    out->area = 0.5 * nlen;
+    if (nlen > 1e-18) {
+        out->normal[0] = nx / nlen;
+        out->normal[1] = ny / nlen;
+        out->normal[2] = nz / nlen;
+    } else {
+        out->normal[0] = out->normal[1] = out->normal[2] = 0.0;
+    }
+}
+
+static void rwg_tri_subdivide_four(const triangle_element_t* tri, triangle_element_t out[4]) {
+    double m01[3], m12[3], m20[3];
+    int k;
+    for (k = 0; k < 3; k++) {
+        m01[k] = 0.5 * (tri->vertices[0][k] + tri->vertices[1][k]);
+        m12[k] = 0.5 * (tri->vertices[1][k] + tri->vertices[2][k]);
+        m20[k] = 0.5 * (tri->vertices[2][k] + tri->vertices[0][k]);
+    }
+    rwg_tri_fill_from_vertices(tri->vertices[0], m01, m20, &out[0]);
+    rwg_tri_fill_from_vertices(m01, tri->vertices[1], m12, &out[1]);
+    rwg_tri_fill_from_vertices(m20, m12, tri->vertices[2], &out[2]);
+    rwg_tri_fill_from_vertices(m01, m12, m20, &out[3]);
+}
+
+static int rwg_vtx_equal_tol(const double a[3], const double b[3], double tol) {
+    return (fabs(a[0] - b[0]) < tol && fabs(a[1] - b[1]) < tol && fabs(a[2] - b[2]) < tol);
+}
+
+static int rwg_count_vertices_of_A_in_B(const triangle_element_t* A, const triangle_element_t* B, double tol) {
+    int c = 0;
+    int i, j;
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+            if (rwg_vtx_equal_tol(A->vertices[i], B->vertices[j], tol)) {
+                c++;
+                break;
+            }
+        }
+    }
+    return c;
+}
+
+static void rwg_tri_centroid3(const triangle_element_t* t, double c[3]) {
+    c[0] = (t->vertices[0][0] + t->vertices[1][0] + t->vertices[2][0]) / 3.0;
+    c[1] = (t->vertices[0][1] + t->vertices[1][1] + t->vertices[2][1]) / 3.0;
+    c[2] = (t->vertices[0][2] + t->vertices[1][2] + t->vertices[2][2]) / 3.0;
+}
+
+static int rwg_efie_subdiv_depth_for_pair(const triangle_element_t* tri_i, const triangle_element_t* tri_j, double k) {
+    double tol = 1e-6 * fmax(fmax(sqrt(tri_i->area), sqrt(tri_j->area)), 1e-12);
+    if (tri_i == tri_j) return 2;
+    int shared = rwg_count_vertices_of_A_in_B(tri_i, tri_j, tol);
+    if (shared >= 2) return 2;
+    if (shared == 1) return 1;
+    double ci[3], cj[3];
+    rwg_tri_centroid3(tri_i, ci);
+    rwg_tri_centroid3(tri_j, cj);
+    double d = compute_distance_3d(ci, cj);
+    double hi = sqrt(tri_i->area);
+    double hj = sqrt(tri_j->area);
+    double h = 0.5 * (hi + hj);
+    if (h < 1e-18) h = 1e-18;
+    if (d / h < 2.0) return 1;
+    if (k > 1e-15) {
+        double lambda = 2.0 * M_PI / k;
+        if (d < 0.2 * lambda) return 1;
+    }
+    return 0;
+}
+
+static void rwg_r_from_barycentric(const triangle_element_t* tri, double u, double v, double r[3]) {
+    double w0 = 1.0 - u - v;
+    r[0] = w0 * tri->vertices[0][0] + u * tri->vertices[1][0] + v * tri->vertices[2][0];
+    r[1] = w0 * tri->vertices[0][1] + u * tri->vertices[1][1] + v * tri->vertices[2][1];
+    r[2] = w0 * tri->vertices[0][2] + u * tri->vertices[1][2] + v * tri->vertices[2][2];
+}
+
+/* exp(ikr)/(4πr) = (exp(ikr)-1)/(4πr) + 1/(4πr); split for stable quadrature */
+static void rwg_green_efie_split(double r, double k, complex_t* G_smooth, double* inv_4pi_r) {
+    if (r <= 1e-15) {
+        *inv_4pi_r = 0.0;
+        G_smooth->re = 0.0;
+        G_smooth->im = k / (4.0 * M_PI);
+        return;
+    }
+    *inv_4pi_r = 1.0 / (4.0 * M_PI * r);
+    double kr = k * r;
+    G_smooth->re = (*inv_4pi_r) * (cos(kr) - 1.0);
+    G_smooth->im = (*inv_4pi_r) * sin(kr);
+}
+
+static complex_t rwg_green_efie_combined(double r, double k) {
+    complex_t Gs;
+    double inv4;
+    rwg_green_efie_split(r, k, &Gs, &inv4);
+    return complex_add_real(&Gs, inv4);
+}
+
+static complex_t rwg_efie_accumulate_vector_term(
+    const triangle_element_t* tri_i_basis,
+    const triangle_element_t* tri_j_basis,
+    const triangle_element_t* dom_i,
+    const triangle_element_t* dom_j,
+    const double* r_opp_i,
+    const double* r_opp_j,
+    double edge_len_i,
+    double edge_len_j,
+    double area_i_basis,
+    double area_j_basis,
+    int is_plus_i,
+    int is_plus_j,
+    double omega,
+    double k,
+    double mu,
+    int quad_order,
+    int depth) {
+    if (depth > 0) {
+        triangle_element_t si[4], sj[4];
+        rwg_tri_subdivide_four(dom_i, si);
+        rwg_tri_subdivide_four(dom_j, sj);
+        complex_t acc = mc(0.0, 0.0);
+        int a, b;
+        for (a = 0; a < 4; a++) {
+            for (b = 0; b < 4; b++) {
+                complex_t t = rwg_efie_accumulate_vector_term(
+                    tri_i_basis, tri_j_basis, &si[a], &sj[b],
+                    r_opp_i, r_opp_j, edge_len_i, edge_len_j,
+                    area_i_basis, area_j_basis, is_plus_i, is_plus_j,
+                    omega, k, mu, quad_order, depth - 1);
+                acc = complex_add(&acc, &t);
+            }
+        }
+        return acc;
+    }
+
+    double q_u[GAUSS_TRIANGLE_MAX_POINTS][2];
+    double q_w[GAUSS_TRIANGLE_MAX_POINTS];
+    gauss_quadrature_triangle(quad_order, q_u, q_w);
+    int nq = gauss_quadrature_triangle_num_points(quad_order);
+    double Ai = dom_i->area;
+    double Aj = dom_j->area;
+    complex_t sum = mc(0.0, 0.0);
+    int ii, jj;
+    for (ii = 0; ii < nq; ii++) {
+        double u1 = q_u[ii][0];
+        double v1 = q_u[ii][1];
+        if (u1 < -1e-12 || v1 < -1e-12 || 1.0 - u1 - v1 < -1e-12) continue;
+        double wi = q_w[ii];
+        double r1[3];
+        rwg_r_from_barycentric(dom_i, u1, v1, r1);
+        double f_i[3];
+        compute_rwg_basis_vector(tri_i_basis, r1, r_opp_i, edge_len_i, area_i_basis, is_plus_i, f_i);
+        for (jj = 0; jj < nq; jj++) {
+            double u2 = q_u[jj][0];
+            double v2 = q_u[jj][1];
+            if (u2 < -1e-12 || v2 < -1e-12 || 1.0 - u2 - v2 < -1e-12) continue;
+            double wj = q_w[jj];
+            double r2[3];
+            rwg_r_from_barycentric(dom_j, u2, v2, r2);
+            double f_j[3];
+            compute_rwg_basis_vector(tri_j_basis, r2, r_opp_j, edge_len_j, area_j_basis, is_plus_j, f_j);
+            double rdist = compute_distance_3d(r1, r2);
+            complex_t G = rwg_green_efie_combined(rdist, k);
+            double f_dot = vector3d_dot_array(f_i, f_j);
+            double scale = wi * wj * Ai * Aj;
+            complex_t term;
+            term.re = -omega * mu * f_dot * G.im;
+            term.im = omega * mu * f_dot * G.re;
+            complex_t scaled_term = complex_scalar_multiply(&term, scale);
+            sum = complex_add(&sum, &scaled_term);
+        }
+    }
+    return sum;
+}
+
+static complex_t rwg_efie_accumulate_div_term(
+    const triangle_element_t* dom_i,
+    const triangle_element_t* dom_j,
+    double div_i,
+    double div_j,
+    double omega,
+    double k,
+    double eps,
+    int quad_order,
+    int depth) {
+    if (depth > 0) {
+        triangle_element_t si[4], sj[4];
+        rwg_tri_subdivide_four(dom_i, si);
+        rwg_tri_subdivide_four(dom_j, sj);
+        complex_t acc = mc(0.0, 0.0);
+        int a, b;
+        for (a = 0; a < 4; a++) {
+            for (b = 0; b < 4; b++) {
+                complex_t t = rwg_efie_accumulate_div_term(
+                    &si[a], &sj[b], div_i, div_j, omega, k, eps, quad_order, depth - 1);
+                acc = complex_add(&acc, &t);
+            }
+        }
+        return acc;
+    }
+
+    double q_u[GAUSS_TRIANGLE_MAX_POINTS][2];
+    double q_w[GAUSS_TRIANGLE_MAX_POINTS];
+    gauss_quadrature_triangle(quad_order, q_u, q_w);
+    int nq = gauss_quadrature_triangle_num_points(quad_order);
+    double Ai = dom_i->area;
+    double Aj = dom_j->area;
+    complex_t sum = mc(0.0, 0.0);
+    double div_product = div_i * div_j;
+    int ii, jj;
+    for (ii = 0; ii < nq; ii++) {
+        double u1 = q_u[ii][0];
+        double v1 = q_u[ii][1];
+        if (u1 < -1e-12 || v1 < -1e-12 || 1.0 - u1 - v1 < -1e-12) continue;
+        double wi = q_w[ii];
+        double r1[3];
+        rwg_r_from_barycentric(dom_i, u1, v1, r1);
+        for (jj = 0; jj < nq; jj++) {
+            double u2 = q_u[jj][0];
+            double v2 = q_u[jj][1];
+            if (u2 < -1e-12 || v2 < -1e-12 || 1.0 - u2 - v2 < -1e-12) continue;
+            double wj = q_w[jj];
+            double r2[3];
+            rwg_r_from_barycentric(dom_j, u2, v2, r2);
+            double rdist = compute_distance_3d(r1, r2);
+            complex_t G = rwg_green_efie_combined(rdist, k);
+            double scale = wi * wj * Ai * Aj;
+            complex_t term;
+            term.re = -div_product * G.im / (omega * eps);
+            term.im = div_product * G.re / (omega * eps);
+            complex_t scaled_term = complex_scalar_multiply(&term, scale);
+            sum = complex_add(&sum, &scaled_term);
+        }
+    }
+    return sum;
+}
+
 complex_t integrate_rwg_rwg_efie_explicit(
     const triangle_element_t* tri_i_plus,
     const triangle_element_t* tri_i_minus,
@@ -1106,11 +1363,6 @@ complex_t integrate_rwg_rwg_efie_explicit(
     double area_j_plus = tri_j_plus->area;
     double area_j_minus = (tri_j_minus) ? tri_j_minus->area : 0.0;
 
-    /* Fewer points than legacy integrate_rwg_rwg_efie — edge–edge assembly is O(N^2) */
-    int n_points = 3;
-    double xi[8], wi[8];
-    gauss_quadrature_1d(n_points, xi, wi);
-
     complex_t result = mc(0.0, 0.0);
 
     const triangle_element_t* tri_i_list[2] = { tri_i_plus, tri_i_minus };
@@ -1122,7 +1374,8 @@ complex_t integrate_rwg_rwg_efie_explicit(
     const double* opp_i_list[2] = { opp_i_plus, opp_i_minus };
     const double* opp_j_list[2] = { opp_j_plus, opp_j_minus };
 
-    /* Vector-potential + scalar-potential (div-div) terms, same structure as integrate_rwg_rwg_efie */
+    const int quad_order = 7;
+
     for (int idx_i = 0; idx_i < 2; idx_i++) {
         if (!tri_i_list[idx_i] || area_i_list[idx_i] < 1e-15) continue;
         for (int idx_j = 0; idx_j < 2; idx_j++) {
@@ -1133,57 +1386,14 @@ complex_t integrate_rwg_rwg_efie_explicit(
             const double* r_opp_i = opp_i_list[idx_i];
             const double* r_opp_j = opp_j_list[idx_j];
 
-            for (int ii = 0; ii < n_points; ii++) {
-                double u1 = 0.5 * (xi[ii] + 1.0);
-                double wu1 = wi[ii];
-                for (int jj = 0; jj < n_points; jj++) {
-                    double v1 = 0.5 * (xi[jj] + 1.0);
-                    double wv1 = wi[jj];
-                    double w1 = 1.0 - u1 - v1;
-                    if (w1 < 0.0) continue;
-                    double r1[3];
-                    r1[0] = w1 * tri_i->vertices[0][0] + u1 * tri_i->vertices[1][0] + v1 * tri_i->vertices[2][0];
-                    r1[1] = w1 * tri_i->vertices[0][1] + u1 * tri_i->vertices[1][1] + v1 * tri_i->vertices[2][1];
-                    r1[2] = w1 * tri_i->vertices[0][2] + u1 * tri_i->vertices[1][2] + v1 * tri_i->vertices[2][2];
-
-                    double f_i[3];
-                    compute_rwg_basis_vector(tri_i, r1, r_opp_i, edge_len_i,
-                        area_i_list[idx_i], is_plus_i[idx_i], f_i);
-
-                    for (int kk = 0; kk < n_points; kk++) {
-                        double u2 = 0.5 * (xi[kk] + 1.0);
-                        double wu2 = wi[kk];
-                        for (int ll = 0; ll < n_points; ll++) {
-                            double v2 = 0.5 * (xi[ll] + 1.0);
-                            double wv2 = wi[ll];
-                            double w2 = 1.0 - u2 - v2;
-                            if (w2 < 0.0) continue;
-                            double r2[3];
-                            r2[0] = w2 * tri_j->vertices[0][0] + u2 * tri_j->vertices[1][0] + v2 * tri_j->vertices[2][0];
-                            r2[1] = w2 * tri_j->vertices[0][1] + u2 * tri_j->vertices[1][1] + v2 * tri_j->vertices[2][1];
-                            r2[2] = w2 * tri_j->vertices[0][2] + u2 * tri_j->vertices[1][2] + v2 * tri_j->vertices[2][2];
-
-                            double f_j[3];
-                            compute_rwg_basis_vector(tri_j, r2, r_opp_j, edge_len_j,
-                                area_j_list[idx_j], is_plus_j[idx_j], f_j);
-
-                            double r = compute_distance_3d(r1, r2);
-                            if (r < 1e-6) {
-                                double char_length = sqrt(tri_i->area);
-                                r = char_length * 0.1;
-                            }
-                            complex_t G = green_function_free_space(r, k);
-                            double f_dot = vector3d_dot_array(f_i, f_j);
-                            double jacobian = 2.0 * area_i_list[idx_i] * 2.0 * area_j_list[idx_j];
-                            complex_t term;
-                            term.re = -omega * mu * f_dot * G.im;
-                            term.im = omega * mu * f_dot * G.re;
-                            complex_t scaled_term = complex_scalar_multiply(&term, wu1 * wv1 * wu2 * wv2 * jacobian);
-                            result = complex_add(&result, &scaled_term);
-                        }
-                    }
-                }
-            }
+            int depth = rwg_efie_subdiv_depth_for_pair(tri_i, tri_j, k);
+            complex_t tv = rwg_efie_accumulate_vector_term(
+                tri_i, tri_j, tri_i, tri_j,
+                r_opp_i, r_opp_j, edge_len_i, edge_len_j,
+                area_i_list[idx_i], area_j_list[idx_j],
+                is_plus_i[idx_i], is_plus_j[idx_j],
+                omega, k, mu, quad_order, depth);
+            result = complex_add(&result, &tv);
         }
     }
 
@@ -1197,49 +1407,10 @@ complex_t integrate_rwg_rwg_efie_explicit(
             const triangle_element_t* tri_i = tri_i_list[idx_i];
             const triangle_element_t* tri_j = tri_j_list[idx_j];
 
-            for (int ii = 0; ii < n_points; ii++) {
-                double u1 = 0.5 * (xi[ii] + 1.0);
-                double wu1 = wi[ii];
-                for (int jj = 0; jj < n_points; jj++) {
-                    double v1 = 0.5 * (xi[jj] + 1.0);
-                    double wv1 = wi[jj];
-                    double w1 = 1.0 - u1 - v1;
-                    if (w1 < 0.0) continue;
-                    double r1[3];
-                    r1[0] = w1 * tri_i->vertices[0][0] + u1 * tri_i->vertices[1][0] + v1 * tri_i->vertices[2][0];
-                    r1[1] = w1 * tri_i->vertices[0][1] + u1 * tri_i->vertices[1][1] + v1 * tri_i->vertices[2][1];
-                    r1[2] = w1 * tri_i->vertices[0][2] + u1 * tri_i->vertices[1][2] + v1 * tri_i->vertices[2][2];
-
-                    for (int kk = 0; kk < n_points; kk++) {
-                        double u2 = 0.5 * (xi[kk] + 1.0);
-                        double wu2 = wi[kk];
-                        for (int ll = 0; ll < n_points; ll++) {
-                            double v2 = 0.5 * (xi[ll] + 1.0);
-                            double wv2 = wi[ll];
-                            double w2 = 1.0 - u2 - v2;
-                            if (w2 < 0.0) continue;
-                            double r2[3];
-                            r2[0] = w2 * tri_j->vertices[0][0] + u2 * tri_j->vertices[1][0] + v2 * tri_j->vertices[2][0];
-                            r2[1] = w2 * tri_j->vertices[0][1] + u2 * tri_j->vertices[1][1] + v2 * tri_j->vertices[2][1];
-                            r2[2] = w2 * tri_j->vertices[0][2] + u2 * tri_j->vertices[1][2] + v2 * tri_j->vertices[2][2];
-
-                            double r = compute_distance_3d(r1, r2);
-                            if (r < 1e-6) {
-                                double char_length = sqrt(tri_i->area);
-                                r = char_length * 0.1;
-                            }
-                            complex_t G = green_function_free_space(r, k);
-                            double jacobian = 2.0 * area_i_list[idx_i] * 2.0 * area_j_list[idx_j];
-                            double div_product = div_i * div_j;
-                            complex_t term;
-                            term.re = -div_product * G.im / (omega * eps);
-                            term.im = div_product * G.re / (omega * eps);
-                            complex_t scaled_term = complex_scalar_multiply(&term, wu1 * wv1 * wu2 * wv2 * jacobian);
-                            result2 = complex_add(&result2, &scaled_term);
-                        }
-                    }
-                }
-            }
+            int depth = rwg_efie_subdiv_depth_for_pair(tri_i, tri_j, k);
+            complex_t td = rwg_efie_accumulate_div_term(
+                tri_i, tri_j, div_i, div_j, omega, k, eps, quad_order, depth);
+            result2 = complex_add(&result2, &td);
         }
     }
 
