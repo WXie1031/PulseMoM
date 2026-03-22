@@ -1,4 +1,4 @@
-﻿/********************************************************************************
+/********************************************************************************
  * PulseEM - Electromagnetic Kernels Main Implementation
  * 
  * This file includes all module implementations for electromagnetic kernels.
@@ -1079,6 +1079,171 @@ complex_t integrate_rwg_rwg_efie(
     // Combine both terms
     result = complex_add(&result, &result2);
     
+    return result;
+}
+
+complex_t integrate_rwg_rwg_efie_explicit(
+    const triangle_element_t* tri_i_plus,
+    const triangle_element_t* tri_i_minus,
+    const triangle_element_t* tri_j_plus,
+    const triangle_element_t* tri_j_minus,
+    const double opp_i_plus[3],
+    const double opp_i_minus[3],
+    const double opp_j_plus[3],
+    const double opp_j_minus[3],
+    double edge_len_i,
+    double edge_len_j,
+    double frequency) {
+    if (!tri_i_plus || !tri_j_plus || !opp_i_plus || !opp_j_plus) return mc(0.0, 0.0);
+
+    double omega = 2.0 * M_PI * frequency;
+    double k = omega / C0;
+    double mu = MU0;
+    double eps = EPS0;
+
+    double area_i_plus = tri_i_plus->area;
+    double area_i_minus = (tri_i_minus) ? tri_i_minus->area : 0.0;
+    double area_j_plus = tri_j_plus->area;
+    double area_j_minus = (tri_j_minus) ? tri_j_minus->area : 0.0;
+
+    /* Fewer points than legacy integrate_rwg_rwg_efie — edge–edge assembly is O(N^2) */
+    int n_points = 3;
+    double xi[8], wi[8];
+    gauss_quadrature_1d(n_points, xi, wi);
+
+    complex_t result = mc(0.0, 0.0);
+
+    const triangle_element_t* tri_i_list[2] = { tri_i_plus, tri_i_minus };
+    const triangle_element_t* tri_j_list[2] = { tri_j_plus, tri_j_minus };
+    int is_plus_i[2] = { 1, 0 };
+    int is_plus_j[2] = { 1, 0 };
+    double area_i_list[2] = { area_i_plus, area_i_minus };
+    double area_j_list[2] = { area_j_plus, area_j_minus };
+    const double* opp_i_list[2] = { opp_i_plus, opp_i_minus };
+    const double* opp_j_list[2] = { opp_j_plus, opp_j_minus };
+
+    /* Vector-potential + scalar-potential (div-div) terms, same structure as integrate_rwg_rwg_efie */
+    for (int idx_i = 0; idx_i < 2; idx_i++) {
+        if (!tri_i_list[idx_i] || area_i_list[idx_i] < 1e-15) continue;
+        for (int idx_j = 0; idx_j < 2; idx_j++) {
+            if (!tri_j_list[idx_j] || area_j_list[idx_j] < 1e-15) continue;
+
+            const triangle_element_t* tri_i = tri_i_list[idx_i];
+            const triangle_element_t* tri_j = tri_j_list[idx_j];
+            const double* r_opp_i = opp_i_list[idx_i];
+            const double* r_opp_j = opp_j_list[idx_j];
+
+            for (int ii = 0; ii < n_points; ii++) {
+                double u1 = 0.5 * (xi[ii] + 1.0);
+                double wu1 = wi[ii];
+                for (int jj = 0; jj < n_points; jj++) {
+                    double v1 = 0.5 * (xi[jj] + 1.0);
+                    double wv1 = wi[jj];
+                    double w1 = 1.0 - u1 - v1;
+                    if (w1 < 0.0) continue;
+                    double r1[3];
+                    r1[0] = w1 * tri_i->vertices[0][0] + u1 * tri_i->vertices[1][0] + v1 * tri_i->vertices[2][0];
+                    r1[1] = w1 * tri_i->vertices[0][1] + u1 * tri_i->vertices[1][1] + v1 * tri_i->vertices[2][1];
+                    r1[2] = w1 * tri_i->vertices[0][2] + u1 * tri_i->vertices[1][2] + v1 * tri_i->vertices[2][2];
+
+                    double f_i[3];
+                    compute_rwg_basis_vector(tri_i, r1, r_opp_i, edge_len_i,
+                        area_i_list[idx_i], is_plus_i[idx_i], f_i);
+
+                    for (int kk = 0; kk < n_points; kk++) {
+                        double u2 = 0.5 * (xi[kk] + 1.0);
+                        double wu2 = wi[kk];
+                        for (int ll = 0; ll < n_points; ll++) {
+                            double v2 = 0.5 * (xi[ll] + 1.0);
+                            double wv2 = wi[ll];
+                            double w2 = 1.0 - u2 - v2;
+                            if (w2 < 0.0) continue;
+                            double r2[3];
+                            r2[0] = w2 * tri_j->vertices[0][0] + u2 * tri_j->vertices[1][0] + v2 * tri_j->vertices[2][0];
+                            r2[1] = w2 * tri_j->vertices[0][1] + u2 * tri_j->vertices[1][1] + v2 * tri_j->vertices[2][1];
+                            r2[2] = w2 * tri_j->vertices[0][2] + u2 * tri_j->vertices[1][2] + v2 * tri_j->vertices[2][2];
+
+                            double f_j[3];
+                            compute_rwg_basis_vector(tri_j, r2, r_opp_j, edge_len_j,
+                                area_j_list[idx_j], is_plus_j[idx_j], f_j);
+
+                            double r = compute_distance_3d(r1, r2);
+                            if (r < 1e-6) {
+                                double char_length = sqrt(tri_i->area);
+                                r = char_length * 0.1;
+                            }
+                            complex_t G = green_function_free_space(r, k);
+                            double f_dot = vector3d_dot_array(f_i, f_j);
+                            double jacobian = 2.0 * area_i_list[idx_i] * 2.0 * area_j_list[idx_j];
+                            complex_t term;
+                            term.re = -omega * mu * f_dot * G.im;
+                            term.im = omega * mu * f_dot * G.re;
+                            complex_t scaled_term = complex_scalar_multiply(&term, wu1 * wv1 * wu2 * wv2 * jacobian);
+                            result = complex_add(&result, &scaled_term);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    complex_t result2 = mc(0.0, 0.0);
+    for (int idx_i = 0; idx_i < 2; idx_i++) {
+        if (!tri_i_list[idx_i] || area_i_list[idx_i] < 1e-15) continue;
+        double div_i = compute_rwg_basis_divergence(edge_len_i, area_i_list[idx_i], is_plus_i[idx_i]);
+        for (int idx_j = 0; idx_j < 2; idx_j++) {
+            if (!tri_j_list[idx_j] || area_j_list[idx_j] < 1e-15) continue;
+            double div_j = compute_rwg_basis_divergence(edge_len_j, area_j_list[idx_j], is_plus_j[idx_j]);
+            const triangle_element_t* tri_i = tri_i_list[idx_i];
+            const triangle_element_t* tri_j = tri_j_list[idx_j];
+
+            for (int ii = 0; ii < n_points; ii++) {
+                double u1 = 0.5 * (xi[ii] + 1.0);
+                double wu1 = wi[ii];
+                for (int jj = 0; jj < n_points; jj++) {
+                    double v1 = 0.5 * (xi[jj] + 1.0);
+                    double wv1 = wi[jj];
+                    double w1 = 1.0 - u1 - v1;
+                    if (w1 < 0.0) continue;
+                    double r1[3];
+                    r1[0] = w1 * tri_i->vertices[0][0] + u1 * tri_i->vertices[1][0] + v1 * tri_i->vertices[2][0];
+                    r1[1] = w1 * tri_i->vertices[0][1] + u1 * tri_i->vertices[1][1] + v1 * tri_i->vertices[2][1];
+                    r1[2] = w1 * tri_i->vertices[0][2] + u1 * tri_i->vertices[1][2] + v1 * tri_i->vertices[2][2];
+
+                    for (int kk = 0; kk < n_points; kk++) {
+                        double u2 = 0.5 * (xi[kk] + 1.0);
+                        double wu2 = wi[kk];
+                        for (int ll = 0; ll < n_points; ll++) {
+                            double v2 = 0.5 * (xi[ll] + 1.0);
+                            double wv2 = wi[ll];
+                            double w2 = 1.0 - u2 - v2;
+                            if (w2 < 0.0) continue;
+                            double r2[3];
+                            r2[0] = w2 * tri_j->vertices[0][0] + u2 * tri_j->vertices[1][0] + v2 * tri_j->vertices[2][0];
+                            r2[1] = w2 * tri_j->vertices[0][1] + u2 * tri_j->vertices[1][1] + v2 * tri_j->vertices[2][1];
+                            r2[2] = w2 * tri_j->vertices[0][2] + u2 * tri_j->vertices[1][2] + v2 * tri_j->vertices[2][2];
+
+                            double r = compute_distance_3d(r1, r2);
+                            if (r < 1e-6) {
+                                double char_length = sqrt(tri_i->area);
+                                r = char_length * 0.1;
+                            }
+                            complex_t G = green_function_free_space(r, k);
+                            double jacobian = 2.0 * area_i_list[idx_i] * 2.0 * area_j_list[idx_j];
+                            double div_product = div_i * div_j;
+                            complex_t term;
+                            term.re = -div_product * G.im / (omega * eps);
+                            term.im = div_product * G.re / (omega * eps);
+                            complex_t scaled_term = complex_scalar_multiply(&term, wu1 * wv1 * wu2 * wv2 * jacobian);
+                            result2 = complex_add(&result2, &scaled_term);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result = complex_add(&result, &result2);
     return result;
 }
 

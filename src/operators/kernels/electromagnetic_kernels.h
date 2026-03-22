@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file electromagnetic_kernels.h
  * @brief Advanced electromagnetic computational kernels for PEEC, MoM, and BEM
  * @details High-performance implementations of Green's functions, surface integrals, and singular treatments
@@ -249,6 +249,22 @@ complex_t integrate_rwg_rwg_efie(
     const triangle_element_t* tri_j_minus,
     const void* basis_i_ptr,
     const void* basis_j_ptr,
+    double frequency);
+
+/**
+ * @brief Same as integrate_rwg_rwg_efie but with exact opposite-vertex coords and edge lengths (RWG Galerkin).
+ */
+complex_t integrate_rwg_rwg_efie_explicit(
+    const triangle_element_t* tri_i_plus,
+    const triangle_element_t* tri_i_minus,
+    const triangle_element_t* tri_j_plus,
+    const triangle_element_t* tri_j_minus,
+    const double opp_i_plus[3],
+    const double opp_i_minus[3],
+    const double opp_j_plus[3],
+    const double opp_j_minus[3],
+    double edge_len_i,
+    double edge_len_j,
     double frequency);
 
 /**

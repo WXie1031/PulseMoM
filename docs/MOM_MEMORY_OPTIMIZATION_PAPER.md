@@ -142,6 +142,10 @@ We reduced **peak RAM** by (i) **eliminating redundant dense copies** in the dir
 
 ### Implementation note (basis dimension)
 
-The unified triangle–triangle assembler indexes rows/columns by **triangle index** (`0 … num_elements−1`). The linear system dimension **N** must therefore be **`num_elements`**, not `num_edges`. Using **N = num_edges** when `num_edges > num_elements` leaves most rows of **Z** zero and breaks CSR/iterative solves (very small **nnz** relative to **N**). The CLI/minimal solver sets `num_unknowns = num_elements` accordingly; VTK export uses a per-triangle magnitude path when `num_unknowns == num_elements`, and the full RWG edge reconstruction when dimensions match an edge-based coefficient vector.
+**EFIE (default):** The dense BASIC path assembles **RWG edge–edge** Galerkin **Z** with `integrate_rwg_rwg_efie_explicit` (correct opposite vertices per triangle patch). Unknown count **N = num_edges**; current continuity across shared edges is built into the RWG basis.
+
+**MFIE / CFIE:** Until RWG–RWG MFIE/CFIE assembly is wired the same way, the solver uses **N = num_elements** and the legacy **pulse (triangle)** MoM for those formulations.
+
+**MLFMM / ACA:** For **RWG EFIE**, the simplified CSR/ACA blocks that were indexed by **triangles** are skipped; the code **falls back to dense BASIC** RWG assembly so the operator stays consistent (at higher memory and time).
 
 **Mesh units:** Near-field distance tests must use the same length unit as vertex coordinates. If coordinates are in **millimetres** but λ = *c*/*f* is in **metres**, a naive comparison `r < 0.1λ` makes **nnz ≈ N** (almost diagonal only) and the iterative MLFMM path fails. The implementation infers **metres per coordinate unit** (e.g. mm → 10⁻³) for the MLFMM CSR cutoff and warns when **nnz** is too small; on iterative failure it **falls back to dense BASIC** direct solve for moderate **N**.

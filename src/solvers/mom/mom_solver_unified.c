@@ -992,6 +992,65 @@ static int build_rwg_mapping(const mesh_t* mesh, int* edge_plus, int* edge_minus
     return 0;
 }
 
+static void mom_mesh_elem_to_triangle_element(const mesh_element_t* elem, const mesh_vertex_t* verts, triangle_element_t* out) {
+    if (!elem || !verts || !out) return;
+    for (int k = 0; k < 3; k++) {
+        int vi = elem->vertices[k];
+        out->vertices[k][0] = verts[vi].position.x;
+        out->vertices[k][1] = verts[vi].position.y;
+        out->vertices[k][2] = verts[vi].position.z;
+    }
+    out->normal[0] = elem->normal.x;
+    out->normal[1] = elem->normal.y;
+    out->normal[2] = elem->normal.z;
+    out->area = elem->area > 0.0 ? elem->area : 0.0;
+}
+
+/** Free vertex of triangle \a tri_idx opposite edge \a edge_idx (RWG opposite node). */
+static int mom_rwg_opposite_vertex_xyz(const mesh_t* mesh, int tri_idx, int edge_idx, double o[3]) {
+    if (!mesh || tri_idx < 0 || tri_idx >= mesh->num_elements || edge_idx < 0 || edge_idx >= mesh->num_edges || !o) return -1;
+    const mesh_element_t* el = &mesh->elements[tri_idx];
+    const mesh_edge_t* ed = &mesh->edges[edge_idx];
+    int a = ed->vertex1_id;
+    int b = ed->vertex2_id;
+    for (int k = 0; k < 3 && k < el->num_vertices; k++) {
+        int v = el->vertices[k];
+        if (v != a && v != b) {
+            o[0] = mesh->vertices[v].position.x;
+            o[1] = mesh->vertices[v].position.y;
+            o[2] = mesh->vertices[v].position.z;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+typedef struct {
+    triangle_element_t tri_p, tri_m;
+    int has_p, has_m;
+    double opp_p[3];
+    double opp_m[3];
+} MomRwgEdgeGeom;
+
+static void mom_rwg_edge_geom_fill(const mesh_t* mesh, const mesh_element_t* elements,
+    const mesh_vertex_t* vertices, const int* edge_plus, const int* edge_minus, int ei,
+    MomRwgEdgeGeom* g) {
+    if (!g) return;
+    memset(g, 0, sizeof(*g));
+    int tp = edge_plus[ei];
+    int tm = edge_minus[ei];
+    g->has_p = (tp >= 0 && tp < mesh->num_elements);
+    g->has_m = (tm >= 0 && tm < mesh->num_elements);
+    if (g->has_p) {
+        mom_mesh_elem_to_triangle_element(&elements[tp], vertices, &g->tri_p);
+        mom_rwg_opposite_vertex_xyz(mesh, tp, ei, g->opp_p);
+    }
+    if (g->has_m) {
+        mom_mesh_elem_to_triangle_element(&elements[tm], vertices, &g->tri_m);
+        mom_rwg_opposite_vertex_xyz(mesh, tm, ei, g->opp_m);
+    }
+}
+
 /********************************************************************************
  * Basic Impedance Matrix Assembly (Direct Method)
  * 
@@ -1073,7 +1132,108 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
         return -1;
     }
     build_rwg_mapping(state->mesh, edge_plus, edge_minus, edge_length);
-    
+
+    /* RWG EFIE: edge unknowns + vector Galerkin (pulse triangle MoM below for MFIE/CFIE or legacy). */
+    if (state->mesh->num_edges > 0 && n == state->mesh->num_edges && formulation == KERNEL_FORMULATION_EFIELD) {
+        const mesh_element_t* RESTRICT_PTR elements = state->mesh->elements;
+        const mesh_vertex_t* RESTRICT_PTR vertices = state->mesh->vertices;
+        const mesh_edge_t* RESTRICT_PTR medges = state->mesh->edges;
+        const double use_freq = (frequency > 0.0) ? frequency : DEFAULT_FREQUENCY_HZ;
+
+#ifdef _OPENMP
+        if (state->config.num_threads > 1) {
+            omp_set_num_threads(state->config.num_threads);
+        }
+#endif
+        #pragma omp parallel for if(state->config.num_threads > 1) schedule(dynamic, 8)
+        for (int ei = 0; ei < n; ei++) {
+            MomRwgEdgeGeom Gi;
+            mom_rwg_edge_geom_fill(state->mesh, elements, vertices, edge_plus, edge_minus, ei, &Gi);
+            if (!Gi.has_p && !Gi.has_m) {
+                for (int ej = ei; ej < n; ej++) {
+                    complex_t z0 = complex_zero();
+                    Z[ei * n + ej] = z0;
+                    if (ei != ej) Z[ej * n + ei] = z0;
+                }
+                continue;
+            }
+            double len_i = edge_length[ei];
+            if (len_i <= 0.0 && ei < state->mesh->num_edges) len_i = medges[ei].length;
+
+            const triangle_element_t* ip = Gi.has_p ? &Gi.tri_p : &Gi.tri_m;
+            const triangle_element_t* im = (Gi.has_p && Gi.has_m) ? &Gi.tri_m : NULL;
+            double oip[3], oim[3];
+            if (Gi.has_p && Gi.has_m) {
+                oip[0] = Gi.opp_p[0]; oip[1] = Gi.opp_p[1]; oip[2] = Gi.opp_p[2];
+                oim[0] = Gi.opp_m[0]; oim[1] = Gi.opp_m[1]; oim[2] = Gi.opp_m[2];
+            } else if (Gi.has_p) {
+                oip[0] = Gi.opp_p[0]; oip[1] = Gi.opp_p[1]; oip[2] = Gi.opp_p[2];
+                oim[0] = oim[1] = oim[2] = 0.0;
+            } else {
+                oip[0] = Gi.opp_m[0]; oip[1] = Gi.opp_m[1]; oip[2] = Gi.opp_m[2];
+                oim[0] = oim[1] = oim[2] = 0.0;
+            }
+
+            for (int ej = ei; ej < n; ej++) {
+                MomRwgEdgeGeom Gj;
+                mom_rwg_edge_geom_fill(state->mesh, elements, vertices, edge_plus, edge_minus, ej, &Gj);
+                if (!Gj.has_p && !Gj.has_m) {
+                    complex_t z0 = complex_zero();
+                    Z[ei * n + ej] = z0;
+                    if (ei != ej) Z[ej * n + ei] = z0;
+                    continue;
+                }
+                double len_j = edge_length[ej];
+                if (len_j <= 0.0 && ej < state->mesh->num_edges) len_j = medges[ej].length;
+
+                const triangle_element_t* jp = Gj.has_p ? &Gj.tri_p : &Gj.tri_m;
+                const triangle_element_t* jm = (Gj.has_p && Gj.has_m) ? &Gj.tri_m : NULL;
+                double ojp[3], ojm[3];
+                if (Gj.has_p && Gj.has_m) {
+                    ojp[0] = Gj.opp_p[0]; ojp[1] = Gj.opp_p[1]; ojp[2] = Gj.opp_p[2];
+                    ojm[0] = Gj.opp_m[0]; ojm[1] = Gj.opp_m[1]; ojm[2] = Gj.opp_m[2];
+                } else if (Gj.has_p) {
+                    ojp[0] = Gj.opp_p[0]; ojp[1] = Gj.opp_p[1]; ojp[2] = Gj.opp_p[2];
+                    ojm[0] = ojm[1] = ojm[2] = 0.0;
+                } else {
+                    ojp[0] = Gj.opp_m[0]; ojp[1] = Gj.opp_m[1]; ojp[2] = Gj.opp_m[2];
+                    ojm[0] = ojm[1] = ojm[2] = 0.0;
+                }
+
+                complex_t Z_ij;
+                if (ei == ej && state->config.use_analytic_self_term && (Gi.has_p || Gi.has_m)) {
+                    geom_triangle_t gt;
+                    int tri_for_self = Gi.has_p ? edge_plus[ei] : edge_minus[ei];
+                    const mesh_element_t* epr = &elements[tri_for_self];
+                    int v0 = epr->vertices[0], v1 = epr->vertices[1], v2 = epr->vertices[2];
+                    gt.vertices[0] = vertices[v0].position;
+                    gt.vertices[1] = vertices[v1].position;
+                    gt.vertices[2] = vertices[v2].position;
+                    gt.area = epr->area;
+                    gt.normal = epr->normal;
+                    double li = len_i > 0.0 ? len_i : 1e-6;
+                    Z_ij = compute_analytic_self_term(&gt, use_freq, li, state->config.self_term_regularization);
+                } else {
+                    double li = len_i > 0.0 ? len_i : 1e-6;
+                    double lj = len_j > 0.0 ? len_j : 1e-6;
+                    Z_ij = integrate_rwg_rwg_efie_explicit(
+                        ip, im, jp, jm, oip, oim, ojp, ojm, li, lj, use_freq);
+                    if (ei == ej && !state->config.use_analytic_self_term) {
+                        const double reg = (state->config.self_term_regularization > 0.0)
+                            ? state->config.self_term_regularization : DEFAULT_REGULARIZATION;
+                        Z_ij.im += reg;
+                    }
+                }
+                Z[ei * n + ej] = Z_ij;
+                if (ei != ej) Z[ej * n + ei] = Z_ij;
+            }
+        }
+        free(edge_plus);
+        free(edge_minus);
+        free(edge_length);
+        return 0;
+    }
+
     // Set number of threads for OpenMP
 #ifdef _OPENMP
     if (state->config.num_threads > 1) {
@@ -1104,7 +1264,10 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
     // This reduces redundant centroid computations in the inner loop
     geom_point_t* RESTRICT_PTR triangle_centroids = (geom_point_t*)malloc(max_elems * sizeof(geom_point_t));
     if (!triangle_centroids) {
-        return -1;  // Memory allocation failed
+        free(edge_plus); free(edge_minus); free(edge_length);
+        free(Z);
+        state->impedance_matrix = NULL;
+        return -1;
     }
     
     // Precompute all triangle centroids once (O(n) operation)
@@ -1486,6 +1649,7 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
             }
         }
     }
+    free(triangle_centroids);
     free(edge_plus);
     free(edge_minus);
     free(edge_length);
@@ -1501,6 +1665,10 @@ static int assemble_impedance_matrix_aca(mom_unified_state_t *state) {
     
     // For small problems, use basic assembly
     if (n < 100) {
+        return assemble_impedance_matrix_basic(state);
+    }
+    /* RWG EFIE: 当前 ACA 块按三角形索引，与边 Z 不一致 */
+    if (state->mesh && state->mesh->num_edges > 0 && n == state->mesh->num_edges && state->config.kernel_formulation == 0) {
         return assemble_impedance_matrix_basic(state);
     }
     
@@ -1706,6 +1874,11 @@ static int assemble_impedance_matrix_mlfmm(mom_unified_state_t *state) {
     
     // For small problems, use basic assembly
     if (n < 500) {
+        return assemble_impedance_matrix_basic(state);
+    }
+    /* RWG EFIE: CSR 近场块仍按三角形质心距离填充，与边–边 RWG 装配不一致 → 稠密 BASIC */
+    if (state->mesh && state->mesh->num_edges > 0 && n == state->mesh->num_edges && state->config.kernel_formulation == 0) {
+        printf("MoM MLFMM: RWG EFIE — using dense BASIC assembly (CSR skip).\n");
         return assemble_impedance_matrix_basic(state);
     }
     
@@ -2869,9 +3042,13 @@ int mom_solve_unified(mesh_t *mesh, double frequency, complex_t *excitation,
         }
     }
     
-    /* 与 assemble_impedance_matrix_* 一致：三角形–三角形（脉冲/分片常数基）装配使用单元索引 */
+    /* EFIE → RWG 边未知；MFIE/CFIE → 脉冲三角基（与装配分支一致） */
     if (mesh && mesh->num_elements > 0) {
-        state.num_basis_functions = mesh->num_elements;
+        if (mesh->num_edges > 0 && state.config.kernel_formulation == 0) {
+            state.num_basis_functions = mesh->num_edges;
+        } else {
+            state.num_basis_functions = mesh->num_elements;
+        }
     } else if (mesh && mesh->num_edges > 0) {
         state.num_basis_functions = mesh->num_edges;
     } else {

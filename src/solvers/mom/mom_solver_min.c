@@ -72,6 +72,9 @@ mom_solver_t* mom_solver_create(const mom_config_t* config) {
     mom_solver_t* s = (mom_solver_t*)calloc(1, sizeof(mom_solver_t));
     if (!s) return NULL;
     if (config) s->config = *config;
+    if (s->config.formulation == (mom_formulation_t)0) {
+        s->config.formulation = MOM_FORMULATION_EFIE;
+    }
     s->config.max_iterations = s->config.max_iterations > 0 ? s->config.max_iterations : 200;
     s->config.tolerance = (s->config.tolerance > 0.0) ? s->config.tolerance : 1e-3;
     // Sensible defaults for excitation
@@ -130,9 +133,7 @@ int mom_solver_set_geometry(mom_solver_t* solver, void* geometry) {
 int mom_solver_set_mesh(mom_solver_t* solver, void* mesh) {
     if (!solver || !mesh) return -1;
     solver->mesh = (mesh_t*)mesh;
-    /* mom_solve_unified 中的阻抗装配按三角形索引 (i,j) 填充 Z，因此未知维数必须与
-     * num_elements 一致。若用 num_edges 而网格三角形数更少，则 Z 仅填充左上角小块，
-     * 其余行全零，CSR/迭代会失败（nnz << N）。完整 RWG 边–边装配接入前，统一用单元数。 */
+    /* 初值；实际维数在 mom_solver_assemble_matrix 中按 kernel_formulation 同步（EFIE→边，MFIE/CFIE→三角）。 */
     if (solver->mesh->num_elements > 0) {
         solver->num_unknowns = solver->mesh->num_elements;
     } else if (solver->mesh->num_edges > 0) {
@@ -552,6 +553,17 @@ int mom_solver_assemble_matrix(mom_solver_t* solver) {
     if (solver->mesh->num_elements <= 0) return -1;
     double freq = (solver->config.frequency > 0.0) ? solver->config.frequency :
                   ((solver->excitation.frequency > 0.0) ? solver->excitation.frequency : 1e9);
+
+    /* 与 mom_solve_unified 一致：EFIE → RWG 边；MFIE/CFIE → 脉冲三角（kernel_formulation 在 unified 内为 0/1/2） */
+    if (solver->mesh->num_edges > 0) {
+        if (solver->config.formulation == MOM_FORMULATION_EFIE || (int)solver->config.formulation == 0) {
+            solver->num_unknowns = solver->mesh->num_edges;
+        } else {
+            solver->num_unknowns = solver->mesh->num_elements;
+        }
+    } else {
+        solver->num_unknowns = solver->mesh->num_elements;
+    }
 
     if (mom_solver_allocate_linear_system(solver) != 0) return -1;
     const size_t n = (size_t)solver->num_unknowns;
