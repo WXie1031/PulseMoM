@@ -307,6 +307,23 @@ complex_t integrate_rwg_plane_wave(
     double frequency);
 
 /**
+ * @brief Plane wave RHS on one RWG edge with explicit opposite vertices (matches EFIE explicit Galerkin).
+ * @details V = ∫_S f · E0 exp(-j k0 k̂·r) dS over plus/minus patches. k̂ is unit propagation direction;
+ *          E0[3] is real incident E at phase reference (amplitude × polarization).
+ */
+complex_t integrate_rwg_plane_wave_edge_geom(
+    const triangle_element_t* tri_p,
+    const double opp_p[3],
+    int has_p,
+    const triangle_element_t* tri_m,
+    const double opp_m[3],
+    int has_m,
+    double edge_length,
+    const double E0[3],
+    const double k_hat[3],
+    double frequency);
+
+/**
  * @brief Point source excitation integral for RWG basis functions
  * @details Computes V_i = f_i(r_s) · J_s
  */

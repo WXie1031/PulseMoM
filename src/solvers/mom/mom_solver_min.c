@@ -9,6 +9,7 @@
 #include "../../io/advanced_file_formats.h"
 #include "../../io/file_formats/export_vtk.h"
 #include "../../io/postprocessing/field_postprocessing.h"
+#include "../../operators/kernels/electromagnetic_kernels.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -184,6 +185,65 @@ int mom_solver_add_port(mom_solver_t* solver, struct extended_port_t* port) {
     return 0;
 }
 
+/* Mesh element → triangle_element_t (same layout as mom_solver_unified) */
+static void mom_mesh_elem_to_triangle_element_rhs(const mesh_element_t* elem, const mesh_vertex_t* verts, triangle_element_t* out) {
+    if (!elem || !verts || !out) return;
+    for (int k = 0; k < 3; k++) {
+        int vi = elem->vertices[k];
+        out->vertices[k][0] = verts[vi].position.x;
+        out->vertices[k][1] = verts[vi].position.y;
+        out->vertices[k][2] = verts[vi].position.z;
+    }
+    out->normal[0] = elem->normal.x;
+    out->normal[1] = elem->normal.y;
+    out->normal[2] = elem->normal.z;
+    out->area = elem->area > 0.0 ? elem->area : 0.0;
+}
+
+static int mom_rwg_opposite_vertex_xyz_rhs(const mesh_t* mesh, int tri_idx, int edge_idx, double o[3]) {
+    if (!mesh || tri_idx < 0 || tri_idx >= mesh->num_elements || edge_idx < 0 || edge_idx >= mesh->num_edges || !o) return -1;
+    const mesh_element_t* el = &mesh->elements[tri_idx];
+    const mesh_edge_t* ed = &mesh->edges[edge_idx];
+    int a = ed->vertex1_id;
+    int b = ed->vertex2_id;
+    for (int k = 0; k < 3 && k < el->num_vertices; k++) {
+        int v = el->vertices[k];
+        if (v != a && v != b) {
+            o[0] = mesh->vertices[v].position.x;
+            o[1] = mesh->vertices[v].position.y;
+            o[2] = mesh->vertices[v].position.z;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+typedef struct {
+    triangle_element_t tri_p, tri_m;
+    int has_p, has_m;
+    double opp_p[3];
+    double opp_m[3];
+} MomRwgEdgeGeomRhs;
+
+static void mom_rwg_edge_geom_fill_rhs(const mesh_t* mesh, const mesh_element_t* elements,
+    const mesh_vertex_t* vertices, const int* edge_plus, const int* edge_minus, int ei,
+    MomRwgEdgeGeomRhs* g) {
+    if (!g) return;
+    memset(g, 0, sizeof(*g));
+    int tp = edge_plus[ei];
+    int tm = edge_minus[ei];
+    g->has_p = (tp >= 0 && tp < mesh->num_elements);
+    g->has_m = (tm >= 0 && tm < mesh->num_elements);
+    if (g->has_p) {
+        mom_mesh_elem_to_triangle_element_rhs(&elements[tp], vertices, &g->tri_p);
+        mom_rwg_opposite_vertex_xyz_rhs(mesh, tp, ei, g->opp_p);
+    }
+    if (g->has_m) {
+        mom_mesh_elem_to_triangle_element_rhs(&elements[tm], vertices, &g->tri_m);
+        mom_rwg_opposite_vertex_xyz_rhs(mesh, tm, ei, g->opp_m);
+    }
+}
+
 // Build RWG mapping: edge -> adjacent triangles
 static int build_rwg_mapping_local(const mesh_t* mesh, int* edge_plus, int* edge_minus, double* edge_length) {
     if (!mesh || mesh->num_edges <= 0 || !mesh->edges) return -1;
@@ -213,6 +273,107 @@ static int build_rwg_mapping_local(const mesh_t* mesh, int* edge_plus, int* edge
         }
     }
     return 0;
+}
+
+/**
+ * RHS for RWG EFIE: V_e = ∫ f_e · E_inc dS using same geometry as Z assembly (explicit opposite verts).
+ */
+static void mom_solver_fill_plane_wave_rwg_rhs(mom_solver_t* solver) {
+    if (!solver || !solver->mesh || !solver->excitation_vector) return;
+    mesh_t* mesh = solver->mesh;
+    const size_t n = (size_t)solver->num_unknowns;
+    if (mesh->num_edges <= 0 || (int)n != mesh->num_edges) return;
+
+    double freq = (solver->config.frequency > 0.0) ? solver->config.frequency :
+                  ((solver->excitation.frequency > 0.0) ? solver->excitation.frequency : 1e9);
+
+    double amp = (solver->excitation.amplitude != 0.0) ? solver->excitation.amplitude : 1.0;
+    double px = solver->excitation.polarization.x;
+    double py = solver->excitation.polarization.y;
+    double pz = solver->excitation.polarization.z;
+    double pnorm = sqrt(px * px + py * py + pz * pz);
+    if (pnorm < 1e-15) {
+        px = 1.0;
+        py = 0.0;
+        pz = 0.0;
+    } else {
+        px /= pnorm;
+        py /= pnorm;
+        pz /= pnorm;
+    }
+    double E0[3] = { amp * px, amp * py, amp * pz };
+
+    double kx = solver->excitation.k_vector.x;
+    double ky = solver->excitation.k_vector.y;
+    double kz = solver->excitation.k_vector.z;
+    double kn = sqrt(kx * kx + ky * ky + kz * kz);
+    if (kn < 1e-15) {
+        kx = 0.0;
+        ky = 0.0;
+        kz = 1.0;
+    } else {
+        kx /= kn;
+        ky /= kn;
+        kz /= kn;
+    }
+    double k_hat[3] = { kx, ky, kz };
+
+    const double ph = solver->excitation.phase;
+    const complex_t rot = { cos(ph), sin(ph) };
+
+    int* edge_plus = (int*)calloc((size_t)mesh->num_edges, sizeof(int));
+    int* edge_minus = (int*)calloc((size_t)mesh->num_edges, sizeof(int));
+    double* edge_len = (double*)calloc((size_t)mesh->num_edges, sizeof(double));
+    if (!edge_plus || !edge_minus || !edge_len) {
+        free(edge_plus);
+        free(edge_minus);
+        free(edge_len);
+        return;
+    }
+    if (build_rwg_mapping_local(mesh, edge_plus, edge_minus, edge_len) != 0) {
+        free(edge_plus);
+        free(edge_minus);
+        free(edge_len);
+        return;
+    }
+
+    const mesh_element_t* elements = mesh->elements;
+    const mesh_vertex_t* vertices = mesh->vertices;
+    const mesh_edge_t* medges = mesh->edges;
+
+    for (int e = 0; e < mesh->num_edges && e < (int)n; e++) {
+        MomRwgEdgeGeomRhs G;
+        mom_rwg_edge_geom_fill_rhs(mesh, elements, vertices, edge_plus, edge_minus, e, &G);
+        double len_e = edge_len[e];
+        if (len_e <= 0.0 && e < mesh->num_edges) {
+            len_e = medges[e].length;
+        }
+        if (len_e <= 0.0) {
+            len_e = 1e-6;
+        }
+
+        complex_t Vi = integrate_rwg_plane_wave_edge_geom(
+            G.has_p ? &G.tri_p : NULL,
+            G.has_p ? G.opp_p : NULL,
+            G.has_p,
+            G.has_m ? &G.tri_m : NULL,
+            G.has_m ? G.opp_m : NULL,
+            G.has_m,
+            len_e,
+            E0,
+            k_hat,
+            freq);
+
+        /* Global phase e^{j φ0} on top of exp(-j k·r) inside the integral reference */
+        complex_t out;
+        out.re = Vi.re * rot.re - Vi.im * rot.im;
+        out.im = Vi.re * rot.im + Vi.im * rot.re;
+        solver->excitation_vector[e] = out;
+    }
+
+    free(edge_plus);
+    free(edge_minus);
+    free(edge_len);
 }
 
 // Compute RWG basis function vector at a point on a triangle
@@ -568,19 +729,29 @@ int mom_solver_assemble_matrix(mom_solver_t* solver) {
     if (mom_solver_allocate_linear_system(solver) != 0) return -1;
     const size_t n = (size_t)solver->num_unknowns;
     
+    /* RWG + EFIE + plane wave: V_i = ∫ f_i·E_inc dS (matches Z explicit Galerkin). Else: uniform scalar (pulse/MFIE fallback). */
+    const int rwg_plane_wave_rhs =
+        (solver->mesh->num_edges > 0 && (int)n == solver->mesh->num_edges &&
+         (solver->config.formulation == MOM_FORMULATION_EFIE || (int)solver->config.formulation == 0) &&
+         solver->excitation.type == MOM_EXCITATION_PLANE_WAVE);
+
     // Map ports to RHS if ports are defined, otherwise use default excitation
     if (solver->num_ports > 0) {
         if (mom_solver_map_ports_to_rhs(solver) != 0) {
-            // Fallback to default excitation if port mapping fails
-            const double amp = (solver->excitation.amplitude != 0.0) ? solver->excitation.amplitude : 1.0;
-            const double phase = solver->excitation.phase;
-            complex_t exc = {amp * cos(phase), amp * sin(phase)};
-            for (size_t i = 0; i < n; i++) {
-                solver->excitation_vector[i] = exc;
+            if (rwg_plane_wave_rhs) {
+                mom_solver_fill_plane_wave_rwg_rhs(solver);
+            } else {
+                const double amp = (solver->excitation.amplitude != 0.0) ? solver->excitation.amplitude : 1.0;
+                const double phase = solver->excitation.phase;
+                complex_t exc = {amp * cos(phase), amp * sin(phase)};
+                for (size_t i = 0; i < n; i++) {
+                    solver->excitation_vector[i] = exc;
+                }
             }
         }
+    } else if (rwg_plane_wave_rhs) {
+        mom_solver_fill_plane_wave_rwg_rhs(solver);
     } else {
-        // Default: uniform excitation
         const double amp = (solver->excitation.amplitude != 0.0) ? solver->excitation.amplitude : 1.0;
         const double phase = solver->excitation.phase;
         complex_t exc = {amp * cos(phase), amp * sin(phase)};

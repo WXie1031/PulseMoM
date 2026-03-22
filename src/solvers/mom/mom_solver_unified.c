@@ -525,7 +525,7 @@ typedef struct {
 } mom_unified_state_t;
 
 // Function prototypes
-static mom_algorithm_t select_algorithm(const mom_problem_characteristics_t *problem);
+static mom_algorithm_t select_algorithm(mom_unified_state_t *state);
 static void compute_problem_characteristics(mom_unified_state_t *state);
 static bool detect_curved_surfaces(const mesh_t* mesh);
 static int count_different_materials(const mesh_t* mesh);
@@ -645,18 +645,31 @@ static double compute_rcs_unified(mom_unified_state_t *state, double theta_inc, 
  * - MLFMM has O(N log N) complexity for electrically large problems
  * - H-matrix has O(N log N) complexity with hierarchical compression
  ********************************************************************************/
-static mom_algorithm_t select_algorithm(const mom_problem_characteristics_t *problem) {
-    const int n = problem->num_unknowns;
+static mom_algorithm_t select_algorithm(mom_unified_state_t *state) {
+    if (!state) {
+        return MOM_ALGO_BASIC;
+    }
+    const int n = state->problem.num_unknowns;
+    /*
+     * RWG + EFIE (边未知 = num_edges): unified 装配为完整稠密 Z，且当前迭代求解器是简化格式而非
+     * GMRES/BiCGSTAB，在一般 EFIE 上常不收敛，最后仍会回退稠密直接法并重复装配矩阵。
+     * 默认直接选 BASIC：一次稠密装配 + LU/LAPACK，作为当前实现下的参考准确解路径。
+     */
+    if (state->mesh && state->mesh->num_edges > 0 &&
+        state->config.kernel_formulation == 0 &&
+        n == state->mesh->num_edges) {
+        return MOM_ALGO_BASIC;
+    }
     /* Small N: dense direct (low overhead, exact factorization). */
     if (n < 600) {
         return MOM_ALGO_BASIC;
     }
-    /* Medium/large N: MLFMM assembly stores only near-field in CSR → O(nnz) vs O(n^2) memory.
-     * (Far-field in this codebase is still approximate in matvec; same model as prior dense-zeros MLFMM.) */
+    /* Medium/large N: MLFMM assembly may store near-field in CSR → O(nnz) vs O(n^2) memory
+     * when the fast path is active (not RWG EFIE dense fill). */
     if (n < 200000) {
         return MOM_ALGO_MLFMM;
     }
-    if (problem->electrical_size > 10.0) {
+    if (state->problem.electrical_size > 10.0) {
         return MOM_ALGO_MLFMM;
     }
     return MOM_ALGO_HMATRIX;
@@ -3225,9 +3238,9 @@ int mom_solve_unified(mesh_t *mesh, double frequency, complex_t *excitation,
     
     /* Auto-select algorithm when caller uses defaults (CLI passes NULL config → was stuck on BASIC). */
     if (!config) {
-        state.config.algorithm = select_algorithm(&state.problem);
+        state.config.algorithm = select_algorithm(&state);
     } else if (state.config.algorithm == MOM_ALGO_BASIC && config->algorithm == MOM_ALGO_BASIC) {
-        state.config.algorithm = select_algorithm(&state.problem);
+        state.config.algorithm = select_algorithm(&state);
     }
     
     // Allocate solution vectors
@@ -3272,6 +3285,17 @@ int mom_solve_unified(mesh_t *mesh, double frequency, complex_t *excitation,
     
     // Solve linear system
     if (state.config.algorithm == MOM_ALGO_BASIC) {
+        status = solve_linear_system_basic(&state);
+    } else if (state.impedance_matrix != NULL && state.csr_impedance_matrix == NULL) {
+        /*
+         * 已持有完整稠密 Z（例如 RWG EFIE 的 MLFMM 分支实际调用了稠密装配）。
+         * 当前 solve_linear_system_iterative 并非标准 Krylov，对稠密复 EFIE 往往假收敛/不收敛；
+         * 与回退路径相同：直接对现有 Z 做 LU/LAPACK，避免 1000 次无效迭代 + 释放后整阵重装配。
+         */
+        if (state.config.algorithm != MOM_ALGO_BASIC) {
+            fprintf(stderr,
+                "MoM: dense Z assembled without CSR — using direct solve (same matrix as reference path).\n");
+        }
         status = solve_linear_system_basic(&state);
     } else {
         status = solve_linear_system_iterative(&state);

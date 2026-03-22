@@ -1595,8 +1595,10 @@ complex_t integrate_rwg_rwg_cfie(
 }
 
 /********************************************************************************
- * RWG Plane Wave Excitation
+ * RWG Plane Wave Excitation (legacy API)
  * V_i = ∫ f_i(r) · E_inc(r) dS
+ * Prefer integrate_rwg_plane_wave_edge_geom() for real meshes: it uses true edge length
+ * and explicit opposite vertices (matches EFIE explicit assembly).
  ********************************************************************************/
 complex_t integrate_rwg_plane_wave(
     const triangle_element_t* tri_plus,
@@ -1676,6 +1678,99 @@ complex_t integrate_rwg_plane_wave(
     }
     
     return result;
+}
+
+/********************************************************************************
+ * RWG plane wave RHS with explicit opposite vertices (consistent with EFIE explicit)
+ * V = ∫ f · (E0 exp(-j k0 k̂·r)) dS  on plus/minus triangles
+ ********************************************************************************/
+complex_t integrate_rwg_plane_wave_edge_geom(
+    const triangle_element_t* tri_p,
+    const double opp_p[3],
+    int has_p,
+    const triangle_element_t* tri_m,
+    const double opp_m[3],
+    int has_m,
+    double edge_length,
+    const double E0[3],
+    const double k_hat[3],
+    double frequency) {
+    if (!E0 || !k_hat || edge_length <= 1e-20) {
+        return mc(0.0, 0.0);
+    }
+    if (!has_p && !has_m) {
+        return mc(0.0, 0.0);
+    }
+
+    double kx = k_hat[0], ky = k_hat[1], kz = k_hat[2];
+    double kn = sqrt(kx * kx + ky * ky + kz * kz);
+    if (kn > 1e-15) {
+        kx /= kn;
+        ky /= kn;
+        kz /= kn;
+    } else {
+        kx = 0.0;
+        ky = 0.0;
+        kz = 1.0;
+    }
+
+    const double k0 = TWO_PI_OVER_C0 * frequency;
+
+    double xi[GAUSS_TRIANGLE_MAX_POINTS][2];
+    double wq[GAUSS_TRIANGLE_MAX_POINTS];
+    const int order = 7;
+    gauss_quadrature_triangle(order, xi, wq);
+    const int nq = gauss_quadrature_triangle_num_points(order);
+
+    complex_t acc = mc(0.0, 0.0);
+
+    const triangle_element_t* tris[2] = { tri_p, tri_m };
+    const double* opps[2] = { opp_p, opp_m };
+    const int has_side[2] = { has_p, has_m };
+    const int is_plus[2] = { 1, 0 };
+
+    for (int s = 0; s < 2; s++) {
+        if (!has_side[s] || !tris[s]) {
+            continue;
+        }
+        const triangle_element_t* tri = tris[s];
+        const double* ropp = opps[s];
+        if (!ropp) {
+            continue;
+        }
+        double A = tri->area;
+        if (A < 1e-20) {
+            continue;
+        }
+
+        for (int q = 0; q < nq; q++) {
+            double u = xi[q][0];
+            double v = xi[q][1];
+            double wbc = 1.0 - u - v;
+            double r[3];
+            r[0] = wbc * tri->vertices[0][0] + u * tri->vertices[1][0] + v * tri->vertices[2][0];
+            r[1] = wbc * tri->vertices[0][1] + u * tri->vertices[1][1] + v * tri->vertices[2][1];
+            r[2] = wbc * tri->vertices[0][2] + u * tri->vertices[1][2] + v * tri->vertices[2][2];
+
+            double fvec[3];
+            compute_rwg_basis_vector(tri, r, ropp, edge_length, A, is_plus[s], fvec);
+
+            double kd = kx * r[0] + ky * r[1] + kz * r[2];
+            complex_t ph = mc(cos(-k0 * kd), sin(-k0 * kd));
+            complex_t Ex = complex_multiply_real(&ph, E0[0]);
+            complex_t Ey = complex_multiply_real(&ph, E0[1]);
+            complex_t Ez = complex_multiply_real(&ph, E0[2]);
+
+            complex_t fdE;
+            fdE.re = fvec[0] * Ex.re + fvec[1] * Ey.re + fvec[2] * Ez.re;
+            fdE.im = fvec[0] * Ex.im + fvec[1] * Ey.im + fvec[2] * Ez.im;
+
+            complex_t term = complex_scalar_multiply(&fdE, wq[q] * A);
+            acc = complex_add(&acc, &term);
+        }
+    }
+
+    return acc;
 }
 
 /********************************************************************************

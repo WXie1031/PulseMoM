@@ -303,13 +303,16 @@ void get_triangle_centroid(const triangle_element_t* tri, double* centroid) {
     centroid[2] = (tri->vertices[0][2] + tri->vertices[1][2] + tri->vertices[2][2]) / 3.0;
 }
 
-// Get vertex opposite to edge (simplified - uses centroid as approximation)
-// In practice, this should use actual edge information
+// Vertex opposite to local edge edge_idx: edge k connects vertices k and (k+1)%3, opposite is (k+2)%3
 void get_opposite_vertex(const triangle_element_t* tri, int edge_idx, double* vertex) {
     if (!tri || !vertex) return;
-    // Simplified: use centroid as approximation
-    // In full implementation, this should identify the vertex opposite to the edge
-    get_triangle_centroid(tri, vertex);
+    if (edge_idx < 0 || edge_idx > 2) {
+        edge_idx = 0;
+    }
+    int opp = (edge_idx + 2) % 3;
+    vertex[0] = tri->vertices[opp][0];
+    vertex[1] = tri->vertices[opp][1];
+    vertex[2] = tri->vertices[opp][2];
 }
 
 // Helper macro for complex number creation (exported for use in other modules)
