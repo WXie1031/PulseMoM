@@ -280,6 +280,111 @@ typedef double complex mom_complex_t;
 #include <omp.h>
 #endif
 
+/* ---- Solver progress (stderr, throttled; disable with MOM_PROGRESS=0) ---- */
+#if defined(_MSC_VER)
+#include <windows.h>
+static long long mom_atomic_inc64(volatile long long* p) {
+    return (long long)InterlockedIncrement64((volatile LONGLONG*)p);
+}
+#elif defined(__GNUC__) || defined(__clang__)
+static long long mom_atomic_inc64(volatile long long* p) {
+    return __atomic_add_fetch(p, 1, __ATOMIC_RELAXED);
+}
+#else
+static long long mom_atomic_inc64(volatile long long* p) {
+#ifdef _OPENMP
+    long long v;
+#pragma omp atomic capture
+    v = ++(*p);
+    return v;
+#else
+    return ++(*p);
+#endif
+}
+#endif
+
+static bool mom_progress_stderr_enabled(void) {
+    const char* e = getenv("MOM_PROGRESS");
+    if (!e || !e[0]) {
+        return true; /* default: show */
+    }
+    if (strcmp(e, "0") == 0) {
+        return false;
+    }
+    if (strcmp(e, "off") == 0 || strcmp(e, "OFF") == 0) {
+        return false;
+    }
+    return true;
+}
+
+static void mom_solve_progress_line(const char* msg) {
+    if (!mom_progress_stderr_enabled()) {
+        return;
+    }
+    fprintf(stderr, "[MoM] %s\n", msg);
+    fflush(stderr);
+}
+
+typedef struct {
+    volatile long long done;
+    int last_pct;
+    int total;
+    const char* label;
+} mom_asm_progress_t;
+
+static void mom_asm_progress_init(mom_asm_progress_t* p, int total, const char* label) {
+    p->done = 0;
+    p->last_pct = -1;
+    p->total = (total > 0) ? total : 1;
+    p->label = label;
+}
+
+static void mom_asm_progress_tick(mom_asm_progress_t* p) {
+    if (!mom_progress_stderr_enabled()) {
+        return;
+    }
+    long long d = mom_atomic_inc64(&p->done);
+    const long long tot = (long long)p->total;
+    int pct = (int)((d * 100LL) / tot);
+    if (pct > 100) {
+        pct = 100;
+    }
+    const long long dprev = d - 1;
+    int prev_pct = (dprev >= 0) ? (int)((dprev * 100LL) / tot) : -1;
+    if (pct == prev_pct && d != tot) {
+        return;
+    }
+#ifdef _OPENMP
+#pragma omp critical(mom_asm_progress_print)
+#endif
+    {
+        if (pct > p->last_pct || d == tot) {
+            p->last_pct = pct;
+            fprintf(stderr, "\r[MoM] %-18s %3d%% |", p->label ? p->label : "Assembly", pct);
+            {
+                int filled = pct / 5;
+                if (filled > 20) {
+                    filled = 20;
+                }
+                int b;
+                for (b = 0; b < 20; b++) {
+                    fputc(b < filled ? '#' : '.', stderr);
+                }
+            }
+            fprintf(stderr, "| %lld/%d", (long long)d, p->total);
+            fflush(stderr);
+        }
+    }
+}
+
+static void mom_asm_progress_finish(void) {
+    if (!mom_progress_stderr_enabled()) {
+        return;
+    }
+    fprintf(stderr, "\n");
+    fflush(stderr);
+}
+
 #ifdef ENABLE_CUDA
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
@@ -1121,6 +1226,7 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
     // 3. Use integrate_rwg_rwg_efie() for RWG basis
     
     int i, j;
+    int ei, ej; /* loop indices for OpenMP parallel for (MSVC: no C99 'for (int ...)' on pragma line) */
     int max_elems = (n < state->mesh->num_elements) ? n : state->mesh->num_elements;
 
     // RWG mapping: edge_plus/edge_minus store adjacent triangles, edge_length stores edge length
@@ -1145,16 +1251,24 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
             omp_set_num_threads(state->config.num_threads);
         }
 #endif
-        #pragma omp parallel for if(state->config.num_threads > 1) schedule(dynamic, 8)
-        for (int ei = 0; ei < n; ei++) {
+        {
+            mom_asm_progress_t rwg_prog;
+            mom_asm_progress_init(&rwg_prog, n, "Z assemble (RWG)");
+            if (mom_progress_stderr_enabled()) {
+                fprintf(stderr, "[MoM] Matrix assembly (RWG), N=%d edges\n", n);
+                fflush(stderr);
+            }
+            #pragma omp parallel for if(state->config.num_threads > 1) schedule(dynamic, 8)
+            for (ei = 0; ei < n; ei++) {
             MomRwgEdgeGeom Gi;
             mom_rwg_edge_geom_fill(state->mesh, elements, vertices, edge_plus, edge_minus, ei, &Gi);
             if (!Gi.has_p && !Gi.has_m) {
-                for (int ej = ei; ej < n; ej++) {
+                for (ej = ei; ej < n; ej++) {
                     complex_t z0 = complex_zero();
                     Z[ei * n + ej] = z0;
                     if (ei != ej) Z[ej * n + ei] = z0;
                 }
+                mom_asm_progress_tick(&rwg_prog);
                 continue;
             }
             double len_i = edge_length[ei];
@@ -1174,7 +1288,7 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
                 oim[0] = oim[1] = oim[2] = 0.0;
             }
 
-            for (int ej = ei; ej < n; ej++) {
+            for (ej = ei; ej < n; ej++) {
                 MomRwgEdgeGeom Gj;
                 mom_rwg_edge_geom_fill(state->mesh, elements, vertices, edge_plus, edge_minus, ej, &Gj);
                 if (!Gj.has_p && !Gj.has_m) {
@@ -1227,6 +1341,9 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
                 Z[ei * n + ej] = Z_ij;
                 if (ei != ej) Z[ej * n + ei] = Z_ij;
             }
+            mom_asm_progress_tick(&rwg_prog);
+            }
+            mom_asm_progress_finish();
         }
         free(edge_plus);
         free(edge_minus);
@@ -1293,9 +1410,17 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
     // Only compute upper triangle (i <= j) and copy to lower triangle
     // This reduces computation by ~50% and improves cache locality
     
+    {
+        mom_asm_progress_t tri_prog;
+        mom_asm_progress_init(&tri_prog, max_elems, "Z assemble (pulse)");
+        if (mom_progress_stderr_enabled()) {
+            fprintf(stderr, "[MoM] Matrix assembly (pulse), N=%d\n", max_elems);
+            fflush(stderr);
+        }
     #pragma omp parallel for if(state->config.num_threads > 1) \
                              private(j) shared(Z, elements, vertices, max_elems, freq, form, \
-                                               state, edge_plus, edge_minus, edge_length) \
+                                               state, edge_plus, edge_minus, edge_length, \
+                                               triangle_centroids) \
                              schedule(dynamic, 10)
     for (i = 0; i < max_elems; i++) {
         const mesh_element_t* RESTRICT_PTR elem_i = &elements[i];  // Cache element pointer
@@ -1310,6 +1435,7 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
                     Z[j * n + i] = complex_zero();
                 }
             }
+            mom_asm_progress_tick(&tri_prog);
             continue;
         }
         
@@ -1648,6 +1774,9 @@ static int assemble_impedance_matrix_basic(mom_unified_state_t *state) {
                 Z[j * n + i] = Z_ij;
             }
         }
+        mom_asm_progress_tick(&tri_prog);
+    }
+    mom_asm_progress_finish();
     }
     free(triangle_centroids);
     free(edge_plus);
@@ -2379,10 +2508,13 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
     int n = state->num_basis_functions;
     complex_t *Z = (complex_t*)state->impedance_matrix;
     
+    mom_solve_progress_line("Solve: direct (dense) linear system — LU factorization");
+    
     // Try to use LAPACK for large matrices, fallback to basic implementation for small ones
 #ifdef HAVE_LAPACK
     // Use LAPACK zgesv for large matrices (n > 500)
     if (n > 500) {
+        mom_solve_progress_line("Solve: LAPACK path — transpose, zgesv (no per-step % inside BLAS)");
         // LAPACK implementation
         // Note: LAPACK uses column-major order and 1-based indexing
         extern void zgesv_(int* n, int* nrhs, void* a, int* lda, int* ipiv, void* b, int* ldb, int* info);
@@ -2404,16 +2536,17 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
         // LAPACK uses column-major: A[col][row] = Z[row][col]
 #ifdef _OPENMP
         if (n > 1000) {
-            // Parallel transpose with cache blocking
+            // Parallel transpose with cache blocking (outer loop only: MSVC OpenMP 2.0 has no collapse(2))
             const int block_size = 64;  // Cache line size consideration
-            #pragma omp parallel for collapse(2) schedule(static)
-            for (int bi = 0; bi < n; bi += block_size) {
-                for (int bj = 0; bj < n; bj += block_size) {
-                    int i_end = (bi + block_size < n) ? bi + block_size : n;
-                    int j_end = (bj + block_size < n) ? bj + block_size : n;
-                    for (int i = bi; i < i_end; i++) {
-                        for (int j = bj; j < j_end; j++) {
-                            A[j * n + i] = Z[i * n + j];  // Transpose for column-major
+            int bi, bj, i_end, j_end, ti, tj;
+            #pragma omp parallel for private(bj, i_end, j_end, ti, tj) schedule(static)
+            for (bi = 0; bi < n; bi += block_size) {
+                for (bj = 0; bj < n; bj += block_size) {
+                    i_end = (bi + block_size < n) ? bi + block_size : n;
+                    j_end = (bj + block_size < n) ? bj + block_size : n;
+                    for (ti = bi; ti < i_end; ti++) {
+                        for (tj = bj; tj < j_end; tj++) {
+                            A[tj * n + ti] = Z[ti * n + tj];  // Transpose for column-major
                         }
                     }
                 }
@@ -2464,6 +2597,7 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
             free(ipiv);
             free(A);
             free(b);
+            mom_solve_progress_line("Solve: LAPACK zgesv finished OK");
             /* Release assembled Z now; mom_solve_unified would free impedance_matrix later.
              * Peak memory during LAPACK was Z+A; dropping Z reduces footprint before return. */
             if (state->impedance_matrix) {
@@ -2482,6 +2616,7 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
     
     // Basic implementation for small matrices or when LAPACK is not available
     // LU decomposition with partial pivoting in-place on Z (same numerical result, half peak RAM vs copy)
+    mom_solve_progress_line("Solve: in-place LU (partial pivot) — O(N³), no per-pivot %");
     complex_t *LU = Z;
     int *pivot = (int*)calloc(n, sizeof(int));
     complex_t *y = (complex_t*)calloc(n, sizeof(complex_t));
@@ -2612,6 +2747,7 @@ static int solve_linear_system_basic(mom_unified_state_t *state) {
     free(y);
     
     state->iterations_converged = 1;  // Direct solver converges in 1 iteration
+    mom_solve_progress_line("Solve: in-place LU finished OK");
     return 0;
 }
 
@@ -2639,6 +2775,9 @@ static int solve_linear_system_iterative(mom_unified_state_t *state) {
     const double tol = state->config.convergence_tolerance;
     const int max_iter = state->config.max_iterations;
     const mom_algorithm_t algo = state->config.algorithm;
+    int last_pct = -1;
+    
+    mom_solve_progress_line("Solve: iterative — progress % = step/max_iter (not residual-based)");
     
     // Allocate workspace
     complex_t* residual = (complex_t*)calloc(n, sizeof(complex_t));
@@ -2675,6 +2814,7 @@ static int solve_linear_system_iterative(mom_unified_state_t *state) {
     
     if (residual_norm < tol) {
         state->iterations_converged = 0;
+        mom_solve_progress_line("Solve: iterative — initial |r| already below tolerance");
         free(residual); free(Ax);
         return 0;
     }
@@ -2702,7 +2842,12 @@ static int solve_linear_system_iterative(mom_unified_state_t *state) {
             denom += Ax[i].re * Ax[i].re + Ax[i].im * Ax[i].im;
         }
         
-        if (denom < MINIMUM_DENOMINATOR_THRESHOLD) break;
+        if (denom < MINIMUM_DENOMINATOR_THRESHOLD) {
+            if (mom_progress_stderr_enabled()) {
+                fprintf(stderr, "\n");
+            }
+            break;
+        }
         
         double alpha = alpha_re / denom;
         if (alpha < 0.0 || alpha > 1.0) alpha = DEFAULT_NEAR_FIELD_THRESHOLD;  // Safety clamp
@@ -2728,13 +2873,33 @@ static int solve_linear_system_iterative(mom_unified_state_t *state) {
         }
         residual_norm = sqrt(residual_norm);
         
+        if (mom_progress_stderr_enabled() && max_iter > 0) {
+            int pct = (100 * (iter + 1)) / max_iter;
+            if (pct > 100) {
+                pct = 100;
+            }
+            if (pct != last_pct || iter == 0) {
+                last_pct = pct;
+                fprintf(stderr, "\r[MoM] Iterative solve   %3d%% | step %d/%d | |r|=%.4e |",
+                        pct, iter + 1, max_iter, residual_norm);
+                fflush(stderr);
+            }
+        }
+        
         if (residual_norm < tol) {
             state->iterations_converged = iter + 1;
+            if (mom_progress_stderr_enabled()) {
+                fprintf(stderr, "\n");
+            }
             free(residual); free(Ax);
             return 0;
         }
     }
     
+    if (mom_progress_stderr_enabled()) {
+        fprintf(stderr, "\n");
+    }
+    mom_solve_progress_line("Solve: iterative — did not converge within max_iter");
     free(residual);
     free(Ax);
     return -1;  // Did not converge

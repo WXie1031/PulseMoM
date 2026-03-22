@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <complex.h>
 #include <math.h>
@@ -60,11 +61,12 @@ static int assemble_mom_impedance_block(
     int_params.tolerance = SINGULAR_INTEGRATION_EPSILON;
     int_params.adaptive_levels = ADAPTIVE_REFINEMENT_LEVELS;
     
-    // Parallel assembly with OpenMP
+    // Parallel assembly with OpenMP (signed index for MSVC OpenMP compatibility)
+    ptrdiff_t num_tri1_omp = (ptrdiff_t)num_tri1;
     #pragma omp parallel for schedule(dynamic, ASSEMBLY_BATCH_SIZE)
-    for (size_t i = 0; i < num_tri1; i++) {
+    for (ptrdiff_t i = 0; i < num_tri1_omp; i++) {
         triangle_geometry_t tri1;
-        get_triangle_geometry(mesh1, i, &tri1);
+        get_triangle_geometry(mesh1, (size_t)i, &tri1);
         
         for (size_t j = 0; j < num_tri2; j++) {
             triangle_geometry_t tri2;
@@ -160,11 +162,12 @@ static int assemble_peec_partial_elements(
     int_params.method = INTEGRATION_SEMIANALYTICAL;
     int_params.tolerance = params->integration_tolerance;
     
-    // Parallel assembly of partial elements
+    // Parallel assembly of partial elements (signed index for MSVC OpenMP compatibility)
+    ptrdiff_t num_segments_omp = (ptrdiff_t)num_segments;
     #pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < num_segments; i++) {
+    for (ptrdiff_t i = 0; i < num_segments_omp; i++) {
         wire_geometry_t wire1;
-        get_wire_geometry(mesh, i, &wire1);
+        get_wire_geometry(mesh, (size_t)i, &wire1);
         
         // Self terms
         L_matrix[i * num_segments + i] = compute_self_partial_inductance(&wire1, &int_params);
@@ -267,11 +270,12 @@ static int assemble_mom_peec_coupling(
     int_params.method = INTEGRATION_EXTRACTION;
     int_params.tolerance = params->integration_tolerance;
     
-    // Parallel assembly of coupling terms
+    // Parallel assembly of coupling terms (signed index for MSVC OpenMP compatibility)
+    ptrdiff_t num_triangles_omp = (ptrdiff_t)num_triangles;
     #pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < num_triangles; i++) {
+    for (ptrdiff_t i = 0; i < num_triangles_omp; i++) {
         triangle_geometry_t triangle;
-        get_triangle_geometry(mom_mesh, i, &triangle);
+        get_triangle_geometry(mom_mesh, (size_t)i, &triangle);
         
         for (size_t j = 0; j < num_segments; j++) {
             wire_geometry_t wire;
