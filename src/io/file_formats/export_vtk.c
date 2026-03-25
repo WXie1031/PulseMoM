@@ -180,44 +180,117 @@ int export_vtk_current(
         fprintf(fp, "%d\n", vtk_type);
     }
     
-    /* Prefer POINT_DATA when available: vertex-wise magnitude → ParaView interpolates within cells → 单元间连续平滑 */
-    if (opts.include_scalars && current_dist->current_magnitude_vertices != NULL &&
-        current_dist->num_vertices == mesh->num_vertices) {
-        fprintf(fp, "POINT_DATA %d\n", mesh->num_vertices);
-        fprintf(fp, "SCALARS current_magnitude float 1\n");
-        fprintf(fp, "LOOKUP_TABLE default\n");
-        for (int i = 0; i < mesh->num_vertices; i++) {
-            fprintf(fp, "%.6e\n", current_dist->current_magnitude_vertices[i]);
+    const bool has_point_magnitude =
+        opts.include_scalars &&
+        current_dist->current_magnitude_vertices != NULL &&
+        current_dist->num_vertices == mesh->num_vertices;
+
+    /* ParaView 里如果直接导出每个单元一套 J(矢量)，显示会呈现“块状不连续”。
+     * 这里把单元(三角面)质心的 J 进行顶点平均，导出到 POINT_DATA，使可视化连续平滑。 */
+    double* point_J_real = NULL; /* length: num_vertices * 3 */
+    double* point_J_imag = NULL; /* length: num_vertices * 3 */
+    int* point_J_count = NULL; /* length: num_vertices */
+    bool has_point_vectors = false;
+
+    if (opts.include_vectors &&
+        current_dist->current_real != NULL &&
+        current_dist->current_imag != NULL &&
+        mesh->num_vertices > 0 &&
+        mesh->num_elements > 0 &&
+        current_dist->num_elements > 0) {
+        const int num_vertices = mesh->num_vertices;
+        const int num_cells = current_dist->num_elements;
+        const int max_cells = mesh->num_elements < num_cells ? mesh->num_elements : num_cells;
+
+        point_J_real = (double*)calloc((size_t)num_vertices * 3, sizeof(double));
+        point_J_imag = (double*)calloc((size_t)num_vertices * 3, sizeof(double));
+        point_J_count = (int*)calloc((size_t)num_vertices, sizeof(int));
+
+        if (point_J_real && point_J_imag && point_J_count) {
+            for (int i = 0; i < max_cells; i++) {
+                const mesh_element_t* e = &mesh->elements[i];
+                if (!e->vertices || e->num_vertices < 3) continue;
+
+                const int idx0 = i * 3;
+                for (int j = 0; j < e->num_vertices; j++) {
+                    const int v = e->vertices[j];
+                    if (v < 0 || v >= num_vertices) continue;
+
+                    point_J_real[v * 3 + 0] += current_dist->current_real[idx0 + 0];
+                    point_J_real[v * 3 + 1] += current_dist->current_real[idx0 + 1];
+                    point_J_real[v * 3 + 2] += current_dist->current_real[idx0 + 2];
+
+                    point_J_imag[v * 3 + 0] += current_dist->current_imag[idx0 + 0];
+                    point_J_imag[v * 3 + 1] += current_dist->current_imag[idx0 + 1];
+                    point_J_imag[v * 3 + 2] += current_dist->current_imag[idx0 + 2];
+
+                    point_J_count[v] += 1;
+                }
+            }
+
+            for (int v = 0; v < num_vertices; v++) {
+                const int cnt = point_J_count[v];
+                if (cnt > 0) {
+                    const double inv = 1.0 / (double)cnt;
+                    point_J_real[v * 3 + 0] *= inv;
+                    point_J_real[v * 3 + 1] *= inv;
+                    point_J_real[v * 3 + 2] *= inv;
+
+                    point_J_imag[v * 3 + 0] *= inv;
+                    point_J_imag[v * 3 + 1] *= inv;
+                    point_J_imag[v * 3 + 2] *= inv;
+                }
+            }
+
+            has_point_vectors = true;
         }
     }
-    /* CELL_DATA: per-element magnitude (optional; written when no vertex data or for compatibility) */
-    fprintf(fp, "CELL_DATA %d\n", current_dist->num_elements);
-    if (opts.include_scalars && current_dist->current_magnitude != NULL) {
-        fprintf(fp, "SCALARS %s float 1\n",
-                current_dist->current_magnitude_vertices != NULL ? "current_magnitude_cell" : "current_magnitude");
+
+    const bool need_point_data =
+        has_point_magnitude || (opts.include_vectors && has_point_vectors);
+
+    if (need_point_data) {
+        fprintf(fp, "POINT_DATA %d\n", mesh->num_vertices);
+
+        if (has_point_magnitude) {
+            fprintf(fp, "SCALARS current_magnitude float 1\n");
+            fprintf(fp, "LOOKUP_TABLE default\n");
+            for (int i = 0; i < mesh->num_vertices; i++) {
+                fprintf(fp, "%.6e\n", current_dist->current_magnitude_vertices[i]);
+            }
+        }
+
+        if (opts.include_vectors && has_point_vectors) {
+            fprintf(fp, "VECTORS J_real float\n");
+            for (int i = 0; i < mesh->num_vertices; i++) {
+                fprintf(fp, "%.6e %.6e %.6e\n",
+                        point_J_real[i * 3 + 0],
+                        point_J_real[i * 3 + 1],
+                        point_J_real[i * 3 + 2]);
+            }
+            fprintf(fp, "VECTORS J_imag float\n");
+            for (int i = 0; i < mesh->num_vertices; i++) {
+                fprintf(fp, "%.6e %.6e %.6e\n",
+                        point_J_imag[i * 3 + 0],
+                        point_J_imag[i * 3 + 1],
+                        point_J_imag[i * 3 + 2]);
+            }
+        }
+    }
+
+    /* CELL_DATA: 仅在没有顶点幅值时才输出（避免 ParaView 默认选错导致“块状不连续”）。 */
+    if (opts.include_scalars && current_dist->current_magnitude != NULL && !has_point_magnitude) {
+        fprintf(fp, "CELL_DATA %d\n", current_dist->num_elements);
+        fprintf(fp, "SCALARS current_magnitude float 1\n");
         fprintf(fp, "LOOKUP_TABLE default\n");
         for (int i = 0; i < current_dist->num_elements; i++) {
             fprintf(fp, "%.6e\n", current_dist->current_magnitude[i]);
         }
     }
-    /* 表面电流复矢量 J 的实部/虚部（单元质心重构，与 mom_solver RWG 后处理一致）；ParaView 用 Glyph 显示矢量 */
-    if (current_dist->current_real != NULL && current_dist->current_imag != NULL &&
-        current_dist->num_elements > 0) {
-        fprintf(fp, "VECTORS J_real float\n");
-        for (int i = 0; i < current_dist->num_elements; i++) {
-            fprintf(fp, "%.6e %.6e %.6e\n",
-                    current_dist->current_real[i * 3 + 0],
-                    current_dist->current_real[i * 3 + 1],
-                    current_dist->current_real[i * 3 + 2]);
-        }
-        fprintf(fp, "VECTORS J_imag float\n");
-        for (int i = 0; i < current_dist->num_elements; i++) {
-            fprintf(fp, "%.6e %.6e %.6e\n",
-                    current_dist->current_imag[i * 3 + 0],
-                    current_dist->current_imag[i * 3 + 1],
-                    current_dist->current_imag[i * 3 + 2]);
-        }
-    }
+
+    free(point_J_real);
+    free(point_J_imag);
+    free(point_J_count);
 
     fclose(fp);
     return 0;
