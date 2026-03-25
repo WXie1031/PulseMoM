@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#if !defined(_MSC_VER)
+#include <complex.h>
+#endif
 
 // Unified MoM solver entry points
 int mom_solve_unified(mesh_t *mesh, double frequency, complex_t *excitation,
@@ -157,6 +160,45 @@ int mom_solver_set_mesh(mom_solver_t* solver, void* mesh) {
 int mom_solver_add_excitation(mom_solver_t* solver, const mom_excitation_t* excitation) {
     if (!solver || !excitation) return -1;
     solver->excitation = *excitation;
+    return 0;
+}
+
+int mom_solver_set_frequency_hz(mom_solver_t* solver, double f_hz) {
+    if (!solver || f_hz <= 0.0) {
+        return -1;
+    }
+    solver->config.frequency = f_hz;
+    solver->excitation.frequency = f_hz;
+    return mom_solver_assemble_matrix(solver);
+}
+
+void mom_solver_set_frequency_metadata_hz(mom_solver_t* solver, double f_hz) {
+    if (!solver || f_hz <= 0.0) {
+        return;
+    }
+    solver->config.frequency = f_hz;
+    solver->excitation.frequency = f_hz;
+}
+
+int mom_solver_apply_current_coefficients_complex(mom_solver_t* solver, const complex_t* coeffs, int n) {
+    if (!solver || !coeffs || n <= 0) {
+        return -1;
+    }
+    if (!solver->result.current_coefficients) {
+        return -1;
+    }
+    int cap = solver->num_unknowns;
+    if (n > cap) {
+        n = cap;
+    }
+    for (int i = 0; i < n; i++) {
+#if defined(_MSC_VER)
+        solver->result.current_coefficients[i].re = coeffs[i].re;
+        solver->result.current_coefficients[i].im = coeffs[i].im;
+#else
+        solver->result.current_coefficients[i] = coeffs[i].re + I * coeffs[i].im;
+#endif
+    }
     return 0;
 }
 
@@ -373,6 +415,12 @@ static void mom_solver_fill_plane_wave_rwg_rhs(mom_solver_t* solver) {
         complex_t out;
         out.re = Vi.re * rot.re - Vi.im * rot.im;
         out.im = Vi.re * rot.im + Vi.im * rot.re;
+        if (solver->excitation.type == MOM_EXCITATION_SINUSOIDAL_PLANE_WAVE) {
+            /* -j * out: sin(ωt) phase reference vs cos for plane wave */
+            const double tr = out.re;
+            out.re = out.im;
+            out.im = -tr;
+        }
         solver->excitation_vector[e] = out;
     }
 
@@ -738,7 +786,8 @@ int mom_solver_assemble_matrix(mom_solver_t* solver) {
     const int rwg_plane_wave_rhs =
         (solver->mesh->num_edges > 0 && (int)n == solver->mesh->num_edges &&
          (solver->config.formulation == MOM_FORMULATION_EFIE || (int)solver->config.formulation == 0) &&
-         solver->excitation.type == MOM_EXCITATION_PLANE_WAVE);
+         (solver->excitation.type == MOM_EXCITATION_PLANE_WAVE ||
+          solver->excitation.type == MOM_EXCITATION_SINUSOIDAL_PLANE_WAVE));
 
     // Map ports to RHS if ports are defined, otherwise use default excitation
     if (solver->num_ports > 0) {
@@ -802,7 +851,8 @@ double mom_solver_monostatic_rcs_m2(mom_solver_t* solver) {
     if (solver->num_unknowns <= 0) {
         return 0.0;
     }
-    if (solver->excitation.type != MOM_EXCITATION_PLANE_WAVE) {
+    if (solver->excitation.type != MOM_EXCITATION_PLANE_WAVE &&
+        solver->excitation.type != MOM_EXCITATION_SINUSOIDAL_PLANE_WAVE) {
         return 0.0;
     }
 

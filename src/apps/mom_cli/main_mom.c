@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#if !defined(_MSC_VER)
+#include <complex.h>
+#endif
 
 /* Minimal types for config parsing only (avoids pulling in headers that may
    conflict under MSVC when parsing this file as C). */
@@ -25,6 +28,16 @@ typedef struct mom_cli_file_config {
     int mesh_density;
     int conductor_material_id;  /* -1: all conductor; >=0: only elements with this material_id (e.g. body=0, wheels=other) */
     char plane_wave_preset[32]; /* car45 (default) | mie_z (+z propagation, E along +x, for PEC sphere / Mie) */
+    char excitation_type[32];     /* plane_wave | sinusoidal (or sine): RWG incident field + optional -j for sin phase ref */
+    double excitation_amplitude;  /* |E0| scale (V/m) for incident field in RHS */
+    char simulation_mode[32];     /* frequency | time_domain */
+    double time_domain_t0;        /* s */
+    double time_domain_t1;        /* s */
+    int time_domain_num_points;   /* = FFT length = number of frequency samples */
+    double time_domain_fmin_hz;   /* 0: auto 0.5*frequency */
+    double time_domain_fmax_hz;   /* 0: auto 1.5*frequency */
+    int time_domain_vtk_stride;   /* export VTK every stride-th time index */
+    int time_domain_vtk_max_files;
 } mom_cli_file_config_t;
 
 /* Build an output results file path in the same directory as the geometry file.
@@ -102,6 +115,16 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
     cfg->mesh_density = 10;
     cfg->conductor_material_id = -1;  /* -1: treat all as conductor */
     strcpy(cfg->plane_wave_preset, "car45");
+    strcpy(cfg->excitation_type, "plane_wave");
+    cfg->excitation_amplitude = 1.0;
+    strcpy(cfg->simulation_mode, "frequency");
+    cfg->time_domain_t0 = 0.0;
+    cfg->time_domain_t1 = 1e-9;
+    cfg->time_domain_num_points = 64;
+    cfg->time_domain_fmin_hz = 0.0;
+    cfg->time_domain_fmax_hz = 0.0;
+    cfg->time_domain_vtk_stride = 8;
+    cfg->time_domain_vtk_max_files = 16;
     
     char line[1024];
     while (fgets(line, sizeof(line), f)) {
@@ -128,6 +151,26 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
             sscanf(line, "conductor_material_id=%d", &cfg->conductor_material_id);
         } else if (strstr(line, "plane_wave_preset")) {
             sscanf(line, "plane_wave_preset=%31s", cfg->plane_wave_preset);
+        } else if (strstr(line, "excitation_type")) {
+            sscanf(line, "excitation_type=%31s", cfg->excitation_type);
+        } else if (strstr(line, "excitation_amplitude")) {
+            sscanf(line, "excitation_amplitude=%lf", &cfg->excitation_amplitude);
+        } else if (strstr(line, "simulation_mode")) {
+            sscanf(line, "simulation_mode=%31s", cfg->simulation_mode);
+        } else if (strstr(line, "time_domain_t0")) {
+            sscanf(line, "time_domain_t0=%lf", &cfg->time_domain_t0);
+        } else if (strstr(line, "time_domain_t1")) {
+            sscanf(line, "time_domain_t1=%lf", &cfg->time_domain_t1);
+        } else if (strstr(line, "time_domain_num_points")) {
+            sscanf(line, "time_domain_num_points=%d", &cfg->time_domain_num_points);
+        } else if (strstr(line, "time_domain_fmin_hz")) {
+            sscanf(line, "time_domain_fmin_hz=%lf", &cfg->time_domain_fmin_hz);
+        } else if (strstr(line, "time_domain_fmax_hz")) {
+            sscanf(line, "time_domain_fmax_hz=%lf", &cfg->time_domain_fmax_hz);
+        } else if (strstr(line, "time_domain_vtk_stride")) {
+            sscanf(line, "time_domain_vtk_stride=%d", &cfg->time_domain_vtk_stride);
+        } else if (strstr(line, "time_domain_vtk_max_files")) {
+            sscanf(line, "time_domain_vtk_max_files=%d", &cfg->time_domain_vtk_max_files);
         }
     }
     
@@ -140,6 +183,7 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
 #include "../../orchestration/workflow/workflow_engine.h"
 #include "../../common/core_common.h"
 #include "../../common/errors_core.h"
+#include "../../solvers/mom/mom_time_domain.h"
 
 /* Near-field sampling plane parameters (demo version) */
 #define NF_NX   41
@@ -164,6 +208,12 @@ static void print_usage(const char* program_name) {
     printf("  tolerance=<tolerance>\n");
     printf("  max_iterations=<number>\n");
     printf("  mesh_density=<elements_per_wavelength>\n");
+    printf("  excitation_type=plane_wave|sinusoidal  (sinusoidal: -j vs plane wave phasor)\n");
+    printf("  excitation_amplitude=<V/m>  (incident |E0| scale)\n");
+    printf("  simulation_mode=frequency|time_domain\n");
+    printf("  time_domain_t0=<s>  time_domain_t1=<s>  time_domain_num_points=<N>\n");
+    printf("  time_domain_fmin_hz / time_domain_fmax_hz (0 = auto 0.5/1.5 * frequency)\n");
+    printf("  time_domain_vtk_stride / time_domain_vtk_max_files\n");
     printf("\nExample:\n");
     printf("  %s config.txt\n", program_name);
 }
@@ -198,9 +248,14 @@ int main(int argc, char* argv[]) {
     printf("Geometry file: %s\n", file_config.geometry_file);
     printf("Geometry format: %s\n", file_config.geometry_format);
     printf("Frequency: %.2e Hz\n", file_config.frequency);
+    printf("Excitation: %s, |E0| = %.6e V/m\n",
+           file_config.excitation_type[0] != '\0' ? file_config.excitation_type : "plane_wave",
+           (file_config.excitation_amplitude != 0.0) ? file_config.excitation_amplitude : 1.0);
     printf("Tolerance: %.2e\n", file_config.tolerance);
     printf("Max iterations: %d\n", file_config.max_iterations);
     printf("Mesh density: %d elements/wavelength\n", file_config.mesh_density);
+    printf("Simulation mode: %s\n",
+           file_config.simulation_mode[0] != '\0' ? file_config.simulation_mode : "frequency");
     printf("\n");
     
     // 创建 MoM solver 配置
@@ -224,13 +279,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    /* 平面波激励：默认 45° 车体案例；plane_wave_preset=mie_z 用于 PEC 球与 Mie 单站对比 (+z 传播, E//x) */
+    /* 平面波 / 正弦相位参考平面波：plane_wave_preset=mie_z 用于 PEC 球与 Mie (+z 传播, E//x) */
     {
         mom_excitation_t exc = {0};
         const double inv_sqrt2 = 0.7071067811865475; /* 1/sqrt(2) */
-        exc.type      = MOM_EXCITATION_PLANE_WAVE;
+        if (file_config.excitation_type[0] != '\0' &&
+            (strcmp(file_config.excitation_type, "sinusoidal") == 0 ||
+             strcmp(file_config.excitation_type, "sine") == 0)) {
+            exc.type = MOM_EXCITATION_SINUSOIDAL_PLANE_WAVE;
+        } else {
+            exc.type = MOM_EXCITATION_PLANE_WAVE;
+        }
         exc.frequency = solver_config.frequency;
-        exc.amplitude = 1.0;
+        exc.amplitude = (file_config.excitation_amplitude != 0.0) ? file_config.excitation_amplitude : 1.0;
         exc.phase     = 0.0;
         if (file_config.plane_wave_preset[0] != '\0' &&
             strcmp(file_config.plane_wave_preset, "mie_z") == 0) {
@@ -282,7 +343,122 @@ int main(int argc, char* argv[]) {
         mom_solver_destroy(solver);
         return 1;
     }
-    
+
+    /* --- Time domain: band-limited linear frequency sweep + IFFT (same N as time samples) --- */
+    if (file_config.simulation_mode[0] != '\0' &&
+        strcmp(file_config.simulation_mode, "time_domain") == 0) {
+        printf("[5/6] Time-domain: frequency sweep + IFFT (surface current)...\n");
+        double fmin = file_config.time_domain_fmin_hz > 0.0
+            ? file_config.time_domain_fmin_hz
+            : 0.5 * file_config.frequency;
+        double fmax = file_config.time_domain_fmax_hz > 0.0
+            ? file_config.time_domain_fmax_hz
+            : 1.5 * file_config.frequency;
+        int N = file_config.time_domain_num_points;
+        if (N < 2) {
+            N = 2;
+        }
+
+        double* freqs = NULL;
+        if (mom_time_domain_build_linear_frequencies_hz(fmin, fmax, N, &freqs) != 0) {
+            fprintf(stderr, "Error: failed to build frequency sweep for time domain.\n");
+            mom_solver_destroy(solver);
+            return 1;
+        }
+
+        mom_time_domain_config_t tdc = mom_time_domain_get_default_config();
+        tdc.time_start = file_config.time_domain_t0;
+        tdc.time_stop = file_config.time_domain_t1;
+        tdc.num_time_points = N;
+        if (tdc.time_stop <= tdc.time_start) {
+            fprintf(stderr, "Error: time_domain_t1 must be greater than time_domain_t0.\n");
+            free(freqs);
+            mom_solver_destroy(solver);
+            return 1;
+        }
+
+        mom_time_domain_results_t td = {0};
+        if (mom_solver_solve_time_domain(solver, freqs, N, &tdc, &td) != 0) {
+            fprintf(stderr, "Error: mom_solver_solve_time_domain failed.\n");
+            free(freqs);
+            mom_time_domain_free_results(&td);
+            mom_solver_destroy(solver);
+            return 1;
+        }
+        free(freqs);
+
+        int num_basis = mom_solver_get_num_unknowns(solver);
+        if (num_basis <= 0 || !td.current_response || !td.time_points) {
+            fprintf(stderr, "Error: invalid time-domain results.\n");
+            mom_time_domain_free_results(&td);
+            mom_solver_destroy(solver);
+            return 1;
+        }
+
+        char out_dir[1024] = {0};
+        get_output_dir(file_config.geometry_file, out_dir, sizeof(out_dir));
+
+        if (out_dir[0] != '\0') {
+            char csv_sum[1100];
+            snprintf(csv_sum, sizeof(csv_sum), "%stime_domain_basis0_magnitude.csv", out_dir);
+            FILE* cf = fopen(csv_sum, "w");
+            if (cf) {
+                fprintf(cf, "time_s,abs_J0\n");
+                for (int i = 0; i < N; i++) {
+#if defined(_MSC_VER)
+                    complex_t c = td.current_response[i * num_basis + 0];
+                    double mag = sqrt(c.re * c.re + c.im * c.im);
+#else
+                    double mag = cabs(td.current_response[i * num_basis + 0]);
+#endif
+                    fprintf(cf, "%.12e,%.12e\n", td.time_points[i], mag);
+                }
+                fclose(cf);
+                printf("Time-domain CSV (|J| on basis 0): %s\n", csv_sum);
+            }
+
+            int stride = file_config.time_domain_vtk_stride > 0 ? file_config.time_domain_vtk_stride : 1;
+            int maxv = file_config.time_domain_vtk_max_files > 0 ? file_config.time_domain_vtk_max_files : 16;
+            int nout = 0;
+            for (int ti = 0; ti < N && nout < maxv; ti += stride) {
+                if (mom_solver_apply_current_coefficients_complex(solver, &td.current_response[ti * num_basis], num_basis) != 0) {
+                    break;
+                }
+                mom_solver_set_frequency_metadata_hz(solver, file_config.frequency);
+                char vtk_path[1100];
+                snprintf(vtk_path, sizeof(vtk_path), "%ssurface_current_t%04d.vtk", out_dir, ti);
+                if (mom_solver_export_surface_current_vtk(solver, vtk_path, file_config.conductor_material_id) == 0) {
+                    printf("Surface current VTK (time index %d): %s\n", ti, vtk_path);
+                    nout++;
+                }
+            }
+        }
+
+        char results_path[1024] = {0};
+        build_results_path(file_config.geometry_file, results_path, sizeof(results_path));
+        if (results_path[0] != '\0') {
+            FILE* rf = fopen(results_path, "w");
+            if (rf) {
+                fprintf(rf, "MoM Time-Domain (linear f-sweep + IFFT)\n");
+                fprintf(rf, "Geometry file: %s\n", file_config.geometry_file);
+                fprintf(rf, "Reference frequency (Hz): %.6e\n", file_config.frequency);
+                fprintf(rf, "Frequency sweep: %.6e .. %.6e Hz, %d samples\n", fmin, fmax, N);
+                fprintf(rf, "Time window: %.6e .. %.6e s, %d points\n",
+                        file_config.time_domain_t0, file_config.time_domain_t1, N);
+                fprintf(rf, "Basis unknowns: %d\n", num_basis);
+                fprintf(rf, "VTK stride: %d, max files: %d\n",
+                        file_config.time_domain_vtk_stride, file_config.time_domain_vtk_max_files);
+                fclose(rf);
+                printf("Summary written to: %s\n", results_path);
+            }
+        }
+
+        mom_time_domain_free_results(&td);
+        mom_solver_destroy(solver);
+        printf("Done.\n");
+        return 0;
+    }
+
     // 运行仿真
     printf("[5/6] Running simulation...\n");
     {
@@ -309,7 +485,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    /* 单站 RCS（后向，与平面波传播方向相反）；与 |E_inc|=1 的 RCS 定义一致 */
+    /* 单站 RCS（后向，与平面波传播方向相反）；幅值由 excitation_amplitude 缩放 */
     const double monostatic_rcs_m2 = mom_solver_monostatic_rcs_m2(solver);
 
     /* 近场采样：在 z=NF_Z0 平面上建立 NF_NX × NF_NY 网格，用于 3D 场强分布演示 */
@@ -364,6 +540,10 @@ int main(int argc, char* argv[]) {
             fprintf(rf, "Geometry file: %s\n", file_config.geometry_file);
             fprintf(rf, "Geometry format: %s\n", file_config.geometry_format);
             fprintf(rf, "Frequency: %.6e Hz\n", file_config.frequency);
+            fprintf(rf, "Excitation type: %s\n",
+                    file_config.excitation_type[0] != '\0' ? file_config.excitation_type : "plane_wave");
+            fprintf(rf, "Excitation amplitude |E0|: %.6e V/m\n",
+                    (file_config.excitation_amplitude != 0.0) ? file_config.excitation_amplitude : 1.0);
             fprintf(rf, "Tolerance: %.6e\n", file_config.tolerance);
             fprintf(rf, "Max iterations: %d\n", file_config.max_iterations);
             fprintf(rf, "Mesh density: %d elements/wavelength\n", file_config.mesh_density);

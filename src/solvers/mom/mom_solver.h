@@ -129,6 +129,15 @@ int mom_solver_set_mesh(mom_solver_t* solver, void* mesh);  // Generic mesh poin
 
 // Excitation
 int mom_solver_add_excitation(mom_solver_t* solver, const mom_excitation_t* excitation);
+
+/** Set analysis frequency (Hz), refresh RHS buffers via assemble_matrix. Used by time-domain sweep. */
+int mom_solver_set_frequency_hz(mom_solver_t* solver, double f_hz);
+
+/** Only update stored frequency fields (e.g. VTK metadata) without re-assembling Z/RHS. */
+void mom_solver_set_frequency_metadata_hz(mom_solver_t* solver, double f_hz);
+
+/** Overwrite solved current coefficients (length n <= num_unknowns) for post-processing / VTK export. */
+int mom_solver_apply_current_coefficients_complex(mom_solver_t* solver, const complex_t* coeffs, int n);
 int mom_solver_add_lumped_excitation(mom_solver_t* solver, const point3d_t* position,
                                      const point3d_t* polarization,
                                      double amplitude, double width, int layer_index);

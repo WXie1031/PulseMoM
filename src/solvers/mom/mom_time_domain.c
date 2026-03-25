@@ -103,6 +103,12 @@ int mom_solver_solve_time_domain(
     if (!solver || !frequencies || num_frequencies < 1 || !config || !time_results) {
         return -1;
     }
+    if (config->num_time_points < 2) {
+        return -1;
+    }
+    if (num_frequencies != config->num_time_points) {
+        return -1;
+    }
     
     // Allocate time points
     time_results->num_time_points = config->num_time_points;
@@ -147,12 +153,15 @@ int mom_solver_solve_time_domain(
     
     // Solve at each frequency and collect results
     for (int f = 0; f < num_frequencies; f++) {
-        // Update solver frequency (if API available)
-        // Note: This assumes solver has a way to set frequency
-        // For now, we'll solve and extract current coefficients
-        
-        // Update frequency in solver config if possible
-        // This would typically be done via mom_solver_configure() or similar
+        /* Public API: sets config + excitation frequency and re-assembles RHS. */
+        if (mom_solver_set_frequency_hz(solver, frequencies[f]) != 0) {
+            for (int i = 0; i < f; i++) {
+                if (freq_currents[i]) free(freq_currents[i]);
+            }
+            free(freq_currents);
+            free(time_results->time_points);
+            return -1;
+        }
         
         // Solve at this frequency
         if (mom_solver_solve(solver) != 0) {
@@ -295,6 +304,25 @@ int mom_solver_solve_time_domain(
     free(freq_currents);
     free(freq_padded);
     
+    return 0;
+}
+
+int mom_time_domain_build_linear_frequencies_hz(double f_min_hz, double f_max_hz, int n,
+                                                double** out_freqs) {
+    if (n < 1 || !out_freqs || f_min_hz <= 0.0 || f_max_hz <= 0.0 || f_max_hz < f_min_hz) {
+        return -1;
+    }
+    *out_freqs = (double*)malloc((size_t)n * sizeof(double));
+    if (!*out_freqs) {
+        return -1;
+    }
+    if (n == 1) {
+        (*out_freqs)[0] = f_min_hz;
+        return 0;
+    }
+    for (int i = 0; i < n; i++) {
+        (*out_freqs)[i] = f_min_hz + (double)i * (f_max_hz - f_min_hz) / (double)(n - 1);
+    }
     return 0;
 }
 

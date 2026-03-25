@@ -79,6 +79,14 @@ mom_time_domain_config_t mom_time_domain_get_default_config(void);
  */
 void mom_time_domain_free_results(mom_time_domain_results_t* results);
 
+/**
+ * Build n linearly spaced frequency samples in [f_min_hz, f_max_hz] (Hz).
+ * Caller must free *out_freqs with free().
+ * @return 0 on success, negative on error
+ */
+int mom_time_domain_build_linear_frequencies_hz(double f_min_hz, double f_max_hz, int n,
+                                                double** out_freqs);
+
 #ifdef __cplusplus
 }
 #endif

@@ -60,7 +60,10 @@ typedef enum {
     MOM_EXCITATION_PLANE_WAVE = 1,    // Plane wave excitation
     MOM_EXCITATION_VOLTAGE_SOURCE = 2, // Voltage source (lumped element)
     MOM_EXCITATION_CURRENT_SOURCE = 3, // Current source (lumped element)
-    MOM_EXCITATION_DIPOLE = 4         // Dipole source
+    MOM_EXCITATION_DIPOLE = 4,        // Dipole source
+    /* Time-harmonic plane wave with sin(ωt) phase reference: same spatial e^{-jk·r} as plane wave,
+     * RHS phasor multiplied by -j relative to plane wave (cos reference). */
+    MOM_EXCITATION_SINUSOIDAL_PLANE_WAVE = 5
 } mom_excitation_type_t;
 
 /**

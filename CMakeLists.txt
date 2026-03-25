@@ -490,6 +490,7 @@ set(MOM_SOURCES
     src/solvers/mom/mom_solver_unified.c
     src/solvers/mom/mom_solver_min.c
     src/solvers/mom/mom_matvec.c
+    src/solvers/mom/mom_time_domain.c
     src/discretization/mesh/tri_mesh.c
 )
 add_library(mom_solver STATIC ${MOM_SOURCES})
