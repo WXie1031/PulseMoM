@@ -51,10 +51,14 @@ typedef struct {
  * Solve time domain via FFT from frequency domain results
  * 
  * @param solver MoM solver
- * @param frequencies Frequency points for FFT (Hz)
+ * @param frequencies Frequency points for FFT (Hz), one per bin; use DFT-aligned grid from
+ *                    mom_time_domain_build_dft_aligned_frequencies_hz() so IFFT matches physics
  * @param num_frequencies Number of frequency points
  * @param config Time-domain configuration
  * @param time_results Output: time-domain results
+ * @param use_band_mask If non-zero, bins with f not in [band_fmin_hz, band_fmax_hz] are zeroed (no MoM solve)
+ * @param band_fmin_hz Lower band edge (Hz), valid when use_band_mask
+ * @param band_fmax_hz Upper band edge (Hz), valid when use_band_mask
  * @return 0 on success, negative on error
  */
 int mom_solver_solve_time_domain(
@@ -62,7 +66,10 @@ int mom_solver_solve_time_domain(
     const double* frequencies,
     int num_frequencies,
     const mom_time_domain_config_t* config,
-    mom_time_domain_results_t* time_results
+    mom_time_domain_results_t* time_results,
+    int use_band_mask,
+    double band_fmin_hz,
+    double band_fmax_hz
 );
 
 /**
@@ -86,6 +93,16 @@ void mom_time_domain_free_results(mom_time_domain_results_t* results);
  */
 int mom_time_domain_build_linear_frequencies_hz(double f_min_hz, double f_max_hz, int n,
                                                 double** out_freqs);
+
+/**
+ * Build DFT/IFFT-aligned frequencies (Hz) for N time samples on [time_start, time_stop]:
+ * f[k] = k / (N * dt), dt = (time_stop - time_start) / (N - 1), k = 0..N-1.
+ * Matches bin k of an N-point inverse DFT with uniform spacing dt.
+ * f[0] is 0 Hz (DC); mom_solver_solve_time_domain skips DC for MoM.
+ * Caller must free *out_freqs with free().
+ */
+int mom_time_domain_build_dft_aligned_frequencies_hz(double time_start, double time_stop, int n,
+                                                     double** out_freqs);
 
 #ifdef __cplusplus
 }

@@ -212,7 +212,7 @@ static void print_usage(const char* program_name) {
     printf("  excitation_amplitude=<V/m>  (incident |E0| scale)\n");
     printf("  simulation_mode=frequency|time_domain\n");
     printf("  time_domain_t0=<s>  time_domain_t1=<s>  time_domain_num_points=<N>\n");
-    printf("  time_domain_fmin_hz / time_domain_fmax_hz (0 = auto 0.5/1.5 * frequency)\n");
+    printf("  time_domain_fmin_hz / time_domain_fmax_hz (optional band mask; both 0 = full DFT band)\n");
     printf("  time_domain_vtk_stride / time_domain_vtk_max_files\n");
     printf("\nExample:\n");
     printf("  %s config.txt\n", program_name);
@@ -344,24 +344,28 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    /* --- Time domain: band-limited linear frequency sweep + IFFT (same N as time samples) --- */
+    /* --- Time domain: DFT-aligned frequency bins + IFFT (same N as time samples) --- */
     if (file_config.simulation_mode[0] != '\0' &&
         strcmp(file_config.simulation_mode, "time_domain") == 0) {
-        printf("[5/6] Time-domain: frequency sweep + IFFT (surface current)...\n");
-        double fmin = file_config.time_domain_fmin_hz > 0.0
-            ? file_config.time_domain_fmin_hz
-            : 0.5 * file_config.frequency;
-        double fmax = file_config.time_domain_fmax_hz > 0.0
-            ? file_config.time_domain_fmax_hz
-            : 1.5 * file_config.frequency;
+        printf("[5/6] Time-domain: DFT-aligned frequency grid + IFFT (surface current)...\n");
         int N = file_config.time_domain_num_points;
         if (N < 2) {
             N = 2;
         }
 
+        int use_band_mask =
+            (file_config.time_domain_fmin_hz > 0.0 || file_config.time_domain_fmax_hz > 0.0);
+        double band_fmin = file_config.time_domain_fmin_hz > 0.0
+            ? file_config.time_domain_fmin_hz
+            : 0.5 * file_config.frequency;
+        double band_fmax = file_config.time_domain_fmax_hz > 0.0
+            ? file_config.time_domain_fmax_hz
+            : 1.5 * file_config.frequency;
+
         double* freqs = NULL;
-        if (mom_time_domain_build_linear_frequencies_hz(fmin, fmax, N, &freqs) != 0) {
-            fprintf(stderr, "Error: failed to build frequency sweep for time domain.\n");
+        if (mom_time_domain_build_dft_aligned_frequencies_hz(
+                file_config.time_domain_t0, file_config.time_domain_t1, N, &freqs) != 0) {
+            fprintf(stderr, "Error: failed to build DFT frequency grid for time domain.\n");
             mom_solver_destroy(solver);
             return 1;
         }
@@ -378,7 +382,8 @@ int main(int argc, char* argv[]) {
         }
 
         mom_time_domain_results_t td = {0};
-        if (mom_solver_solve_time_domain(solver, freqs, N, &tdc, &td) != 0) {
+        if (mom_solver_solve_time_domain(solver, freqs, N, &tdc, &td,
+                                        use_band_mask, band_fmin, band_fmax) != 0) {
             fprintf(stderr, "Error: mom_solver_solve_time_domain failed.\n");
             free(freqs);
             mom_time_domain_free_results(&td);
@@ -424,7 +429,13 @@ int main(int argc, char* argv[]) {
                 if (mom_solver_apply_current_coefficients_complex(solver, &td.current_response[ti * num_basis], num_basis) != 0) {
                     break;
                 }
-                mom_solver_set_frequency_metadata_hz(solver, file_config.frequency);
+                {
+                    double vtk_f = file_config.frequency;
+                    if (use_band_mask) {
+                        vtk_f = 0.5 * (band_fmin + band_fmax);
+                    }
+                    mom_solver_set_frequency_metadata_hz(solver, vtk_f);
+                }
                 char vtk_path[1100];
                 snprintf(vtk_path, sizeof(vtk_path), "%ssurface_current_t%04d.vtk", out_dir, ti);
                 if (mom_solver_export_surface_current_vtk(solver, vtk_path, file_config.conductor_material_id) == 0) {
@@ -439,10 +450,22 @@ int main(int argc, char* argv[]) {
         if (results_path[0] != '\0') {
             FILE* rf = fopen(results_path, "w");
             if (rf) {
-                fprintf(rf, "MoM Time-Domain (linear f-sweep + IFFT)\n");
+                fprintf(rf, "MoM Time-Domain (DFT f-grid + IFFT)\n");
                 fprintf(rf, "Geometry file: %s\n", file_config.geometry_file);
                 fprintf(rf, "Reference frequency (Hz): %.6e\n", file_config.frequency);
-                fprintf(rf, "Frequency sweep: %.6e .. %.6e Hz, %d samples\n", fmin, fmax, N);
+                {
+                    double dt_sum = (file_config.time_domain_t1 - file_config.time_domain_t0) / (double)(N - 1);
+                    double f_nyq = 0.5 / dt_sum;
+                    fprintf(rf, "DFT: dt = %.6e s, f_k = k/(N*dt) Hz, k=0..%d (DC skipped for MoM)\n",
+                            dt_sum, N - 1);
+                    fprintf(rf, "Approx. two-sided Nyquist frequency: %.6e Hz\n", f_nyq);
+                }
+                if (use_band_mask) {
+                    fprintf(rf, "Band mask (solve only bins in band): %.6e .. %.6e Hz\n",
+                            band_fmin, band_fmax);
+                } else {
+                    fprintf(rf, "Band mask: none (full DFT grid except DC)\n");
+                }
                 fprintf(rf, "Time window: %.6e .. %.6e s, %d points\n",
                         file_config.time_domain_t0, file_config.time_domain_t1, N);
                 fprintf(rf, "Basis unknowns: %d\n", num_basis);

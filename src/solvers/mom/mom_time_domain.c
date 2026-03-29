@@ -98,10 +98,18 @@ int mom_solver_solve_time_domain(
     const double* frequencies,
     int num_frequencies,
     const mom_time_domain_config_t* config,
-    mom_time_domain_results_t* time_results
+    mom_time_domain_results_t* time_results,
+    int use_band_mask,
+    double band_fmin_hz,
+    double band_fmax_hz
 ) {
     if (!solver || !frequencies || num_frequencies < 1 || !config || !time_results) {
         return -1;
+    }
+    if (use_band_mask) {
+        if (band_fmin_hz <= 0.0 || band_fmax_hz < band_fmin_hz) {
+            return -1;
+        }
     }
     if (config->num_time_points < 2) {
         return -1;
@@ -124,24 +132,16 @@ int mom_solver_solve_time_domain(
     }
     time_results->sampling_rate = 1.0 / dt;
     
-    // Get number of basis functions from solver
-    // Query solver result if available
-    int num_basis = 0;
-    
-    // Try to get from solver result
-    const mom_result_t* result = mom_solver_get_results(solver);
-    if (result && result->num_basis_functions > 0) {
-        num_basis = result->num_basis_functions;
-    } else {
-        // Fallback: query number of unknowns
-        num_basis = mom_solver_get_num_unknowns(solver);
-    }
-    
-    // If still zero, use a default estimate
+    /* Prefer assembled unknown count (matrix already built before time-domain). */
+    int num_basis = mom_solver_get_num_unknowns(solver);
     if (num_basis <= 0) {
-        // Estimate from number of frequencies (rough heuristic)
-        // In practice, this should be queried from solver before calling this function
-        num_basis = num_frequencies * 10;  // Rough estimate
+        const mom_result_t* res0 = mom_solver_get_results(solver);
+        if (res0 && res0->num_basis_functions > 0) {
+            num_basis = res0->num_basis_functions;
+        }
+    }
+    if (num_basis <= 0) {
+        num_basis = num_frequencies * 10;
     }
     
     // Solve frequency domain for all frequencies and collect results
@@ -153,47 +153,17 @@ int mom_solver_solve_time_domain(
     
     // Solve at each frequency and collect results
     for (int f = 0; f < num_frequencies; f++) {
-        /* Public API: sets config + excitation frequency and re-assembles RHS. */
-        if (mom_solver_set_frequency_hz(solver, frequencies[f]) != 0) {
-            for (int i = 0; i < f; i++) {
-                if (freq_currents[i]) free(freq_currents[i]);
-            }
-            free(freq_currents);
-            free(time_results->time_points);
-            return -1;
+        const double f_hz = frequencies[f];
+        int skip_solve = 0;
+        if (f_hz <= 0.0) {
+            /* DC: mom_solver_set_frequency_hz rejects f<=0; MoM EFIE not defined at 0 Hz here */
+            skip_solve = 1;
+        } else if (use_band_mask && (f_hz < band_fmin_hz || f_hz > band_fmax_hz)) {
+            skip_solve = 1;
         }
-        
-        // Solve at this frequency
-        if (mom_solver_solve(solver) != 0) {
-            // Cleanup on error
-            for (int i = 0; i < f; i++) {
-                if (freq_currents[i]) free(freq_currents[i]);
-            }
-            free(freq_currents);
-            free(time_results->time_points);
-            return -1;
-        }
-        
-        // Extract current coefficients from solver result
-        const mom_result_t* result = mom_solver_get_results(solver);
-        if (result && result->current_coefficients && result->num_basis_functions > 0) {
-            // Update num_basis if we got it from result
-            if (num_basis == 0 || num_basis != result->num_basis_functions) {
-                num_basis = result->num_basis_functions;
-                
-                // Reallocate previous frequency results if size changed
-                if (f > 0 && num_basis > 0) {
-                    for (int i = 0; i < f; i++) {
-                        if (freq_currents[i]) {
-                            free(freq_currents[i]);
-                            freq_currents[i] = (complex_t*)calloc(num_basis, sizeof(complex_t));
-                        }
-                    }
-                }
-            }
-            
-            // Allocate for this frequency
-            freq_currents[f] = (complex_t*)calloc(num_basis, sizeof(complex_t));
+
+        if (skip_solve) {
+            freq_currents[f] = (complex_t*)calloc((size_t)num_basis, sizeof(complex_t));
             if (!freq_currents[f]) {
                 for (int i = 0; i < f; i++) {
                     if (freq_currents[i]) free(freq_currents[i]);
@@ -202,23 +172,60 @@ int mom_solver_solve_time_domain(
                 free(time_results->time_points);
                 return -1;
             }
-            
-            // Copy current coefficients from result
-            // Note: result->current_coefficients is mom_scalar_complex_t*
-            // We need to convert to complex_t
+            continue;
+        }
+
+        /* Public API: sets config + excitation frequency and re-assembles RHS. */
+        if (mom_solver_set_frequency_hz(solver, f_hz) != 0) {
+            for (int i = 0; i < f; i++) {
+                if (freq_currents[i]) free(freq_currents[i]);
+            }
+            free(freq_currents);
+            free(time_results->time_points);
+            return -1;
+        }
+
+        if (mom_solver_solve(solver) != 0) {
+            for (int i = 0; i < f; i++) {
+                if (freq_currents[i]) free(freq_currents[i]);
+            }
+            free(freq_currents);
+            free(time_results->time_points);
+            return -1;
+        }
+
+        const mom_result_t* result = mom_solver_get_results(solver);
+        if (result && result->current_coefficients && result->num_basis_functions > 0) {
+            if (num_basis != result->num_basis_functions) {
+                num_basis = result->num_basis_functions;
+                for (int i = 0; i < f; i++) {
+                    if (freq_currents[i]) {
+                        free(freq_currents[i]);
+                        freq_currents[i] = (complex_t*)calloc((size_t)num_basis, sizeof(complex_t));
+                    }
+                }
+            }
+
+            freq_currents[f] = (complex_t*)calloc((size_t)num_basis, sizeof(complex_t));
+            if (!freq_currents[f]) {
+                for (int i = 0; i < f; i++) {
+                    if (freq_currents[i]) free(freq_currents[i]);
+                }
+                free(freq_currents);
+                free(time_results->time_points);
+                return -1;
+            }
+
             for (int b = 0; b < num_basis && b < result->num_basis_functions; b++) {
 #if defined(_MSC_VER)
-                // For MSVC, both mom_scalar_complex_t and complex_t are struct { double re; double im; }
                 freq_currents[f][b] = result->current_coefficients[b];
 #else
-                // For other compilers, mom_scalar_complex_t is double complex, complex_t is struct
                 freq_currents[f][b].re = creal(result->current_coefficients[b]);
                 freq_currents[f][b].im = cimag(result->current_coefficients[b]);
 #endif
             }
         } else {
-            // Fallback: allocate zero-filled array
-            freq_currents[f] = (complex_t*)calloc(num_basis, sizeof(complex_t));
+            freq_currents[f] = (complex_t*)calloc((size_t)num_basis, sizeof(complex_t));
             if (!freq_currents[f]) {
                 for (int i = 0; i < f; i++) {
                     if (freq_currents[i]) free(freq_currents[i]);
@@ -322,6 +329,25 @@ int mom_time_domain_build_linear_frequencies_hz(double f_min_hz, double f_max_hz
     }
     for (int i = 0; i < n; i++) {
         (*out_freqs)[i] = f_min_hz + (double)i * (f_max_hz - f_min_hz) / (double)(n - 1);
+    }
+    return 0;
+}
+
+int mom_time_domain_build_dft_aligned_frequencies_hz(double time_start, double time_stop, int n,
+                                                     double** out_freqs) {
+    if (n < 2 || !out_freqs || time_stop <= time_start) {
+        return -1;
+    }
+    double dt = (time_stop - time_start) / (double)(n - 1);
+    if (dt <= 0.0) {
+        return -1;
+    }
+    *out_freqs = (double*)malloc((size_t)n * sizeof(double));
+    if (!*out_freqs) {
+        return -1;
+    }
+    for (int k = 0; k < n; k++) {
+        (*out_freqs)[k] = (double)k / ((double)n * dt);
     }
     return 0;
 }
