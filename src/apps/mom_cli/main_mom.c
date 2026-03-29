@@ -381,6 +381,42 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
+        /* DFT bins f_k = k/(N*dt) must intersect the solve band; otherwise every bin is masked/skipped → zero J. */
+        {
+            int n_solve = 0;
+            for (int k = 0; k < N; k++) {
+                double fk = freqs[k];
+                if (fk <= 0.0) {
+                    continue;
+                }
+                if (use_band_mask) {
+                    if (fk < band_fmin || fk > band_fmax) {
+                        continue;
+                    }
+                }
+                n_solve++;
+            }
+            if (n_solve == 0) {
+                fprintf(stderr,
+                        "Error: no DFT bin falls in the MoM solve range (would produce all-zero current).\n");
+                fprintf(stderr,
+                        "  f_k = k/(N*dt) with dt=(t1-t0)/(N-1). Here f_1=%.6e Hz, f_%d=%.6e Hz.\n",
+                        freqs[1], N - 1, freqs[N - 1]);
+                if (use_band_mask) {
+                    fprintf(stderr, "  Band mask: %.6e .. %.6e Hz\n", band_fmin, band_fmax);
+                }
+                fprintf(stderr,
+                        "  Change time_domain_t0/t1 and/or time_domain_num_points so some f_k lies in the band, "
+                        "or set time_domain_fmin_hz and time_domain_fmax_hz both to 0 to disable the mask.\n");
+                free(freqs);
+                mom_solver_destroy(solver);
+                return 1;
+            }
+            printf("Time-domain: %d frequency bin(s) will be solved (of %d non-DC bins), "
+                   "f_1=%.4e Hz .. f_%d=%.4e Hz\n",
+                   n_solve, N - 1, freqs[1], N - 1, freqs[N - 1]);
+        }
+
         mom_time_domain_results_t td = {0};
         if (mom_solver_solve_time_domain(solver, freqs, N, &tdc, &td,
                                         use_band_mask, band_fmin, band_fmax) != 0) {
