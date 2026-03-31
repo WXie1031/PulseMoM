@@ -34,6 +34,9 @@ typedef struct mom_cli_file_config {
     double excitation_source_y;   /* local source position y (m) */
     double excitation_source_z;   /* local source position z (m) */
     double excitation_source_radius; /* local source spread radius (m) */
+    char excitation_waveform[32]; /* sinusoid (default) | gaussian_pulse */
+    double excitation_gaussian_t0;   /* pulse center time (s) */
+    double excitation_gaussian_tau;  /* pulse width tau (s), I(t)=A*exp(-((t-t0)/tau)^2) */
     char simulation_mode[32];     /* frequency | time_domain */
     double time_domain_t0;        /* s */
     double time_domain_t1;        /* s */
@@ -125,6 +128,9 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
     cfg->excitation_source_y = 0.0;
     cfg->excitation_source_z = 0.0;
     cfg->excitation_source_radius = 0.2;
+    strcpy(cfg->excitation_waveform, "sinusoid");
+    cfg->excitation_gaussian_t0 = 150e-9;
+    cfg->excitation_gaussian_tau = 50e-9;
     strcpy(cfg->simulation_mode, "frequency");
     cfg->time_domain_t0 = 0.0;
     cfg->time_domain_t1 = 1e-9;
@@ -171,6 +177,12 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
             sscanf(line, "excitation_source_z=%lf", &cfg->excitation_source_z);
         } else if (strstr(line, "excitation_source_radius")) {
             sscanf(line, "excitation_source_radius=%lf", &cfg->excitation_source_radius);
+        } else if (strstr(line, "excitation_waveform")) {
+            sscanf(line, "excitation_waveform=%31s", cfg->excitation_waveform);
+        } else if (strstr(line, "excitation_gaussian_t0")) {
+            sscanf(line, "excitation_gaussian_t0=%lf", &cfg->excitation_gaussian_t0);
+        } else if (strstr(line, "excitation_gaussian_tau")) {
+            sscanf(line, "excitation_gaussian_tau=%lf", &cfg->excitation_gaussian_tau);
         } else if (strstr(line, "simulation_mode")) {
             sscanf(line, "simulation_mode=%31s", cfg->simulation_mode);
         } else if (strstr(line, "time_domain_t0")) {
@@ -227,6 +239,8 @@ static void print_usage(const char* program_name) {
     printf("  excitation_type=plane_wave|sinusoidal_plane_wave|sinusoidal_source\n");
     printf("  excitation_amplitude=<V/m>  (incident |E0| scale)\n");
     printf("  excitation_source_x/y/z=<m>  excitation_source_radius=<m> (for sinusoidal_source)\n");
+    printf("  excitation_waveform=sinusoid|gaussian_pulse (for sinusoidal_source)\n");
+    printf("  excitation_gaussian_t0=<s>  excitation_gaussian_tau=<s>\n");
     printf("  simulation_mode=frequency|time_domain\n");
     printf("  time_domain_t0=<s>  time_domain_t1=<s>  time_domain_num_points=<N>\n");
     printf("  time_domain_fmin_hz / time_domain_fmax_hz (optional band mask; both 0 = full DFT band)\n");
@@ -399,6 +413,7 @@ int main(int argc, char* argv[]) {
             : 1.5 * file_config.frequency;
 
         double* freqs = NULL;
+        complex_t* freq_weights = NULL;
         if (mom_time_domain_build_dft_aligned_frequencies_hz(
                 file_config.time_domain_t0, file_config.time_domain_t1, N, &freqs) != 0) {
             fprintf(stderr, "Error: failed to build DFT frequency grid for time domain.\n");
@@ -453,15 +468,48 @@ int main(int argc, char* argv[]) {
                    n_solve, N - 1, freqs[1], N - 1, freqs[N - 1]);
         }
 
+        if (file_config.excitation_type[0] != '\0' &&
+            (strcmp(file_config.excitation_type, "sinusoidal_source") == 0 ||
+             strcmp(file_config.excitation_type, "sine_source") == 0) &&
+            file_config.excitation_waveform[0] != '\0' &&
+            strcmp(file_config.excitation_waveform, "gaussian_pulse") == 0) {
+            const double tau = file_config.excitation_gaussian_tau;
+            const double t0p = file_config.excitation_gaussian_t0;
+            if (tau <= 0.0) {
+                fprintf(stderr, "Error: excitation_gaussian_tau must be > 0 for gaussian_pulse.\n");
+                free(freqs);
+                mom_solver_destroy(solver);
+                return 1;
+            }
+            freq_weights = (complex_t*)calloc((size_t)N, sizeof(complex_t));
+            if (!freq_weights) {
+                fprintf(stderr, "Error: failed to allocate gaussian pulse spectrum weights.\n");
+                free(freqs);
+                mom_solver_destroy(solver);
+                return 1;
+            }
+            /* I(t)=A*exp(-((t-t0)/tau)^2) -> I(f) \propto tau*sqrt(pi)*exp(-(pi*f*tau)^2)*exp(-j*2*pi*f*t0) */
+            for (int k = 0; k < N; k++) {
+                const double f_hz = freqs[k];
+                const double env = tau * sqrt(M_PI) * exp(-(M_PI * f_hz * tau) * (M_PI * f_hz * tau));
+                const double ph = -2.0 * M_PI * f_hz * t0p;
+                freq_weights[k].re = env * cos(ph);
+                freq_weights[k].im = env * sin(ph);
+            }
+            printf("Time-domain: gaussian_pulse enabled (t0=%.3e s, tau=%.3e s)\n", t0p, tau);
+        }
+
         mom_time_domain_results_t td = {0};
         if (mom_solver_solve_time_domain(solver, freqs, N, &tdc, &td,
-                                        use_band_mask, band_fmin, band_fmax) != 0) {
+                                        use_band_mask, band_fmin, band_fmax, freq_weights) != 0) {
             fprintf(stderr, "Error: mom_solver_solve_time_domain failed.\n");
+            if (freq_weights) free(freq_weights);
             free(freqs);
             mom_time_domain_free_results(&td);
             mom_solver_destroy(solver);
             return 1;
         }
+        if (freq_weights) free(freq_weights);
         free(freqs);
 
         int num_basis = mom_solver_get_num_unknowns(solver);

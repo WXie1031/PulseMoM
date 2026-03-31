@@ -101,7 +101,8 @@ int mom_solver_solve_time_domain(
     mom_time_domain_results_t* time_results,
     int use_band_mask,
     double band_fmin_hz,
-    double band_fmax_hz
+    double band_fmax_hz,
+    const complex_t* freq_weights
 ) {
     if (!solver || !frequencies || num_frequencies < 1 || !config || !time_results) {
         return -1;
@@ -223,6 +224,14 @@ int mom_solver_solve_time_domain(
                 freq_currents[f][b].re = creal(result->current_coefficients[b]);
                 freq_currents[f][b].im = cimag(result->current_coefficients[b]);
 #endif
+                if (freq_weights) {
+                    const double wr = freq_weights[f].re;
+                    const double wi = freq_weights[f].im;
+                    const double xr = freq_currents[f][b].re;
+                    const double xi = freq_currents[f][b].im;
+                    freq_currents[f][b].re = xr * wr - xi * wi;
+                    freq_currents[f][b].im = xr * wi + xi * wr;
+                }
             }
         } else {
             freq_currents[f] = (complex_t*)calloc((size_t)num_basis, sizeof(complex_t));

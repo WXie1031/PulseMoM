@@ -69,7 +69,8 @@ int mom_solver_solve_time_domain(
     mom_time_domain_results_t* time_results,
     int use_band_mask,
     double band_fmin_hz,
-    double band_fmax_hz
+    double band_fmax_hz,
+    const complex_t* freq_weights
 );
 
 /**
