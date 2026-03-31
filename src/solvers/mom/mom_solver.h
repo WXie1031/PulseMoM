@@ -77,6 +77,7 @@ typedef struct mom_excitation {
     point3d_t k_vector;          // Wave vector (for plane wave)
     point3d_t polarization;        // Polarization vector
     int source_index;              // Source index (for lumped sources)
+    double source_radius;          // Localized source spread radius (m), for lumped source RHS mapping
 } mom_excitation_t;
 
 // Result structure

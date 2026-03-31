@@ -30,6 +30,10 @@ typedef struct mom_cli_file_config {
     char plane_wave_preset[32]; /* car45 (default) | mie_z (+z propagation, E along +x, for PEC sphere / Mie) */
     char excitation_type[32];     /* plane_wave | sinusoidal (or sine): RWG incident field + optional -j for sin phase ref */
     double excitation_amplitude;  /* |E0| scale (V/m) for incident field in RHS */
+    double excitation_source_x;   /* local source position x (m), for localized source excitation */
+    double excitation_source_y;   /* local source position y (m) */
+    double excitation_source_z;   /* local source position z (m) */
+    double excitation_source_radius; /* local source spread radius (m) */
     char simulation_mode[32];     /* frequency | time_domain */
     double time_domain_t0;        /* s */
     double time_domain_t1;        /* s */
@@ -117,6 +121,10 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
     strcpy(cfg->plane_wave_preset, "car45");
     strcpy(cfg->excitation_type, "plane_wave");
     cfg->excitation_amplitude = 1.0;
+    cfg->excitation_source_x = 0.0;
+    cfg->excitation_source_y = 0.0;
+    cfg->excitation_source_z = 0.0;
+    cfg->excitation_source_radius = 0.2;
     strcpy(cfg->simulation_mode, "frequency");
     cfg->time_domain_t0 = 0.0;
     cfg->time_domain_t1 = 1e-9;
@@ -155,6 +163,14 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
             sscanf(line, "excitation_type=%31s", cfg->excitation_type);
         } else if (strstr(line, "excitation_amplitude")) {
             sscanf(line, "excitation_amplitude=%lf", &cfg->excitation_amplitude);
+        } else if (strstr(line, "excitation_source_x")) {
+            sscanf(line, "excitation_source_x=%lf", &cfg->excitation_source_x);
+        } else if (strstr(line, "excitation_source_y")) {
+            sscanf(line, "excitation_source_y=%lf", &cfg->excitation_source_y);
+        } else if (strstr(line, "excitation_source_z")) {
+            sscanf(line, "excitation_source_z=%lf", &cfg->excitation_source_z);
+        } else if (strstr(line, "excitation_source_radius")) {
+            sscanf(line, "excitation_source_radius=%lf", &cfg->excitation_source_radius);
         } else if (strstr(line, "simulation_mode")) {
             sscanf(line, "simulation_mode=%31s", cfg->simulation_mode);
         } else if (strstr(line, "time_domain_t0")) {
@@ -208,8 +224,9 @@ static void print_usage(const char* program_name) {
     printf("  tolerance=<tolerance>\n");
     printf("  max_iterations=<number>\n");
     printf("  mesh_density=<elements_per_wavelength>\n");
-    printf("  excitation_type=plane_wave|sinusoidal  (sinusoidal: -j vs plane wave phasor)\n");
+    printf("  excitation_type=plane_wave|sinusoidal_plane_wave|sinusoidal_source\n");
     printf("  excitation_amplitude=<V/m>  (incident |E0| scale)\n");
+    printf("  excitation_source_x/y/z=<m>  excitation_source_radius=<m> (for sinusoidal_source)\n");
     printf("  simulation_mode=frequency|time_domain\n");
     printf("  time_domain_t0=<s>  time_domain_t1=<s>  time_domain_num_points=<N>\n");
     printf("  time_domain_fmin_hz / time_domain_fmax_hz (optional band mask; both 0 = full DFT band)\n");
@@ -279,37 +296,56 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    /* 平面波 / 正弦相位参考平面波：plane_wave_preset=mie_z 用于 PEC 球与 Mie (+z 传播, E//x) */
+    /* excitation_type:
+     * - plane_wave: standard plane wave
+     * - sinusoidal / sine / sinusoidal_plane_wave: plane wave with -j phase reference
+     * - sinusoidal_source: localized lumped source (near-source stronger, PEEC-like injection behavior) */
     {
         mom_excitation_t exc = {0};
         const double inv_sqrt2 = 0.7071067811865475; /* 1/sqrt(2) */
         if (file_config.excitation_type[0] != '\0' &&
+            (strcmp(file_config.excitation_type, "sinusoidal_source") == 0 ||
+             strcmp(file_config.excitation_type, "sine_source") == 0)) {
+            exc.type = MOM_EXCITATION_CURRENT_SOURCE;
+        } else if (file_config.excitation_type[0] != '\0' &&
             (strcmp(file_config.excitation_type, "sinusoidal") == 0 ||
-             strcmp(file_config.excitation_type, "sine") == 0)) {
+             strcmp(file_config.excitation_type, "sine") == 0 ||
+             strcmp(file_config.excitation_type, "sinusoidal_plane_wave") == 0)) {
             exc.type = MOM_EXCITATION_SINUSOIDAL_PLANE_WAVE;
         } else {
             exc.type = MOM_EXCITATION_PLANE_WAVE;
         }
         exc.frequency = solver_config.frequency;
         exc.amplitude = (file_config.excitation_amplitude != 0.0) ? file_config.excitation_amplitude : 1.0;
-        exc.phase     = 0.0;
-        if (file_config.plane_wave_preset[0] != '\0' &&
-            strcmp(file_config.plane_wave_preset, "mie_z") == 0) {
-            exc.k_vector.x = 0.0;
-            exc.k_vector.y = 0.0;
-            exc.k_vector.z = 1.0;
-            exc.polarization.x = 1.0;
-            exc.polarization.y = 0.0;
-            exc.polarization.z = 0.0;
-        } else {
-            /* 传播方向：从上方斜向车体，假定车体法向为 +z，这里取朝 -z 分量 */
-            exc.k_vector.x =  inv_sqrt2;
-            exc.k_vector.y =  0.0;
-            exc.k_vector.z = -inv_sqrt2;
-            /* 极化方向：E 沿 y 轴 */
+        exc.phase     = (exc.type == MOM_EXCITATION_CURRENT_SOURCE) ? (-0.5 * M_PI) : 0.0;
+        if (exc.type == MOM_EXCITATION_CURRENT_SOURCE) {
+            exc.k_vector.x = file_config.excitation_source_x;
+            exc.k_vector.y = file_config.excitation_source_y;
+            exc.k_vector.z = file_config.excitation_source_z;
             exc.polarization.x = 0.0;
-            exc.polarization.y = 1.0;
-            exc.polarization.z = 0.0;
+            exc.polarization.y = 0.0;
+            exc.polarization.z = 1.0;
+            exc.source_radius = (file_config.excitation_source_radius > 0.0)
+                ? file_config.excitation_source_radius : 0.2;
+        } else {
+            if (file_config.plane_wave_preset[0] != '\0' &&
+                strcmp(file_config.plane_wave_preset, "mie_z") == 0) {
+                exc.k_vector.x = 0.0;
+                exc.k_vector.y = 0.0;
+                exc.k_vector.z = 1.0;
+                exc.polarization.x = 1.0;
+                exc.polarization.y = 0.0;
+                exc.polarization.z = 0.0;
+            } else {
+                /* 传播方向：从上方斜向车体，假定车体法向为 +z，这里取朝 -z 分量 */
+                exc.k_vector.x =  inv_sqrt2;
+                exc.k_vector.y =  0.0;
+                exc.k_vector.z = -inv_sqrt2;
+                /* 极化方向：E 沿 y 轴 */
+                exc.polarization.x = 0.0;
+                exc.polarization.y = 1.0;
+                exc.polarization.z = 0.0;
+            }
         }
         mom_solver_add_excitation(solver, &exc);
     }

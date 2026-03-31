@@ -762,6 +762,67 @@ static int mom_solver_allocate_linear_system(mom_solver_t* solver) {
     return 0;
 }
 
+static void mom_solver_fill_localized_source_rhs(mom_solver_t* solver) {
+    if (!solver || !solver->mesh || !solver->excitation_vector) {
+        return;
+    }
+
+    const mesh_t* m = solver->mesh;
+    const double sx = solver->excitation.k_vector.x;
+    const double sy = solver->excitation.k_vector.y;
+    const double sz = solver->excitation.k_vector.z;
+    const double amp = (solver->excitation.amplitude != 0.0) ? solver->excitation.amplitude : 1.0;
+    const double phase = solver->excitation.phase;
+    const double sigma = (solver->excitation.source_radius > 0.0) ? solver->excitation.source_radius : 0.2;
+    const double inv2s2 = 1.0 / (2.0 * sigma * sigma);
+    const complex_t src = {amp * cos(phase), amp * sin(phase)};
+
+    if (solver->num_unknowns == m->num_edges && m->num_edges > 0) {
+        for (int i = 0; i < solver->num_unknowns && i < m->num_edges; i++) {
+            const mesh_edge_t* e = &m->edges[i];
+            if (e->vertex1_id < 0 || e->vertex1_id >= m->num_vertices ||
+                e->vertex2_id < 0 || e->vertex2_id >= m->num_vertices) {
+                continue;
+            }
+            const geom_point_t* p1 = &m->vertices[e->vertex1_id].position;
+            const geom_point_t* p2 = &m->vertices[e->vertex2_id].position;
+            const double mx = 0.5 * (p1->x + p2->x);
+            const double my = 0.5 * (p1->y + p2->y);
+            const double mz = 0.5 * (p1->z + p2->z);
+            const double dx = mx - sx;
+            const double dy = my - sy;
+            const double dz = mz - sz;
+            const double w = exp(-(dx * dx + dy * dy + dz * dz) * inv2s2);
+            solver->excitation_vector[i].re = src.re * w;
+            solver->excitation_vector[i].im = src.im * w;
+        }
+        return;
+    }
+
+    for (int i = 0; i < solver->num_unknowns && i < m->num_elements; i++) {
+        const mesh_element_t* e = &m->elements[i];
+        if (e->type != MESH_ELEMENT_TRIANGLE || e->num_vertices < 3 || !e->vertices) {
+            continue;
+        }
+        int v0 = e->vertices[0], v1 = e->vertices[1], v2 = e->vertices[2];
+        if (v0 < 0 || v0 >= m->num_vertices || v1 < 0 || v1 >= m->num_vertices || v2 < 0 || v2 >= m->num_vertices) {
+            continue;
+        }
+        const geom_point_t* p0 = &m->vertices[v0].position;
+        const geom_point_t* p1 = &m->vertices[v1].position;
+        const geom_point_t* p2 = &m->vertices[v2].position;
+        const double cx = (p0->x + p1->x + p2->x) / 3.0;
+        const double cy = (p0->y + p1->y + p2->y) / 3.0;
+        const double cz = (p0->z + p1->z + p2->z) / 3.0;
+        const double dx = cx - sx;
+        const double dy = cy - sy;
+        const double dz = cz - sz;
+        const double w = exp(-(dx * dx + dy * dy + dz * dz) * inv2s2);
+        solver->excitation_vector[i].re = src.re * w;
+        solver->excitation_vector[i].im = src.im * w;
+    }
+}
+
 int mom_solver_assemble_matrix(mom_solver_t* solver) {
     if (!solver || !solver->mesh) return -1;
     if (solver->mesh->num_elements <= 0) return -1;
@@ -805,6 +866,11 @@ int mom_solver_assemble_matrix(mom_solver_t* solver) {
         }
     } else if (rwg_plane_wave_rhs) {
         mom_solver_fill_plane_wave_rwg_rhs(solver);
+    } else if (solver->excitation.type == MOM_EXCITATION_VOLTAGE_SOURCE ||
+               solver->excitation.type == MOM_EXCITATION_CURRENT_SOURCE ||
+               solver->excitation.type == MOM_EXCITATION_DIPOLE) {
+        /* Localized lumped source mapped to basis/element centers with Gaussian decay. */
+        mom_solver_fill_localized_source_rhs(solver);
     } else {
         const double amp = (solver->excitation.amplitude != 0.0) ? solver->excitation.amplitude : 1.0;
         const double phase = solver->excitation.phase;
