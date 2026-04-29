@@ -8,6 +8,7 @@
 #include "mom_solver.h"
 #include "../../common/core_common.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
@@ -152,12 +153,18 @@ int mom_solver_solve_time_domain(
         return -1;
     }
     
-    // Solve at each frequency and collect results
+    const int n_unique_pos = num_frequencies / 2;
+
+    // Solve only unique non-negative frequencies and reconstruct negative bins by Hermitian symmetry.
+    // This keeps time-domain response aligned with real-valued incident waveforms (FDTD-compatible convention).
     for (int f = 0; f < num_frequencies; f++) {
         const double f_hz = frequencies[f];
         int skip_solve = 0;
-        if (f_hz <= 0.0) {
-            /* DC: mom_solver_set_frequency_hz rejects f<=0; MoM EFIE not defined at 0 Hz here */
+        if (f == 0) {
+            /* DC: set zero by construction for EFIE transient reconstruction */
+            skip_solve = 1;
+        } else if (f > n_unique_pos) {
+            /* Negative-frequency bins are reconstructed from positive side. */
             skip_solve = 1;
         } else if (use_band_mask && (f_hz < band_fmin_hz || f_hz > band_fmax_hz)) {
             skip_solve = 1;
@@ -178,6 +185,9 @@ int mom_solver_solve_time_domain(
 
         /* Public API: sets config + excitation frequency and re-assembles RHS. */
         if (mom_solver_set_frequency_hz(solver, f_hz) != 0) {
+            fprintf(stderr,
+                    "mom_solver_solve_time_domain: mom_solver_set_frequency_hz failed at bin %d, f=%.6e Hz.\n",
+                    f, f_hz);
             for (int i = 0; i < f; i++) {
                 if (freq_currents[i]) free(freq_currents[i]);
             }
@@ -186,13 +196,30 @@ int mom_solver_solve_time_domain(
             return -1;
         }
 
-        if (mom_solver_solve(solver) != 0) {
-            for (int i = 0; i < f; i++) {
-                if (freq_currents[i]) free(freq_currents[i]);
+        {
+            const int solve_st = mom_solver_solve(solver);
+            if (solve_st != 0) {
+                const int n_unk = mom_solver_get_num_unknowns(solver);
+                double z_gb = (n_unk > 0)
+                    ? (double)((size_t)n_unk * (size_t)n_unk * 16u) / (1024.0 * 1024.0 * 1024.0)
+                    : 0.0;
+                fprintf(stderr,
+                        "mom_solver_solve_time_domain: mom_solver_solve failed at bin %d, f=%.6e Hz, status=%d, "
+                        "unknowns=%d.\n",
+                        f, f_hz, solve_st, n_unk);
+                if (n_unk > 8000) {
+                    fprintf(stderr,
+                            "  Dense EFIE MoM stores a full complex Z matrix (~%.1f GB for Z at this N). "
+                            "Reduce mesh / use a coarser .msh, or run frequency-domain single frequency first.\n",
+                            z_gb);
+                }
+                for (int i = 0; i < f; i++) {
+                    if (freq_currents[i]) free(freq_currents[i]);
+                }
+                free(freq_currents);
+                free(time_results->time_points);
+                return -1;
             }
-            free(freq_currents);
-            free(time_results->time_points);
-            return -1;
         }
 
         const mom_result_t* result = mom_solver_get_results(solver);
@@ -243,6 +270,22 @@ int mom_solver_solve_time_domain(
                 free(time_results->time_points);
                 return -1;
             }
+        }
+    }
+
+    /* Enforce Hermitian spectrum: X[N-k] = conj(X[k]) for k=1..floor((N-1)/2).
+     * This avoids non-physical imaginary leakage in time-domain responses. */
+    for (int k = 1; k < num_frequencies; k++) {
+        const int km = num_frequencies - k;
+        if (k >= km) {
+            break;
+        }
+        if (!freq_currents[k] || !freq_currents[km]) {
+            continue;
+        }
+        for (int b = 0; b < num_basis; b++) {
+            freq_currents[km][b].re = freq_currents[k][b].re;
+            freq_currents[km][b].im = -freq_currents[k][b].im;
         }
     }
     

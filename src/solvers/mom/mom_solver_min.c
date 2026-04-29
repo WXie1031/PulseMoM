@@ -40,6 +40,11 @@ typedef struct mom_solver {
     complex_t* excitation_vector;       // RHS for unified solver
     mom_result_t result;
     int num_unknowns;
+
+    /* synthetic_gradient: VTK must paint a per-triangle scalar field; RWG vector reconstruction
+     * from edge-shaped synthetic coefficients yields spurious zeros (not physical). */
+    int vtk_synthetic_visual;
+    mom_vtk_current_options_t vtk_synthetic_opts;
     
     // Port support
     extended_port_t** ports;            // Array of port pointers
@@ -141,6 +146,7 @@ int mom_solver_set_geometry(mom_solver_t* solver, void* geometry) {
 
 int mom_solver_set_mesh(mom_solver_t* solver, void* mesh) {
     if (!solver || !mesh) return -1;
+    solver->vtk_synthetic_visual = 0;
     solver->mesh = (mesh_t*)mesh;
     /* 初值；实际维数在 mom_solver_assemble_matrix 中按 kernel_formulation 同步（EFIE→边，MFIE/CFIE→三角）。 */
     if (solver->mesh->num_elements > 0) {
@@ -319,6 +325,127 @@ static int build_rwg_mapping_local(const mesh_t* mesh, int* edge_plus, int* edge
             }
         }
     }
+    return 0;
+}
+
+/* Linear bbox gradient: one scalar per basis (edge midpoint or triangle centroid). */
+static int mom_fill_synthetic_mag_per_unknown(
+    const mesh_t* m, int num_unknowns, const mom_vtk_current_options_t* o, double* mag_out) {
+    if (!m || !o || o->mode != 1 || !mag_out || num_unknowns <= 0) return -1;
+
+    int ax = o->axis;
+    if (ax < 0 || ax > 2) {
+        double dx = m->max_bound.x - m->min_bound.x;
+        double dy = m->max_bound.y - m->min_bound.y;
+        double dz = m->max_bound.z - m->min_bound.z;
+        ax = 0;
+        if (dy >= dx && dy >= dz) ax = 1;
+        else if (dz >= dx && dz >= dy) ax = 2;
+    }
+
+    double lo, hi;
+    if (ax == 0) {
+        lo = m->min_bound.x;
+        hi = m->max_bound.x;
+    } else if (ax == 1) {
+        lo = m->min_bound.y;
+        hi = m->max_bound.y;
+    } else {
+        lo = m->min_bound.z;
+        hi = m->max_bound.z;
+    }
+    double span = hi - lo;
+    if (span < 1e-30) span = 1.0;
+
+    double vmin = o->vmin;
+    double vmax = o->vmax;
+    if (vmax < vmin) {
+        double t = vmin;
+        vmin = vmax;
+        vmax = t;
+    }
+
+    if (num_unknowns == m->num_elements) {
+        for (int i = 0; i < num_unknowns; i++) {
+            double c = (ax == 0) ? m->elements[i].centroid.x
+                                 : ((ax == 1) ? m->elements[i].centroid.y : m->elements[i].centroid.z);
+            double t = (c - lo) / span;
+            if (t < 0.0) t = 0.0;
+            if (t > 1.0) t = 1.0;
+            if (o->invert) t = 1.0 - t;
+            mag_out[i] = vmin + t * (vmax - vmin);
+        }
+        return 0;
+    }
+
+    if (num_unknowns == m->num_edges && m->edges) {
+        for (int e = 0; e < num_unknowns; e++) {
+            int v0 = m->edges[e].vertex1_id;
+            int v1 = m->edges[e].vertex2_id;
+            if (v0 < 0 || v0 >= m->num_vertices || v1 < 0 || v1 >= m->num_vertices) return -1;
+            double cx = 0.5 * (m->vertices[v0].position.x + m->vertices[v1].position.x);
+            double cy = 0.5 * (m->vertices[v0].position.y + m->vertices[v1].position.y);
+            double cz = 0.5 * (m->vertices[v0].position.z + m->vertices[v1].position.z);
+            double c = (ax == 0) ? cx : ((ax == 1) ? cy : cz);
+            double t = (c - lo) / span;
+            if (t < 0.0) t = 0.0;
+            if (t > 1.0) t = 1.0;
+            if (o->invert) t = 1.0 - t;
+            mag_out[e] = vmin + t * (vmax - vmin);
+        }
+        return 0;
+    }
+
+    return -1;
+}
+
+int mom_solver_apply_synthetic_gradient_to_coefficients(mom_solver_t* solver, const mom_vtk_current_options_t* o) {
+    if (!solver || !o || o->mode != 1 || !solver->mesh || !solver->result.current_coefficients) return -1;
+    int n = solver->num_unknowns;
+    if (n <= 0) return -1;
+    double* mag = (double*)malloc((size_t)n * sizeof(double));
+    if (!mag) return -1;
+    if (mom_fill_synthetic_mag_per_unknown(solver->mesh, n, o, mag) != 0) {
+        free(mag);
+        return -1;
+    }
+    for (int i = 0; i < n; i++) {
+        solver->result.current_coefficients[i].re = mag[i];
+        solver->result.current_coefficients[i].im = 0.0;
+        if (solver->result.current_magnitude) solver->result.current_magnitude[i] = mag[i];
+        if (solver->result.current_phase) solver->result.current_phase[i] = 0.0;
+    }
+    free(mag);
+    solver->vtk_synthetic_visual = 1;
+    solver->vtk_synthetic_opts = *o;
+    return 0;
+}
+
+int mom_solver_apply_synthetic_gradient_to_time_domain_response(
+    mom_solver_t* solver, complex_t* response, int num_time_points, int num_basis, const mom_vtk_current_options_t* o) {
+    if (!solver || !response || num_time_points <= 0 || num_basis <= 0 || !o || o->mode != 1 || !solver->mesh) return -1;
+    double* mag = (double*)malloc((size_t)num_basis * sizeof(double));
+    if (!mag) return -1;
+    if (mom_fill_synthetic_mag_per_unknown(solver->mesh, num_basis, o, mag) != 0) {
+        free(mag);
+        return -1;
+    }
+    for (int ti = 0; ti < num_time_points; ti++) {
+        for (int j = 0; j < num_basis; j++) {
+            response[ti * num_basis + j].re = mag[j];
+            response[ti * num_basis + j].im = 0.0;
+        }
+    }
+    free(mag);
+    solver->vtk_synthetic_visual = 1;
+    solver->vtk_synthetic_opts = *o;
+    return 0;
+}
+
+int mom_solver_set_vtk_synthetic_display(mom_solver_t* solver, const mom_vtk_current_options_t* o) {
+    if (!solver || !o || o->mode != 1) return -1;
+    solver->vtk_synthetic_visual = 1;
+    solver->vtk_synthetic_opts = *o;
     return 0;
 }
 
@@ -1154,6 +1281,57 @@ int mom_solver_compute_near_field(mom_solver_t* solver, const point3d_t* points,
     return 0;
 }
 
+int mom_solver_line_integral_e_dot_dl(mom_solver_t* solver,
+                                       const point3d_t* rA, const point3d_t* rB,
+                                       int nseg,
+                                       double* out_re, double* out_im) {
+    if (!solver || !rA || !rB || !out_re || !out_im) {
+        return -1;
+    }
+    if (nseg < 1) {
+        return -1;
+    }
+    point3d_t* pts = (point3d_t*)malloc((size_t)(nseg + 1) * sizeof(point3d_t));
+    if (!pts) {
+        return -1;
+    }
+    for (int i = 0; i <= nseg; i++) {
+        double t = (double)i / (double)nseg;
+        pts[i].x = rA->x + t * (rB->x - rA->x);
+        pts[i].y = rA->y + t * (rB->y - rA->y);
+        pts[i].z = rA->z + t * (rB->z - rA->z);
+    }
+    if (mom_solver_compute_near_field(solver, pts, nseg + 1) != 0) {
+        free(pts);
+        return -1;
+    }
+    const mom_result_t* res = &solver->result;
+    if (!res->near_field.e_field) {
+        free(pts);
+        return -1;
+    }
+    double sum_re = 0.0;
+    double sum_im = 0.0;
+    for (int i = 0; i < nseg; i++) {
+        double dx = pts[i + 1].x - pts[i].x;
+        double dy = pts[i + 1].y - pts[i].y;
+        double dz = pts[i + 1].z - pts[i].z;
+        double exr = 0.5 * (res->near_field.e_field[i * 3 + 0].re + res->near_field.e_field[(i + 1) * 3 + 0].re);
+        double eyr = 0.5 * (res->near_field.e_field[i * 3 + 1].re + res->near_field.e_field[(i + 1) * 3 + 1].re);
+        double ezr = 0.5 * (res->near_field.e_field[i * 3 + 2].re + res->near_field.e_field[(i + 1) * 3 + 2].re);
+        double exi = 0.5 * (res->near_field.e_field[i * 3 + 0].im + res->near_field.e_field[(i + 1) * 3 + 0].im);
+        double eyi = 0.5 * (res->near_field.e_field[i * 3 + 1].im + res->near_field.e_field[(i + 1) * 3 + 1].im);
+        double ezi = 0.5 * (res->near_field.e_field[i * 3 + 2].im + res->near_field.e_field[(i + 1) * 3 + 2].im);
+        /* V = -∫ E·dl (complex components) */
+        sum_re -= (exr * dx + eyr * dy + ezr * dz);
+        sum_im -= (exi * dx + eyi * dy + ezi * dz);
+    }
+    free(pts);
+    *out_re = sum_re;
+    *out_im = sum_im;
+    return 0;
+}
+
 int mom_solver_compute_far_field(mom_solver_t* solver, double theta_min, double theta_max, int n_theta,
                                  double phi_min, double phi_max, int n_phi) {
     if (!solver || n_theta <= 0 || n_phi <= 0) return -1;
@@ -1214,20 +1392,58 @@ int mom_solver_export_surface_current(const mom_solver_t* solver, const char* cs
     FILE* f = fopen(csv_path, "w");
     if (!f) return -1;
 
-    fprintf(f, "element_index,cx,cy,cz,Re_J,Im_J,magnitude_J\n");
     const int n = solver->num_unknowns;
     const int num_elem = solver->mesh->num_elements;
-    const int count = (n < num_elem) ? n : num_elem;
-    for (int i = 0; i < count; ++i) {
-        const mesh_element_t* elem = &solver->mesh->elements[i];
-        if (!elem) continue;
-        geom_point_t c = elem->centroid;
-        complex_t J = solver->result.current_coefficients[i];
-        double re = J.re;
-        double im = J.im;
-        double mag = sqrt(re * re + im * im);
-        fprintf(f, "%d,%.12e,%.12e,%.12e,%.12e,%.12e,%.12e\n",
-                i, c.x, c.y, c.z, re, im, mag);
+    const int num_edges = solver->mesh->num_edges;
+    const mesh_vertex_t* verts = solver->mesh->vertices;
+
+    fprintf(f, "basis_index,cx,cy,cz,Re_J,Im_J,magnitude_J\n");
+    /* RWG: unknowns are edges — sample positions at edge midpoints (not triangle centroids). */
+    if (n == num_edges && solver->mesh->edges) {
+        for (int e = 0; e < n; ++e) {
+            const mesh_edge_t* ed = &solver->mesh->edges[e];
+            geom_point_t c = {0.0, 0.0, 0.0};
+            int v0 = ed->vertex1_id;
+            int v1 = ed->vertex2_id;
+            if (verts && v0 >= 0 && v0 < solver->mesh->num_vertices && v1 >= 0 && v1 < solver->mesh->num_vertices) {
+                const geom_point_t* p0 = &verts[v0].position;
+                const geom_point_t* p1 = &verts[v1].position;
+                c.x = 0.5 * (p0->x + p1->x);
+                c.y = 0.5 * (p0->y + p1->y);
+                c.z = 0.5 * (p0->z + p1->z);
+            }
+            complex_t J = solver->result.current_coefficients[e];
+            double re = J.re;
+            double im = J.im;
+            double mag = sqrt(re * re + im * im);
+            fprintf(f, "%d,%.12e,%.12e,%.12e,%.12e,%.12e,%.12e\n",
+                    e, c.x, c.y, c.z, re, im, mag);
+        }
+    } else if (n == num_elem) {
+        for (int i = 0; i < n; ++i) {
+            const mesh_element_t* elem = &solver->mesh->elements[i];
+            if (!elem) continue;
+            geom_point_t c = elem->centroid;
+            complex_t J = solver->result.current_coefficients[i];
+            double re = J.re;
+            double im = J.im;
+            double mag = sqrt(re * re + im * im);
+            fprintf(f, "%d,%.12e,%.12e,%.12e,%.12e,%.12e,%.12e\n",
+                    i, c.x, c.y, c.z, re, im, mag);
+        }
+    } else {
+        const int count = (n < num_elem) ? n : num_elem;
+        for (int i = 0; i < count; ++i) {
+            const mesh_element_t* elem = &solver->mesh->elements[i];
+            if (!elem) continue;
+            geom_point_t c = elem->centroid;
+            complex_t J = solver->result.current_coefficients[i];
+            double re = J.re;
+            double im = J.im;
+            double mag = sqrt(re * re + im * im);
+            fprintf(f, "%d,%.12e,%.12e,%.12e,%.12e,%.12e,%.12e\n",
+                    i, c.x, c.y, c.z, re, im, mag);
+        }
     }
 
     fclose(f);
@@ -1255,21 +1471,406 @@ int mom_solver_export_surface_mesh_for_plot(const mom_solver_t* solver, const ch
         fprintf(f, "%.12e %.12e %.12e\n", p->x, p->y, p->z);
     }
 
-    const int n = solver->num_unknowns;
-    for (int i = 0; i < m->num_elements && i < n; i++) {
-        const mesh_element_t* e = &m->elements[i];
-        if (e->type != MESH_ELEMENT_TRIANGLE || e->num_vertices < 3 || !e->vertices) continue;
-        double re = solver->result.current_coefficients[i].re;
-        double im = solver->result.current_coefficients[i].im;
-        double mag = sqrt(re * re + im * im);
-        int a = e->vertices[0], b = e->vertices[1], c = e->vertices[2];
-        if (a < 0) a = 0; if (a >= m->num_vertices) a = m->num_vertices - 1;
-        if (b < 0) b = 0; if (b >= m->num_vertices) b = m->num_vertices - 1;
-        if (c < 0) c = 0; if (c >= m->num_vertices) c = m->num_vertices - 1;
-        fprintf(f, "%d %d %d %.12e\n", a, b, c, mag);
+    /* RWG + bbox-gradient display: per-triangle scalar must match VTK (edge coeffs are not per-triangle |J|). */
+    double* tri_mag = NULL;
+    if (solver->vtk_synthetic_visual && solver->vtk_synthetic_opts.mode == 1) {
+        tri_mag = (double*)malloc((size_t)m->num_elements * sizeof(double));
+        if (!tri_mag) {
+            fclose(f);
+            return -1;
+        }
+        if (mom_fill_synthetic_mag_per_unknown(m, m->num_elements, &solver->vtk_synthetic_opts, tri_mag) != 0) {
+            free(tri_mag);
+            fclose(f);
+            return -1;
+        }
     }
 
+    const int n = solver->num_unknowns;
+    if (tri_mag) {
+        for (int i = 0; i < m->num_elements; i++) {
+            const mesh_element_t* e = &m->elements[i];
+            if (e->type != MESH_ELEMENT_TRIANGLE || e->num_vertices < 3 || !e->vertices) continue;
+            double mag = tri_mag[i];
+            int a = e->vertices[0], b = e->vertices[1], c = e->vertices[2];
+            if (a < 0) a = 0; if (a >= m->num_vertices) a = m->num_vertices - 1;
+            if (b < 0) b = 0; if (b >= m->num_vertices) b = m->num_vertices - 1;
+            if (c < 0) c = 0; if (c >= m->num_vertices) c = m->num_vertices - 1;
+            fprintf(f, "%d %d %d %.12e\n", a, b, c, mag);
+        }
+    } else {
+        /* Legacy: one coefficient index per triangle row (valid when unknowns == elements; RWG is approximate). */
+        for (int i = 0; i < m->num_elements && i < n; i++) {
+            const mesh_element_t* e = &m->elements[i];
+            if (e->type != MESH_ELEMENT_TRIANGLE || e->num_vertices < 3 || !e->vertices) continue;
+            double re = solver->result.current_coefficients[i].re;
+            double im = solver->result.current_coefficients[i].im;
+            double mag = sqrt(re * re + im * im);
+            int a = e->vertices[0], b = e->vertices[1], c = e->vertices[2];
+            if (a < 0) a = 0; if (a >= m->num_vertices) a = m->num_vertices - 1;
+            if (b < 0) b = 0; if (b >= m->num_vertices) b = m->num_vertices - 1;
+            if (c < 0) c = 0; if (c >= m->num_vertices) c = m->num_vertices - 1;
+            fprintf(f, "%d %d %d %.12e\n", a, b, c, mag);
+        }
+    }
+
+    free(tri_mag);
     fclose(f);
+    return 0;
+}
+
+/* Per-triangle scalar |J| for VTK (CELL_DATA + smoothed POINT_DATA). Used for pulse basis and
+ * synthetic_gradient override (RWG cannot reconstruct a scalar “fake” edge current as smooth |J|). */
+static int mom_export_vtk_per_triangle_scalar(
+    const mom_solver_t* solver, const char* vtk_path, int conductor_material_id, const double* elem_mag) {
+    const mesh_t* m = solver->mesh;
+    if (!m || !elem_mag) return -1;
+
+    postprocessing_current_distribution_t cur_dist = {0};
+    cur_dist.num_elements = m->num_elements;
+    cur_dist.frequency = (solver->config.frequency > 0.0) ? solver->config.frequency : solver->excitation.frequency;
+    cur_dist.current_magnitude = (double*)malloc((size_t)m->num_elements * sizeof(double));
+    if (!cur_dist.current_magnitude) return -1;
+    for (int i = 0; i < m->num_elements; i++) {
+        double mag = elem_mag[i];
+        if (conductor_material_id >= 0 && m->elements[i].material_id != conductor_material_id) {
+            mag = 0.0;
+        }
+        cur_dist.current_magnitude[i] = mag;
+    }
+    {
+        double* v_sum = (double*)calloc((size_t)m->num_vertices, sizeof(double));
+        int* v_count = (int*)calloc((size_t)m->num_vertices, sizeof(int));
+        if (v_sum && v_count) {
+            for (int i = 0; i < m->num_elements; i++) {
+                const mesh_element_t* e = &m->elements[i];
+                if (!e->vertices || e->num_vertices < 3) continue;
+                double mag = cur_dist.current_magnitude[i];
+                for (int k = 0; k < e->num_vertices && k < 3; k++) {
+                    int v = e->vertices[k];
+                    if (v >= 0 && v < m->num_vertices) {
+                        v_sum[v] += mag;
+                        v_count[v]++;
+                    }
+                }
+            }
+            cur_dist.current_magnitude_vertices = (double*)malloc((size_t)m->num_vertices * sizeof(double));
+            if (cur_dist.current_magnitude_vertices) {
+                cur_dist.num_vertices = m->num_vertices;
+                for (int v = 0; v < m->num_vertices; v++) {
+                    cur_dist.current_magnitude_vertices[v] =
+                        (v_count[v] > 0) ? (v_sum[v] / (double)v_count[v]) : 0.0;
+                }
+                const int smooth_iters = 2;
+                double* v_new = (double*)malloc((size_t)m->num_vertices * sizeof(double));
+                if (v_new) {
+                    for (int it = 0; it < smooth_iters; it++) {
+                        memset(v_sum, 0, (size_t)m->num_vertices * sizeof(double));
+                        memset(v_count, 0, (size_t)m->num_vertices * sizeof(int));
+                        for (int i = 0; i < m->num_elements; i++) {
+                            const mesh_element_t* e = &m->elements[i];
+                            if (!e->vertices || e->num_vertices < 3) continue;
+                            int nv = e->num_vertices;
+                            if (nv > 3) nv = 3;
+                            for (int a = 0; a < nv; a++) {
+                                int va = e->vertices[a];
+                                if (va < 0 || va >= m->num_vertices) continue;
+                                for (int b = 0; b < nv; b++) {
+                                    int vb = e->vertices[b];
+                                    if (vb < 0 || vb >= m->num_vertices) continue;
+                                    v_sum[va] += cur_dist.current_magnitude_vertices[vb];
+                                    v_count[va]++;
+                                }
+                            }
+                        }
+                        for (int v = 0; v < m->num_vertices; v++) {
+                            if (v_count[v] > 0) {
+                                v_new[v] = v_sum[v] / (double)v_count[v];
+                            } else {
+                                v_new[v] = cur_dist.current_magnitude_vertices[v];
+                            }
+                        }
+                        memcpy(cur_dist.current_magnitude_vertices, v_new,
+                               (size_t)m->num_vertices * sizeof(double));
+                    }
+                    free(v_new);
+                }
+            }
+        }
+        free(v_sum);
+        free(v_count);
+    }
+    export_vtk_options_t evtk = export_vtk_get_default_options();
+    int ret = export_vtk_current(&cur_dist, m, vtk_path, &evtk);
+    free(cur_dist.current_magnitude);
+    free(cur_dist.current_magnitude_vertices);
+    return ret;
+}
+
+int mom_solver_mesh_bbox_center(const mom_solver_t* solver, double* cx, double* cy, double* cz) {
+    if (!solver || !solver->mesh || !solver->mesh->vertices || solver->mesh->num_vertices < 1 || !cx || !cy || !cz) {
+        return -1;
+    }
+    const mesh_vertex_t* vv = solver->mesh->vertices;
+    double xmin = vv[0].position.x, xmax = vv[0].position.x;
+    double ymin = vv[0].position.y, ymax = vv[0].position.y;
+    double zmin = vv[0].position.z, zmax = vv[0].position.z;
+    for (int i = 1; i < solver->mesh->num_vertices; i++) {
+        double x = vv[i].position.x, y = vv[i].position.y, z = vv[i].position.z;
+        if (x < xmin) xmin = x;
+        if (x > xmax) xmax = x;
+        if (y < ymin) ymin = y;
+        if (y > ymax) ymax = y;
+        if (z < zmin) zmin = z;
+        if (z > zmax) zmax = z;
+    }
+    *cx = 0.5 * (xmin + xmax);
+    *cy = 0.5 * (ymin + ymax);
+    *cz = 0.5 * (zmin + zmax);
+    return 0;
+}
+
+int mom_solver_probe_surface_current_nearest(
+    const mom_solver_t* solver,
+    double query_x, double query_y, double query_z,
+    int conductor_material_id,
+    double* eval_x, double* eval_y, double* eval_z,
+    int* triangle_index_out,
+    complex_t* out_Jx,
+    complex_t* out_Jy,
+    complex_t* out_Jz,
+    double* out_Jmag) {
+    if (!solver || !solver->mesh || !solver->result.current_coefficients || !eval_x || !eval_y || !eval_z ||
+        !triangle_index_out || !out_Jx || !out_Jy || !out_Jz || !out_Jmag) {
+        return -1;
+    }
+    const mesh_t* m = solver->mesh;
+    const mesh_element_t* elements = m->elements;
+    const mesh_vertex_t* vertices = m->vertices;
+    const mom_scalar_complex_t* coeffs = solver->result.current_coefficients;
+
+    int best_tri = -1;
+    double best_d2 = 1.0e300;
+    geom_point_t r_eval = {0.0, 0.0, 0.0};
+
+    for (int ti = 0; ti < m->num_elements; ti++) {
+        const mesh_element_t* tri = &elements[ti];
+        if (tri->type != MESH_ELEMENT_TRIANGLE || tri->num_vertices < 3 || !tri->vertices) {
+            continue;
+        }
+        if (conductor_material_id >= 0 && tri->material_id != conductor_material_id) {
+            continue;
+        }
+        int v0 = tri->vertices[0];
+        int v1 = tri->vertices[1];
+        int v2 = tri->vertices[2];
+        if (v0 < 0 || v1 < 0 || v2 < 0 || v0 >= m->num_vertices || v1 >= m->num_vertices || v2 >= m->num_vertices) {
+            continue;
+        }
+        const geom_point_t* p0 = &vertices[v0].position;
+        const geom_point_t* p1 = &vertices[v1].position;
+        const geom_point_t* p2 = &vertices[v2].position;
+        double tcx = (p0->x + p1->x + p2->x) / 3.0;
+        double tcy = (p0->y + p1->y + p2->y) / 3.0;
+        double tcz = (p0->z + p1->z + p2->z) / 3.0;
+        double dx = tcx - query_x;
+        double dy = tcy - query_y;
+        double dz = tcz - query_z;
+        double d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < best_d2) {
+            best_d2 = d2;
+            best_tri = ti;
+            r_eval.x = tcx;
+            r_eval.y = tcy;
+            r_eval.z = tcz;
+        }
+    }
+    if (best_tri < 0) {
+        return -1;
+    }
+
+    *eval_x = r_eval.x;
+    *eval_y = r_eval.y;
+    *eval_z = r_eval.z;
+    *triangle_index_out = best_tri;
+
+    /* Triangle-DOF: scalar coefficient per element */
+    if (solver->num_unknowns == m->num_elements) {
+        if (best_tri >= solver->num_unknowns) {
+            return -1;
+        }
+        mom_scalar_complex_t Ie = coeffs[best_tri];
+#if defined(_MSC_VER)
+        double Ir = Ie.re, Ii = Ie.im;
+#else
+        double Ir = creal(Ie);
+        double Ii = cimag(Ie);
+#endif
+        out_Jx->re = Ir;
+        out_Jx->im = Ii;
+        out_Jy->re = out_Jy->im = 0.0;
+        out_Jz->re = out_Jz->im = 0.0;
+        *out_Jmag = sqrt(Ir * Ir + Ii * Ii);
+        return 0;
+    }
+
+    if (m->num_edges <= 0 || !m->edges) {
+        return -1;
+    }
+
+    int* edge_plus = (int*)calloc((size_t)m->num_edges, sizeof(int));
+    int* edge_minus = (int*)calloc((size_t)m->num_edges, sizeof(int));
+    double* edge_length = (double*)calloc((size_t)m->num_edges, sizeof(double));
+    if (!edge_plus || !edge_minus || !edge_length) {
+        free(edge_plus);
+        free(edge_minus);
+        free(edge_length);
+        return -1;
+    }
+    if (build_rwg_mapping_local(m, edge_plus, edge_minus, edge_length) != 0) {
+        free(edge_plus);
+        free(edge_minus);
+        free(edge_length);
+        return -1;
+    }
+
+    const int n_coeff = solver->num_unknowns;
+    double Jre[3] = {0.0, 0.0, 0.0};
+    double Jim[3] = {0.0, 0.0, 0.0};
+
+    for (int e = 0; e < n_coeff && e < m->num_edges; e++) {
+        mom_scalar_complex_t Ie = coeffs[e];
+#if defined(_MSC_VER)
+        double I_re = Ie.re;
+        double I_im = Ie.im;
+#else
+        double I_re = creal(Ie);
+        double I_im = cimag(Ie);
+#endif
+        double len = edge_length[e] > 0.0 ? edge_length[e] : 0.0;
+
+        int t_plus = edge_plus[e];
+        if (t_plus == best_tri && len > 0.0 && t_plus >= 0 && t_plus < m->num_elements) {
+            const mesh_element_t* tri = &elements[t_plus];
+            if (tri->type == MESH_ELEMENT_TRIANGLE && tri->num_vertices >= 3 && tri->vertices) {
+                int v0 = tri->vertices[0];
+                int v1 = tri->vertices[1];
+                int v2 = tri->vertices[2];
+                const geom_point_t* p0 = &vertices[v0].position;
+                const geom_point_t* p1 = &vertices[v1].position;
+                const geom_point_t* p2 = &vertices[v2].position;
+                double A = tri->area;
+                if (A <= 0.0) {
+                    double ax = p1->x - p0->x;
+                    double ay = p1->y - p0->y;
+                    double az = p1->z - p0->z;
+                    double bx = p2->x - p0->x;
+                    double by = p2->y - p0->y;
+                    double bz = p2->z - p0->z;
+                    double cxv = ay * bz - az * by;
+                    double cyv = az * bx - ax * bz;
+                    double czv = ax * by - ay * bx;
+                    A = 0.5 * sqrt(cxv * cxv + cyv * cyv + czv * czv);
+                }
+                if (A > 0.0) {
+                    const mesh_edge_t* edge = &m->edges[e];
+                    int ev0 = edge->vertex1_id;
+                    int ev1 = edge->vertex2_id;
+                    int free_v = -1;
+                    if (v0 != ev0 && v0 != ev1) {
+                        free_v = v0;
+                    } else if (v1 != ev0 && v1 != ev1) {
+                        free_v = v1;
+                    } else {
+                        free_v = v2;
+                    }
+                    const geom_point_t* pf = &vertices[free_v].position;
+                    double rx = r_eval.x - pf->x;
+                    double ry = r_eval.y - pf->y;
+                    double rz = r_eval.z - pf->z;
+                    double scale = len / (2.0 * A);
+                    double Jx = scale * rx;
+                    double Jy = scale * ry;
+                    double Jz = scale * rz;
+                    Jre[0] += I_re * Jx;
+                    Jim[0] += I_im * Jx;
+                    Jre[1] += I_re * Jy;
+                    Jim[1] += I_im * Jy;
+                    Jre[2] += I_re * Jz;
+                    Jim[2] += I_im * Jz;
+                }
+            }
+        }
+
+        int t_minus = edge_minus[e];
+        if (t_minus == best_tri && len > 0.0 && t_minus >= 0 && t_minus < m->num_elements) {
+            const mesh_element_t* tri = &elements[t_minus];
+            if (tri->type == MESH_ELEMENT_TRIANGLE && tri->num_vertices >= 3 && tri->vertices) {
+                int v0 = tri->vertices[0];
+                int v1 = tri->vertices[1];
+                int v2 = tri->vertices[2];
+                const geom_point_t* p0 = &vertices[v0].position;
+                const geom_point_t* p1 = &vertices[v1].position;
+                const geom_point_t* p2 = &vertices[v2].position;
+                double A = tri->area;
+                if (A <= 0.0) {
+                    double ax = p1->x - p0->x;
+                    double ay = p1->y - p0->y;
+                    double az = p1->z - p0->z;
+                    double bx = p2->x - p0->x;
+                    double by = p2->y - p0->y;
+                    double bz = p2->z - p0->z;
+                    double cxv = ay * bz - az * by;
+                    double cyv = az * bx - ax * bz;
+                    double czv = ax * by - ay * bx;
+                    A = 0.5 * sqrt(cxv * cxv + cyv * cyv + czv * czv);
+                }
+                if (A > 0.0) {
+                    const mesh_edge_t* edge = &m->edges[e];
+                    int ev0 = edge->vertex1_id;
+                    int ev1 = edge->vertex2_id;
+                    int free_v = -1;
+                    if (v0 != ev0 && v0 != ev1) {
+                        free_v = v0;
+                    } else if (v1 != ev0 && v1 != ev1) {
+                        free_v = v1;
+                    } else {
+                        free_v = v2;
+                    }
+                    const geom_point_t* pf = &vertices[free_v].position;
+                    double rx = r_eval.x - pf->x;
+                    double ry = r_eval.y - pf->y;
+                    double rz = r_eval.z - pf->z;
+                    double scale = -len / (2.0 * A);
+                    double Jx = scale * rx;
+                    double Jy = scale * ry;
+                    double Jz = scale * rz;
+                    Jre[0] += I_re * Jx;
+                    Jim[0] += I_im * Jx;
+                    Jre[1] += I_re * Jy;
+                    Jim[1] += I_im * Jy;
+                    Jre[2] += I_re * Jz;
+                    Jim[2] += I_im * Jz;
+                }
+            }
+        }
+    }
+
+    free(edge_plus);
+    free(edge_minus);
+    free(edge_length);
+
+    out_Jx->re = Jre[0];
+    out_Jx->im = Jim[0];
+    out_Jy->re = Jre[1];
+    out_Jy->im = Jim[1];
+    out_Jz->re = Jre[2];
+    out_Jz->im = Jim[2];
+    double s2 = 0.0;
+    for (int k = 0; k < 3; k++) {
+        s2 += Jre[k] * Jre[k] + Jim[k] * Jim[k];
+    }
+    *out_Jmag = sqrt(s2);
     return 0;
 }
 
@@ -1278,87 +1879,29 @@ int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char
     const mesh_t* m = solver->mesh;
     if (m->num_elements <= 0 || !m->elements || m->num_vertices <= 0) return -1;
 
+    /* synthetic_gradient + RWG: paint bbox gradient per triangle (ignore misleading RWG |J|). */
+    if (solver->vtk_synthetic_visual && solver->vtk_synthetic_opts.mode == 1) {
+        double* tri_mag = (double*)malloc((size_t)m->num_elements * sizeof(double));
+        if (!tri_mag) return -1;
+        if (mom_fill_synthetic_mag_per_unknown(m, m->num_elements, &solver->vtk_synthetic_opts, tri_mag) != 0) {
+            free(tri_mag);
+        } else {
+            int ret = mom_export_vtk_per_triangle_scalar(solver, vtk_path, conductor_material_id, tri_mag);
+            free(tri_mag);
+            return ret;
+        }
+    }
+
     /* 单元未知（与 mom_solve_unified 三角形装配一致）：系数按三角形给 |J| 可视化 */
     if (solver->num_unknowns == m->num_elements) {
-        postprocessing_current_distribution_t cur_dist = {0};
-        cur_dist.num_elements = m->num_elements;
-        cur_dist.frequency = (solver->config.frequency > 0.0) ? solver->config.frequency : solver->excitation.frequency;
-        cur_dist.current_magnitude = (double*)malloc((size_t)m->num_elements * sizeof(double));
-        if (!cur_dist.current_magnitude) return -1;
+        double* tri_mag = (double*)malloc((size_t)m->num_elements * sizeof(double));
+        if (!tri_mag) return -1;
         for (int i = 0; i < m->num_elements; i++) {
             mom_scalar_complex_t Ie = solver->result.current_coefficients[i];
-            double mag = hypot(Ie.re, Ie.im);
-            if (conductor_material_id >= 0 && m->elements[i].material_id != conductor_material_id) {
-                mag = 0.0;
-            }
-            cur_dist.current_magnitude[i] = mag;
+            tri_mag[i] = hypot(Ie.re, Ie.im);
         }
-        {
-            double* v_sum = (double*)calloc((size_t)m->num_vertices, sizeof(double));
-            int* v_count = (int*)calloc((size_t)m->num_vertices, sizeof(int));
-            if (v_sum && v_count) {
-                for (int i = 0; i < m->num_elements; i++) {
-                    const mesh_element_t* e = &m->elements[i];
-                    if (!e->vertices || e->num_vertices < 3) continue;
-                    double mag = cur_dist.current_magnitude[i];
-                    for (int k = 0; k < e->num_vertices && k < 3; k++) {
-                        int v = e->vertices[k];
-                        if (v >= 0 && v < m->num_vertices) {
-                            v_sum[v] += mag;
-                            v_count[v]++;
-                        }
-                    }
-                }
-                cur_dist.current_magnitude_vertices = (double*)malloc((size_t)m->num_vertices * sizeof(double));
-                if (cur_dist.current_magnitude_vertices) {
-                    cur_dist.num_vertices = m->num_vertices;
-                    for (int v = 0; v < m->num_vertices; v++) {
-                        cur_dist.current_magnitude_vertices[v] =
-                            (v_count[v] > 0) ? (v_sum[v] / (double)v_count[v]) : 0.0;
-                    }
-                    const int smooth_iters = 2;
-                    double* v_new = (double*)malloc((size_t)m->num_vertices * sizeof(double));
-                    if (v_new) {
-                        for (int it = 0; it < smooth_iters; it++) {
-                            memset(v_sum, 0, (size_t)m->num_vertices * sizeof(double));
-                            memset(v_count, 0, (size_t)m->num_vertices * sizeof(int));
-                            for (int i = 0; i < m->num_elements; i++) {
-                                const mesh_element_t* e = &m->elements[i];
-                                if (!e->vertices || e->num_vertices < 3) continue;
-                                int nv = e->num_vertices;
-                                if (nv > 3) nv = 3;
-                                for (int a = 0; a < nv; a++) {
-                                    int va = e->vertices[a];
-                                    if (va < 0 || va >= m->num_vertices) continue;
-                                    for (int b = 0; b < nv; b++) {
-                                        int vb = e->vertices[b];
-                                        if (vb < 0 || vb >= m->num_vertices) continue;
-                                        v_sum[va] += cur_dist.current_magnitude_vertices[vb];
-                                        v_count[va]++;
-                                    }
-                                }
-                            }
-                            for (int v = 0; v < m->num_vertices; v++) {
-                                if (v_count[v] > 0) {
-                                    v_new[v] = v_sum[v] / (double)v_count[v];
-                                } else {
-                                    v_new[v] = cur_dist.current_magnitude_vertices[v];
-                                }
-                            }
-                            memcpy(cur_dist.current_magnitude_vertices, v_new,
-                                   (size_t)m->num_vertices * sizeof(double));
-                        }
-                        free(v_new);
-                    }
-                }
-            }
-            free(v_sum);
-            free(v_count);
-        }
-        export_vtk_options_t vtk_opts = export_vtk_get_default_options();
-        int ret = export_vtk_current(&cur_dist, m, vtk_path, &vtk_opts);
-        free(cur_dist.current_magnitude);
-        free(cur_dist.current_magnitude_vertices);
+        int ret = mom_export_vtk_per_triangle_scalar(solver, vtk_path, conductor_material_id, tri_mag);
+        free(tri_mag);
         return ret;
     }
 
@@ -1646,8 +2189,8 @@ int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char
         free(v_count);
     }
 
-    export_vtk_options_t vtk_opts = export_vtk_get_default_options();
-    int ret = export_vtk_current(&cur_dist, m, vtk_path, &vtk_opts);
+    export_vtk_options_t evtk = export_vtk_get_default_options();
+    int ret = export_vtk_current(&cur_dist, m, vtk_path, &evtk);
 
     free(edge_plus); free(edge_minus); free(edge_length);
     free(cur_dist.current_magnitude);

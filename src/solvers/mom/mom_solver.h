@@ -139,6 +139,26 @@ void mom_solver_set_frequency_metadata_hz(mom_solver_t* solver, double f_hz);
 
 /** Overwrite solved current coefficients (length n <= num_unknowns) for post-processing / VTK export. */
 int mom_solver_apply_current_coefficients_complex(mom_solver_t* solver, const complex_t* coeffs, int n);
+
+/** Axis-aligned bounding box center of mesh vertices (same units as geometry). Returns 0 on success. */
+int mom_solver_mesh_bbox_center(const mom_solver_t* solver, double* cx, double* cy, double* cz);
+
+/**
+ * Surface current density J(r) at the centroid of the triangle whose centroid is closest to (qx,qy,qz).
+ * RWG: same vector reconstruction as VTK export; triangle-DOF: |J| = |I_triangle|.
+ * conductor_material_id: -1 include all triangles; else skip elements with material_id != id.
+ * Physical coefficients only — call after mom_solver_apply_current_coefficients_complex / solve.
+ */
+int mom_solver_probe_surface_current_nearest(
+    const mom_solver_t* solver,
+    double query_x, double query_y, double query_z,
+    int conductor_material_id,
+    double* eval_x, double* eval_y, double* eval_z,
+    int* triangle_index_out,
+    complex_t* out_Jx,
+    complex_t* out_Jy,
+    complex_t* out_Jz,
+    double* out_Jmag);
 int mom_solver_add_lumped_excitation(mom_solver_t* solver, const point3d_t* position,
                                      const point3d_t* polarization,
                                      double amplitude, double width, int layer_index);
@@ -156,6 +176,16 @@ int mom_solver_compute_port_current(mom_solver_t* solver, double px, double py, 
 
 // Field computation
 int mom_solver_compute_near_field(mom_solver_t* solver, const point3d_t* points, int num_points);
+
+/**
+ * Trapezoidal line integral of -E·dl along the straight segment from rA to rB (nseg segments).
+ * Uses mom_solver_compute_near_field (same E model as near-field post-processing).
+ * Output is the complex phasor of the integral (SI: V if E is V/m and coordinates are m).
+ */
+int mom_solver_line_integral_e_dot_dl(mom_solver_t* solver,
+                                      const point3d_t* rA, const point3d_t* rB,
+                                      int nseg,
+                                      double* out_re, double* out_im);
 int mom_solver_compute_far_field(mom_solver_t* solver, double theta_min, double theta_max, int n_theta,
                                  double phi_min, double phi_max, int n_phi);
 
@@ -184,8 +214,27 @@ int mom_solver_export_surface_current(const mom_solver_t* solver, const char* cs
  */
 int mom_solver_export_surface_mesh_for_plot(const mom_solver_t* solver, const char* txt_path);
 
+/* Synthetic surface-current display: linear gradient along mesh bbox (for presentation).
+ * mom_solver_apply_synthetic_gradient_to_coefficients overwrites MoM coefficients (CSV, _results.txt, RCS, near field, VTK).
+ * mom_solver_set_vtk_synthetic_display only affects VTK export; coefficients and other exports stay physical. */
+typedef struct mom_vtk_current_options {
+    int mode;   /* 0 = physical MoM coefficients (default); 1 = replace coefficients / time series with bbox gradient */
+    int axis;   /* -1 = auto (longest bbox axis), 0=x, 1=y, 2=z */
+    int invert; /* 0: low coord -> vmin; 1: low coord -> vmax (e.g. front brighter) */
+    double vmin;
+    double vmax;
+} mom_vtk_current_options_t;
+
+/** VTK-only: enable bbox-gradient scalar field in export_surface_current_vtk (mode must be 1). Does not change solver coefficients. */
+int mom_solver_set_vtk_synthetic_display(mom_solver_t* solver, const mom_vtk_current_options_t* o);
+
+int mom_solver_apply_synthetic_gradient_to_coefficients(mom_solver_t* solver, const mom_vtk_current_options_t* o);
+int mom_solver_apply_synthetic_gradient_to_time_domain_response(
+    mom_solver_t* solver, complex_t* response, int num_time_points, int num_basis, const mom_vtk_current_options_t* o);
+
 /* Export surface current to VTK (continuous triangle mesh + CELL_DATA) for ParaView.
  * conductor_material_id: -1 = all conductor; >=0 = zero current on elements with material_id != this.
+ * After synthetic_gradient, VTK uses per-triangle bbox gradient (RWG vector reconstruction is skipped).
  */
 int mom_solver_export_surface_current_vtk(const mom_solver_t* solver, const char* vtk_path, int conductor_material_id);
 

@@ -8,6 +8,7 @@
 #include "mom_time_domain.h"
 #include "../../common/core_common.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
@@ -178,6 +179,9 @@ int mom_solver_solve_time_domain(
 
         /* Public API: sets config + excitation frequency and re-assembles RHS. */
         if (mom_solver_set_frequency_hz(solver, f_hz) != 0) {
+            fprintf(stderr,
+                    "mom_solver_solve_time_domain: mom_solver_set_frequency_hz failed at bin %d, f=%.6e Hz.\n",
+                    f, f_hz);
             for (int i = 0; i < f; i++) {
                 if (freq_currents[i]) free(freq_currents[i]);
             }
@@ -186,13 +190,30 @@ int mom_solver_solve_time_domain(
             return -1;
         }
 
-        if (mom_solver_solve(solver) != 0) {
-            for (int i = 0; i < f; i++) {
-                if (freq_currents[i]) free(freq_currents[i]);
+        {
+            const int solve_st = mom_solver_solve(solver);
+            if (solve_st != 0) {
+                const int n_unk = mom_solver_get_num_unknowns(solver);
+                double z_gb = (n_unk > 0)
+                    ? (double)((size_t)n_unk * (size_t)n_unk * 16u) / (1024.0 * 1024.0 * 1024.0)
+                    : 0.0;
+                fprintf(stderr,
+                        "mom_solver_solve_time_domain: mom_solver_solve failed at bin %d, f=%.6e Hz, status=%d, "
+                        "unknowns=%d.\n",
+                        f, f_hz, solve_st, n_unk);
+                if (n_unk > 8000) {
+                    fprintf(stderr,
+                            "  Dense EFIE MoM stores a full complex Z matrix (~%.1f GB for Z at this N). "
+                            "Reduce mesh / use a coarser .msh, or run frequency-domain single frequency first.\n",
+                            z_gb);
+                }
+                for (int i = 0; i < f; i++) {
+                    if (freq_currents[i]) free(freq_currents[i]);
+                }
+                free(freq_currents);
+                free(time_results->time_points);
+                return -1;
             }
-            free(freq_currents);
-            free(time_results->time_points);
-            return -1;
         }
 
         const mom_result_t* result = mom_solver_get_results(solver);

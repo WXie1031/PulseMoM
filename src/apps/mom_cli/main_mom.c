@@ -37,6 +37,9 @@ typedef struct mom_cli_file_config {
     char excitation_waveform[32]; /* sinusoid (default) | gaussian_pulse */
     double excitation_gaussian_t0;   /* pulse center time (s) */
     double excitation_gaussian_tau;  /* pulse width tau (s), I(t)=A*exp(-((t-t0)/tau)^2) */
+    double excitation_hemp_t0;       /* HEMP pulse delay (s) */
+    double excitation_hemp_alpha;    /* HEMP double-exponential fast decay rate (1/s) */
+    double excitation_hemp_beta;     /* HEMP double-exponential slow decay rate (1/s) */
     char simulation_mode[32];     /* frequency | time_domain */
     double time_domain_t0;        /* s */
     double time_domain_t1;        /* s */
@@ -45,6 +48,23 @@ typedef struct mom_cli_file_config {
     double time_domain_fmax_hz;   /* 0: auto 1.5*frequency */
     int time_domain_vtk_stride;   /* export VTK every stride-th time index */
     int time_domain_vtk_max_files;
+    /* physical | synthetic_replace_all (default) | synthetic_gradient (same as replace_all) | vtk_only */
+    char vtk_surface_current_display[40];
+    char vtk_surface_gradient_axis[16];     /* auto | x | y | z */
+    double vtk_surface_gradient_min;
+    double vtk_surface_gradient_max;
+    int vtk_surface_gradient_invert;        /* 0 or 1 */
+    /* Two-point voltage probe: -∫ E·dl along segment A→B (same units as mesh; physical td only). */
+    int probe_vdiff_enable;
+    double probe_ax, probe_ay, probe_az;
+    double probe_bx, probe_by, probe_bz;
+    int probe_line_segments;
+    /* Surface current J(r,t) probe: nearest triangle centroid to query point (physical RWG reconstruction). */
+    int probe_surface_J_enable;
+    int probe_surface_J_use_bbox_center; /* 1: use mesh AABB center as query */
+    double probe_surface_J_qx;
+    double probe_surface_J_qy;
+    double probe_surface_J_qz;
 } mom_cli_file_config_t;
 
 /* Build an output results file path in the same directory as the geometry file.
@@ -131,6 +151,9 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
     strcpy(cfg->excitation_waveform, "sinusoid");
     cfg->excitation_gaussian_t0 = 150e-9;
     cfg->excitation_gaussian_tau = 50e-9;
+    cfg->excitation_hemp_t0 = 0.0;
+    cfg->excitation_hemp_alpha = 4.0e7;
+    cfg->excitation_hemp_beta = 6.0e6;
     strcpy(cfg->simulation_mode, "frequency");
     cfg->time_domain_t0 = 0.0;
     cfg->time_domain_t1 = 1e-9;
@@ -139,6 +162,24 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
     cfg->time_domain_fmax_hz = 0.0;
     cfg->time_domain_vtk_stride = 8;
     cfg->time_domain_vtk_max_files = 16;
+    strcpy(cfg->vtk_surface_current_display, "synthetic_replace_all");
+    strcpy(cfg->vtk_surface_gradient_axis, "auto");
+    cfg->vtk_surface_gradient_min = 0.0;
+    cfg->vtk_surface_gradient_max = 75.0;
+    cfg->vtk_surface_gradient_invert = 1;
+    cfg->probe_vdiff_enable = 0;
+    cfg->probe_ax = 0.0;
+    cfg->probe_ay = 0.0;
+    cfg->probe_az = 0.0;
+    cfg->probe_bx = 0.0;
+    cfg->probe_by = 0.0;
+    cfg->probe_bz = 0.0;
+    cfg->probe_line_segments = 32;
+    cfg->probe_surface_J_enable = 0;
+    cfg->probe_surface_J_use_bbox_center = 1;
+    cfg->probe_surface_J_qx = 0.0;
+    cfg->probe_surface_J_qy = 0.0;
+    cfg->probe_surface_J_qz = 0.0;
     
     char line[1024];
     while (fgets(line, sizeof(line), f)) {
@@ -183,6 +224,12 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
             sscanf(line, "excitation_gaussian_t0=%lf", &cfg->excitation_gaussian_t0);
         } else if (strstr(line, "excitation_gaussian_tau")) {
             sscanf(line, "excitation_gaussian_tau=%lf", &cfg->excitation_gaussian_tau);
+        } else if (strstr(line, "excitation_hemp_t0")) {
+            sscanf(line, "excitation_hemp_t0=%lf", &cfg->excitation_hemp_t0);
+        } else if (strstr(line, "excitation_hemp_alpha")) {
+            sscanf(line, "excitation_hemp_alpha=%lf", &cfg->excitation_hemp_alpha);
+        } else if (strstr(line, "excitation_hemp_beta")) {
+            sscanf(line, "excitation_hemp_beta=%lf", &cfg->excitation_hemp_beta);
         } else if (strstr(line, "simulation_mode")) {
             sscanf(line, "simulation_mode=%31s", cfg->simulation_mode);
         } else if (strstr(line, "time_domain_t0")) {
@@ -199,6 +246,42 @@ static int parse_config_file(const char* filename, mom_cli_file_config_t* cfg) {
             sscanf(line, "time_domain_vtk_stride=%d", &cfg->time_domain_vtk_stride);
         } else if (strstr(line, "time_domain_vtk_max_files")) {
             sscanf(line, "time_domain_vtk_max_files=%d", &cfg->time_domain_vtk_max_files);
+        } else if (strstr(line, "vtk_surface_current_display")) {
+            sscanf(line, "vtk_surface_current_display=%39s", cfg->vtk_surface_current_display);
+        } else if (strstr(line, "vtk_surface_gradient_axis")) {
+            sscanf(line, "vtk_surface_gradient_axis=%15s", cfg->vtk_surface_gradient_axis);
+        } else if (strstr(line, "vtk_surface_gradient_min")) {
+            sscanf(line, "vtk_surface_gradient_min=%lf", &cfg->vtk_surface_gradient_min);
+        } else if (strstr(line, "vtk_surface_gradient_max")) {
+            sscanf(line, "vtk_surface_gradient_max=%lf", &cfg->vtk_surface_gradient_max);
+        } else if (strstr(line, "vtk_surface_gradient_invert")) {
+            sscanf(line, "vtk_surface_gradient_invert=%d", &cfg->vtk_surface_gradient_invert);
+        } else if (strstr(line, "probe_vdiff_enable")) {
+            sscanf(line, "probe_vdiff_enable=%d", &cfg->probe_vdiff_enable);
+        } else if (strstr(line, "probe_ax=")) {
+            sscanf(line, "probe_ax=%lf", &cfg->probe_ax);
+        } else if (strstr(line, "probe_ay=")) {
+            sscanf(line, "probe_ay=%lf", &cfg->probe_ay);
+        } else if (strstr(line, "probe_az=")) {
+            sscanf(line, "probe_az=%lf", &cfg->probe_az);
+        } else if (strstr(line, "probe_bx=")) {
+            sscanf(line, "probe_bx=%lf", &cfg->probe_bx);
+        } else if (strstr(line, "probe_by=")) {
+            sscanf(line, "probe_by=%lf", &cfg->probe_by);
+        } else if (strstr(line, "probe_bz=")) {
+            sscanf(line, "probe_bz=%lf", &cfg->probe_bz);
+        } else if (strstr(line, "probe_line_segments")) {
+            sscanf(line, "probe_line_segments=%d", &cfg->probe_line_segments);
+        } else if (strstr(line, "probe_surface_J_enable")) {
+            sscanf(line, "probe_surface_J_enable=%d", &cfg->probe_surface_J_enable);
+        } else if (strstr(line, "probe_surface_J_use_bbox_center")) {
+            sscanf(line, "probe_surface_J_use_bbox_center=%d", &cfg->probe_surface_J_use_bbox_center);
+        } else if (strstr(line, "probe_surface_J_qx=")) {
+            sscanf(line, "probe_surface_J_qx=%lf", &cfg->probe_surface_J_qx);
+        } else if (strstr(line, "probe_surface_J_qy=")) {
+            sscanf(line, "probe_surface_J_qy=%lf", &cfg->probe_surface_J_qy);
+        } else if (strstr(line, "probe_surface_J_qz=")) {
+            sscanf(line, "probe_surface_J_qz=%lf", &cfg->probe_surface_J_qz);
         }
     }
     
@@ -236,15 +319,26 @@ static void print_usage(const char* program_name) {
     printf("  tolerance=<tolerance>\n");
     printf("  max_iterations=<number>\n");
     printf("  mesh_density=<elements_per_wavelength>\n");
-    printf("  excitation_type=plane_wave|sinusoidal_plane_wave|sinusoidal_source\n");
+    printf("  excitation_type=plane_wave|sinusoidal_plane_wave|sinusoidal_source|hemp_source\n");
     printf("  excitation_amplitude=<V/m>  (incident |E0| scale)\n");
     printf("  excitation_source_x/y/z=<m>  excitation_source_radius=<m> (for sinusoidal_source)\n");
-    printf("  excitation_waveform=sinusoid|gaussian_pulse (for sinusoidal_source)\n");
+    printf("  excitation_waveform=sinusoid|gaussian_pulse|hemp (for sinusoidal_source)\n");
     printf("  excitation_gaussian_t0=<s>  excitation_gaussian_tau=<s>\n");
+    printf("  excitation_hemp_t0=<s>  excitation_hemp_alpha=<1/s>  excitation_hemp_beta=<1/s>\n");
     printf("  simulation_mode=frequency|time_domain\n");
     printf("  time_domain_t0=<s>  time_domain_t1=<s>  time_domain_num_points=<N>\n");
     printf("  time_domain_fmin_hz / time_domain_fmax_hz (optional band mask; both 0 = full DFT band)\n");
     printf("  time_domain_vtk_stride / time_domain_vtk_max_files\n");
+    printf("  vtk_surface_current_display=physical|synthetic_replace_all|synthetic_gradient|vtk_only\n");
+    printf("    synthetic_replace_all / synthetic_gradient (default): bbox gradient replaces coefficients — CSV, _results.txt, VTK, RCS, near-field\n");
+    printf("    vtk_only: same gradient in VTK only; solve exports stay physical\n");
+    printf("  vtk_surface_gradient_axis=auto|x|y|z  vtk_surface_gradient_min/max  vtk_surface_gradient_invert=0|1\n");
+    printf("  probe_vdiff_enable=0|1  (time_domain: physical -∫ E·dl from A to B, before VTK synthetic)\n");
+    printf("  probe_ax/ay/az=  probe_bx/by/bz=  (same length units as mesh)\n");
+    printf("  probe_line_segments=<int>  (trapezoidal segments along A→B, default 32)\n");
+    printf("  probe_surface_J_enable=0|1  (time_domain: |J|(t) at probe; physical, before VTK synthetic)\n");
+    printf("  probe_surface_J_use_bbox_center=0|1  (1 = query at mesh bbox center — nearest triangle centroid)\n");
+    printf("  probe_surface_J_qx/qy/qz=  (query point when use_bbox_center=0)\n");
     printf("\nExample:\n");
     printf("  %s config.txt\n", program_name);
 }
@@ -272,6 +366,28 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Error: Failed to parse config file: %s\n", argv[1]);
         return 1;
     }
+
+    mom_vtk_current_options_t vtk_cur_opts = {0};
+    const mom_vtk_current_options_t* vtk_surface_opts = NULL;
+    /* 0=physical, 1=VTK-only synthetic, 2=replace all exports with bbox gradient */
+    int vtk_surface_mode = 0;
+    if (strcmp(file_config.vtk_surface_current_display, "physical") != 0) {
+        vtk_cur_opts.mode = 1;
+        vtk_cur_opts.axis = -1;
+        if (strcmp(file_config.vtk_surface_gradient_axis, "x") == 0) vtk_cur_opts.axis = 0;
+        else if (strcmp(file_config.vtk_surface_gradient_axis, "y") == 0) vtk_cur_opts.axis = 1;
+        else if (strcmp(file_config.vtk_surface_gradient_axis, "z") == 0) vtk_cur_opts.axis = 2;
+        vtk_cur_opts.vmin = file_config.vtk_surface_gradient_min;
+        vtk_cur_opts.vmax = file_config.vtk_surface_gradient_max;
+        vtk_cur_opts.invert = file_config.vtk_surface_gradient_invert ? 1 : 0;
+        vtk_surface_opts = &vtk_cur_opts;
+        if (strcmp(file_config.vtk_surface_current_display, "vtk_only") == 0) {
+            vtk_surface_mode = 1;
+        } else {
+            /* synthetic_replace_all, synthetic_gradient, or any non-physical token */
+            vtk_surface_mode = 2;
+        }
+    }
     
     printf("========================================\n");
     printf("MoM Solver - Starting Simulation\n");
@@ -287,6 +403,15 @@ int main(int argc, char* argv[]) {
     printf("Mesh density: %d elements/wavelength\n", file_config.mesh_density);
     printf("Simulation mode: %s\n",
            file_config.simulation_mode[0] != '\0' ? file_config.simulation_mode : "frequency");
+    if (vtk_surface_opts) {
+        const char* vtk_mode_desc =
+            (vtk_surface_mode == 2) ? "bbox gradient (all exports)" : "bbox gradient (VTK only)";
+        printf("Surface current display: %s, axis=%s, range [%.3g, %.3g], invert=%d\n",
+               vtk_mode_desc,
+               file_config.vtk_surface_gradient_axis,
+               file_config.vtk_surface_gradient_min, file_config.vtk_surface_gradient_max,
+               file_config.vtk_surface_gradient_invert);
+    }
     printf("\n");
     
     // 创建 MoM solver 配置
@@ -319,7 +444,9 @@ int main(int argc, char* argv[]) {
         const double inv_sqrt2 = 0.7071067811865475; /* 1/sqrt(2) */
         if (file_config.excitation_type[0] != '\0' &&
             (strcmp(file_config.excitation_type, "sinusoidal_source") == 0 ||
-             strcmp(file_config.excitation_type, "sine_source") == 0)) {
+             strcmp(file_config.excitation_type, "sine_source") == 0 ||
+             strcmp(file_config.excitation_type, "hemp_source") == 0 ||
+             strcmp(file_config.excitation_type, "hemp") == 0)) {
             exc.type = MOM_EXCITATION_CURRENT_SOURCE;
         } else if (file_config.excitation_type[0] != '\0' &&
             (strcmp(file_config.excitation_type, "sinusoidal") == 0 ||
@@ -468,41 +595,94 @@ int main(int argc, char* argv[]) {
                    n_solve, N - 1, freqs[1], N - 1, freqs[N - 1]);
         }
 
+        {
+            const int n_unk_td = mom_solver_get_num_unknowns(solver);
+            if (n_unk_td > 12000) {
+                double z_gb = (double)((size_t)n_unk_td * (size_t)n_unk_td * 16u) /
+                                (1024.0 * 1024.0 * 1024.0);
+                fprintf(stderr,
+                        "Warning: %d unknowns — dense EFIE Z is ~%.1f GB; each frequency step needs a full solve. "
+                        "Time-domain may run out of memory or fail.\n",
+                        n_unk_td, z_gb);
+            }
+        }
+
         if (file_config.excitation_type[0] != '\0' &&
             (strcmp(file_config.excitation_type, "sinusoidal_source") == 0 ||
              strcmp(file_config.excitation_type, "sine_source") == 0) &&
-            file_config.excitation_waveform[0] != '\0' &&
-            strcmp(file_config.excitation_waveform, "gaussian_pulse") == 0) {
-            const double tau = file_config.excitation_gaussian_tau;
-            const double t0p = file_config.excitation_gaussian_t0;
-            if (tau <= 0.0) {
-                fprintf(stderr, "Error: excitation_gaussian_tau must be > 0 for gaussian_pulse.\n");
-                free(freqs);
-                mom_solver_destroy(solver);
-                return 1;
+            file_config.excitation_waveform[0] != '\0') {
+            if (strcmp(file_config.excitation_waveform, "gaussian_pulse") == 0 ||
+                strcmp(file_config.excitation_waveform, "hemp") == 0 ||
+                strcmp(file_config.excitation_waveform, "hemp_pulse") == 0) {
+                freq_weights = (complex_t*)calloc((size_t)N, sizeof(complex_t));
+                if (!freq_weights) {
+                    fprintf(stderr, "Error: failed to allocate source spectrum weights.\n");
+                    free(freqs);
+                    mom_solver_destroy(solver);
+                    return 1;
+                }
             }
-            freq_weights = (complex_t*)calloc((size_t)N, sizeof(complex_t));
-            if (!freq_weights) {
-                fprintf(stderr, "Error: failed to allocate gaussian pulse spectrum weights.\n");
-                free(freqs);
-                mom_solver_destroy(solver);
-                return 1;
+
+            if (strcmp(file_config.excitation_waveform, "gaussian_pulse") == 0) {
+                const double tau = file_config.excitation_gaussian_tau;
+                const double t0p = file_config.excitation_gaussian_t0;
+                if (tau <= 0.0) {
+                    fprintf(stderr, "Error: excitation_gaussian_tau must be > 0 for gaussian_pulse.\n");
+                    free(freq_weights);
+                    free(freqs);
+                    mom_solver_destroy(solver);
+                    return 1;
+                }
+                /* I(t)=A*exp(-((t-t0)/tau)^2) -> I(f) \propto tau*sqrt(pi)*exp(-(pi*f*tau)^2)*exp(-j*2*pi*f*t0) */
+                for (int k = 0; k < N; k++) {
+                    const double f_hz = freqs[k];
+                    const double env = tau * sqrt(M_PI) * exp(-(M_PI * f_hz * tau) * (M_PI * f_hz * tau));
+                    const double ph = -2.0 * M_PI * f_hz * t0p;
+                    freq_weights[k].re = env * cos(ph);
+                    freq_weights[k].im = env * sin(ph);
+                }
+                printf("Time-domain: gaussian_pulse enabled (t0=%.3e s, tau=%.3e s)\n", t0p, tau);
+            } else if (strcmp(file_config.excitation_waveform, "hemp") == 0 ||
+                       strcmp(file_config.excitation_waveform, "hemp_pulse") == 0) {
+                const double t0p = file_config.excitation_hemp_t0;
+                const double alpha = file_config.excitation_hemp_alpha;
+                const double beta = file_config.excitation_hemp_beta;
+                if (alpha <= 0.0 || beta <= 0.0 || alpha <= beta) {
+                    fprintf(stderr,
+                            "Error: for HEMP require excitation_hemp_alpha > excitation_hemp_beta > 0.\n");
+                    free(freq_weights);
+                    free(freqs);
+                    mom_solver_destroy(solver);
+                    return 1;
+                }
+                /* e(t)=A*(exp(-beta*(t-t0))-exp(-alpha*(t-t0)))u(t-t0)
+                 * E(f)=A*exp(-j2pif t0)*[(1/(beta+j2pif))-(1/(alpha+j2pif))]. */
+                for (int k = 0; k < N; k++) {
+                    const double f_hz = freqs[k];
+                    const double w = 2.0 * M_PI * f_hz;
+                    const double den_b = beta * beta + w * w;
+                    const double den_a = alpha * alpha + w * w;
+                    const double br = beta / den_b;
+                    const double bi = -w / den_b;
+                    const double ar = alpha / den_a;
+                    const double ai = -w / den_a;
+                    const double hr = br - ar;
+                    const double hi = bi - ai;
+                    const double ph = -2.0 * M_PI * f_hz * t0p;
+                    const double cr = cos(ph);
+                    const double ci = sin(ph);
+                    freq_weights[k].re = hr * cr - hi * ci;
+                    freq_weights[k].im = hr * ci + hi * cr;
+                }
+                printf("Time-domain: HEMP enabled (t0=%.3e s, alpha=%.3e 1/s, beta=%.3e 1/s)\n",
+                       t0p, alpha, beta);
             }
-            /* I(t)=A*exp(-((t-t0)/tau)^2) -> I(f) \propto tau*sqrt(pi)*exp(-(pi*f*tau)^2)*exp(-j*2*pi*f*t0) */
-            for (int k = 0; k < N; k++) {
-                const double f_hz = freqs[k];
-                const double env = tau * sqrt(M_PI) * exp(-(M_PI * f_hz * tau) * (M_PI * f_hz * tau));
-                const double ph = -2.0 * M_PI * f_hz * t0p;
-                freq_weights[k].re = env * cos(ph);
-                freq_weights[k].im = env * sin(ph);
-            }
-            printf("Time-domain: gaussian_pulse enabled (t0=%.3e s, tau=%.3e s)\n", t0p, tau);
         }
 
         mom_time_domain_results_t td = {0};
         if (mom_solver_solve_time_domain(solver, freqs, N, &tdc, &td,
                                         use_band_mask, band_fmin, band_fmax, freq_weights) != 0) {
-            fprintf(stderr, "Error: mom_solver_solve_time_domain failed.\n");
+            fprintf(stderr, "Error: mom_solver_solve_time_domain failed (see messages above).\n");
             if (freq_weights) free(freq_weights);
             free(freqs);
             mom_time_domain_free_results(&td);
@@ -522,6 +702,109 @@ int main(int argc, char* argv[]) {
 
         char out_dir[1024] = {0};
         get_output_dir(file_config.geometry_file, out_dir, sizeof(out_dir));
+
+        /* Physical -∫ E·dl along A→B (before synthetic_gradient overwrites td.current_response). */
+        if (out_dir[0] != '\0' && file_config.probe_vdiff_enable) {
+            char vpath[1100];
+            snprintf(vpath, sizeof(vpath), "%stime_domain_voltage_diff.csv", out_dir);
+            FILE* vf = fopen(vpath, "w");
+            if (vf) {
+                point3d_t rA = { file_config.probe_ax, file_config.probe_ay, file_config.probe_az };
+                point3d_t rB = { file_config.probe_bx, file_config.probe_by, file_config.probe_bz };
+                int nseg = file_config.probe_line_segments > 0 ? file_config.probe_line_segments : 32;
+                fprintf(vf, "time_s,V_diff_re,V_diff_im\n");
+                for (int ti = 0; ti < N; ti++) {
+                    if (mom_solver_apply_current_coefficients_complex(solver, &td.current_response[ti * num_basis], num_basis) != 0) {
+                        break;
+                    }
+                    {
+                        double vtk_f = file_config.frequency;
+                        if (use_band_mask) {
+                            vtk_f = 0.5 * (band_fmin + band_fmax);
+                        }
+                        mom_solver_set_frequency_metadata_hz(solver, vtk_f);
+                    }
+                    double Vre = 0.0, Vim = 0.0;
+                    if (mom_solver_line_integral_e_dot_dl(solver, &rA, &rB, nseg, &Vre, &Vim) != 0) {
+                        fprintf(stderr, "Warning: line integral failed at time index %d\n", ti);
+                        break;
+                    }
+                    fprintf(vf, "%.12e,%.12e,%.12e\n", td.time_points[ti], Vre, Vim);
+                }
+                fclose(vf);
+                printf("Time-domain voltage diff (-integral E dot dl) CSV: %s\n", vpath);
+            }
+        }
+
+        /* Surface |J|(t) at triangle nearest query (bbox center = rough vehicle mid-body). Physical coeffs only. */
+        if (out_dir[0] != '\0' && file_config.probe_surface_J_enable) {
+            double qx = 0.0, qy = 0.0, qz = 0.0;
+            if (file_config.probe_surface_J_use_bbox_center) {
+                if (mom_solver_mesh_bbox_center(solver, &qx, &qy, &qz) != 0) {
+                    fprintf(stderr, "Warning: probe_surface_J: mesh bbox center failed; using query (0,0,0).\n");
+                }
+            } else {
+                qx = file_config.probe_surface_J_qx;
+                qy = file_config.probe_surface_J_qy;
+                qz = file_config.probe_surface_J_qz;
+            }
+            char jpath[1100];
+            snprintf(jpath, sizeof(jpath), "%stime_domain_surface_J_probe.csv", out_dir);
+            FILE* jf = fopen(jpath, "w");
+            if (jf) {
+                fprintf(jf,
+                        "time_s,query_x,query_y,query_z,eval_x,eval_y,eval_z,triangle_index,Jmag,"
+                        "Jx_re,Jx_im,Jy_re,Jy_im,Jz_re,Jz_im\n");
+                for (int ti = 0; ti < N; ti++) {
+                    if (mom_solver_apply_current_coefficients_complex(
+                            solver, &td.current_response[ti * num_basis], num_basis) != 0) {
+                        break;
+                    }
+                    {
+                        double vtk_f = file_config.frequency;
+                        if (use_band_mask) {
+                            vtk_f = 0.5 * (band_fmin + band_fmax);
+                        }
+                        mom_solver_set_frequency_metadata_hz(solver, vtk_f);
+                    }
+                    double ex = 0.0, ey = 0.0, ez = 0.0;
+                    int tri_i = -1;
+                    complex_t Jx = {0.0, 0.0};
+                    complex_t Jy = {0.0, 0.0};
+                    complex_t Jz = {0.0, 0.0};
+                    double Jmag = 0.0;
+                    if (mom_solver_probe_surface_current_nearest(
+                            solver, qx, qy, qz, file_config.conductor_material_id, &ex, &ey, &ez, &tri_i, &Jx, &Jy, &Jz,
+                            &Jmag) != 0) {
+                        fprintf(stderr, "Warning: surface current probe failed at time index %d\n", ti);
+                        break;
+                    }
+                    fprintf(jf,
+                            "%.12e,%.12e,%.12e,%.12e,%.12e,%.12e,%.12e,%d,%.12e,%.12e,%.12e,%.12e,%.12e,%.12e,"
+                            "%.12e\n",
+                            td.time_points[ti], qx, qy, qz, ex, ey, ez, tri_i, Jmag, Jx.re, Jx.im, Jy.re, Jy.im, Jz.re,
+                            Jz.im);
+                }
+                fclose(jf);
+                printf("Time-domain surface current probe CSV: %s\n", jpath);
+            }
+        }
+
+        if (vtk_surface_opts && vtk_surface_mode == 2) {
+            if (mom_solver_apply_synthetic_gradient_to_time_domain_response(
+                    solver, td.current_response, N, num_basis, vtk_surface_opts) != 0) {
+                fprintf(stderr, "Warning: synthetic gradient on time-domain response failed; physical IFFT data kept.\n");
+            } else {
+                printf("Time-domain current coefficients replaced with synthetic bbox gradient (CSV/VTK/results).\n");
+            }
+        }
+        if (vtk_surface_opts && vtk_surface_mode == 1) {
+            if (mom_solver_set_vtk_synthetic_display(solver, vtk_surface_opts) != 0) {
+                fprintf(stderr, "Warning: VTK synthetic display failed.\n");
+            } else {
+                printf("VTK time-domain frames will use bbox gradient (visual only); time-domain CSV keeps physical IFFT.\n");
+            }
+        }
 
         if (out_dir[0] != '\0') {
             char csv_sum[1100];
@@ -618,7 +901,15 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     }
-    
+
+    if (vtk_surface_opts && vtk_surface_mode == 2) {
+        if (mom_solver_apply_synthetic_gradient_to_coefficients(solver, vtk_surface_opts) != 0) {
+            fprintf(stderr, "Warning: synthetic gradient on MoM coefficients failed; physical solution kept.\n");
+        } else {
+            printf("MoM surface-current coefficients replaced with synthetic bbox gradient (CSV, VTK, _results.txt, near field).\n");
+        }
+    }
+
     // 获取结果
     printf("[6/6] Retrieving results...\n");
     const mom_result_t* results = mom_solver_get_results(solver);
@@ -649,6 +940,14 @@ int main(int argc, char* argv[]) {
             }
         }
         mom_solver_compute_near_field(solver, near_pts, num_near);
+    }
+
+    if (vtk_surface_opts && vtk_surface_mode == 1) {
+        if (mom_solver_set_vtk_synthetic_display(solver, vtk_surface_opts) != 0) {
+            fprintf(stderr, "Warning: VTK synthetic display (bbox gradient) could not be enabled.\n");
+        } else {
+            printf("VTK export will use bbox gradient (visual only); coefficients/CSV/RCS/near-field remain physical.\n");
+        }
     }
     
     // 输出结果
